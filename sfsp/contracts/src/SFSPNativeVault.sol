@@ -19,18 +19,32 @@ import {ISFSPGovernanceController, ISFSPEligibilityEngine} from "./lib/ISFSP.sol
 ///                       el circulante.
 ///         La bóveda no tiene retiro de administrador, ni dueño, ni actualización:
 ///         la ÚNICA salida es `release` o `releaseOnDemand`.
+///
+///         SFSP-120 §0.3 y §0.5 regla 3 · vender ORIGEN desde la bóveda al usuario
+///         que pagó es una SUSCRIPCIÓN primaria sobre MON: un cupo de VENTA
+///         (`SET_RELEASE_BUDGET`) aplica SUBSCRIBE sobre el destino en la misma
+///         transacción. Una salida que no es venta (p. ej. el ORIGEN de gas para
+///         los tenedores de ONDK) va por un cupo de DISTRIBUCIÓN
+///         (`SET_DISTRIBUTION_BUDGET`), con su propia etiqueta aprobada por
+///         gobierno: la naturaleza de la salida la deciden los firmantes, no el
+///         emisor. Su calificación legal es una decisión de la Junta.
 /// @dev El circulante que publica `circulating()` es
 ///      génesis − bóveda − saldos de las cuentas internas declaradas, y se puede
 ///      recalcular desde fuera con lecturas de saldo: no depende de confiar en
 ///      ningún contador de este contrato.
 contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
     bytes32 public constant ACTION_RELEASE = bytes32("RELEASE_NATIVE");
+    /// @dev Cupo de VENTA: cada `releaseOnDemand` es una suscripción primaria.
     bytes32 public constant ACTION_SET_RELEASE_BUDGET = bytes32("SET_RELEASE_BUDGET");
-    /// @dev v0.3 §6/§7 · cupo de MIGRACIÓN (p. ej. el lote de 1 ORIGEN a los
-    ///      tenedores de ONDK). No es una venta. `SET_RELEASE_BUDGET` es de VENTA:
-    ///      la compra de ORIGEN a la tesorería es la puerta única y es una
-    ///      SUBSCRIBE (SFSP-120 §0.5, punto 3).
+    /// @dev v0.3 §6/§7 · cupo de MIGRACIÓN (p. ej. un lote a los tenedores de
+    ///      un heredado, ADR-016). No es una venta: sólo la política MINT del
+    ///      destino. `SET_RELEASE_BUDGET` es de VENTA: la compra de ORIGEN a la
+    ///      tesorería es la puerta única y es una SUBSCRIBE (SFSP-120 §0.5,
+    ///      punto 3).
     bytes32 public constant ACTION_SET_MIGRATION_BUDGET = bytes32("SET_MIGRATION_BUDGET");
+    /// @dev Cupo de DISTRIBUCIÓN (no venta; p. ej. el ORIGEN de gas para los
+    ///      tenedores de ONDK si la Junta lo califica así): sólo la política MINT.
+    bytes32 public constant ACTION_SET_DISTRIBUTION_BUDGET = bytes32("SET_DISTRIBUTION_BUDGET");
     bytes32 public constant BUDGET_TERMS_TAG = keccak256("SFSP.RELEASE_BUDGET.TERMS.v1");
     uint256 public constant MAX_INTERNAL_ACCOUNTS = 64;
 
@@ -51,13 +65,17 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
     }
 
     ReleaseBudget private _budget;
-    /// @dev true si el cupo vigente es de MIGRACIÓN.
-    bool private _budgetIsMigration;
+    /// @dev Etiqueta con la que gobierno aprobó el cupo vigente: venta
+    ///      (`SET_RELEASE_BUDGET`), migración o distribución. Aparte de
+    ///      `ReleaseBudget` para no cambiar lo que devuelve `releaseBudget()`.
+    bytes32 private _budgetKind;
     /// @notice v0.3 §6 y §7 · con true, un cupo de VENTA sólo se consume por
-    ///         `releaseOnSubscription`, que evalúa SUBSCRIBE; `releaseOnDemand`
-    ///         queda para los cupos de MIGRACIÓN. false (valor de despliegue)
-    ///         conserva el comportamiento anterior para no romper a quien ya
-    ///         integra `releaseOnDemand`; se enciende antes de vender.
+    ///         `releaseOnSubscription`, que recibe el contexto de la suscripción
+    ///         (ruta de residencia privada); `releaseOnDemand` queda para los
+    ///         cupos que no son venta. Con false (valor de despliegue),
+    ///         `releaseOnDemand` sigue consumiendo un cupo de venta, pero aplica
+    ///         SUBSCRIBE sin contexto (ruta de residencia por país): nunca libera
+    ///         una venta sin suscripción. Lo enciende la Junta antes de vender.
     bool public subscriptionRequired;
     mapping(bytes32 => bool) private _usedOperation;
     mapping(address => bool) private _internalAccount;
@@ -168,14 +186,21 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
         return _budget;
     }
 
+    /// @notice true si el cupo vigente NO es de venta (migración o distribución).
     function releaseBudgetIsMigration() external view returns (bool) {
-        return _budgetIsMigration;
+        return _budgetKind != bytes32(0) && _budgetKind != ACTION_SET_RELEASE_BUDGET;
     }
 
-    /// @notice Enciende o apaga la exigencia de SUBSCRIBE en la liberación de
-    ///         venta. La Junta, con motivo. El motor (`engine`) tiene que
-    ///         conceder a esta bóveda SUBSCRIPTION_EXECUTOR; si no, toda venta
-    ///         revierte (falla cerrada).
+    /// @notice `SET_RELEASE_BUDGET` (venta: SUBSCRIBE), `SET_MIGRATION_BUDGET` o
+    ///         `SET_DISTRIBUTION_BUDGET`.
+    function releaseBudgetKind() external view returns (bytes32) {
+        return _budgetKind;
+    }
+
+    /// @notice Enciende o apaga la exigencia de la ruta con contexto en la
+    ///         liberación de venta. La Junta, con motivo. El motor (`engine`)
+    ///         tiene que conceder a esta bóveda SUBSCRIPTION_EXECUTOR; si no,
+    ///         toda venta revierte (falla cerrada).
     function setSubscriptionRequired(bool required, bytes32 reasonCode) external onlyRole(DBNX_BOARD) {
         require(reasonCode != bytes32(0), "SFSP: motivo requerido");
         subscriptionRequired = required;
@@ -243,7 +268,7 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
         SFSPAuthorization.authorize(m, approvedDigest);
         governance.consumeAuthorization(approvedDigest);
 
-        _pay(p.destination, p.amount, p.nonce, bytes32("GOVERNANCE"), p.evidenceRoot);
+        _pay(p.destination, p.amount, p.nonce, bytes32("GOVERNANCE"), p.evidenceRoot, false);
     }
 
     // ------------------------------------------------------------- salida 2: cupo
@@ -253,6 +278,10 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
     }
 
     /// @notice Fija el cupo de liberación con doble control, espera y consumo único.
+    /// @dev `p.action` dice si es un cupo de VENTA (`SET_RELEASE_BUDGET`, cada
+    ///      liberación exige SUBSCRIBE) o de DISTRIBUCIÓN
+    ///      (`SET_DISTRIBUTION_BUDGET`); gobierno tiene que haberlo aprobado con
+    ///      esa misma etiqueta.
     function setReleaseBudget(
         SFSPAuthorization.Payload calldata p,
         bytes32 approvedDigest,
@@ -261,7 +290,10 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
         bytes32 termsDocRoot
     ) external nonReentrant {
         if (!hasRole(TECH_OPS, msg.sender) && !hasRole(DBNX_BOARD, msg.sender)) revert Unauthorized(TECH_OPS, msg.sender);
-        if (p.action != ACTION_SET_RELEASE_BUDGET && p.action != ACTION_SET_MIGRATION_BUDGET) {
+        if (
+            p.action != ACTION_SET_RELEASE_BUDGET && p.action != ACTION_SET_MIGRATION_BUDGET
+                && p.action != ACTION_SET_DISTRIBUTION_BUDGET
+        ) {
             revert AuthorizationActionMismatch(ACTION_SET_RELEASE_BUDGET, p.action);
         }
         if (p.assetId != assetId) revert BudgetInvalid(bytes32("ASSET"));
@@ -282,7 +314,6 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
         SFSPAuthorization.authorize(m, approvedDigest);
         governance.consumeAuthorization(approvedDigest);
 
-        _budgetIsMigration = p.action == ACTION_SET_MIGRATION_BUDGET;
         _budget = ReleaseBudget({
             perPeriod: p.amount,
             period: period,
@@ -291,6 +322,7 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
             periodIndex: uint64(block.timestamp / period),
             usedInPeriod: 0
         });
+        _budgetKind = p.action;
         emit ReleaseBudgetSet(assetId, approvedDigest, p.amount, period, p.amountSecondary, validUntil, termsDocRoot);
     }
 
@@ -301,27 +333,31 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
         }
         require(reasonCode != bytes32(0), "SFSP: motivo requerido");
         delete _budget;
-        delete _budgetIsMigration;
+        delete _budgetKind;
         emit ReleaseBudgetRevoked(assetId, msg.sender, reasonCode);
     }
 
     /// @notice Libera al USUARIO exactamente lo que pagó, dentro del cupo.
-    /// @dev Con `subscriptionRequired`, sólo consume un cupo de MIGRACIÓN: la
-    ///      venta pasa por `releaseOnSubscription` (v0.3 §7, puerta única).
+    /// @dev En un cupo de VENTA, SUBSCRIBE sobre el destino (SFSP-120 §0.3
+    ///      regla 1), sin contexto; con `subscriptionRequired`, la venta pasa por
+    ///      `releaseOnSubscription` (v0.3 §7, puerta única). Un cupo de migración
+    ///      o de distribución sólo evalúa MINT. La bóveda necesita el rol
+    ///      SUBSCRIPTION_EXECUTOR del motor.
     function releaseOnDemand(address destination, uint256 amount, bytes32 paymentRef, bytes32 evidenceRoot)
         external
         onlyRole(ISSUER)
         nonReentrant
     {
         if (governance.isPaused()) revert Paused();
-        if (subscriptionRequired && !_budgetIsMigration) revert SubscriptionRequired();
-        _releaseFromBudget(destination, amount, paymentRef, evidenceRoot);
+        bool sale = _budgetKind == ACTION_SET_RELEASE_BUDGET;
+        if (sale && subscriptionRequired) revert SubscriptionRequired();
+        _releaseFromBudget(destination, amount, paymentRef, evidenceRoot, sale);
     }
 
     /// @notice VENTA de ORIGEN desde la bóveda: evalúa SUBSCRIBE sobre el
     ///         adquirente (país, alcance de la oferta exenta, exposición) y, si
-    ///         es ALLOW, libera dentro del cupo de venta. Un cupo de MIGRACIÓN no
-    ///         vende.
+    ///         es ALLOW, libera dentro del cupo de venta. Un cupo de migración o
+    ///         de distribución no vende.
     function releaseOnSubscription(
         address destination,
         uint256 amount,
@@ -330,12 +366,15 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
         SFSPTypes.SubscriptionContext calldata ctx
     ) external onlyRole(ISSUER) nonReentrant {
         if (governance.isPaused()) revert Paused();
-        if (_budgetIsMigration) revert BudgetKindMismatch(true);
+        if (_budgetKind != ACTION_SET_RELEASE_BUDGET) revert BudgetKindMismatch(true);
         engine.enforceSubscription(destination, assetId, amount, ctx);
-        _releaseFromBudget(destination, amount, paymentRef, evidenceRoot);
+        _releaseFromBudget(destination, amount, paymentRef, evidenceRoot, false);
     }
 
-    function _releaseFromBudget(address destination, uint256 amount, bytes32 paymentRef, bytes32 evidenceRoot) internal {
+    /// @param subscribe venta sin contexto: SUBSCRIBE por la ruta de residencia por país.
+    function _releaseFromBudget(address destination, uint256 amount, bytes32 paymentRef, bytes32 evidenceRoot, bool subscribe)
+        internal
+    {
         if (paymentRef == bytes32(0) || amount == 0) revert BudgetInvalid(bytes32("ARGS"));
         if (_usedOperation[paymentRef]) revert OperationReplay(paymentRef);
         _usedOperation[paymentRef] = true;
@@ -350,7 +389,7 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
         b.periodIndex = idx;
         b.usedInPeriod = used + amount;
 
-        _pay(destination, amount, paymentRef, bytes32("BUDGET"), evidenceRoot);
+        _pay(destination, amount, paymentRef, bytes32("BUDGET"), evidenceRoot, subscribe);
     }
 
     // ------------------------------------------------------------- pago
@@ -358,7 +397,11 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
     /// @dev Reglas comunes a las dos salidas: nunca a una cuenta interna (eso
     ///      sería sacar ORIGEN de la bóveda para guardarlo en otro cajón), el
     ///      destino tiene que ser elegible, y efectos antes de la transferencia.
-    function _pay(address destination, uint256 amount, bytes32 operationId, bytes32 route, bytes32 evidenceRoot) internal {
+    /// @param subscribe venta sin contexto: además, SUBSCRIBE sobre el destino
+    ///        (SFSP-120 §0.3) con el contexto vacío.
+    function _pay(address destination, uint256 amount, bytes32 operationId, bytes32 route, bytes32 evidenceRoot, bool subscribe)
+        internal
+    {
         // REV-410 · pagarse a sí misma no es una salida: consumiría cupo y
         // `paymentRef`, y el receive() lo contaría como absorbido, inflando
         // totalReleased y totalAbsorbed sin que nadie reciba nada.
@@ -366,6 +409,10 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
         if (_internalAccount[destination]) revert ReleaseToInternalAccount(destination);
         (uint8 code, bytes32 reason,) = engine.evaluateOperation(destination, assetId, bytes32("MINT"), amount, bytes32(0));
         if (code != SFSPCodes.ALLOW) revert ReleaseRejected(code, reason);
+        if (subscribe) {
+            SFSPTypes.SubscriptionContext memory sinContexto;
+            engine.enforceSubscription(destination, assetId, amount, sinContexto);
+        }
         uint256 bal = address(this).balance;
         if (bal < amount) revert InsufficientVaultBalance(bal, amount);
         totalReleased += amount;

@@ -2,7 +2,7 @@
 const assert = require("node:assert/strict");
 const F = require("./fixture");
 const H = require("./helpers");
-const { buildAuthorization, acunar, quemarConGobierno } = require("./authorization");
+const { buildAuthorization, acunar, quemarConGobierno, colocable } = require("./authorization");
 const OA = require("./orden-autorizada");
 
 describe("SFSPIssuanceController · autorización firmada y topes", function () {
@@ -11,6 +11,8 @@ describe("SFSPIssuanceController · autorización firmada y topes", function () 
     f = await F.deployAll();
     // Límites sintéticos del fixture; el despliegue real los recibe de DBNX.
     await f.issuance.send("setInstrumentLimits", [f.ASSET_NEW, 5000, 5000], f.board);
+    // SFSP-120 §0.3 · acuñar a un tercero es colocar: los destinos suscriben.
+    await colocable(f, [f.treasury, f.alice, f.bob]);
   });
 
   it("positivo: acuña exactamente lo autorizado y acumula contra la autorización", async function () {

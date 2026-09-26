@@ -103,6 +103,8 @@ contract SFSPNetworkPermissions is SFSPAccessControl, SFSPReentrancyGuard {
     error PayloadMismatch(bytes32 reason);
     error InvalidChange(uint256 index, bytes32 reason);
     error NotExcluded(address subject);
+    error NotLegacy(address subject);
+    error CutNotReached(address subject, uint64 untilBlock);
 
     // ------------------------------------------------------------ estado
 
@@ -248,6 +250,25 @@ contract SFSPNetworkPermissions is SFSPAccessControl, SFSPReentrancyGuard {
         delete _destination[target];
         emit NetworkPermissionChanged(
             target, kind, false, bytes32("REGISTRY_EXCLUDED"), keccak256(abi.encode(target, block.number))
+        );
+    }
+
+    /// @notice Publica el corte de un heredado transitorio en su bloque de corte
+    ///         (SFSP-700 §0.3 paso 4, «Bloqueo confirmado»). El bloqueo ya
+    ///         ocurrió solo —`transactionAllowed` deja de admitirlo en
+    ///         `untilBlock`—; esto lo deja VISIBLE: sin evento, el cambio de
+    ///         estado sería invisible (Apéndice A/B, regla 5).
+    /// @dev Lo puede llamar cualquiera, igual que `purgeExcluded`: sólo BORRA, y
+    ///      sólo un destino heredado cuyo corte ya pasó. `operationId` es el
+    ///      mismo para quien lo publique: keccak256(destino, bloque de corte).
+    function publishLegacyCut(address target) external {
+        Destination storage d = _destination[target];
+        if (d.kind != D_LEGACY) revert NotLegacy(target);
+        uint64 corte = d.untilBlock;
+        if (block.number < corte) revert CutNotReached(target, corte);
+        delete _destination[target];
+        emit NetworkPermissionChanged(
+            target, KIND_LEGACY_TRANSITIONAL, false, bytes32("CORTE_MIGRACION"), keccak256(abi.encode(target, corte))
         );
     }
 

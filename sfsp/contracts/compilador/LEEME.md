@@ -97,13 +97,16 @@ comprobamos añadiéndole un byte al binario: el comprobador devuelve
 ## Un solo contrato por la vía IR
 
 `hardhat.config.js` compila **un** archivo, `src/SFSPReserveEngine.sol`, con
-`viaIR: true` (entrada `overrides`). El compilador es el mismo binario fijado,
-con el mismo `evmVersion` (`paris`) y el mismo optimizador (200 pasadas); sólo
-cambia el generador de código. El motivo es el límite de 24.576 bytes de
-EIP-170: con el generador clásico al motor de reservas le quedaban ~600 bytes y
-las correcciones de la revisión del 26-sep-2026 no cabían. El resto de los
-contratos sale byte a byte igual que antes (comprobado comparando el bytecode
-desplegado de los 40 artefactos). El motor no está desplegado.
+`viaIR: true` y el optimizador orientado a tamaño (`runs: 1`) (entrada
+`overrides`). El compilador es el mismo binario fijado, con el mismo
+`evmVersion` (`paris`). El motivo es el límite de 24.576 bytes de EIP-170: con
+el generador clásico al motor de reservas le quedaban ~600 bytes y las
+correcciones de la revisión del 26-sep-2026 (las de las dos ramas que tocaron el
+motor) no caben. Medido tras la integración: clásico con `runs: 1`, 27.171
+bytes (no cabe); vía IR con 200 pasadas, 24.553; vía IR con `runs: 1`, 24.465
+(111 bytes de margen). El resto de los contratos no cambia de configuración.
+El motor no está desplegado. **Margen mínimo**: cualquier añadido al motor de
+reservas tiene que medirse antes (o sacar código a una biblioteca).
 
 ## Nota sobre el tamaño
 

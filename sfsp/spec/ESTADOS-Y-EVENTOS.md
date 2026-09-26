@@ -2,10 +2,11 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | `draft-0.5` |
+| Estado | `draft-0.7` |
 | Qué es | La **tabla normativa única** de los Apéndices A y B del borrador SFSP v0.3 (26-sep-2026), contrastada con lo que ya existe en el código. El v0.3 es un documento interno y no está en el repositorio: se cita por sección; los nombres de objetos y estados de §A son exactamente los suyos |
 | Fuente de eventos | `eventos.json` sigue siendo la fuente única. Este documento no redefine ningún evento: dice a qué evento del JSON corresponde cada fila del Apéndice B |
 | Cambio frente a `draft-0.4` | Pasa del v0.2 al v0.3. Los catorce objetos y sus estados no cambian de nombre entre el v0.2 y el v0.3; cambian las notas de «Diferencia» (licencia por titular y operador, `SUBSCRIBE`, reclamo de migración por cupo del padrón). El Apéndice B se lista en sus 28 filas, sin fusionar las dos de redención |
+| Cambio en `draft-0.7` | La columna «Dónde vive hoy» se pone al día con los contratos de la fase 2 (registro de licencias, matriz de países, motor de reservas, verificación DBNX, `vencida` en Genesis ID). Los recuentos de §B salen de `eventos.json` y la prueba H15 los comprueba. §C incorpora los códigos que ya usan los contratos |
 
 **Reglas transversales del v0.3 (Apéndices A y B) que valen para todo lo de abajo:**
 
@@ -26,16 +27,16 @@
 | 2 | Caso de admisión | Abierto, en análisis, en subsanación, en valuación, resuelto favorablemente, resuelto con condiciones, rechazado, desistido | `dbnx-api/src/casos.ts`: `DRAFT`, `REVIEW`, `NEEDS_INFO`, `REJECTED`, `APPROVED` | Faltan **en valuación**, **resuelto con condiciones** y **desistido**. Los dos «resuelto» exigen el Bloque 7 (SFSP-200 §0.4.1) |
 | 3 | Reporte del emisor | Al día, próximo a vencer, vencido, en advertencia, suspendido | `dbnx-api/src/reporting.ts`: `CURRENT`, `DUE`, `LATE`, `WARNING`, `NONE` | Falta **suspendido**. La certificación del fiduciario vencida entra por aquí (SFSP-200 §0.7) |
 | 4 | Activo de la canasta | Presentado, verificado, elegible, degradado, vencido, liberado | No existe | Nuevo (SFSP-200 §0.4) |
-| 5 | Solicitud de emisión | Borrador, autorizada por la autoridad de admisión, aprobada técnicamente, ejecutada, rechazada, vencida | Máquina de emisión de SFSP-200 §3.2 y `SFSPIssuanceController` | «Aprobada técnicamente» es la verificación previa de forma (SFSP-200 §0.5). Cotejar nombres |
-| 6 | Lote de metal | Recibido, verificado, asignado, parcialmente tokenizado, bloqueado por redención, liberado | SFSP-300 §2.1 (solo especificación) | Sin código |
-| 7 | Redención | Solicitada, elegible, en cola, bloqueada, liquidada, entregada, cancelada, vencida por incomparecencia | SFSP-300 §4 (solo especificación) | Añadir **vencida por incomparecencia** (retiro presencial). Con canales físicos cerrados, termina en **liquidada** (en ORIGEN) |
+| 5 | Solicitud de emisión | Borrador, autorizada por la autoridad de admisión, aprobada técnicamente, ejecutada, rechazada, vencida | Máquina de emisión de SFSP-200 §3.2 y `SFSPIssuanceController` (`registerDbnxApproval`, verificación de forma en `mint` y en `setMintBudget`) | «Aprobada técnicamente» es la verificación previa de forma (SFSP-200 §0.5), en código en las dos rutas de acuñación. Cotejar nombres |
+| 6 | Lote de metal | Recibido, verificado, asignado, parcialmente tokenizado, bloqueado por redención, liberado | `SFSPReserveEngine` (`LotState`, `MetalLotStateChanged` con código de motivo) | Los seis estados, con su nombre del v0.3 |
+| 7 | Redención | Solicitada, elegible, en cola, bloqueada, liquidada, entregada, cancelada, vencida por incomparecencia | `SFSPReserveEngine` (`RedemptionState`, `RedemptionUpdated` con código de motivo desde `draft-0.7`) | Los ocho estados. Con canales físicos cerrados, termina en **liquidada** y **entregada** (en ORIGEN) |
 | 8 | Operación de mercado | Recibida, elegible, calzada, en liquidación, liquidada, fallida, cancelada | SFSP-500 (con `UNKNOWN` como estado real) | El repo añade `UNKNOWN`, que se conserva: una liquidación sin confirmar no es fallida ni liquidada |
-| 9 | Identidad | Pendiente, en revisión, verificada, rechazada, vencida, suspendida | Genesis ID (código propio) | Genesis ID no tiene **vencida**, y «pendiente» está repartido en cuatro estados intermedios (C10 del plan v0.3, fase 0 punto 0.6) |
+| 9 | Identidad | Pendiente, en revisión, verificada, rechazada, vencida, suspendida | Genesis ID (`genesis-id/src/motor/estados.ts`) | Tiene **vencida** y publica los seis con `estadoPublicado`: los cuatro estados intermedios salen como «pendiente» (C10 del plan v0.3, hecho el 26-sep) |
 | 10 | Vínculo de billetera | Activo, en recuperación, revocado | `BindingStatus` en `sdk/src/tipos.ts` (con `PENDING` y `PRIMARY`) | El repo distingue además pendiente y principal; se conserva |
 | 11 | Recuperación | Abierta, verificada, aprobada, en demora, ejecutada, rechazada | SFSP-130 y SFSP-800 | Cotejar nombres |
 | 12 | Reclamo de migración | No reclamado, verificado, bloqueo confirmado, emitido, conciliado, no reclamable | SFSP-700 §7.1 (reclamo firmado) | En el camino normativo (acuñación a la misma dirección por cupo del padrón, ADR-016) los seis estados se recorren sin reclamo del tenedor: tabla en SFSP-700 §0.3 |
-| 13 | **Licencia** | En trámite, otorgada, vigente, suspendida, vencida, revocada | SFSP-140 §5 | Vale también para la oferta exenta (autorización de alcance limitado) |
-| 14 | **País en la matriz** | Solo entrante, permitido, permitido con condiciones, bloqueado | SFSP-120 §0.2 | Por defecto **solo entrante**; **bloqueado** solo por sanción u orden formal |
+| 13 | **Licencia** | En trámite, otorgada, vigente, suspendida, vencida, revocada | `SFSPLicenseRegistry` (SFSP-140 §5) | Vale también para la oferta exenta (autorización de alcance limitado). El vencimiento por plazo se registra con `VENCIMIENTO_PLAZO` |
+| 14 | **País en la matriz** | Solo entrante, permitido, permitido con condiciones, bloqueado | `SFSPEligibilityEngine` (`CountryState`, `CountryStatusChanged`; SFSP-120 §0.2) | Por defecto **solo entrante**; **bloqueado** solo por sanción u orden formal |
 
 Los catorce objetos y sus estados son, en nombre y en orden, los del v0.3 Apéndice A.
 
@@ -94,7 +95,7 @@ El v0.3 (como el v0.2) da al activo **un único estado en línea**. El repositor
 | 27 | Acción de gobernanza | `GovernanceAction` | ✅ GovernanceController |
 | 28 | Conciliación registrada | `ConciliationRecorded` | sin contrato |
 
-**Las 28 filas del Apéndice B tienen evento en `eventos.json`** (27 nombres canónicos: las filas 16 y 17 comparten `RedemptionUpdated`, una transición por evento). Comprobado en `draft-0.5`: no falta ninguno, así que `eventos.json` **no cambia** en esta versión. De esos 27, **10** los emite hoy un contrato y **17** están con `implementadoEnContratos: false`; se emiten desde los contratos de la fase 2 del plan v0.3.
+**Las 28 filas del Apéndice B tienen evento en `eventos.json`** (27 nombres canónicos: las filas 16 y 17 comparten `RedemptionUpdated`, una transición por evento). En `draft-0.7`, de esos 27, **22** los emite un contrato y **5** siguen con `implementadoEnContratos: false` (`AssetStatusChanged`, `SupplyExpansionDeclared`, `SplitExecuted`, `IdentityLinkChanged` y `ConciliationRecorded`), que son exactamente las filas marcadas «sin contrato» de la tabla. Estos recuentos se sacan de `eventos.json` y la prueba H15 (`contracts/test/11-eventos-contra-spec.js`) falla si este documento dice otra cosa.
 
 Eventos de `eventos.json` que no vienen del Apéndice B:
 
@@ -106,8 +107,9 @@ Eventos de `eventos.json` que no vienen del Apéndice B:
 | v0.3 fase 2 · licencias y elegibilidad | `LicenseRegistered`, `PlacementBasisSet`, `ExposureParamsSet`, `DbnxApprovalRecorded`, `DbnxApprovalRevoked` | ✅ `SFSPLicenseRegistry`, `SFSPEligibilityEngine`, `SFSPIssuanceController` |
 | Revisión 26-sep · aprobación DBNX usada y compuertas de `SUBSCRIBE` | `DbnxApprovalUsed`, `SubscriptionGateSet`, `SubscriptionRequirementSet` | ✅ `SFSPIssuanceController`, `SFSPNativeVault` |
 | v0.3 fase 2 · oráculo, reservas y tesorería | `OracleParametersSet`, `OracleParametersCleared`, `OraclePricePublished`, `CommodityAssetConfigured`, `CustodianRegistered`, `CustodianUpdated`, `AttestationValidityLimitSet`, `LicenseGateSet`, `ConcentrationLimitsSet`, `RedemptionChannelSet`, `MetalLotRegistered`, `MetalLotStateChanged`, `LotAuditVerified`, `UnitsPlaced`, `OrigenSettlementFunded`, `DeskParametersSet`, `DeskParametersCleared`, `MarketSpreadObserved`, `DeskFunded`, `DeskTradeExecuted` | ✅ `SFSPOracleRegistry`, `SFSPReserveEngine`, `SFSPTreasuryDesk` |
+| v0.3 · correcciones de conformidad (`draft-0.7`) | `InvestorCriteriaSet` (criterio D13), `CommodityAssetFlagged` (activo COM en el controlador de emisión), `DeskLicenseGateSet` y `DeskLicenseModuleSet` (licencias de la tesorería) | ✅ `SFSPEligibilityEngine`, `SFSPIssuanceController`, `SFSPTreasuryDesk` |
 
-Total en `eventos.json` (draft-0.6): **72 eventos**, 67 con contrato y 5 sin contrato. La prueba H15 de `contracts/` (`test/11-eventos-contra-spec.js`) exige la firma exacta de cada uno que tenga contrato, y la exigirá del resto en cuanto se escriba.
+Total en `eventos.json` (draft-0.7): **76 eventos**, 71 con contrato y 5 sin contrato. La prueba H15 de `contracts/` (`test/11-eventos-contra-spec.js`) exige la firma exacta de cada uno que tenga contrato, y la exigirá del resto en cuanto se escriba; también comprueba que los recuentos de esta sección coinciden con el JSON.
 
 ---
 
@@ -143,3 +145,41 @@ El v0.3 lo deja pendiente (Apéndice B, «Pendiente») para la especificación t
 | `VERIFICACION_PREVIA_FALLIDA` | Acuñación rechazada por la verificación de forma del documento de aprobación (SFSP-200 §0.5) |
 | `SECURITY_FUERA_DE_SWAP` | Fondo de intercambio en cadena con un activo `SEC` (SFSP-500 §0.3) |
 | `MIGRACION_FIN` | Revocación del cupo de migración al terminar la ventana (ADR-016) |
+
+### C.1 · Códigos que ya emiten o devuelven los contratos de la fase 2
+
+Se añaden al catálogo, como exige la regla de arriba, los códigos que los contratos del v0.3 ya usan. Los que el catálogo ya tenía se usan con su nombre del catálogo: `FUERA_DE_ALCANCE_OFERTA_EXENTA` (motor de elegibilidad), `LICENCIA_NO_OTORGADA` (motor de elegibilidad, motor de reservas y tesorería), `LICENCIA_OTORGADA` (apertura de un canal físico), `VENCIMIENTO_PLAZO` (licencia vencida por plazo y redención vencida por incomparecencia) y `CORTE_MIGRACION` (`SFSPNetworkPermissions.publishLegacyCut`).
+
+| Código | Se usa en |
+|---|---|
+| `COUNTRY_INBOUND_ONLY` | `SUBSCRIBE` desde un país `SOLO_ENTRANTE`, o sin residencia acreditada en un país abierto |
+| `COUNTRY_UNPROVEN` | `SUBSCRIBE` por la ruta privada con un país o una sal que no son los del compromiso de RESIDENCIA de esa dirección, o sin claim vigente (`UNKNOWN_SOURCE`) |
+| `COUNTRY_BLOCKED` | Cualquier acción de un residente de un país `BLOQUEADO` (propósito `JURISDICCION_BLOQUEADA`, o residencia por país en un país bloqueado) |
+| `COUNTRY_CONDITIONS_UNSET` | `SUBSCRIBE` desde un país `PERMITIDO_CON_CONDICIONES` sin reglas por instrumento (`BLOCKED_DECISION`) |
+| `PLACEMENT_BASIS_UNSET` | `SUBSCRIBE` sobre un activo sin base de colocación (`BLOCKED_DECISION`) |
+| `LICENSE_REGISTRY_UNSET` | `SUBSCRIBE` con el registro de licencias sin cablear en el motor (`BLOCKED_DECISION`) |
+| `INVESTOR_CRITERIA_UNSET` | `SUBSCRIBE` que depende de `ACREDITADO` o `SOFISTICADO` con su criterio en `null` (D13, `BLOCKED_DECISION`) |
+| `SEGMENT_UNKNOWN` | `SUBSCRIBE` sobre un activo sin segmento vigente en el pasaporte |
+| `EXPOSURE_PARAMS_UNSET` | Límite de exposición sin parámetros (D03/D04, `BLOCKED_DECISION`) |
+| `EXPOSURE_CLEARANCE_MISSING` | Mercado de Crecimiento sin la autorización de exposición de Genesis ID para esa dirección, activo y operación (`UNKNOWN_SOURCE`) |
+| `EXPOSURE_CLEARANCE_USED` / `EXPOSURE_CLEARANCE_EXPIRED` | La autorización de exposición ya se gastó (o se retiró) o venció |
+| `ACQUISITION_COST_UNKNOWN` | Mercado de Crecimiento sin el costo de adquisición en el contexto de la suscripción (`UNKNOWN_SOURCE`; la ruta sin contexto no compra en este segmento) |
+| `EXPOSURE_RESULT_MISSING` | Retirado sin llegar a desplegarse (rama de conformidad; el motor integrado usa `EXPOSURE_CLEARANCE_*`). No se reutiliza |
+| `EXPOSURE_LIMIT_EXCEEDED` | La adquisición supera el resultado de exposición |
+| `SOLICITUD_TENEDOR`, `ORDEN_DE_LLEGADA`, `BLOQUEO_PARA_LIQUIDAR` | Redención: solicitada, en cola y bloqueada |
+| `LIQUIDACION_ORIGEN`, `QUEMA_ENVIO`, `QUEMA_CONTRA_ENTREGA`, `ENTREGA_CONFIRMADA` | Redención: liquidada y entregada, según el canal |
+| `CANCELACION_TENEDOR`, `CANCELACION_OPERACION` | Redención cancelada por el tenedor o por operación. La cancelación por inelegibilidad lleva el código del motor |
+| `GOVERNANCE_ORDER_REQUIRED`, `LICENSE_NUMBER` | Rechazo al abrir un canal físico sin orden de gobierno o con un número que no es el de una licencia vigente del módulo |
+| `CONCENTRATION_NOT_SET`, `INTERNAL_CONCENTRATION_NOT_SET` | Asignación de un lote sin límite de concentración, o de custodia interna sin su límite (`BLOCKED_DECISION`) |
+| `LICENSE_MODULES_UNSET` | Tesorería cotizadora sin módulos de licencia declarados por la Junta (`BLOCKED_DECISION`) |
+| `SUBJECT_BLOCKED` | Sujeto bloqueado en el motor de elegibilidad |
+| `CHANNEL_NOT_SET`, `PHYSICAL_NOT_ALLOWED`, `CHANNEL_CLOSED`, `BELOW_CHANNEL_MINIMUM` | Redención: canal sin parámetro (`BLOCKED_DECISION`), canal físico que el activo no admite (AGKA), canal cerrado, unidades por debajo del mínimo del canal. Un canal físico sin licencia Clase G vigente responde antes `LICENCIA_NO_OTORGADA` |
+| `ATTESTATION_MAX_NOT_SET` | Atestación de un lote sin vigencia máxima fijada por la Junta (`BLOCKED_DECISION`) |
+| `MARKET_SPREAD_STALE` | Tesorería cotizadora sin observación reciente del diferencial de mercado (`UNKNOWN_SOURCE`) |
+| `ATTESTATION_NOT_VALID` | Asignación de un lote con la atestación o el seguro vencidos, o de custodia interna sin auditoría externa vigente (`UNKNOWN_SOURCE`) |
+| `ORACLE_PARAMS_NOT_SET` | Oráculo sin parámetros (`BLOCKED_DECISION`) |
+| `DESK_PARAMS_NOT_SET`, `ORACLE_NOT_OK`, `ORACLE_STALE_FOR_DESK`, `SPREAD_BELOW_MARKET`, `INVENTORY_EXHAUSTED` | Tesorería cotizadora sin cotización: sin parámetros, oráculo sin dato válido o demasiado viejo para la mesa, diferencial por debajo del de mercado, inventario agotado |
+| `REGISTRY_EXCLUDED` | `NetworkPermissionChanged` al retirar del filtro un contrato excluido de forma permanente en el registro de activos |
+| `ID_JERARQUICO_ASIGNADO` | Asignación del identificador jerárquico de un activo en el registro |
+
+Los códigos de evaluación de la biblioteca `SFSPCodes` (`POLICY_NOT_SET`, `POLICY_FORBIDS_ACTION`, `ASSET_NOT_REGISTERED`, `SUBJECT_REF_UNKNOWN`, `CLAIM_MISSING_OR_EXPIRED`, `JURISDICTION_NOT_ALLOWED`, `ASSET_LIFECYCLE_BLOCKS`, `AUTHORIZATION_MISSING`, `LIMIT_EXCEEDED`, `HUMAN_REVIEW_REQUIRED`, `DECIMALS_UNKNOWN`, `FEE_PARAM_NOT_FIXED`, `FEE_QUOTE_STALE`, `EMERGENCY_PAUSE_ACTIVE`, `ACCOUNT_FROZEN`) son anteriores al catálogo y se conservan con su nombre: ya están en contratos y en el indexador, y un código emitido no se renombra.

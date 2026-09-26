@@ -93,4 +93,35 @@ describe("H15 · el ABI compilado coincide con spec/eventos.json", function () {
       assert.ok(n <= 3, ev.nombre + " declara " + n + " campos indexados y Solidity admite tres");
     }
   });
+
+  // ESTADOS-Y-EVENTOS.md §B repetía a mano los recuentos del JSON y se quedó
+  // atrás dos versiones. Ahora esta prueba los lee del documento y los compara.
+  it("H15 · ESTADOS-Y-EVENTOS §B: la tabla del Apéndice B y los recuentos coinciden con el JSON", function () {
+    const doc = fs.readFileSync(path.join(__dirname, "..", "..", "spec", "ESTADOS-Y-EVENTOS.md"), "utf8");
+    const b = doc.slice(doc.indexOf("## B ·"), doc.indexOf("## C ·"));
+    assert.ok(b.length > 0, "no se encuentra la sección B");
+    const porNombre = new Map(SPEC.eventos.map((e) => [e.nombre, e]));
+    const nombres = new Set();
+    let filas = 0;
+    for (const linea of b.split("\n")) {
+      const m = /^\| (\d+) \| [^|]+ \| `([A-Za-z]+)`[^|]* \| ([^|]+) \|$/.exec(linea);
+      if (!m) continue;
+      filas++;
+      const ev = porNombre.get(m[2]);
+      assert.ok(ev, "fila " + m[1] + ": " + m[2] + " no está en eventos.json");
+      const conContrato = m[3].trim().startsWith("✅");
+      assert.equal(conContrato, ev.implementadoEnContratos === true, "fila " + m[1] + ": " + m[2] + " dice «" + m[3].trim() + "»");
+      nombres.add(m[2]);
+    }
+    assert.equal(filas, 28, "el Apéndice B tiene 28 filas");
+    const con = [...nombres].filter((n) => porNombre.get(n).implementadoEnContratos === true).length;
+    const ap = /de esos (\d+), \*\*(\d+)\*\* los emite un contrato y \*\*(\d+)\*\*/.exec(b);
+    assert.ok(ap, "falta el recuento del Apéndice B");
+    assert.deepEqual([+ap[1], +ap[2], +ap[3]], [nombres.size, con, nombres.size - con]);
+    const tot = /Total en `eventos\.json` \(([^)]+)\): \*\*(\d+) eventos\*\*, (\d+) con contrato y (\d+) sin contrato/.exec(b);
+    assert.ok(tot, "falta el total de eventos.json");
+    const impl = SPEC.eventos.filter((e) => e.implementadoEnContratos === true).length;
+    assert.deepEqual([tot[1], +tot[2], +tot[3], +tot[4]], [SPEC.version, SPEC.eventos.length, impl, SPEC.eventos.length - impl]);
+    assert.ok(doc.includes("| Estado | `" + SPEC.version + "` |"), "la cabecera no está en " + SPEC.version);
+  });
 });

@@ -218,9 +218,62 @@ async function darAlta(f, dir, subj, purpose, salt) {
 }
 
 let _att = 0;
-async function acreditar(f, commitment, purpose) {
+async function acreditar(f, commitment, purpose, duracion) {
   _att += 1;
-  return await F.atestar(f, { subjectCommitment: commitment, purpose, attestationId: H.b32("att_v03_" + _att) });
+  return await F.atestar(f, { subjectCommitment: commitment, purpose, attestationId: H.b32("att_v03_" + _att), duracion });
+}
+
+// ------------------------------------------------------------ suscripción
+
+const PAIS_SUSCRIPCION = H.b32("PA");
+
+/** Cambia el estado de un país en la matriz con su orden de gobierno. */
+async function fijarPais(f, code, desde, hacia, o) {
+  const x = o || {};
+  const motivo = x.reason || H.b32("APERTURA_PAIS");
+  const evid = x.evidence !== undefined ? x.evidence : H.ZERO32;
+  const scope = await f.engine.call("SCOPE_COUNTRY");
+  const contenido = await f.engine.call("countryContent", [code, hacia, motivo, evid]);
+  const ord = await ordenGob(f, {
+    contrato: f.engine, action: "SET_COUNTRY", scope,
+    amount: x.ordenDesde !== undefined ? x.ordenDesde : desde, amountSecondary: hacia, evidenceRoot: contenido,
+  });
+  return await f.engine.send("setCountryStatus", [code, hacia, motivo, evid, ord.tupla, ord.digest], f.board);
+}
+
+/** Base de colocación de un activo, con su orden de gobierno. */
+async function fijarBaseColocacion(f, assetId, holder, tipo) {
+  const motivo = H.b32("BASE_COLOCACION_SINT");
+  const contenido = await f.engine.call("placementContent", [assetId, holder, tipo, motivo]);
+  const ord = await ordenGob(f, {
+    contrato: f.engine, action: "SET_PLACEMENT_BASIS", scope: assetId, evidenceRoot: contenido,
+  });
+  return await f.engine.send("setPlacementBasis", [assetId, holder, tipo, motivo, ord.tupla, ord.digest], f.board);
+}
+
+/** Alta de residencia en `pais` con claim vigente. */
+async function acreditarResidencia(f, dir, pais, tag) {
+  const purpose = await f.engine.call("residencePurpose", [pais]);
+  const c = await darAlta(f, dir, H.b32("subj_res_" + (tag || dir.slice(2, 10))), purpose, H.b32("salt_res_" + (tag || dir.slice(2, 10))));
+  // Residencia acreditada por un año: las pruebas de cupo esperan el timelock.
+  await acreditar(f, c, purpose, 365 * DIA);
+  return c;
+}
+
+/**
+ * Deja a `cuentas` en condiciones de SUSCRIBIR en primaria `assetIds`
+ * (SFSP-120 §0.3) por la ruta SIN contexto: el entorno de `entornoSuscripcion`
+ * con base de colocación en una licencia PLENA vigente (no la oferta exenta),
+ * vigencias de un año (las pruebas de cupo esperan el timelock), y residencia
+ * acreditada POR PAÍS en PA. Da el rol SUBSCRIPTION_EXECUTOR del motor a
+ * `ejecutores`. Todo sintético.
+ */
+async function habilitarSuscripcion(f, assetIds, cuentas, ejecutores, o) {
+  const x = o || {};
+  await entornoSuscripcion(f, assetIds, { base: "ICL", segmento: x.segmento, dias: 365 });
+  const rol = await f.engine.call("SUBSCRIPTION_EXECUTOR");
+  for (const e of ejecutores || []) await f.engine.send("grantRole", [rol, e], f.board);
+  for (const c of cuentas) await acreditarResidencia(f, c, PAIS_SUSCRIPCION);
 }
 
 // ------------------------------------------------------------ suscripción (v0.3 §6, §7 y §8.5)
@@ -253,27 +306,6 @@ function ctxSuscripcion(o) {
   };
 }
 
-async function fijarPais(f, code, desde, hacia, o) {
-  const x = o || {};
-  const motivo = x.reason || H.b32("ASESORIA_LOCAL_SINT");
-  const evid = x.evidence !== undefined ? x.evidence : H.ZERO32;
-  const contenido = await f.engine.call("countryContent", [code, hacia, motivo, evid]);
-  const ord = await ordenGob(f, {
-    contrato: f.engine, action: "SET_COUNTRY", scope: await f.engine.call("SCOPE_COUNTRY"),
-    amount: x.ordenDesde !== undefined ? x.ordenDesde : desde, amountSecondary: hacia, evidenceRoot: contenido,
-  });
-  return await f.engine.send("setCountryStatus", [code, hacia, motivo, evid, ord.tupla, ord.digest], f.board);
-}
-
-async function fijarBaseColocacion(f, assetId, holder, tipo) {
-  const motivo = H.b32("BASE_COLOCACION_SINT");
-  const contenido = await f.engine.call("placementContent", [assetId, holder, tipo, motivo]);
-  const ord = await ordenGob(f, {
-    contrato: f.engine, action: "SET_PLACEMENT_BASIS", scope: assetId, evidenceRoot: contenido,
-  });
-  return await f.engine.send("setPlacementBasis", [assetId, holder, tipo, motivo, ord.tupla, ord.digest], f.board);
-}
-
 async function fijarParametrosExposicion(f, e) {
   const motivo = H.b32("ACTA_SINTETICA");
   const contenido = await f.engine.call("exposureParamsContent", [e, motivo]);
@@ -293,6 +325,7 @@ const LIC = { EXENTA: H.b32("AUT_OG_OFERTA_EXENTA"), ICL: H.b32("LIC_OG_INVESTME
  */
 async function entornoSuscripcion(f, assetIds, o) {
   const x = o || {};
+  const dias = x.dias || 30;
   if (!f.lic) {
     await desplegarLicencias(f);
     await f.engine.send("setLicenseRegistry", [f.lic.address], f.board);
@@ -303,17 +336,20 @@ async function entornoSuscripcion(f, assetIds, o) {
     const t = base === "EXENTA"
       ? terminos(TIT.ORDEN_GLOBAL, TIPO.OFERTA_EXENTA, { kind: KIND.AUTORIZACION_LIMITADA })
       : terminos(TIT.ORDEN_GLOBAL, TIPO.INVESTMENT_CO);
-    await licenciaVigente(f, LIC[base], t);
+    await licenciaVigente(f, LIC[base], t, dias);
     f._licBase[base] = true;
   }
-  if (!f._paisPA) {
-    await fijarPais(f, H.b32("PA"), PAIS.SOLO_ENTRANTE, PAIS.PERMITIDO);
-    f._paisPA = true;
+  if (Number(await f.engine.call("countryStatusOf", [PAIS_SUSCRIPCION])) !== PAIS.PERMITIDO) {
+    await fijarPais(f, PAIS_SUSCRIPCION, PAIS.SOLO_ENTRANTE, PAIS.PERMITIDO);
   }
+  if (!f._politicaSub) f._politicaSub = {};
   for (const assetId of assetIds) {
-    await F.fijarPolitica(f, assetId, H.b32("SUBSCRIBE"), F.policy({}), "sub_" + assetId.slice(2, 10) + "_" + base);
+    if (!f._politicaSub[assetId]) {
+      await F.fijarPolitica(f, assetId, H.b32("SUBSCRIBE"), F.policy({}), "sub_" + assetId.slice(2, 10) + "_" + base);
+      f._politicaSub[assetId] = true;
+    }
     await fijarBaseColocacion(f, assetId, TIT.ORDEN_GLOBAL, base === "EXENTA" ? TIPO.OFERTA_EXENTA : TIPO.INVESTMENT_CO);
-    await fijarSegmento(f, assetId, x.segmento || "PRINCIPAL");
+    await fijarSegmento(f, assetId, x.segmento || "PRINCIPAL", dias);
   }
 }
 
@@ -334,4 +370,5 @@ module.exports = {
   darAlta, acreditar,
   salResidencia, altaResidencia, ctxSuscripcion, fijarPais, fijarBaseColocacion, fijarParametrosExposicion,
   entornoSuscripcion, perfilProspera,
+  PAIS_SUSCRIPCION, acreditarResidencia, habilitarSuscripcion,
 };

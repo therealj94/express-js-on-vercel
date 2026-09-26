@@ -50,7 +50,7 @@ describe("v0.3 §14.3 · migración por cupo del padrón (datos sintéticos)", f
     assert.equal(a.conciliacionCenso.cuadra, true, "residuo 0, sin incoherentes y suma + residuo = totalSupply");
   });
 
-  it("S0 = suma de los montos; máx/op = el mayor; termsDocRoot y evidenceRoot = raíz del padrón", function () {
+  it("S0 = suma de los montos; máx/op = el mayor; termsDocRoot = documento DBNX; evidenceRoot = raíz del padrón", function () {
     const a = lote("SINTA");
     const suma = a.llamadas.reduce((s, c) => s + BigInt(c.monto), 0n);
     assert.equal(BigInt(a.S0), suma);
@@ -58,7 +58,12 @@ describe("v0.3 §14.3 · migración por cupo del padrón (datos sintéticos)", f
     assert.equal(a.maxPorOperacion, (500n * 10n ** 18n).toString());
     assert.equal(a.orden.payload.amount, a.S0);
     assert.equal(a.orden.payload.amountSecondary, a.maxPorOperacion);
-    assert.equal(a.orden.termsDocRoot, a.raizPadron);
+    // v0.3 §5 · el documento de respaldo del cupo es la aprobación DBNX, cuya
+    // regla de destino es la raíz del padrón y cuya cantidad es S0.
+    assert.equal(a.orden.termsDocRoot, activos["0x5157000000000000000000000000000000000a01"].dbnxDocHash);
+    assert.equal(a.solicitudDbnx.destino, a.raizPadron);
+    assert.equal(a.solicitudDbnx.cantidad, a.S0);
+    assert.equal(a.solicitudDbnx.migracion, true);
     for (const c of a.llamadas) assert.equal(c.mintOnDemand.args.evidenceRoot, a.raizPadron);
     // La raíz es la de SFSP-700: cada hoja verifica con su prueba.
     for (const c of a.llamadas) {
@@ -82,7 +87,46 @@ describe("v0.3 §14.3 · migración por cupo del padrón (datos sintéticos)", f
     assert.equal(a.orden.firmado, false);
     assert.equal(a.orden.digest, OA.digestDe(a.orden.payload));
     assert.equal(BigInt(a.orden.period), BigInt(VENTANA.validUntil) + 1n);
-    assert.equal(a.orden.payload.evidenceRoot, G.budgetTermsRoot(a.orden.period, VENTANA.validUntil, a.raizPadron));
+    assert.equal(a.orden.payload.evidenceRoot, G.budgetTermsRoot(a.orden.period, VENTANA.validUntil, a.orden.termsDocRoot));
+  });
+
+  it("negativo (v0.3 §5): sin el documento DBNX registrado la orden sale BLOCKED_DECISION", function () {
+    const sinDbnx = JSON.parse(JSON.stringify(activos));
+    delete sinDbnx["0x5157000000000000000000000000000000000a01"].dbnxDocHash;
+    const a = G.generarLotes(censo, sinDbnx, { internas, emisor: EMISOR, ...VENTANA }).find((l) => l.activo === "SINTA");
+    assert.equal(a.orden.estado, "BLOCKED_DECISION");
+    assert.equal(a.orden.digest, null);
+    assert.ok(a.orden.faltan.some((x) => /DBNX/.test(x)));
+  });
+
+  it("negativo (T-700-25): un censo que no cuadra no produce una orden lista para proponer", function () {
+    const c2 = JSON.parse(JSON.stringify(censo));
+    const r = c2.resumen.tokens.find((t) => t.symbol === "SINTA");
+    r.totalSupply = "2000";
+    const a = G.generarLotes(c2, activos, { internas, emisor: EMISOR, ...VENTANA }).find((l) => l.activo === "SINTA");
+    assert.equal(a.conciliacionCenso.cuadra, false);
+    assert.equal(a.orden.estado, "BLOCKED_DECISION");
+    assert.equal(a.orden.digest, null);
+    assert.ok(a.orden.bloqueos.some((x) => /no cuadra/.test(x)));
+  });
+
+  it("negativo (T-700-25, SFSP-700 §0.5; T-300-30): ONDK sin acta de la Junta y AUKA (COM) salen BLOCKED_DECISION", function () {
+    const cfg = JSON.parse(JSON.stringify(activos));
+    cfg["0x5157000000000000000000000000000000000a01"].activo = "ONDK";
+    cfg["0x5157000000000000000000000000000000000b02"].activo = "AUKA";
+    cfg["0x5157000000000000000000000000000000000b02"].actaConciliacion = "0x" + "ac".repeat(32);
+    const ls = G.generarLotes(censo, cfg, { internas, emisor: EMISOR, ...VENTANA });
+    const ondk = ls.find((l) => l.activo === "ONDK");
+    assert.equal(ondk.orden.estado, "BLOCKED_DECISION");
+    assert.ok(ondk.orden.bloqueos.some((x) => /SFSP-700 §0.5/.test(x)));
+    // Con el acta, ONDK deja de estar bloqueado por la conciliación.
+    cfg["0x5157000000000000000000000000000000000a01"].actaConciliacion = "0x" + "ad".repeat(32);
+    const ondk2 = G.generarLotes(censo, cfg, { internas, emisor: EMISOR, ...VENTANA }).find((l) => l.activo === "ONDK");
+    assert.equal(ondk2.orden.estado, "LISTA_PARA_PROPONER");
+    // AUKA es COM: aun con el acta de conciliación, no se coloca por el cupo.
+    const auka = ls.find((l) => l.activo === "AUKA");
+    assert.equal(auka.orden.estado, "BLOCKED_DECISION");
+    assert.ok(auka.orden.bloqueos.some((x) => /COM/.test(x)));
   });
 
   it("ratio de D09: trunca y anota el resto; sin assetId o sin ventana => BLOCKED_DECISION", function () {

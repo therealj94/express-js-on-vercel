@@ -15,7 +15,7 @@ const F = require("./fixture");
 const H = require("./helpers");
 const OA = require("./orden-autorizada");
 const V = require("./v03");
-const { buildAuthorization, aprobacionDbnx } = require("./authorization");
+const { buildAuthorization, aprobacionDbnx, colocable, destinoExacto, DEST_ADQUIRENTE_ELEGIBLE } = require("./authorization");
 
 const { CAMPO, DIA } = V;
 
@@ -217,7 +217,14 @@ describe("SFSP v0.3 §5 · verificación previa a la acuñación (aprobación DB
     f = await F.deployAll();
     seq = 0;
     await f.issuance.send("setInstrumentLimits", [F.ASSET_NEW, 1000000, 1000000], f.board);
+    // SFSP-120 §0.3 · acuñar a alice es colocar: alice suscribe.
+    await colocable(f, [f.alice]);
   });
+
+  /** Documento DBNX para acuñar a alice (destino exacto). */
+  function aprobacion(assetId, amount, etiqueta, over) {
+    return aprobacionDbnx(f, assetId, amount, etiqueta, Object.assign({ destination: f.alice }, over || {}));
+  }
 
   /** Intenta acuñar `amount` con `docHash` en la orden de gobierno. */
   async function acunarCon(amount, docHash, o) {
@@ -244,7 +251,7 @@ describe("SFSP v0.3 §5 · verificación previa a la acuñación (aprobación DB
   }
 
   it("positivo: con la aprobación DBNX por la cantidad exacta, acuña; el documento queda gastado por esa operación", async function () {
-    const rc0Hash = await aprobacionDbnx(f, F.ASSET_NEW, 1000, "exacta");
+    const rc0Hash = await aprobacion(F.ASSET_NEW, 1000, "exacta");
     await acunarCon(1000, rc0Hash);
     assert.equal(await saldo(), 1000n);
     const a = await f.issuance.call("dbnxApprovalOf", [rc0Hash]);
@@ -255,16 +262,19 @@ describe("SFSP v0.3 §5 · verificación previa a la acuñación (aprobación DB
   it("positivo: DbnxApprovalRecorded publica activo, firmante, cantidad y vigencia", async function () {
     const ts = await H.now();
     const doc = H.b32("doc_evento");
-    const rc = await f.issuance.send("registerDbnxApproval", [doc, F.ASSET_NEW, 777, ts - 1, ts + 100], f.dbnx);
+    const rc = await f.issuance.send("registerDbnxApproval", [doc, F.ASSET_NEW, 777, ts - 1, ts + 100, destinoExacto(f.alice), false], f.dbnx);
     const ev = V.logsDe(f.issuance, rc).find((e) => e.name === "DbnxApprovalRecorded");
     assert.equal(ev.args.docHash, doc);
     assert.equal(ev.args.assetId, F.ASSET_NEW);
     assert.equal(ev.args.signer.toLowerCase(), f.dbnx.toLowerCase());
     assert.equal(BigInt(ev.args.amount.toString()), 777n);
+    // SFSP-200 §0.5 fila 1 · el destino (o la regla de destino) es parte del documento.
+    assert.equal(ev.args.destination, destinoExacto(f.alice));
+    assert.equal(ev.args.migration, false);
   });
 
   it("negativo: una aprobación por OTRA cantidad no acuña, ni de más ni de menos", async function () {
-    const doc = await aprobacionDbnx(f, F.ASSET_NEW, 1000, "monto");
+    const doc = await aprobacion(F.ASSET_NEW, 1000, "monto");
     await H.expectRevert(acunarCon(999, doc), "DbnxApprovalAmountMismatch");
     await H.expectRevert(acunarCon(1001, doc), "DbnxApprovalAmountMismatch");
     assert.equal(await saldo(), 0n);
@@ -273,27 +283,27 @@ describe("SFSP v0.3 §5 · verificación previa a la acuñación (aprobación DB
   it("negativo: sin documento, con un hash no registrado o de otro activo, revierte", async function () {
     await H.expectRevert(acunarCon(100, H.ZERO32), "DbnxApprovalRequired");
     await H.expectRevert(acunarCon(100, H.b32("doc_no_registrado")), "DbnxApprovalUnknown");
-    const otro = await aprobacionDbnx(f, F.ASSET_OLD, 100, "otro_activo");
+    const otro = await aprobacion(F.ASSET_OLD, 100, "otro_activo");
     await H.expectRevert(acunarCon(100, otro), "DbnxApprovalAssetMismatch");
     assert.equal(await saldo(), 0n);
   });
 
   it("negativo: una aprobación vencida o todavía no vigente no acuña", async function () {
     const ts = await H.now();
-    const futura = await aprobacionDbnx(f, F.ASSET_NEW, 100, "futura", { validFrom: ts + 5000, validUntil: ts + 9000 });
+    const futura = await aprobacion(F.ASSET_NEW, 100, "futura", { validFrom: ts + 5000, validUntil: ts + 9000 });
     await H.expectRevert(acunarCon(100, futura), "DbnxApprovalNotInForce");
-    const corta = await aprobacionDbnx(f, F.ASSET_NEW, 100, "corta", { validFrom: ts - 10, validUntil: ts + 120 });
+    const corta = await aprobacion(F.ASSET_NEW, 100, "corta", { validFrom: ts - 10, validUntil: ts + 120 });
     await H.increaseTime(121);
     await H.expectRevert(acunarCon(100, corta), "DbnxApprovalNotInForce");
     assert.equal(await saldo(), 0n);
   });
 
   it("negativo: la misma aprobación no sirve dos veces, ni revocada", async function () {
-    const doc = await aprobacionDbnx(f, F.ASSET_NEW, 100, "una_vez");
+    const doc = await aprobacion(F.ASSET_NEW, 100, "una_vez");
     await acunarCon(100, doc);
     await H.expectRevert(acunarCon(100, doc), "DbnxApprovalAlreadyUsed");
     await H.expectRevert(f.issuance.send("revokeDbnxApproval", [doc, H.b32("X")], f.dbnx), "DbnxApprovalAlreadyUsed");
-    const rev = await aprobacionDbnx(f, F.ASSET_NEW, 100, "revocada");
+    const rev = await aprobacion(F.ASSET_NEW, 100, "revocada");
     const rc = await f.issuance.send("revokeDbnxApproval", [rev, H.b32("ERROR_EXPEDIENTE")], f.dbnx);
     assert.ok(V.logsDe(f.issuance, rc).find((e) => e.name === "DbnxApprovalRevoked"));
     await H.expectRevert(acunarCon(100, rev), "DbnxApprovalRevokedErr");
@@ -303,24 +313,24 @@ describe("SFSP v0.3 §5 · verificación previa a la acuñación (aprobación DB
   it("negativo: sólo el rol DBNX registra, el emisor no puede ser DBNX y un firmante que perdió el rol no vale", async function () {
     const ts = await H.now();
     await H.expectRevert(
-      f.issuance.send("registerDbnxApproval", [H.b32("doc_x"), F.ASSET_NEW, 100, ts - 1, ts + 100], f.mallory),
+      f.issuance.send("registerDbnxApproval", [H.b32("doc_x"), F.ASSET_NEW, 100, ts - 1, ts + 100, destinoExacto(f.alice), false], f.mallory),
       "Unauthorized",
     );
     // El emisor (ISSUER) recibe también el rol DBNX: la separación lo impide.
     await f.issuance.send("grantRole", [await f.issuance.call("DBNX"), f.board], f.board);
     await H.expectRevert(
-      f.issuance.send("registerDbnxApproval", [H.b32("doc_y"), F.ASSET_NEW, 100, ts - 1, ts + 100], f.board),
+      f.issuance.send("registerDbnxApproval", [H.b32("doc_y"), F.ASSET_NEW, 100, ts - 1, ts + 100, destinoExacto(f.alice), false], f.board),
       "DbnxSeparationOfDuties",
     );
     // Registrada por DBNX y luego DBNX pierde el rol: la aprobación deja de valer.
-    const doc = await aprobacionDbnx(f, F.ASSET_NEW, 100, "rol_perdido");
+    const doc = await aprobacion(F.ASSET_NEW, 100, "rol_perdido");
     await f.issuance.send("revokeRole", [await f.issuance.call("DBNX"), f.dbnx], f.board);
     await H.expectRevert(acunarCon(100, doc), "DbnxApprovalSignerNotDbnx");
     assert.equal(await saldo(), 0n);
   });
 
   it("positivo: DbnxApprovalUsed casa el documento con la operación de MintExecuted, sin decodificar calldata", async function () {
-    const doc = await aprobacionDbnx(f, F.ASSET_NEW, 400, "casar");
+    const doc = await aprobacion(F.ASSET_NEW, 400, "casar");
     const rc = await acunarCon(400, doc);
     const usado = V.logsDe(f.issuance, rc).find((e) => e.name === "DbnxApprovalUsed");
     const emision = V.logsDe(f.issuance, rc).find((e) => e.name === "MintExecuted");
@@ -336,7 +346,7 @@ describe("SFSP v0.3 §5 · verificación previa a la acuñación (aprobación DB
     const ISSUER = await f.issuance.call("ISSUER");
     const DBNX = await f.issuance.call("DBNX");
     // DBNX registra y DESPUÉS recibe ISSUER: no ejecuta con su propia firma…
-    const doc = await aprobacionDbnx(f, F.ASSET_NEW, 100, "propia");
+    const doc = await aprobacion(F.ASSET_NEW, 100, "propia");
     await f.issuance.send("grantRole", [ISSUER, f.dbnx], f.board);
     await H.expectRevert(acunarCon(100, doc, { from: f.dbnx }), "DbnxSeparationOfDuties");
     // …ni otro emisor puede usar una aprobación de un firmante que ahora es emisor.
@@ -347,22 +357,35 @@ describe("SFSP v0.3 §5 · verificación previa a la acuñación (aprobación DB
     await acunarCon(100, doc);
     assert.equal(await saldo(), 100n);
     // Y un ejecutor que tiene también el rol DBNX no ejecuta, aunque firme otro.
-    const doc2 = await aprobacionDbnx(f, F.ASSET_NEW, 50, "ejecutor_dbnx");
+    const doc2 = await aprobacion(F.ASSET_NEW, 50, "ejecutor_dbnx");
     await f.issuance.send("grantRole", [DBNX, f.board], f.board);
     await H.expectRevert(acunarCon(50, doc2), "DbnxSeparationOfDuties");
     assert.equal(await saldo(), 100n);
   });
 
   it("negativo: registrar dos veces el mismo documento, o con cantidad cero, se rechaza", async function () {
-    const doc = await aprobacionDbnx(f, F.ASSET_NEW, 100, "duplicado");
+    const doc = await aprobacion(F.ASSET_NEW, 100, "duplicado");
     const ts = await H.now();
     await H.expectRevert(
-      f.issuance.send("registerDbnxApproval", [doc, F.ASSET_NEW, 100, ts - 1, ts + 100], f.dbnx),
+      f.issuance.send("registerDbnxApproval", [doc, F.ASSET_NEW, 100, ts - 1, ts + 100, destinoExacto(f.alice), false], f.dbnx),
       "DbnxApprovalExists",
     );
     await H.expectRevert(
-      f.issuance.send("registerDbnxApproval", [H.b32("doc_cero"), F.ASSET_NEW, 0, ts - 1, ts + 100], f.dbnx),
+      f.issuance.send("registerDbnxApproval", [H.b32("doc_cero"), F.ASSET_NEW, 0, ts - 1, ts + 100, destinoExacto(f.alice), false], f.dbnx),
       "DbnxApprovalInvalid",
     );
+    // Sin destino ni regla de destino el documento está incompleto.
+    await H.expectRevert(
+      f.issuance.send("registerDbnxApproval", [H.b32("doc_sin_destino"), F.ASSET_NEW, 100, ts - 1, ts + 100, H.ZERO32, false], f.dbnx),
+      "DbnxApprovalInvalid",
+    );
+  });
+
+  it("negativo (SFSP-200 §0.5 fila 1): un documento para otro destino, o la regla de un cupo, no acuña a alice", async function () {
+    const paraBob = await aprobacion(F.ASSET_NEW, 100, "para_bob", { destination: f.bob });
+    await H.expectRevert(acunarCon(100, paraBob), "DbnxApprovalDestinationMismatch");
+    const regla = await aprobacion(F.ASSET_NEW, 100, "regla_cupo", { destination: DEST_ADQUIRENTE_ELEGIBLE });
+    await H.expectRevert(acunarCon(100, regla), "DbnxApprovalDestinationMismatch");
+    assert.equal(await saldo(), 0n);
   });
 });

@@ -18,6 +18,13 @@
  *   · el agregado de exposición se calcula FUERA de la cadena y aquí entra sólo
  *     el resultado: una autorización por (dirección, activo, operación).
  *
+ * Integración con las correcciones de conformidad (26-sep): la ruta de arriba
+ * es la PRIVADA (el ejecutor trae país y sal en el contexto). Los ejecutores sin
+ * contexto (emisión por gobierno, mintOnDemand/releaseOnDemand con la compuerta
+ * apagada) usan la ruta de COMPATIBILIDAD: el país no se declara y el motor
+ * busca, entre los países abiertos, una residencia acreditada por país. Se
+ * prueban las dos, y el criterio D13 de acreditado y sofisticado.
+ *
  * Todos los parámetros del límite de exposición son sintéticos. */
 const assert = require("node:assert/strict");
 const F = require("./fixture");
@@ -131,10 +138,11 @@ describe("SFSP v0.3 §7 y §8.5 · países, suscripción primaria y exposición"
       const ev = V.logsDe(f.identity, a.rc).find((e) => e.name === "PurposeCommitmentBound");
       assert.equal(ev.args.purpose, H.b32("RESIDENCIA"));
       assert.equal(V.logsDe(f.identity, b.rc).find((e) => e.name === "PurposeCommitmentBound").args.purpose, H.b32("RESIDENCIA"));
-      // No hay propósito por país que enumerar: el esquema anterior
-      // (keccak(etiqueta, ISO2)) ya no da de alta nada.
-      assert.equal(f.engine.iface.functions["residencePurpose(bytes32)"], undefined);
+      // La ruta privada no da de alta ningún propósito por país que enumerar
+      // (el esquema keccak(etiqueta, ISO2) queda sólo para la ruta de
+      // compatibilidad, que no se usa aquí).
       const viejo = H.keccak256(H.defaultAbiCoder.encode(["bytes32", "bytes32"], [H.keccak256(Buffer.from("SFSP.PURPOSE.RESIDENCE.v1", "utf8")), PA]));
+      assert.equal(await f.engine.call("residencePurpose", [PA]), viejo);
       assert.equal((await f.identity.call("purposeStatus", [f.alice, viejo])).bound, false);
       // Probar el país contra el compromiso exige la sal; sin ella no coincide.
       assert.equal(await f.identity.call("isCommitmentBound", [f.alice, a.purpose, await f.engine.call("residenceCommitment", [PA, H.ZERO32])]), false);
@@ -153,7 +161,7 @@ describe("SFSP v0.3 §7 y §8.5 · países, suscripción primaria y exposición"
       assert.equal(ev.args.countryCode, PA);
       assert.equal(ev.args.previousState, PAIS.SOLO_ENTRANTE);
       assert.equal(ev.args.newState, PAIS.PERMITIDO);
-      assert.equal(ev.args.reasonCode, H.b32("ASESORIA_LOCAL_SINT"));
+      assert.equal(ev.args.reasonCode, H.b32("APERTURA_PAIS"));
       assert.equal(ev.args.evidenceHash, H.ZERO32);
     });
 
@@ -250,7 +258,8 @@ describe("SFSP v0.3 §7 y §8.5 · países, suscripción primaria y exposición"
       assert.equal(Number((await suscribir(f.alice, { country: PA, salt: salA })).result), CODE.ALLOW, "residente de Próspera");
       const rb = await suscribir(f.bob, { country: PA, salt: salB });
       assert.equal(Number(rb.result), CODE.DENY_ELIGIBILITY, "un residente de país PERMITIDO sin perfil admitido no suscribe");
-      assert.equal(rb.reasonCode, H.b32("EXEMPT_OFFER_SCOPE"));
+      // Código del catálogo de ESTADOS-Y-EVENTOS §C.
+      assert.equal(rb.reasonCode, H.b32("FUERA_DE_ALCANCE_OFERTA_EXENTA"));
       // Transferir sí puede: el alcance limita la SUSCRIPCIÓN, no el secundario.
       assert.equal(Number((await op(f.bob, "TRANSFER_OUT")).result), CODE.ALLOW);
 
@@ -269,7 +278,7 @@ describe("SFSP v0.3 §7 y §8.5 · países, suscripción primaria y exposición"
       await V.transicion(f, LIC_EXENTA, LS.VIGENTE, LS.SUSPENDIDA, SIN_OTORGAMIENTO, H.b32("SUSPENSION"));
       let r = await suscribir(f.alice, { country: PA, salt: salA });
       assert.equal(Number(r.result), CODE.DENY_AUTHORIZATION);
-      assert.equal(r.reasonCode, H.b32("PLACEMENT_LICENSE_NOT_IN_FORCE"));
+      assert.equal(r.reasonCode, H.b32("LICENCIA_NO_OTORGADA"));
       await V.transicion(f, LIC_EXENTA, LS.SUSPENDIDA, LS.VIGENTE, SIN_OTORGAMIENTO, H.b32("LEVANTAMIENTO"));
       assert.equal(Number((await suscribir(f.alice, { country: PA, salt: salA })).result), CODE.ALLOW);
       // Vence por plazo (unos 29 minutos): nadie tiene que registrarlo.
@@ -405,6 +414,32 @@ describe("SFSP v0.3 §7 y §8.5 · países, suscripción primaria y exposición"
       assert.equal(r.reasonCode, H.b32("EXPOSURE_CLEARANCE_EXPIRED"));
     });
 
+    it("positivo: el operador retira una autorización no usada (la compra no se hizo) y no se reactiva", async function () {
+      await parametrosExposicion(PARAMS);
+      const a = await autorizar(f.alice, N1, 1500);
+      assert.equal(Number((await suscribir(f.alice, { country: PA, salt: salA, nonce: N1, cost: 10 })).result), CODE.ALLOW);
+      await H.expectRevert(f.engine.send("revokeExposureClearance", [a.id], f.alice), "Unauthorized");
+      await f.engine.send("revokeExposureClearance", [a.id], f.board);
+      const r = await suscribir(f.alice, { country: PA, salt: salA, nonce: N1, cost: 10 });
+      assert.equal(Number(r.result), CODE.DENY_ELIGIBILITY);
+      assert.equal(r.reasonCode, H.b32("EXPOSURE_CLEARANCE_USED"));
+      await H.expectRevert(f.engine.send("revokeExposureClearance", [a.id], f.board), H.b32("CLEARANCE"));
+      await H.expectRevert(autorizar(f.alice, N1, 1500), H.b32("CLEARANCE_EXISTS"));
+    });
+
+    it("negativo (T-120-24): por la ruta sin contexto no hay costo de adquisición: UNKNOWN_SOURCE, nunca ALLOW", async function () {
+      await parametrosExposicion(PARAMS);
+      await autorizar(f.alice, H.ZERO32, 1500);
+      // Aunque la dirección acredite residencia por país en PA, sin contexto no
+      // hay costo ni operación: el Mercado de Crecimiento no compra por aquí.
+      const purpose = await f.engine.call("residencePurpose", [PA]);
+      const c = await V.darAlta(f, f.alice, F.SUBJ.alice, purpose, H.b32("salt_res_pais_alice"));
+      await V.acreditar(f, c, purpose);
+      const r = await suscribir(f.alice, {});
+      assert.equal(Number(r.result), CODE.UNKNOWN_SOURCE);
+      assert.equal(r.reasonCode, H.b32("ACQUISITION_COST_UNKNOWN"));
+    });
+
     it("negativo: sólo el operador registra; y en el Mercado Principal no hay autorización que registrar", async function () {
       await parametrosExposicion(PARAMS);
       await H.expectRevert(autorizar(f.alice, N1, 1500, { from: f.alice }), "Unauthorized");
@@ -412,6 +447,133 @@ describe("SFSP v0.3 §7 y §8.5 · países, suscripción primaria y exposición"
       await H.expectRevert(autorizar(f.alice, N1, 1500), "NotGrowthSegment");
       // En Principal la suscripción no mira la exposición.
       assert.equal(Number((await suscribir(f.alice, { country: PA, salt: salA })).result), CODE.ALLOW);
+    });
+  });
+
+  describe("ruta de COMPATIBILIDAD (sin contexto): residencia por país entre los países abiertos", function () {
+    /** Residencia POR PAÍS (propósito keccak(etiqueta, ISO2)): la que usa la ruta sin contexto. */
+    async function residenciaPorPais(dir, quien, code, o) {
+      const x = o || {};
+      const purpose = await f.engine.call("residencePurpose", [code]);
+      const c = await V.darAlta(f, dir, F.SUBJ[quien] || H.b32("subj_" + quien), purpose, H.b32("salt_res_" + quien + "_" + code.slice(2, 6)));
+      if (x.acreditada !== false) await V.acreditar(f, c, purpose);
+      return { c, purpose };
+    }
+
+    function suscribirSinContexto(cuenta) {
+      return suscribir(cuenta, {});
+    }
+
+    it("negativo: sin residencia ACREDITADA en un país abierto no se suscribe; el país no se declara", async function () {
+      await pais(PA, PAIS.SOLO_ENTRANTE, PAIS.PERMITIDO);
+      assert.deepEqual([...(await f.engine.call("openCountries"))], [PA]);
+      // Alta de residencia sin claim vigente: no acredita nada.
+      await residenciaPorPais(f.alice, "alice", PA, { acreditada: false });
+      const r = await suscribirSinContexto(f.alice);
+      assert.equal(Number(r.result), CODE.DENY_JURISDICTION);
+      assert.equal(r.reasonCode, H.b32("COUNTRY_INBOUND_ONLY"));
+      // Quien no tiene residencia en PA tampoco suscribe porque PA esté abierto.
+      assert.equal(Number((await suscribirSinContexto(f.bob)).result), CODE.DENY_JURISDICTION);
+      // T-120-21 · residente acreditado de un país no evaluado: SOLO_ENTRANTE.
+      await residenciaPorPais(f.bob, "bob", HN);
+      assert.equal((await suscribirSinContexto(f.bob)).reasonCode, H.b32("COUNTRY_INBOUND_ONLY"));
+      // Cerrar el país lo saca de la lista de países abiertos.
+      await pais(PA, PAIS.PERMITIDO, PAIS.SOLO_ENTRANTE, { reason: H.b32("CIERRE_SINT") });
+      assert.deepEqual([...(await f.engine.call("openCountries"))], []);
+    });
+
+    it("positivo: residencia acreditada en un país PERMITIDO suscribe; en uno PERMITIDO_CON_CONDICIONES, BLOCKED_DECISION", async function () {
+      await V.fijarSegmento(f, F.ASSET_NEW, "PRINCIPAL");
+      await V.licenciaVigente(f, LIC_ICL, V.terminos(TIT.ORDEN_GLOBAL, TIPO.INVESTMENT_CO));
+      await baseColocacion(F.ASSET_NEW, TIT.ORDEN_GLOBAL, TIPO.INVESTMENT_CO);
+      await pais(PA, PAIS.SOLO_ENTRANTE, PAIS.PERMITIDO);
+      await residenciaPorPais(f.alice, "alice", PA);
+      assert.equal(Number((await suscribirSinContexto(f.alice)).result), CODE.ALLOW);
+      await pais(PA, PAIS.PERMITIDO, PAIS.PERMITIDO_CON_CONDICIONES);
+      const r = await suscribirSinContexto(f.alice);
+      assert.equal(Number(r.result), CODE.BLOCKED_DECISION);
+      assert.equal(r.reasonCode, H.b32("COUNTRY_CONDITIONS_UNSET"));
+    });
+
+    it("negativo: BLOQUEADO deniega TODAS las acciones del residente por país, aunque no declare su país", async function () {
+      await residenciaPorPais(f.alice, "alice", HN, { acreditada: false });
+      await pais(HN, PAIS.SOLO_ENTRANTE, PAIS.BLOQUEADO, { reason: H.b32("SANCION_INTERNACIONAL"), evidence: H.b32("hash_resolucion") });
+      for (const accion of ["TRANSFER_IN", "TRANSFER_OUT", "SETTLE", "REDEEM", "SUBSCRIBE", "MINT"]) {
+        const r = await op(f.alice, accion);
+        assert.equal(Number(r.result), CODE.DENY_JURISDICTION, accion);
+        assert.equal(r.reasonCode, H.b32("COUNTRY_BLOCKED"), accion);
+      }
+      assert.equal(Number((await op(f.bob, "TRANSFER_OUT")).result), CODE.ALLOW);
+      await pais(HN, PAIS.BLOQUEADO, PAIS.SOLO_ENTRANTE, { reason: H.b32("SANCION_LEVANTADA") });
+      assert.equal(Number((await op(f.alice, "TRANSFER_OUT")).result), CODE.ALLOW);
+    });
+
+    describe("criterio de ACREDITADO y SOFISTICADO (D13)", function () {
+      async function exenta() {
+        await V.fijarSegmento(f, F.ASSET_NEW, "PRINCIPAL");
+        await V.licenciaVigente(f, LIC_EXENTA, V.terminos(TIT.ORDEN_GLOBAL, TIPO.OFERTA_EXENTA, { kind: KIND.AUTORIZACION_LIMITADA }));
+        return await baseColocacion(F.ASSET_NEW, TIT.ORDEN_GLOBAL, TIPO.OFERTA_EXENTA);
+      }
+
+      async function perfil(dir, nombre, subj) {
+        const purpose = await f.engine.call(nombre);
+        const c = await V.darAlta(f, dir, subj, purpose, H.b32("salt_" + nombre.slice(8, 20)));
+        await V.acreditar(f, c, purpose);
+        return purpose;
+      }
+
+      async function criterio(purpose, o) {
+        const x = o || {};
+        const hash = x.hash || H.b32("acta_criterio_sint");
+        const motivo = H.b32("ACTA_D13_SINT");
+        const scope = await f.engine.call("SCOPE_INVESTOR_CRITERIA");
+        const contenido = await f.engine.call("investorCriteriaContent", [purpose, hash, motivo]);
+        const ord = await V.ordenGob(f, {
+          contrato: f.engine, action: "SET_INVESTOR_CRITERIA", scope, evidenceRoot: contenido,
+          aprobar: x.aprobar, etiqueta: x.etiqueta,
+        });
+        return await f.engine.send("setInvestorCriteria", [purpose, hash, motivo, ord.tupla, ord.digest], f.board);
+      }
+
+      it("negativo (T-120-28): ACREDITADO o SOFISTICADO sin criterio fijado (D13) es BLOCKED_DECISION, no ALLOW", async function () {
+        await pais(PA, PAIS.SOLO_ENTRANTE, PAIS.PERMITIDO);
+        await residenciaPorPais(f.bob, "bob", PA);
+        await exenta();
+        const acreditado = await perfil(f.bob, "PURPOSE_ACCREDITED", F.SUBJ.bob);
+        let r = await suscribirSinContexto(f.bob);
+        assert.equal(Number(r.result), CODE.BLOCKED_DECISION);
+        assert.equal(r.reasonCode, H.b32("INVESTOR_CRITERIA_UNSET"));
+        // Fijar el criterio del OTRO perfil no abre éste.
+        await criterio(await f.engine.call("PURPOSE_SOPHISTICATED"));
+        r = await suscribirSinContexto(f.bob);
+        assert.equal(Number(r.result), CODE.BLOCKED_DECISION);
+        // Con su criterio fijado por orden de gobierno, suscribe (por las dos rutas).
+        const rc = await criterio(acreditado);
+        const ev = V.logsDe(f.engine, rc).find((e) => e.name === "InvestorCriteriaSet");
+        assert.equal(ev.args.purpose, acreditado);
+        assert.equal(ev.args.criteriaHash, H.b32("acta_criterio_sint"));
+        assert.equal(Number((await suscribirSinContexto(f.bob)).result), CODE.ALLOW);
+        assert.equal(await f.engine.call("investorCriteriaOf", [acreditado]), H.b32("acta_criterio_sint"));
+        const priv = await residencia(f.bob, PA);
+        assert.equal(Number((await suscribir(f.bob, { country: PA, salt: priv.salt })).result), CODE.ALLOW);
+      });
+
+      it("negativo (T-120-27): ACREDITADO con criterio fijado desde un país SOLO_ENTRANTE no suscribe", async function () {
+        await exenta();
+        await residenciaPorPais(f.bob, "bob", HN);
+        const acreditado = await perfil(f.bob, "PURPOSE_ACCREDITED", F.SUBJ.bob);
+        await criterio(acreditado);
+        const r = await suscribirSinContexto(f.bob);
+        assert.equal(Number(r.result), CODE.DENY_JURISDICTION);
+        assert.equal(r.reasonCode, H.b32("COUNTRY_INBOUND_ONLY"));
+      });
+
+      it("negativo: el criterio sólo se fija para los dos perfiles de D13 y sólo con orden aprobada con su etiqueta", async function () {
+        await H.expectRevert(criterio(await f.engine.call("PURPOSE_PROSPERA_RESIDENT")), "InvestorCriteriaInvalid");
+        const acreditado = await f.engine.call("PURPOSE_ACCREDITED");
+        await H.expectRevert(criterio(acreditado, { etiqueta: "SET_POLICY" }), "OrderMismatch");
+        assert.equal(await f.engine.call("investorCriteriaOf", [acreditado]), H.ZERO32);
+      });
     });
   });
 });

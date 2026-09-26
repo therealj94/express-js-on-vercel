@@ -64,11 +64,13 @@ interface ISFSPEligibilityEngine {
         bytes32 authorizationDigest
     ) external view returns (uint8 result, bytes32 reasonCode, uint32 policyVersion);
 
-    /// @dev v0.3 §6 y §7 · SFSP-120 §0.3 · la ESCRITURA que hace cumplir
-    ///      `SUBSCRIBE` en la ruta de dinero: evalúa la suscripción, revierte si
-    ///      no es ALLOW y, en el Mercado de Crecimiento, gasta la autorización
-    ///      de exposición en la MISMA transacción. Sólo la llaman los ejecutores
-    ///      de venta (rol SUBSCRIPTION_EXECUTOR).
+    /// @dev v0.3 §6 y §7 · SFSP-120 §0.3 regla 1 · la ESCRITURA que hace
+    ///      cumplir `SUBSCRIBE` en la ruta de dinero: toda salida del emisor o de
+    ///      su tesorería hacia un tercero evalúa la suscripción del adquirente,
+    ///      revierte si no es ALLOW y, en el Mercado de Crecimiento, gasta la
+    ///      autorización de exposición en la MISMA transacción. Sólo la llaman
+    ///      los ejecutores con el rol SUBSCRIPTION_EXECUTOR del motor. Un
+    ///      ejecutor sin contexto pasa `ctx` vacío (ruta de residencia por país).
     function enforceSubscription(
         address account,
         bytes32 assetId,
@@ -96,6 +98,9 @@ interface ISFSPGovernanceController {
 
 interface ISFSPRegulatedAsset {
     function assetId() external view returns (bytes32);
+    /// @dev Motor de elegibilidad del activo: el controlador de emisión aplica
+    ///      SUBSCRIBE en el MISMO motor que evalúa MINT.
+    function engine() external view returns (ISFSPEligibilityEngine);
     function totalSupply() external view returns (uint256);
     function balanceOf(address account) external view returns (uint256);
     function mintFromIssuance(address to, uint256 amount, bytes32 operationId) external;

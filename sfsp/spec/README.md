@@ -24,14 +24,28 @@
 | SFSP-300 | **Revierte la enmienda SFSP-410**: AUKA y AGKA se pueden acuñar por anticipado a tesorería; la **colocación** exige onzas verificadas no comprometidas. Custodia por Ordenex bajo Clase G con límite de concentración `BLOCKED_DECISION` y auditoría externa más frecuente. Canales físicos cerrados por parámetro mientras la Clase G esté en trámite. 1 AUKA = 1.710,69 ORIGEN; AGKA, liquidación permanente en ORIGEN | §9 |
 | SFSP-400 | La emisión contra reservas (`RAC_units`, release contra reservas, `U_unactivated`, alternativas de D03) pasa a **histórico descartado**. Supply fijo verificado. Precio en **gramín** (D01, falta acta). Comisión de **0,01 USD en ORIGEN** separada del gas (D02, falta acta); gas real con tarifa base 0 y mínimo de 93 gwei. Tesorería cotizadora con sus cinco controles. **Oráculo único**: caché 30 s, edad máxima 10 min, guion sin dato | §10 |
 | SFSP-500 | **Mercado híbrido en Ordenex** (libro con custodia e intercambio en cadena con fondos conformes). Reglas por clase: securities **fuera del intercambio en cadena** en la versión 1. **Puerta única** ORIGEN/fiat con licencias por tramo. **GoldeX retirado** | §7, §13 |
-| SFSP-700 | Camino normativo: **acuñación a la misma dirección por cupo del padrón** (`SET_MINT_BUDGET` + `mintOnDemand`); el registro por reclamo queda para lo que no puede asignarse a la misma dirección. Catálogo del v0.3 §14.4 completo. Supply no ubicado **corregido: 804,5 ONDK** (el v0.3 dice 792,5; 12 son una clave de permiso contada como saldo) y 9.823,01 AUKA, medidos en la 5550, bloque 273.508 | §14 |
+| SFSP-700 | Camino normativo: **acuñación a la misma dirección por cupo del padrón** (`SET_MINT_BUDGET` + `mintOnDemand`); el registro por reclamo queda para lo que no puede asignarse a la misma dirección. Catálogo del v0.3 §14.4 completo. Supply no ubicado **corregido: 804,5 ONDK** (el v0.3 dice 792,5; 12 son una clave de permiso contada como saldo) y 9.823,01 AUKA, medidos en la 5550, bloque 273.508. Después, **ubicados** (bloque 273.831); su tratamiento es decisión de la Junta (§0.5) | §14 |
 | SFSP-410 | Nota de reversión de §3.2 (commodities) | §9.4 |
 | `ESTADOS-Y-EVENTOS.md` | Los 14 objetos y estados del Apéndice A del v0.3 como tabla normativa; las 28 filas del Apéndice B con su evento; cuatro códigos de motivo nuevos | Apéndices A y B |
-| `eventos.json` | **Sin cambios**: las 28 filas del Apéndice B ya tenían evento (27 nombres canónicos) | Apéndice B |
+| `eventos.json` | **Sin cambios** en `draft-0.5`: las 28 filas del Apéndice B ya tenían evento (27 nombres canónicos). Después pasa a `draft-0.6` (contratos de la fase 2) y a `draft-0.7` (correcciones de conformidad, §0.1) | Apéndice B |
 | `../adr/ADR-016` | Nuevo: migración a la misma dirección por cupo del padrón. `PROPUESTO`, bloqueado por D26 | §14.3 |
 | `../adr/ADR-015` | Nota: su consecuencia sobre SFSP-300 queda revertida | §9.4 |
 
 Las series SFSP-100, 110, 130, 150, 160, 600, 800 y 900 no se tocan en `draft-0.5`: siguen alineadas con el v0.2 hasta su propia revisión.
+
+### 0.1 · Correcciones de conformidad con el v0.3 (26-sep, sin cambiar la etiqueta de la serie)
+
+La revisión de conformidad del código de la fase 2 contra el v0.3 dejó cambios en los contratos que las series ya pedían. Las series recogen su estado en su sección «Diferencia con el código actual». Todo sigue **sin desplegar y apagado**: lo que depende de una decisión responde `BLOCKED_DECISION`.
+
+| Tema | Qué cambia | Dónde |
+|---|---|---|
+| `SUBSCRIBE` | Se aplica en todas las rutas que colocan: `mint`, `mintOnDemand`, venta de ORIGEN con cupo de venta, `SFSPReserveEngine.place` y `SFSPTreasuryDesk.sell`. El país lo busca el motor entre los abiertos, no lo declara el llamador | SFSP-120 §0.8, SFSP-410 |
+| D13 | `ACREDITADO` y `SOFISTICADO` dan `BLOCKED_DECISION` hasta que su criterio se fije por orden de gobierno | SFSP-120 §0.8 |
+| Exposición | Sin ingresos ni compromisos de identidad en la cadena: Genesis ID registra solo el resultado por (dirección, activo), con vigencia acotada | SFSP-110 §0 |
+| DBNX | La aprobación lleva destino y clase (migración o no). `mint` y `setMintBudget` la exigen | SFSP-200 §0.10, ADR-016 |
+| COM | Un activo `COM` no se coloca desde el controlador de emisión; la cobertura cuenta lo que está fuera de la tesorería | SFSP-300 §0.2, §0.5 |
+| Licencias | El registro implementa `ILicenseGate`; los canales físicos se abren por orden de gobierno con el número de licencia; la tesorería exige los módulos que declare la Junta | SFSP-140 §8, SFSP-300 §0.5 |
+| Eventos | `eventos.json` pasa a `draft-0.7` (71 eventos); `RedemptionUpdated` lleva código de motivo; `publishLegacyCut` publica `CORTE_MIGRACION` | `ESTADOS-Y-EVENTOS.md`, SFSP-150, SFSP-700 §0.6 |
 
 ---
 
@@ -117,7 +131,7 @@ Las series en **negrita** son aquellas cuyo núcleo queda bloqueado, no sólo un
 | Privacidad | `NO_VERIFICADO` | SFSP-600; ambos prototipos sin implementar |
 | Respaldo o cobertura | `BLOQUEADO` | ORIGEN no es respaldado (SFSP-400); AUKA y AGKA con 0 onzas custodiadas (SFSP-300) |
 | Recuperación de activos | `BLOQUEADO` | SFSP-130; D19 pendiente |
-| Migración de activos | `BLOQUEADO` | SFSP-700; D09 y D26 pendientes; conciliación de 804,5 ONDK y 9.823,01 AUKA abierta |
+| Migración de activos | `BLOQUEADO` | SFSP-700; D09 y D26 pendientes; los 804,5 ONDK y 9.823,01 AUKA están ubicados y falta el acta de la Junta sobre su tratamiento (SFSP-700 §0.5) |
 | Account Numbers emitidos | `NO_VERIFICADO` | ninguno |
 | Lectura autorizada de redes, llaves o cuentas reales | `NO_VERIFICADO` | no hay accesos en este entorno |
 

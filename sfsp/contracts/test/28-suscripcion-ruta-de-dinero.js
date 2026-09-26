@@ -12,15 +12,20 @@
  * que hace cumplir SUBSCRIBE en el motor en la MISMA transacción, y la migración
  * tiene su cupo propio (SET_MIGRATION_BUDGET) que sigue por `*OnDemand`.
  *
- * Regla de vivo: la exigencia nace APAGADA (compuerta en cero en el emisor,
+ * Regla de vivo: la compuerta nace APAGADA (cero en el emisor,
  * `subscriptionRequired = false` en la bóveda) para no romper a quien ya integra
- * `mintOnDemand`/`releaseOnDemand`. Encendida, un cupo de venta ya no se consume
- * sin SUBSCRIBE. Todo sintético. */
+ * `mintOnDemand`/`releaseOnDemand`: sus firmas no cambian. Integración con las
+ * correcciones de conformidad (26-sep): apagada, un cupo de venta tampoco se
+ * consume sin SUBSCRIBE; `*OnDemand` lo aplica por la ruta SIN contexto
+ * (residencia por país). Encendida, la venta sólo pasa por `*OnSubscription`,
+ * con el contexto (residencia privada). Cada cupo de emisión lleva su documento
+ * DBNX, de la clase que dice su etiqueta. Todo sintético. */
 const assert = require("node:assert/strict");
 const F = require("./fixture");
 const H = require("./helpers");
 const OA = require("./orden-autorizada");
 const V = require("./v03");
+const { aprobacionDbnx, DEST_ADQUIRENTE_ELEGIBLE } = require("./authorization");
 
 const DIA = 86400;
 const ETH = 10n ** 18n;
@@ -33,7 +38,15 @@ async function ordenCupo(f, contrato, accion, o) {
   const ts = await H.now();
   const period = DIA;
   const validUntil = ts + 30 * DIA;
-  const docRoot = H.b32("acta_cupo_" + accion.slice(0, 12));
+  // v0.3 §5 · el cupo de EMISIÓN lleva su documento DBNX (colocación o
+  // migración, según la etiqueta); la bóveda no lo exige.
+  const esEmision = contrato.address === f.issuance.address;
+  const migracion = accion === "SET_MIGRATION_BUDGET";
+  const docRoot = esEmision
+    ? await aprobacionDbnx(f, f.ASSET_NEW, 1_000_000, "cupo_" + accion + "_" + ts, {
+      validUntil: ts + 60 * DIA, migration: migracion, destination: migracion ? H.b32("raiz_padron") : DEST_ADQUIRENTE_ELEGIBLE,
+    })
+    : H.b32("acta_cupo_" + accion.slice(0, 12));
   const terms = await contrato.call("budgetTermsRoot", [period, validUntil, docRoot]);
   const p = await OA.orden({
     verifyingContract: contrato.address,
@@ -111,10 +124,14 @@ describe("SFSP v0.3 §6 y §7 · SUBSCRIBE en la ruta de dinero", function () {
       f = await montar({ cupoEmision: "SET_MINT_BUDGET" });
     });
 
-    it("compatibilidad: con la compuerta apagada (valor de despliegue) mintOnDemand acuña como antes y la venta con SUBSCRIBE responde BLOCKED_DECISION", async function () {
+    it("compatibilidad: con la compuerta apagada (valor de despliegue) mintOnDemand conserva su firma pero aplica SUBSCRIBE sin contexto; la venta con contexto responde BLOCKED_DECISION", async function () {
       assert.equal(await f.issuance.call("subscriptionGate"), H.ZERO_ADDR);
-      await f.issuance.send("mintOnDemand", [f.ASSET_NEW, f.carol, 10, H.b32("pago_legado"), H.b32("r")], f.board);
-      assert.equal(await saldoDe(f, f.carol), 10n);
+      // carol (SOLO_ENTRANTE) ya no recibe en primaria ni con la compuerta apagada.
+      await rechazada(f, f.issuance.send("mintOnDemand", [f.ASSET_NEW, f.carol, 10, H.b32("pago_legado"), H.b32("r")], f.board), "COUNTRY_INBOUND_ONLY");
+      // alice, con residencia por país acreditada en PA y perfil admitido, sí.
+      await V.acreditarResidencia(f, f.alice, PA);
+      await f.issuance.send("mintOnDemand", [f.ASSET_NEW, f.alice, 10, H.b32("pago_legado_a"), H.b32("r")], f.board);
+      assert.equal(await saldoDe(f, f.alice), 10n);
       await V.revertCon(
         f.issuance.send("mintOnSubscription", [f.ASSET_NEW, f.alice, 10, H.b32("pago_v"), H.b32("r"), ctx(f, "alice", PA)], f.board),
         f.issuance, "SubscriptionGateUnset",
@@ -139,7 +156,7 @@ describe("SFSP v0.3 §6 y §7 · SUBSCRIBE en la ruta de dinero", function () {
 
     it("negativo: fuera del alcance de la oferta exenta no compra aunque su país esté PERMITIDO", async function () {
       await f.issuance.send("setSubscriptionGate", [f.engine.address, H.b32("V03_SUSCRIPCION")], f.board);
-      await rechazada(f, f.issuance.send("mintOnSubscription", [f.ASSET_NEW, f.bob, 100, H.b32("pago_b"), H.b32("r"), ctx(f, "bob", PA)], f.board), "EXEMPT_OFFER_SCOPE");
+      await rechazada(f, f.issuance.send("mintOnSubscription", [f.ASSET_NEW, f.bob, 100, H.b32("pago_b"), H.b32("r"), ctx(f, "bob", PA)], f.board), "FUERA_DE_ALCANCE_OFERTA_EXENTA");
       assert.equal(await saldoDe(f, f.bob), 0n);
     });
 
@@ -200,6 +217,8 @@ describe("SFSP v0.3 §6 y §7 · SUBSCRIBE en la ruta de dinero", function () {
     it("negativo: el tipo de cupo lo deciden los firmantes: una orden de migración aprobada con la etiqueta de venta no se ejecuta", async function () {
       const c = await ordenCupo(f, f.issuance, "SET_MIGRATION_BUDGET", { etiqueta: "SET_MINT_BUDGET" });
       await H.increaseTime(F.GOV.timelockDelay + 1);
+      // T-700-27 · el cupo vigente se revoca antes; si no, BudgetInForce llega primero.
+      await f.issuance.send("revokeMintBudget", [f.ASSET_NEW, H.b32("MIGRACION_FIN")], f.board);
       await H.expectRevert(
         f.issuance.send("setMintBudget", [c.tupla, c.d, c.period, c.validUntil, c.docRoot], f.board),
         "AuthorizationActionMismatch",
@@ -226,12 +245,16 @@ describe("SFSP v0.3 §6 y §7 · SUBSCRIBE en la ruta de dinero", function () {
   });
 
   describe("bóveda de ORIGEN (SFSPNativeVault): la puerta única", function () {
-    it("compatibilidad y cierre: apagada libera como antes; encendida, la venta exige SUBSCRIBE", async function () {
+    it("compatibilidad y cierre: apagada, releaseOnDemand aplica SUBSCRIBE sin contexto; encendida, la venta exige la ruta con contexto", async function () {
       const f = await montar({ boveda: "SET_RELEASE_BUDGET" });
       assert.equal(await f.v.call("subscriptionRequired"), false);
-      const c0 = await nativo(f.carol);
-      await f.v.send("releaseOnDemand", [f.carol, String(ETH), H.b32("pago_legado"), H.b32("r")], f.board);
-      assert.equal((await nativo(f.carol)) - c0, ETH);
+      assert.equal(await f.v.call("releaseBudgetKind"), H.b32("SET_RELEASE_BUDGET"));
+      // Misma firma que integran Ordenex y Veta, pero una venta ya no sale sin SUBSCRIBE.
+      await rechazada(f, f.v.send("releaseOnDemand", [f.carol, String(ETH), H.b32("pago_legado"), H.b32("r")], f.board), "COUNTRY_INBOUND_ONLY");
+      await V.acreditarResidencia(f, f.alice, PA);
+      const a00 = await nativo(f.alice);
+      await f.v.send("releaseOnDemand", [f.alice, String(ETH), H.b32("pago_legado_a"), H.b32("r")], f.board);
+      assert.equal((await nativo(f.alice)) - a00, ETH);
 
       await H.expectRevert(f.v.send("setSubscriptionRequired", [true, H.b32("X")], f.alice), "Unauthorized");
       const rc = await f.v.send("setSubscriptionRequired", [true, H.b32("V03_SUSCRIPCION")], f.board);
@@ -241,7 +264,7 @@ describe("SFSP v0.3 §6 y §7 · SUBSCRIBE en la ruta de dinero", function () {
 
       await V.revertCon(f.v.send("releaseOnDemand", [f.carol, String(ETH), H.b32("pago_1"), H.b32("r")], f.board), f.v, "SubscriptionRequired");
       await rechazada(f, f.v.send("releaseOnSubscription", [f.carol, String(ETH), H.b32("pago_2"), H.b32("r"), ctx(f, "carol", HN)], f.board), "COUNTRY_INBOUND_ONLY");
-      await rechazada(f, f.v.send("releaseOnSubscription", [f.bob, String(ETH), H.b32("pago_3"), H.b32("r"), ctx(f, "bob", PA)], f.board), "EXEMPT_OFFER_SCOPE");
+      await rechazada(f, f.v.send("releaseOnSubscription", [f.bob, String(ETH), H.b32("pago_3"), H.b32("r"), ctx(f, "bob", PA)], f.board), "FUERA_DE_ALCANCE_OFERTA_EXENTA");
       const a0 = await nativo(f.alice);
       await f.v.send("releaseOnSubscription", [f.alice, String(2n * ETH), H.b32("pago_4"), H.b32("r"), ctx(f, "alice", PA)], f.board);
       assert.equal((await nativo(f.alice)) - a0, 2n * ETH);

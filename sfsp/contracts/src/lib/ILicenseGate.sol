@@ -14,4 +14,10 @@ interface ILicenseGate {
     ///         declarado DISPONIBLE o BETA (una función de cara al cliente no se
     ///         habilita con USO_INTERNO). Un módulo desconocido devuelve false.
     function isModuleEnabled(bytes32 moduleId) external view returns (bool);
+
+    /// @return true si `number` es el número de otorgamiento de una licencia
+    ///         VIGENTE de la que depende `moduleId`. Sirve para que la acción de
+    ///         gobernanza que habilita algo «con el número de la licencia»
+    ///         (SFSP-140 §6 regla 3) cite el número real y no uno cualquiera.
+    function moduleHasLicenseNumber(bytes32 moduleId, bytes32 number) external view returns (bool);
 }

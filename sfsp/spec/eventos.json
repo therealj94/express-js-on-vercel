@@ -12,9 +12,11 @@
     "draft-0.5: SFSP-410 (politica de suministro: circulante = usuarios). Se anaden los eventos del cupo de emision, de las cuentas internas y de la boveda nativa de ORIGEN.",
     "draft-0.6: SFSP v0.3 fase 2 (puntos 1-3). Tienen contrato LicenseStatusChanged y ModuleAvailabilityChanged (SFSPLicenseRegistry), CountryStatusChanged, ExposureLimitRecorded y AcquirerDeclarationRecorded (SFSPEligibilityEngine; esta ultima cambia de emisor: la declaracion del adquirente se registra donde se exige, en el motor) y PassportUpdated (SFSPAssetRegistry). Se anaden LicenseRegistered, PlacementBasisSet, ExposureParamsSet, DbnxApprovalRecorded y DbnxApprovalRevoked.",
     "SFSP-150 (26-sep-2026): NetworkPermissionChanged pasa a implementado (SFSPNetworkPermissions, la lista que consulta el filtro de red de Besu).",
-    "Revision 26-sep (contratos-licencias): EligibilityRecorded pasa a implementado (SFSPEligibilityEngine.enforceSubscription: SUBSCRIBE se hace cumplir en la ruta de dinero). ExposureLimitRecorded y AcquirerDeclarationRecorded conservan su firma y se refieren a una autorizacion de exposicion (el agregado por identidad y el ingreso viven fuera de la cadena). Se anaden DbnxApprovalUsed, SubscriptionGateSet (IssuanceController) y SubscriptionRequirementSet (NativeVault)."
+    "Revision 26-sep (contratos-licencias): EligibilityRecorded pasa a implementado (SFSPEligibilityEngine.enforceSubscription: SUBSCRIBE se hace cumplir en la ruta de dinero). ExposureLimitRecorded y AcquirerDeclarationRecorded conservan su firma y se refieren a una autorizacion de exposicion (el agregado por identidad y el ingreso viven fuera de la cadena). Se anaden DbnxApprovalUsed, SubscriptionGateSet (IssuanceController) y SubscriptionRequirementSet (NativeVault).",
+    "draft-0.7 (26-sep-2026, correcciones de conformidad v0.3): DbnxApprovalRecorded anade destino o regla de destino y la clase migracion (SFSP-200 §0.5 fila 1); ExposureLimitRecorded y AcquirerDeclarationRecorded pasan a ser el resultado por adquisicion, sin compromiso de identidad (v0.3 §11/§12, SFSP-110 §0); se anaden InvestorCriteriaSet (D13) y CommodityAssetFlagged (SFSP-300 §0.2); RedemptionUpdated anade reasonCode (Apendice A/B, reglas 1 y 6); se anaden DeskLicenseGateSet y DeskLicenseModuleSet (licencias de la tesoreria cotizadora).",
+    "Integracion 26-sep (ramas corr-contratos-licencias y conformidad-v03): una sola version de cada evento (clave emisor+nombre). ExposureLimitRecorded y AcquirerDeclarationRecorded conservan la descripcion de la autorizacion de exposicion por clearanceId (el modelo que quedo en el motor). Total: 76 eventos, 71 con contrato."
   ],
-  "version": "draft-0.6",
+  "version": "draft-0.7",
   "reglas": [
     "El nombre canonico de un evento es el de este archivo. Un nombre retirado no se reutiliza: se declara en 'aliasesRetirados' y se sigue decodificando al canonico.",
     "Todo evento que cambie el suministro lleva 'assetId'. Sin 'assetId' el evento no se puede atribuir y el suministro del activo sale DESCONOCIDO.",
@@ -543,7 +545,7 @@
     {
       "nombre": "RedemptionUpdated",
       "emisor": "CommodityEngine",
-      "significado": "Avance en la maquina de redencion (SFSP-300 §RedemptionState).",
+      "significado": "Avance en la maquina de redencion (SFSP-300 §RedemptionState), con su codigo de motivo (Apendice A/B, reglas 1 y 6): una cancelacion por inelegibilidad lleva el codigo del motor de elegibilidad y se distingue de la del tenedor (CANCELACION_TENEDOR) y de la de operacion (CANCELACION_OPERACION); la incomparecencia, VENCIMIENTO_PLAZO.",
       "atribucion": "POR_ACTIVO",
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": true,
@@ -587,6 +589,14 @@
           "obligatorio": true,
           "atribuyeActivo": false,
           "esCantidad": true
+        },
+        {
+          "nombre": "reasonCode",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
         }
       ]
     },
@@ -1253,7 +1263,7 @@
     {
       "nombre": "NetworkPermissionChanged",
       "emisor": "NetworkAdmission",
-      "significado": "Alta o baja en la lista de despliegue o en el filtro de transacciones (SFSP-150). Lo emite SFSPNetworkPermissions; en SYSTEM_FUNCTION el selector va en los 4 ultimos bytes de permissionKind.",
+      "significado": "Alta o baja en la lista de despliegue o en el filtro de transacciones (SFSP-150). Lo emite SFSPNetworkPermissions; en SYSTEM_FUNCTION el selector va en los 4 ultimos bytes de permissionKind. El corte de un heredado transitorio en su bloque se publica con 'publishLegacyCut' (reasonCode CORTE_MIGRACION, granted = false).",
       "atribucion": "GLOBAL",
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": true,
@@ -3047,7 +3057,7 @@
     {
       "nombre": "DbnxApprovalRecorded",
       "emisor": "IssuanceController",
-      "significado": "DBNX registra el hash de un documento de aprobacion de emision: activo, cantidad exacta y vigencia (SFSP v0.3 §5). NO es emision ni capacidad: es la pieza que la acunacion verifica en forma antes de ejecutar.",
+      "significado": "DBNX registra el hash de un documento de aprobacion de emision: activo, cantidad, vigencia y destino o regla de destino (SFSP v0.3 §5, SFSP-200 §0.5 fila 1). En 'mint' el destino es la direccion exacta y la cantidad es exacta; en un cupo (setMintBudget) la cantidad es el total del cupo y la regla es ADQUIRENTE_ELEGIBLE (colocacion: SUBSCRIBE) o la raiz del padron (migration = true: continuidad de tenencia, sin SUBSCRIBE). NO es emision ni capacidad: es la pieza que la acunacion verifica en forma antes de ejecutar.",
       "atribucion": "POR_ACTIVO",
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": true,
@@ -3099,6 +3109,22 @@
           "obligatorio": true,
           "atribuyeActivo": false,
           "esCantidad": false
+        },
+        {
+          "nombre": "destination",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "migration",
+          "tipo": "bool",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
         }
       ]
     },
@@ -3129,6 +3155,150 @@
         {
           "nombre": "reasonCode",
           "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "InvestorCriteriaSet",
+      "emisor": "EligibilityEngine",
+      "significado": "D13 · gobierno fija, con orden y acta, el criterio de INVERSIONISTA_ACREDITADO o INVERSIONISTA_SOFISTICADO. Hasta entonces una SUBSCRIBE que dependa de ese perfil devuelve BLOCKED_DECISION (SFSP-140 §4 regla 2).",
+      "atribucion": "GLOBAL",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        {
+          "nombre": "purpose",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "criteriaHash",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "reasonCode",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "CommodityAssetFlagged",
+      "emisor": "IssuanceController",
+      "significado": "Un activo se marca (o desmarca, solo la Junta) como COM en el controlador de emision: desde ahi no se acuna a un tercero, porque la colocacion de un commodity exige capacidad en onzas y pasa por el motor de reservas (SFSP-300 §0.2, T-300-30).",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "commodity",
+          "tipo": "bool",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "by",
+          "tipo": "address",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "reasonCode",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "DeskLicenseGateSet",
+      "emisor": "TreasuryDesk",
+      "significado": "La Junta cablea el registro de licencias que consulta la tesorería cotizadora. Sin registro, la tesorería no cotiza (LICENCIA_NO_OTORGADA).",
+      "atribucion": "GLOBAL",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        {
+          "nombre": "gate",
+          "tipo": "address",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "by",
+          "tipo": "address",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "DeskLicenseModuleSet",
+      "emisor": "TreasuryDesk",
+      "significado": "La Junta declara un modulo de licencia del que depende un lado de la tesoreria (quien la opera y con que licencia, v0.3 §13.3, SFSP-140 §3.2): un evento por modulo, con su posicion y el total de la lista. Sin modulos declarados, BLOCKED_DECISION.",
+      "atribucion": "GLOBAL",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        {
+          "nombre": "side",
+          "tipo": "uint8",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "moduleId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "index",
+          "tipo": "uint8",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "count",
+          "tipo": "uint8",
           "indexado": false,
           "obligatorio": true,
           "atribuyeActivo": false,

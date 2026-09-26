@@ -32,12 +32,14 @@ import {
 ///      adquirente la gobierna la matriz de países de este contrato.
 ///
 ///      Privacidad (v0.3 §11 y §12), corrección de la revisión del 26-sep:
-///        · La residencia NO se publica por país. Antes había un propósito por
-///          país (`keccak(etiqueta, ISO2)`), enumerable: `purposeStatus` o los
-///          logs decían el país de cada dirección. Ahora hay UN propósito,
-///          RESIDENCIA, cuyo compromiso es keccak(etiqueta, país, sal) con una
-///          sal por DIRECCIÓN; el país sólo aparece en la transacción de la
-///          suscripción que lo acredita.
+///        · La residencia privada NO se publica por país. El propósito por
+///          país (`keccak(etiqueta, ISO2)`) es enumerable: `purposeStatus` o los
+///          logs dicen el país de cada dirección. La ruta privada usa UN
+///          propósito, RESIDENCIA, cuyo compromiso es keccak(etiqueta, país,
+///          sal) con una sal por DIRECCIÓN; el país sólo aparece en la
+///          transacción de la suscripción que lo acredita. La residencia por
+///          país se conserva como ruta de COMPATIBILIDAD para los ejecutores que
+///          no reciben contexto (ver `PURPOSE_RESIDENCE`).
 ///        · BLOQUEADO alcanza a la IDENTIDAD, no a la dirección que declaró el
 ///          país: el atestador da de alta el propósito JURISDICCION_BLOQUEADA
 ///          en TODAS las direcciones del residente (Genesis ID sabe cuáles son;
@@ -102,8 +104,10 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
 
     /// @dev Parámetros del límite de exposición (v0.3 §8.5, decisión D03/D04 en
     ///      §18). `set == false` ⇒ BLOCKED_DECISION: no hay valor por defecto.
-    ///      La cadena publica la FÓRMULA; el agregado por identidad y el ingreso
-    ///      autodeclarado viven fuera (Genesis ID), que calcula con ella.
+    ///      Son reglas PÚBLICAS: la cadena publica la FÓRMULA y Genesis ID la
+    ///      aplica FUERA de la cadena sobre el agregado de la identidad y su
+    ///      ingreso autodeclarado (SFSP-110 §0). En la cadena sólo acotan la
+    ///      vigencia del resultado que Genesis ID trae (`declarationTtl`).
     struct ExposureParams {
         bool set;
         uint32 incomeBps;       // porcentaje del ingreso autodeclarado, en pb
@@ -150,11 +154,14 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     event EligibilityRecorded(
         bytes32 indexed assetId, bytes32 indexed evaluationCommitment, bytes32 action, uint32 policyVersion
     );
+    /// @dev D13 · criterio aprobado de ACREDITADO o SOFISTICADO (hash del acta).
+    event InvestorCriteriaSet(bytes32 indexed purpose, bytes32 criteriaHash, bytes32 reasonCode);
 
     error OrderMismatch(bytes32 field, bytes32 expected, bytes32 got);
     error CountryCodeInvalid(bytes32 countryCode);
     error CountryTransitionInvalid(uint8 fromState, uint8 toState);
     error BlockedCountriesFull(uint256 max);
+    error OpenCountriesFull(uint256 max);
     error EvidenceRequired();
     error ReasonRequired();
     error ExposureParamsInvalid(bytes32 reason);
@@ -162,15 +169,18 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     error NotGrowthSegment(bytes32 assetId);
     error DeclarationInvalid(bytes32 reason);
     error LicenseRegistryNotWired();
+    error InvestorCriteriaInvalid(bytes32 purpose);
     /// @dev La suscripción no es ALLOW (incluye REVIEW_REQUIRED y
-    ///      BLOCKED_DECISION): la venta no se ejecuta.
+    ///      BLOCKED_DECISION): el ejecutor no coloca (SFSP-120 §0.3).
     error SubscriptionRejected(uint8 code, bytes32 reason);
 
     bytes32 public constant ACTION_SET_COUNTRY = bytes32("SET_COUNTRY");
     bytes32 public constant ACTION_SET_EXPOSURE_PARAMS = bytes32("SET_EXPOSURE_PARAMS");
     bytes32 public constant ACTION_SET_PLACEMENT_BASIS = bytes32("SET_PLACEMENT_BASIS");
+    bytes32 public constant ACTION_SET_INVESTOR_CRITERIA = bytes32("SET_INVESTOR_CRITERIA");
     bytes32 public constant SCOPE_COUNTRY = bytes32("SFSP:GOV:COUNTRY_MATRIX");
     bytes32 public constant SCOPE_EXPOSURE = bytes32("SFSP:GOV:EXPOSURE_LIMIT");
+    bytes32 public constant SCOPE_INVESTOR_CRITERIA = bytes32("SFSP:GOV:INVESTOR_CRITERIA");
 
     /// @dev Propósitos de identidad.
     ///      · RESIDENCIA: UN solo propósito para todos los países. El compromiso
@@ -178,21 +188,35 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     ///        aleatoria de 32 bytes POR DIRECCIÓN; así ni el propósito ni el
     ///        compromiso dicen el país, y dos direcciones de la misma persona no
     ///        comparten valor. El atestador registra la atestación sobre ese
-    ///        compromiso.
+    ///        compromiso. Es la ruta PRIVADA: el ejecutor trae país y sal en el
+    ///        contexto de la suscripción (`SubscriptionContext`).
+    ///      · Residencia POR PAÍS (`residencePurpose(país)`): la ruta de
+    ///        compatibilidad de los ejecutores que no reciben contexto (emisión por
+    ///        gobierno, `mintOnDemand`/`releaseOnDemand` con la compuerta apagada).
+    ///        El país no lo declara el llamador: se busca entre los países
+    ///        abiertos (`openCountries`). Es enumerable (el propósito dice el
+    ///        país): por eso la venta al público va por la ruta privada antes de
+    ///        encender la emisión (DIA-D, compuerta 5).
     ///      · JURISDICCION_BLOQUEADA: el atestador lo da de alta en TODAS las
     ///        direcciones de un residente de un país BLOQUEADO (y en cada
     ///        dirección nueva que vincule), y lo retira al levantarse el bloqueo.
+    ///      La exposición NO tiene propósito en la cadena: se agrega fuera, en
+    ///      Genesis ID (ver `ExposureClearance`).
     bytes32 public constant PURPOSE_RESIDENCE = bytes32("RESIDENCIA");
     bytes32 public constant PURPOSE_JURISDICTION_BLOCK = bytes32("JURISDICCION_BLOQUEADA");
     bytes32 public constant RESIDENCE_TAG = keccak256("SFSP.RESIDENCE.COMMITMENT.v1");
+    bytes32 public constant RESIDENCE_PURPOSE_TAG = keccak256("SFSP.PURPOSE.RESIDENCE.v1");
     bytes32 public constant CLEARANCE_TAG = keccak256("SFSP.EXPOSURE.CLEARANCE.v1");
     bytes32 public constant EVALUATION_TAG = keccak256("SFSP.SUBSCRIPTION.EVALUATION.v1");
-    /// @dev Ejecutores de venta (emisión, bóveda nativa, motor de reservas):
-    ///      los únicos que pueden hacer cumplir una suscripción, porque hacerlo
-    ///      gasta la autorización de exposición.
+    /// @dev Los contratos que COLOCAN (motor de reservas, controlador de
+    ///      emisión, bóveda nativa, tesorería): aplican la suscripción en la
+    ///      misma transacción que la colocación y gastan la autorización de
+    ///      exposición (SFSP-120 §0.3, regla 1).
     bytes32 public constant SUBSCRIPTION_EXECUTOR = keccak256("SFSP.ROLE.SUBSCRIPTION_EXECUTOR");
     /// @dev Los tres perfiles que admite la notificación de oferta exenta
-    ///      (v0.3 §6). No son parámetros: los fija el texto de la exención.
+    ///      (v0.3 §6). No son parámetros: los fija el texto de la exención. Los
+    ///      CRITERIOS de acreditado y sofisticado sí lo son (D13): mientras no
+    ///      estén fijados, esos dos perfiles dan BLOCKED_DECISION.
     bytes32 public constant PURPOSE_PROSPERA_RESIDENT = bytes32("RESIDENTE_PROSPERA");
     bytes32 public constant PURPOSE_ACCREDITED = bytes32("INVERSIONISTA_ACREDITADO");
     bytes32 public constant PURPOSE_SOPHISTICATED = bytes32("INVERSIONISTA_SOFISTICADO");
@@ -203,21 +227,30 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     bytes32 public constant ACQUIRER_TAG = keccak256("SFSP.ACQUIRER.DECLARATION.v1");
     /// @dev El agregador de exposición (Genesis ID): calcula FUERA de la cadena
     ///      el agregado de todas las direcciones de una identidad y registra
-    ///      aquí sólo el resultado. Nunca publica ingreso ni un valor común a
-    ///      varias direcciones (H16, v0.3 §11).
+    ///      aquí sólo el resultado de una adquisición concreta. Lo hace un
+    ///      operador, no la dirección del adquirente, y nunca publica ingreso ni
+    ///      un valor común a varias direcciones (H16, v0.3 §11).
     bytes32 public constant EXPOSURE_OPERATOR = keccak256("SFSP.ROLE.EXPOSURE_OPERATOR");
-    /// @dev Techo técnico de la lista pública de países bloqueados, que el
-    ///      atestador lee para aplicar JURISDICCION_BLOQUEADA. No es un
-    ///      parámetro económico.
+    /// @dev Techo técnico de las listas públicas de países (bloqueados, que el
+    ///      atestador lee para aplicar JURISDICCION_BLOQUEADA, y abiertos a la
+    ///      suscripción): las evaluaciones las recorren. No es un parámetro
+    ///      económico.
     uint256 public constant MAX_BLOCKED_COUNTRIES = 64;
+    uint256 public constant MAX_OPEN_COUNTRIES = 64;
 
     ISFSPLicenseRegistry public licenses;
     mapping(bytes32 => CountryState) private _country;
     bytes32[] private _blockedCountries;
     mapping(bytes32 => uint256) private _blockedIndex;              // país => índice + 1
+    /// @dev Países PERMITIDO o PERMITIDO_CON_CONDICIONES: los únicos desde los
+    ///      que se puede suscribir. El resto es SOLO_ENTRANTE o BLOQUEADO.
+    bytes32[] private _openCountries;
+    mapping(bytes32 => uint256) private _openIndex;                 // país => índice + 1
     ExposureParams private _exposure;
     mapping(bytes32 => ExposureClearance) private _clearance;       // clearanceId => autorización
     mapping(bytes32 => PlacementBasis) private _placement;
+    /// @dev D13 · hash del acta que fija el criterio; 0 = null (BLOCKED_DECISION).
+    mapping(bytes32 => bytes32) private _investorCriteria;
 
     error PolicyNotAuthorized(bytes32 digest);
     error AuthorizationActionMismatch(bytes32 expected, bytes32 got);
@@ -391,10 +424,17 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     }
 
     /// @notice Evaluación de una SUSCRIPCIÓN primaria (v0.3 §7 y §8.5).
-    /// @dev Además de todo lo de `evaluateOperation`: residencia acreditada y
-    ///      su estado en la matriz; base legal de la colocación y, si es la
-    ///      notificación de oferta exenta, su alcance; y en el Mercado de
-    ///      Crecimiento, el límite de exposición POR IDENTIDAD.
+    /// @dev Además de todo lo de `evaluateOperation`: residencia acreditada en
+    ///      un país que permita suscribir; base legal de la colocación y, si es
+    ///      la notificación de oferta exenta, su alcance (y el criterio D13); y
+    ///      en el Mercado de Crecimiento, la autorización de exposición que
+    ///      Genesis ID registró para ESTA dirección, activo y operación.
+    ///      Residencia: con `ctx.country` ≠ 0, la ruta privada (RESIDENCIA con
+    ///      sal); con `ctx.country` = 0, la de compatibilidad, que busca entre
+    ///      los países abiertos una residencia acreditada por país. Callarlo no
+    ///      ayuda: sin residencia acreditada en un país abierto, la dirección es
+    ///      SOLO_ENTRANTE.
+    /// @param amount unidades del activo que se colocarían.
     function evaluateSubscription(
         address account,
         bytes32 assetId,
@@ -561,9 +601,21 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
         // direcciones del residente: no depende de que ESTA dirección haya
         // declarado su país, así que no se elude callándolo ni usando otra
         // dirección de la misma persona.
+        // Y, en la ruta de residencia por país, un alta de residencia en un país
+        // bloqueado también deniega (no hace falta que el llamador declare el
+        // país, así que no se elude callándolo).
         (bool sanctioned,,,) = identity.purposeStatus(account, PURPOSE_JURISDICTION_BLOCK);
-        if (sanctioned) return (SFSPCodes.DENY_JURISDICTION, R_COUNTRY_BLOCKED);
+        if (sanctioned || _residesInBlockedCountry(account)) return (SFSPCodes.DENY_JURISDICTION, R_COUNTRY_BLOCKED);
         return (SFSPCodes.ALLOW, SFSPCodes.R_OK);
+    }
+
+    function _residesInBlockedCountry(address account) internal view returns (bool) {
+        uint256 n = _blockedCountries.length;
+        for (uint256 i = 0; i < n; i++) {
+            (bool bound,,,) = identity.purposeStatus(account, residencePurpose(_blockedCountries[i]));
+            if (bound) return true;
+        }
+        return false;
     }
 
     /// @dev Los ejes se leen por separado. DELISTED no toca saldos ni visibilidad,
@@ -591,15 +643,18 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     // v0.3 §7 · matriz de países · §6 base de colocación · §8.5 exposición
     // ======================================================================
 
+    // Códigos de motivo: los del catálogo de ESTADOS-Y-EVENTOS §C. El catálogo
+    // se completa ANTES de usar un código nuevo, y uno retirado no se reutiliza.
     bytes32 internal constant R_INBOUND_ONLY = bytes32("COUNTRY_INBOUND_ONLY");
     bytes32 internal constant R_COUNTRY_BLOCKED = bytes32("COUNTRY_BLOCKED");
-    bytes32 internal constant R_COUNTRY_UNPROVEN = bytes32("COUNTRY_UNPROVEN");
     bytes32 internal constant R_COUNTRY_CONDITIONS = bytes32("COUNTRY_CONDITIONS_UNSET");
     bytes32 internal constant R_PLACEMENT_UNSET = bytes32("PLACEMENT_BASIS_UNSET");
-    bytes32 internal constant R_PLACEMENT_LICENSE = bytes32("PLACEMENT_LICENSE_NOT_IN_FORCE");
-    bytes32 internal constant R_EXEMPT_SCOPE = bytes32("EXEMPT_OFFER_SCOPE");
+    bytes32 internal constant R_PLACEMENT_LICENSE = bytes32("LICENCIA_NO_OTORGADA");
+    bytes32 internal constant R_EXEMPT_SCOPE = bytes32("FUERA_DE_ALCANCE_OFERTA_EXENTA");
+    bytes32 internal constant R_INVESTOR_CRITERIA = bytes32("INVESTOR_CRITERIA_UNSET");
     bytes32 internal constant R_SEGMENT_UNKNOWN = bytes32("SEGMENT_UNKNOWN");
     bytes32 internal constant R_EXPOSURE_UNSET = bytes32("EXPOSURE_PARAMS_UNSET");
+    bytes32 internal constant R_COUNTRY_UNPROVEN = bytes32("COUNTRY_UNPROVEN");
     bytes32 internal constant R_CLEARANCE_MISSING = bytes32("EXPOSURE_CLEARANCE_MISSING");
     bytes32 internal constant R_CLEARANCE_USED = bytes32("EXPOSURE_CLEARANCE_USED");
     bytes32 internal constant R_CLEARANCE_EXPIRED = bytes32("EXPOSURE_CLEARANCE_EXPIRED");
@@ -615,6 +670,12 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     }
 
     // ------------------------------------------------------------- lecturas
+
+    /// @notice Propósito de residencia POR PAÍS (ruta de compatibilidad, ver
+    ///         `PURPOSE_RESIDENCE`). Enumerable: dice el país.
+    function residencePurpose(bytes32 countryCode) public pure returns (bytes32) {
+        return keccak256(abi.encode(RESIDENCE_PURPOSE_TAG, countryCode));
+    }
 
     /// @notice Compromiso de residencia de UNA dirección en el propósito
     ///         RESIDENCIA. `salt` es aleatoria, de 32 bytes y propia de esa
@@ -644,6 +705,12 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
         return _blockedCountries;
     }
 
+    /// @notice Países desde los que se puede suscribir: PERMITIDO o
+    ///         PERMITIDO_CON_CONDICIONES.
+    function openCountries() external view returns (bytes32[] memory) {
+        return _openCountries;
+    }
+
     function exposureParams() external view returns (ExposureParams memory) {
         return _exposure;
     }
@@ -664,6 +731,11 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
         return (true, limit);
     }
 
+    /// @notice D13 · hash del acta del criterio; 0 = sin fijar (BLOCKED_DECISION).
+    function investorCriteriaOf(bytes32 purpose) external view returns (bytes32) {
+        return _investorCriteria[purpose];
+    }
+
     // ------------------------------------------------------------- suscripción
 
     /// @dev País → base de colocación (y alcance de la oferta exenta) →
@@ -680,12 +752,30 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
         return _exposureCheck(account, assetId, ctx);
     }
 
+    /// @dev Residencia no acreditada = país no evaluado = SOLO_ENTRANTE.
+    ///      Ruta privada (`country` ≠ 0): el país declarado tiene que ser EL de la
+    ///      residencia acreditada de esta dirección en RESIDENCIA; el compromiso
+    ///      guardado es keccak(etiqueta, país, sal), así que otro país (o la sal
+    ///      de otra dirección) no coincide.
+    ///      Ruta de compatibilidad (`country` = 0): se busca entre los países
+    ///      abiertos una residencia por país con claim vigente; con una en un
+    ///      país PERMITIDO suscribe, si sólo la hay en uno PERMITIDO_CON_CONDICIONES
+    ///      la decisión se bloquea.
+    ///      Las reglas por instrumento de PERMITIDO_CON_CONDICIONES no están
+    ///      parametrizadas: no se elige un valor, se bloquea la decisión.
     function _countryCheck(address account, bytes32 country, bytes32 salt) internal view returns (uint8, bytes32) {
-        // Residencia no acreditada = país no evaluado = SOLO_ENTRANTE.
-        if (country == bytes32(0)) return (SFSPCodes.DENY_JURISDICTION, R_INBOUND_ONLY);
-        // El país declarado tiene que ser EL de la residencia acreditada de esta
-        // dirección: el compromiso guardado es keccak(etiqueta, país, sal), así
-        // que otro país (o la sal de otra dirección) no coincide.
+        if (country == bytes32(0)) {
+            bool conditional;
+            uint256 n = _openCountries.length;
+            for (uint256 i = 0; i < n; i++) {
+                bytes32 c = _openCountries[i];
+                if (!_hasValidClaim(account, residencePurpose(c))) continue;
+                if (_country[c] == CountryState.PERMITIDO) return (SFSPCodes.ALLOW, SFSPCodes.R_OK);
+                conditional = true;
+            }
+            if (conditional) return (SFSPCodes.BLOCKED_DECISION, R_COUNTRY_CONDITIONS);
+            return (SFSPCodes.DENY_JURISDICTION, R_INBOUND_ONLY);
+        }
         if (salt == bytes32(0) || !identity.isCommitmentBound(account, PURPOSE_RESIDENCE, residenceCommitment(country, salt))) {
             return (SFSPCodes.UNKNOWN_SOURCE, R_COUNTRY_UNPROVEN);
         }
@@ -694,8 +784,6 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
         CountryState st = _country[country];
         if (st == CountryState.SOLO_ENTRANTE) return (SFSPCodes.DENY_JURISDICTION, R_INBOUND_ONLY);
         if (st == CountryState.BLOQUEADO) return (SFSPCodes.DENY_JURISDICTION, R_COUNTRY_BLOCKED);
-        // Las reglas por instrumento de PERMITIDO_CON_CONDICIONES no están
-        // parametrizadas: no se elige un valor, se bloquea la decisión.
         if (st == CountryState.PERMITIDO_CON_CONDICIONES) return (SFSPCodes.BLOCKED_DECISION, R_COUNTRY_CONDITIONS);
         return (SFSPCodes.ALLOW, SFSPCodes.R_OK);
     }
@@ -703,21 +791,27 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     /// @dev v0.3 §6 y §7: mientras la colocación se base en la notificación de
     ///      oferta exenta, sólo suscriben residentes de Próspera, acreditados y
     ///      sofisticados, con independencia del estado del país.
+    ///      SFSP-140 §4 regla 2 · mientras el criterio de acreditado o de
+    ///      sofisticado sea null (D13), sólo RESIDENTE_PROSPERA puede evaluarse:
+    ///      una suscripción que dependa de los otros dos es BLOCKED_DECISION,
+    ///      nunca ALLOW (T-120-28).
     function _placementCheck(address account, bytes32 assetId) internal view returns (uint8, bytes32) {
         if (address(licenses) == address(0)) return (SFSPCodes.BLOCKED_DECISION, R_LICENSES_UNWIRED);
         PlacementBasis storage b = _placement[assetId];
         if (!b.set) return (SFSPCodes.BLOCKED_DECISION, R_PLACEMENT_UNSET);
         (bytes32 licenseId, uint8 kind, bool effective) = licenses.resolveLicense(b.holder, b.licenseType);
         if (licenseId == bytes32(0) || !effective) return (SFSPCodes.DENY_AUTHORIZATION, R_PLACEMENT_LICENSE);
-        if (kind == LICENSE_KIND_LIMITED) {
-            if (
-                !_hasValidClaim(account, PURPOSE_PROSPERA_RESIDENT) && !_hasValidClaim(account, PURPOSE_ACCREDITED)
-                    && !_hasValidClaim(account, PURPOSE_SOPHISTICATED)
-            ) {
-                return (SFSPCodes.DENY_ELIGIBILITY, R_EXEMPT_SCOPE);
-            }
+        if (kind != LICENSE_KIND_LIMITED) return (SFSPCodes.ALLOW, SFSPCodes.R_OK);
+        if (_hasValidClaim(account, PURPOSE_PROSPERA_RESIDENT)) return (SFSPCodes.ALLOW, SFSPCodes.R_OK);
+        bool pending;
+        bytes32[2] memory perfiles = [PURPOSE_ACCREDITED, PURPOSE_SOPHISTICATED];
+        for (uint256 i = 0; i < 2; i++) {
+            if (!_hasValidClaim(account, perfiles[i])) continue;
+            if (_investorCriteria[perfiles[i]] != bytes32(0)) return (SFSPCodes.ALLOW, SFSPCodes.R_OK);
+            pending = true;
         }
-        return (SFSPCodes.ALLOW, SFSPCodes.R_OK);
+        if (pending) return (SFSPCodes.BLOCKED_DECISION, R_INVESTOR_CRITERIA);
+        return (SFSPCodes.DENY_ELIGIBILITY, R_EXEMPT_SCOPE);
     }
 
     function _hasValidClaim(address account, bytes32 purpose) internal view returns (bool) {
@@ -773,6 +867,14 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
         return keccak256(abi.encode(ACTION_SET_PLACEMENT_BASIS, assetId, holder, licenseType, reasonCode));
     }
 
+    function investorCriteriaContent(bytes32 purpose, bytes32 criteriaHash, bytes32 reasonCode)
+        public
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encode(SCOPE_INVESTOR_CRITERIA, purpose, criteriaHash, reasonCode));
+    }
+
     /// @notice Cambia el estado de un país en la matriz, por orden de gobierno.
     /// @dev `amount` = estado anterior, `amountSecondary` = nuevo. BLOQUEADO
     ///      exige fundamento (`evidenceHash`): no se bloquea por precaución.
@@ -804,18 +906,38 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
             _blockedCountries.push(countryCode);
             _blockedIndex[countryCode] = _blockedCountries.length;
         } else if (prev == CountryState.BLOQUEADO) {
-            uint256 idx = _blockedIndex[countryCode] - 1;
-            uint256 last = _blockedCountries.length - 1;
-            if (idx != last) {
-                bytes32 moved = _blockedCountries[last];
-                _blockedCountries[idx] = moved;
-                _blockedIndex[moved] = idx + 1;
-            }
-            _blockedCountries.pop();
-            delete _blockedIndex[countryCode];
+            _removeFrom(_blockedCountries, _blockedIndex, countryCode);
+        }
+        // Lista de países abiertos a la suscripción: la que recorre `_countryCheck`.
+        bool wasOpen = _isOpen(prev);
+        bool isOpen = _isOpen(newState);
+        if (isOpen && !wasOpen) {
+            if (_openCountries.length >= MAX_OPEN_COUNTRIES) revert OpenCountriesFull(MAX_OPEN_COUNTRIES);
+            _openCountries.push(countryCode);
+            _openIndex[countryCode] = _openCountries.length;
+        } else if (wasOpen && !isOpen) {
+            _removeFrom(_openCountries, _openIndex, countryCode);
         }
         _country[countryCode] = newState;
         emit CountryStatusChanged(countryCode, uint8(prev), uint8(newState), reasonCode, evidenceHash);
+    }
+
+    function _isOpen(CountryState st) internal pure returns (bool) {
+        return st == CountryState.PERMITIDO || st == CountryState.PERMITIDO_CON_CONDICIONES;
+    }
+
+    /// @dev Quita `code` de una lista con índice (índice + 1), intercambiando
+    ///      con el último. El orden de la lista no significa nada.
+    function _removeFrom(bytes32[] storage list, mapping(bytes32 => uint256) storage index, bytes32 code) internal {
+        uint256 idx = index[code] - 1;
+        uint256 last = list.length - 1;
+        if (idx != last) {
+            bytes32 moved = list[last];
+            list[idx] = moved;
+            index[moved] = idx + 1;
+        }
+        list.pop();
+        delete index[code];
     }
 
     /// @dev ISO 3166-1 alfa-2: dos letras mayúsculas y nada más.
@@ -868,6 +990,31 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
         emit PlacementBasisSet(assetId, holder, licenseType, reasonCode);
     }
 
+    /// @notice D13 · fija el criterio de INVERSIONISTA_ACREDITADO o de
+    ///         INVERSIONISTA_SOFISTICADO, por orden de gobierno con referencia al
+    ///         acta (`criteriaHash`). Hasta entonces, una suscripción que dependa
+    ///         de ese perfil es BLOCKED_DECISION (SFSP-140 §4 regla 2).
+    function setInvestorCriteria(
+        bytes32 purpose,
+        bytes32 criteriaHash,
+        bytes32 reasonCode,
+        SFSPAuthorization.Payload calldata p,
+        bytes32 approvedDigest
+    ) external onlyRole(TECH_OPS) {
+        if (purpose != PURPOSE_ACCREDITED && purpose != PURPOSE_SOPHISTICATED) revert InvestorCriteriaInvalid(purpose);
+        if (criteriaHash == bytes32(0)) revert DeclarationInvalid(bytes32("CRITERIA"));
+        if (reasonCode == bytes32(0)) revert ReasonRequired();
+        _consumeOrder(
+            p,
+            approvedDigest,
+            ACTION_SET_INVESTOR_CRITERIA,
+            SCOPE_INVESTOR_CRITERIA,
+            investorCriteriaContent(purpose, criteriaHash, reasonCode)
+        );
+        _investorCriteria[purpose] = criteriaHash;
+        emit InvestorCriteriaSet(purpose, criteriaHash, reasonCode);
+    }
+
     // ------------------------------------------------------------- exposición
 
     /// @notice El operador registra el RESULTADO del agregado de exposición de
@@ -907,6 +1054,14 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
         emit AcquirerDeclarationRecorded(
             assetId, keccak256(abi.encode(ACQUIRER_TAG, clearanceId, assetId)), acquirerDocHash, acquirerDocVersion
         );
+    }
+
+    /// @notice Retira una autorización no usada (la compra no se hizo). Queda
+    ///         gastada: un identificador no se reactiva ni se vuelve a registrar.
+    function revokeExposureClearance(bytes32 clearanceId) external onlyRole(EXPOSURE_OPERATOR) {
+        ExposureClearance storage c = _clearance[clearanceId];
+        if (c.validUntil == 0 || c.used) revert DeclarationInvalid(bytes32("CLEARANCE"));
+        c.used = true;
     }
 
     /// @dev Patrón de `consumeAuthorization`: acción, alcance y contenido

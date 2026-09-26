@@ -73,6 +73,8 @@ Antes de escribir código, el equipo técnico confirma qué soporta la versión 
 
 Cambiar la lista de despliegue o el filtro es una **acción de gobernanza**: firma múltiple, código de motivo y registro público (SFSP-800 §0.2). **Un cierre que un solo administrador puede revertir desde una consola no es un cierre.** Todo cambio emite `NetworkPermissionChanged`.
 
+**Corte de un heredado (SFSP-700 §0.3 paso 4).** Un heredado en registro transitorio deja de ser admitido **sin ninguna acción** al llegar su bloque de corte: el filtro lo compara con el número de bloque. Para que el corte quede también en el registro público, `SFSPNetworkPermissions.publishLegacyCut(heredado)` emite `NetworkPermissionChanged` con el código `CORTE_MIGRACION` y retira la entrada transitoria. Cualquiera puede llamarla, solo después del bloque de corte y una sola vez: no cambia qué se admite, deja constancia. El ADR del mecanismo (§4) sigue pendiente.
+
 ---
 
 ## 7 · Pruebas de aceptación de la serie

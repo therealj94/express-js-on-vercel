@@ -6,6 +6,7 @@ const F = require("./fixture");
 const H = require("./helpers");
 const OA = require("./orden-autorizada");
 const { buildAuthorization, aprobacionDbnx } = require("./authorization");
+const V = require("./v03");
 
 const DIA = 86400;
 const ETH = 10n ** 18n;
@@ -16,11 +17,14 @@ describe("Revisión SFSP-410 · correcciones", function () {
     beforeEach(async function () {
       f = await F.deployAll();
       await f.issuance.send("setInstrumentLimits", [f.ASSET_NEW, 5000, 1000000], f.board);
+      // SFSP-120 §0.3 · acuñar a un tercero es colocar: alice suscribe.
+      await V.habilitarSuscripcion(f, [F.ASSET_NEW], [f.alice], [f.issuance.address]);
     });
 
     async function ordenMint(auth, amount, nonce) {
-      // v0.3 §5 · la acuñación exige además el documento de aprobación DBNX.
-      const docHash = await aprobacionDbnx(f, auth.assetId, amount, "rev_" + nonce);
+      // v0.3 §5 · la acuñación exige además el documento de aprobación DBNX,
+      // con la cantidad y el destino exactos.
+      const docHash = await aprobacionDbnx(f, auth.assetId, amount, "rev_" + nonce, { destination: auth.destination });
       const p = await OA.orden({
         verifyingContract: f.issuance.address,
         action: H.b32("MINT"),
@@ -141,6 +145,10 @@ describe("Revisión SFSP-410 · correcciones", function () {
     it("negativo: la Junta como emisor se rechaza", function () {
       assert.match(String(falla(parametros({ emisor: A(0x10) }))), /Junta no puede/);
     });
+    it("negativo (v0.3 §5): DBNX no puede ser el emisor ni techOps", function () {
+      assert.match(String(falla(parametros({ dbnx: A(0x12) }))), /dbnx no puede ser/);
+      assert.match(String(falla(parametros({ dbnx: A(0x11) }))), /dbnx no puede ser/);
+    });
     it("positivo: con roles distintos la validación pasa de ese punto", function () {
       const m = String(falla(parametros({})));
       assert.doesNotMatch(m, /techOps y emisor|Junta no puede|dbnx/);
@@ -219,7 +227,8 @@ describe("Revisión SFSP-410 · correcciones", function () {
       assert.equal(await iss.call("hasRole", [await iss.call("DBNX"), S.roles.dbnx]), true);
       assert.equal(await iss.call("hasRole", [await iss.call("DBNX"), S.desplegador]), false);
       const ts = await H.now();
-      await iss.send("registerDbnxApproval", [H.b32("doc_despliegue"), reg.activos[S.activos[0].simbolo].assetId, 10, ts - 1, ts + 100], S.roles.dbnx);
+      // Destino exacto (una acuñación) y clase colocación: SFSP-200 §0.5 fila 1.
+      await iss.send("registerDbnxApproval", [H.b32("doc_despliegue"), reg.activos[S.activos[0].simbolo].assetId, 10, ts - 1, ts + 100, "0x" + S.roles.emisor.slice(2).toLowerCase().padStart(64, "0"), false], S.roles.dbnx);
       assert.equal((await iss.call("dbnxApprovalOf", [H.b32("doc_despliegue")])).signer.toLowerCase(), S.roles.dbnx.toLowerCase());
     });
   });

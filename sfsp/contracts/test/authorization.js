@@ -69,11 +69,15 @@ async function buildAuthorization(f, overrides) {
  * el `operationId` viajan DENTRO del digest (`amount` y `nonce`), así que ya no
  * son parámetros libres del emisor.
  */
-async function ordenDeEmision(f, auth, amount, operationId) {
+async function ordenDeEmision(f, auth, amount, operationId, over) {
   // v0.3 §5 · verificación previa a la acuñación: DBNX registra el documento
-  // de aprobación por la cantidad EXACTA y su hash viaja en `evidenceRoot`,
-  // dentro del digest que aprueba gobierno.
-  const docHash = await aprobacionDbnx(f, auth.assetId, amount, "doc_" + operationId);
+  // de aprobación por la cantidad EXACTA y el destino EXACTO, y su hash viaja
+  // en `evidenceRoot`, dentro del digest que aprueba gobierno.
+  const o = over || {};
+  const docHash = await aprobacionDbnx(f, auth.assetId, amount, "doc_" + operationId, {
+    destination: auth.destination,
+    migration: o.migration,
+  });
   const p = await OA.orden({
     verifyingContract: f.issuance.address,
     action: H.b32("MINT"),
@@ -89,14 +93,27 @@ async function ordenDeEmision(f, auth, amount, operationId) {
   return { p, tupla: OA.tupla(p), digest };
 }
 
+/** Regla de destino de un cupo comercial (SFSPIssuanceController.DEST_ELIGIBLE_ACQUIRER). */
+const DEST_ADQUIRENTE_ELEGIBLE = H.keccak256(Buffer.from("SFSP.DBNX.DESTINO.ADQUIRENTE_ELEGIBLE", "utf8"));
+
+/** Una dirección como destino exacto de un documento DBNX (bytes32). */
+function destinoExacto(dir) {
+  return "0x" + dir.slice(2).toLowerCase().padStart(64, "0");
+}
+
 /**
  * v0.3 §5 · DBNX registra un documento de aprobación sintético para `assetId`
  * por exactamente `amount`, vigente desde ahora. Devuelve su hash.
+ * `over.destination`: dirección (destino exacto de `mint`) o bytes32 (regla de
+ * destino de un cupo). Por omisión, la regla del cupo comercial.
+ * `over.migration`: continuidad de tenencia (SFSP-700), sin SUBSCRIBE.
  */
 async function aprobacionDbnx(f, assetId, amount, etiqueta, over) {
   const o = over || {};
   const ts = await H.now();
   const docHash = H.keccak256(Buffer.from("DBNX:APROBACION:" + etiqueta, "utf8"));
+  let destino = o.destination || DEST_ADQUIRENTE_ELEGIBLE;
+  if (/^0x[0-9a-fA-F]{40}$/.test(destino)) destino = destinoExacto(destino);
   await f.issuance.send(
     "registerDbnxApproval",
     [
@@ -105,15 +122,36 @@ async function aprobacionDbnx(f, assetId, amount, etiqueta, over) {
       String(amount),
       String(o.validFrom !== undefined ? o.validFrom : ts - 60),
       String(o.validUntil !== undefined ? o.validUntil : ts + 7200),
+      destino,
+      !!o.migration,
     ],
     o.from || f.dbnx,
   );
   return docHash;
 }
 
+/**
+ * SFSP-120 §0.3 · acuñar a un tercero con `mint` es COLOCAR: el destino tiene
+ * que pasar SUBSCRIBE. Deja a `cuentas` en condiciones de suscribir `assetIds`
+ * (por omisión ASSET_NEW), una sola vez por despliegue, y da al controlador de
+ * emisión el rol de ejecutor en el motor. Todo sintético (v03.js).
+ */
+async function colocable(f, cuentas, assetIds) {
+  const V = require("./v03");
+  const ids = assetIds || [f.ASSET_NEW];
+  const hecho = f._colocable || (f._colocable = { activos: new Set(), cuentas: new Set(), ejecutor: false });
+  const activos = ids.filter((a) => !hecho.activos.has(a));
+  const nuevas = cuentas.filter((c) => !hecho.cuentas.has(c.toLowerCase()));
+  if (!activos.length && !nuevas.length && hecho.ejecutor) return;
+  await V.habilitarSuscripcion(f, activos, nuevas, hecho.ejecutor ? [] : [f.issuance.address]);
+  hecho.ejecutor = true;
+  for (const a of activos) hecho.activos.add(a);
+  for (const c of nuevas) hecho.cuentas.add(c.toLowerCase());
+}
+
 /** Acuña: aprueba la orden de esta acuñación concreta y la ejecuta. */
-async function acunar(f, sobre, amount, operationId, from) {
-  const o = await ordenDeEmision(f, sobre.auth, amount, operationId);
+async function acunar(f, sobre, amount, operationId, from, over) {
+  const o = await ordenDeEmision(f, sobre.auth, amount, operationId, over);
   return await f.issuance.send("mint", [sobre.auth, sobre.sigs, o.tupla, o.digest], from || f.board);
 }
 
@@ -145,6 +183,9 @@ module.exports = {
   buildAuthorization,
   ordenDeEmision,
   aprobacionDbnx,
+  DEST_ADQUIRENTE_ELEGIBLE,
+  destinoExacto,
+  colocable,
   acunar,
   ordenDeQuema,
   quemarConGobierno,

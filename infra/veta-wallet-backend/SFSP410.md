@@ -80,6 +80,14 @@ precio de `lib/origenPrice.js` en nanodólares ·10⁹. Trunca: nunca de más.
 4. **Precio** (resuelto 26-sep-2026, decisión de la dirección): 1 ORIGEN = gramo de oro / 55,
    igual que Ordenex, y es el modo por omisión de `lib/origenPrice.js`. Los 0,01 USD son la
    **comisión** por transacción (`OG_COMISION_USD=0.01`, `lib/comision.js`), no el precio.
+5. **SFSP v0.3 · la venta es una colocación** (correcciones de conformidad, 26-sep).
+   Con un cupo `SET_RELEASE_BUDGET` la bóveda evalúa además `SUBSCRIBE` sobre el
+   comprador (país abierto con su residencia acreditada, base de colocación,
+   licencia, alcance de la oferta exenta). Hasta que la Junta decida la primera
+   ola de países y lo demás (`sfsp/deploy/sfsp410/DIA-D.md`, compuerta 2b), la
+   entrega revierte con `SubscriptionRejected`: este adaptador no lo reconoce por
+   nombre y la deja en `revisar`, sin reintento. Nada cambia con el interruptor
+   apagado, que es como está hoy. La firma de `releaseOnDemand` no cambia.
 
 ## Revisión del 26-sep (REV-410-06)
 

@@ -123,15 +123,26 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
     bytes32 public constant DBNX = keccak256("SFSP.ROLE.DBNX");
 
     /// @dev Documento de aprobación DBNX registrado en cadena. Sólo su hash:
-    ///      el documento vive fuera. Se gasta en la acuñación que lo usa.
+    ///      el documento vive fuera. Se gasta en la acuñación —o en el cupo— que
+    ///      lo usa. SFSP-200 §0.5 fila 1: activo, cantidad, destino o regla de
+    ///      destino, vigencia y firmante son obligatorios.
     struct DbnxApproval {
         bytes32 assetId;
-        uint256 amount;       // cantidad EXACTA aprobada
+        uint256 amount;       // cantidad EXACTA aprobada (mint) o total del cupo (setMintBudget)
         uint64 validFrom;
         uint64 validUntil;    // exclusiva
         address signer;       // cuenta con rol DBNX que lo registró
         bool revoked;
-        bytes32 usedBy;       // operationId de la acuñación que lo gastó; 0 = sin usar
+        bytes32 usedBy;       // operationId (mint) o digest del cupo que lo gastó; 0 = sin usar
+        /// @dev Destino o regla de destino. En `mint`, la dirección exacta
+        ///      (`bytes32(uint256(uint160(destino)))`). En un cupo comercial,
+        ///      `DEST_ELIGIBLE_ACQUIRER` (quien pase SUBSCRIBE). En un cupo de
+        ///      migración, la raíz del padrón (ADR-016).
+        bytes32 destination;
+        /// @dev true: continuidad de tenencia de un heredado (SFSP-700 §0.3,
+        ///      ADR-016); no es colocación primaria y no se evalúa SUBSCRIBE,
+        ///      sólo MINT. false: colocación primaria (SFSP-120 §0.3).
+        bool migration;
     }
 
     event DbnxApprovalRecorded(
@@ -140,7 +151,9 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         address indexed signer,
         uint256 amount,
         uint64 validFrom,
-        uint64 validUntil
+        uint64 validUntil,
+        bytes32 destination,
+        bool migration
     );
     event DbnxApprovalRevoked(bytes32 indexed docHash, address indexed by, bytes32 reasonCode);
     /// @notice El documento DBNX `docHash` respaldó la acuñación `operationId`.
@@ -162,6 +175,19 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
     error DbnxApprovalAssetMismatch(bytes32 approved, bytes32 requested);
     error DbnxApprovalAmountMismatch(uint256 approved, uint256 requested);
     error DbnxSeparationOfDuties(address account);
+    error DbnxApprovalDestinationMismatch(bytes32 approved, bytes32 requested);
+    error DbnxApprovalWindowExceeded(uint64 approvedUntil, uint64 requestedUntil);
+    error BudgetDbnxExhausted(bytes32 assetId, uint256 remaining, uint256 requested);
+    /// @dev ADR-016 / T-700-27 · un cupo vigente no se sustituye sin revocarlo antes.
+    error BudgetInForce(bytes32 assetId, uint64 validUntil);
+    /// @dev SFSP-300 §0.2 salvaguardas 2 y 3 · un activo COM no se coloca con un
+    ///      tercero desde aquí: la colocación exige capacidad en onzas y pasa por
+    ///      el motor de reservas.
+    error CommodityPlacementViaReserveEngine(bytes32 assetId);
+
+    /// @dev Regla de destino de un cupo comercial: cualquier adquirente que pase
+    ///      SUBSCRIBE en el motor de elegibilidad.
+    bytes32 public constant DEST_ELIGIBLE_ACQUIRER = keccak256("SFSP.DBNX.DESTINO.ADQUIRENTE_ELEGIBLE");
 
     mapping(bytes32 => DbnxApproval) private _dbnxApproval;
 
@@ -253,12 +279,17 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
     ///         firma: la transacción la firma una cuenta con ese rol.
     /// @dev Separación de funciones: quien tiene el rol ISSUER (ejecuta la
     ///      acuñación) no puede registrar aprobaciones. DBNX no emite ni acuña.
+    /// @param destination destino o regla de destino (ver `DbnxApproval`).
+    /// @param migration true si autoriza la continuidad de tenencia de una
+    ///        migración (SFSP-700), no una colocación primaria.
     function registerDbnxApproval(
         bytes32 docHash,
         bytes32 assetId,
         uint256 amount,
         uint64 validFrom,
-        uint64 validUntil
+        uint64 validUntil,
+        bytes32 destination,
+        bool migration
     ) external onlyRole(DBNX) {
         if (hasRole(ISSUER, msg.sender)) revert DbnxSeparationOfDuties(msg.sender);
         if (docHash == bytes32(0)) revert DbnxApprovalRequired();
@@ -266,6 +297,8 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         if (assetId == bytes32(0)) revert DbnxApprovalInvalid(bytes32("ASSET"));
         if (amount == 0) revert DbnxApprovalInvalid(bytes32("AMOUNT"));
         if (validUntil <= validFrom || validUntil <= block.timestamp) revert DbnxApprovalInvalid(bytes32("WINDOW"));
+        // Sin destino ni regla de destino el documento está incompleto (SFSP-200 §0.5 fila 1).
+        if (destination == bytes32(0)) revert DbnxApprovalInvalid(bytes32("DESTINATION"));
         _dbnxApproval[docHash] = DbnxApproval({
             assetId: assetId,
             amount: amount,
@@ -273,9 +306,11 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
             validUntil: validUntil,
             signer: msg.sender,
             revoked: false,
-            usedBy: bytes32(0)
+            usedBy: bytes32(0),
+            destination: destination,
+            migration: migration
         });
-        emit DbnxApprovalRecorded(docHash, assetId, msg.sender, amount, validFrom, validUntil);
+        emit DbnxApprovalRecorded(docHash, assetId, msg.sender, amount, validFrom, validUntil, destination, migration);
     }
 
     /// @notice DBNX retira una aprobación no usada. Reducir poder no necesita quórum.
@@ -288,19 +323,26 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         emit DbnxApprovalRevoked(docHash, msg.sender, reasonCode);
     }
 
-    /// @dev La verificación de FORMA previa a la acuñación (v0.3 §5): el hash
-    ///      que va en la orden de gobierno (`p.evidenceRoot`) tiene que ser un
-    ///      documento DBNX registrado, firmado por quien TODAVÍA tiene el rol,
-    ///      no revocado, sin usar, vigente, del mismo activo y por la cantidad
-    ///      EXACTA. Si algo falla, revierte; si todo cuadra, se gasta.
+    /// @dev La verificación de FORMA previa a la acuñación (v0.3 §5), común a
+    ///      las dos rutas (`mint` y `setMintBudget`): el hash que va en la orden
+    ///      de gobierno tiene que ser un documento DBNX registrado, firmado por
+    ///      quien TODAVÍA tiene el rol, no revocado, sin usar, vigente y del
+    ///      mismo activo. Cada ruta comprueba después su cantidad y su destino.
+    ///      Si algo falla, revierte; si todo cuadra, se gasta.
     ///      v0.3 §5.2 · la separación DBNX/emisor se comprueba AQUÍ, al usar, y
     ///      no sólo al registrar: si no, quien registró la aprobación podía
     ///      recibir ISSUER después (o perderlo, registrar y recuperarlo) y
     ///      acuñar con su propia firma. Ni el firmante puede ejecutar, ni
     ///      puede tener ISSUER, ni el ejecutor puede tener DBNX.
-    function _useDbnxApproval(bytes32 docHash, bytes32 assetId, uint256 amount, bytes32 operationId) internal {
+    ///      Apéndice B · el paso a «usada» emite `DbnxApprovalUsed` con la
+    ///      cantidad del documento y el `usedBy` (operationId de la acuñación o
+    ///      digest del cupo).
+    function _useDbnxApproval(bytes32 docHash, bytes32 assetId, bytes32 usedBy)
+        internal
+        returns (DbnxApproval storage a)
+    {
         if (docHash == bytes32(0)) revert DbnxApprovalRequired();
-        DbnxApproval storage a = _dbnxApproval[docHash];
+        a = _dbnxApproval[docHash];
         if (a.signer == address(0)) revert DbnxApprovalUnknown(docHash);
         if (!hasRole(DBNX, a.signer)) revert DbnxApprovalSignerNotDbnx(a.signer);
         if (a.signer == msg.sender || hasRole(ISSUER, a.signer)) revert DbnxSeparationOfDuties(a.signer);
@@ -311,9 +353,8 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
             revert DbnxApprovalNotInForce(a.validFrom, a.validUntil, block.timestamp);
         }
         if (a.assetId != assetId) revert DbnxApprovalAssetMismatch(a.assetId, assetId);
-        if (a.amount != amount) revert DbnxApprovalAmountMismatch(a.amount, amount);
-        a.usedBy = operationId;
-        emit DbnxApprovalUsed(docHash, assetId, amount, operationId);
+        a.usedBy = usedBy;
+        emit DbnxApprovalUsed(docHash, assetId, a.amount, usedBy);
     }
 
     // ------------------------------------------------------------- reservas concurrentes
@@ -393,6 +434,35 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         emit InternalAccountFlagged(account, internalAccount, msg.sender, reasonCode);
     }
 
+    // ------------------------------------------------ SFSP-300 · activos COM
+
+    /// @dev SFSP-300 §0.2 (v0.3 §9.4): un activo de commodity (AUKA, AGKA) se
+    ///      coloca con un tercero SÓLO con capacidad de colocación en onzas, y
+    ///      eso lo lleva el motor de reservas (`SFSPReserveEngine.place`). Este
+    ///      controlador no conoce las onzas: un activo marcado COM no se acuña
+    ///      desde aquí a un tercero (T-300-30). A la tesorería registrada sigue
+    ///      rigiendo R1 hasta que D23 decida lo contrario.
+    event CommodityAssetFlagged(bytes32 indexed assetId, bool commodity, address indexed by, bytes32 reasonCode);
+
+    mapping(bytes32 => bool) private _commodity;
+
+    function isCommodityAsset(bytes32 assetId) external view returns (bool) {
+        return _commodity[assetId];
+    }
+
+    /// @notice Marca o desmarca un activo como COM. Marcar RESTRINGE (TECH_OPS o
+    ///         la Junta); desmarcar amplía lo que se puede acuñar (sólo la Junta).
+    function setCommodityAsset(bytes32 assetId, bool commodity, bytes32 reasonCode) external {
+        require(assetId != bytes32(0) && reasonCode != bytes32(0), "SFSP: activo y motivo");
+        if (commodity) {
+            if (!hasRole(TECH_OPS, msg.sender) && !hasRole(DBNX_BOARD, msg.sender)) revert Unauthorized(TECH_OPS, msg.sender);
+        } else if (!hasRole(DBNX_BOARD, msg.sender)) {
+            revert Unauthorized(DBNX_BOARD, msg.sender);
+        }
+        _commodity[assetId] = commodity;
+        emit CommodityAssetFlagged(assetId, commodity, msg.sender, reasonCode);
+    }
+
     // ------------------------------------------------ SFSP-410 · cupo de emisión
 
     bytes32 public constant ACTION_SET_MINT_BUDGET = bytes32("SET_MINT_BUDGET");
@@ -413,7 +483,6 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
     ///      cupos de MIGRACIÓN. Lo fija la Junta: elegir el motor es elegir la
     ///      regla.
     ISFSPEligibilityEngine public subscriptionGate;
-    mapping(bytes32 => bool) private _migrationBudget;
 
     event SubscriptionGateSet(address indexed gate, address indexed by, bytes32 reasonCode);
     error SubscriptionRequired(bytes32 assetId);
@@ -432,7 +501,7 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
 
     /// @notice true si el cupo vigente del activo es de MIGRACIÓN.
     function isMigrationBudget(bytes32 assetId) external view returns (bool) {
-        return _migrationBudget[assetId];
+        return _budgetAuth[assetId].migration;
     }
 
     /// @dev Cupo pre-aprobado por gobierno para emitir BAJO DEMANDA: cuando el
@@ -451,17 +520,36 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
 
     mapping(bytes32 => MintBudget) private _budget;
 
+    /// @dev v0.3 §5 · la autorización DBNX del cupo: qué documento lo respalda,
+    ///      cuánto puede crear en TOTAL (lo que DBNX aprobó; los periodos no lo
+    ///      renuevan) y si es una migración (sin SUBSCRIBE) o una colocación.
+    ///      Va aparte de `MintBudget` para no cambiar lo que devuelve `mintBudgetOf`.
+    struct BudgetAuthorization {
+        bytes32 docHash;
+        uint256 remaining;
+        bool migration;
+    }
+
+    mapping(bytes32 => BudgetAuthorization) private _budgetAuth;
+
     function mintBudgetOf(bytes32 assetId) external view returns (MintBudget memory) {
         return _budget[assetId];
     }
 
-    /// @notice Lo que queda del cupo en el periodo en curso (0 si no hay cupo vigente).
+    function budgetAuthorizationOf(bytes32 assetId) external view returns (BudgetAuthorization memory) {
+        return _budgetAuth[assetId];
+    }
+
+    /// @notice Lo que queda del cupo en el periodo en curso, acotado por lo que
+    ///         queda de la aprobación DBNX (0 si no hay cupo vigente).
     function budgetRemaining(bytes32 assetId) external view returns (uint256) {
         MintBudget memory b = _budget[assetId];
         if (b.period == 0 || block.timestamp >= b.validUntil) return 0;
         uint64 idx = uint64(block.timestamp / b.period);
         uint256 used = idx == b.periodIndex ? b.usedInPeriod : 0;
-        return used >= b.perPeriod ? 0 : b.perPeriod - used;
+        uint256 left = used >= b.perPeriod ? 0 : b.perPeriod - used;
+        uint256 dbnx = _budgetAuth[assetId].remaining;
+        return left < dbnx ? left : dbnx;
     }
 
     /// @notice Huella de los términos del cupo que no caben en el payload común.
@@ -473,13 +561,26 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         return keccak256(abi.encode(BUDGET_TERMS_TAG, period, validUntil, termsDocRoot));
     }
 
-    /// @notice Fija el cupo de un activo con doble control Y espera.
+    /// @notice Fija el cupo de un activo con doble control Y espera, y con la
+    ///         aprobación de DBNX.
     /// @dev Cambiar un cupo es cambiar cuánto puede crear el sistema sin volver a
     ///      preguntar: se exige la acción SET_MINT_BUDGET (venta) o
     ///      SET_MIGRATION_BUDGET (migración), quórum, la espera del timelock
     ///      contada desde la propuesta, y el digest se gasta. La etiqueta
     ///      aprobada tiene que ser la misma acción: el tipo de cupo lo deciden
     ///      los firmantes, no el ejecutor.
+    ///      v0.3 §5 y §8.3 Bloque 7, SFSP-200 §0.5 regla 1 · no hay ruta de
+    ///      acuñación exenta de DBNX: `termsDocRoot` es el hash del documento de
+    ///      aprobación DBNX del cupo, que va dentro del digest aprobado. Tiene que
+    ///      estar registrado, vigente, sin usar y ser del mismo activo; su
+    ///      cantidad es el TOTAL que el cupo puede crear (>= el monto por periodo)
+    ///      y su vigencia acota la del cupo. Su regla de destino dice si es una
+    ///      colocación (`DEST_ELIGIBLE_ACQUIRER`: cada acuñación exige SUBSCRIBE)
+    ///      o una migración (la raíz del padrón: sólo MINT, ADR-016), y tiene
+    ///      que coincidir con la etiqueta: SET_MIGRATION_BUDGET sólo con un
+    ///      documento de migración, SET_MINT_BUDGET sólo con uno de colocación.
+    ///      ADR-016 / T-700-27 · un cupo vigente no se sustituye: se revoca
+    ///      antes (`revokeMintBudget`, una llave) y después se fija el nuevo.
     function setMintBudget(
         SFSPAuthorization.Payload calldata p,
         bytes32 approvedDigest,
@@ -497,6 +598,8 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         bytes32 terms = budgetTermsRoot(period, validUntil, termsDocRoot);
         if (p.evidenceRoot != terms) revert BudgetTermsMismatch(p.evidenceRoot, terms);
         if (!_limits[p.assetId].configured) revert LimitsNotFixed(p.assetId, SFSPCodes.BLOCKED_DECISION);
+        MintBudget storage vigente = _budget[p.assetId];
+        if (vigente.period != 0 && block.timestamp < vigente.validUntil) revert BudgetInForce(p.assetId, vigente.validUntil);
 
         if (governance.authorizationActionOf(approvedDigest) != p.action) {
             revert AuthorizationActionMismatch(p.action, governance.authorizationActionOf(approvedDigest));
@@ -509,7 +612,15 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         SFSPAuthorization.authorize(m, approvedDigest);
         governance.consumeAuthorization(approvedDigest);
 
-        _migrationBudget[p.assetId] = p.action == ACTION_SET_MIGRATION_BUDGET;
+        DbnxApproval storage a = _useDbnxApproval(termsDocRoot, p.assetId, approvedDigest);
+        if (a.amount < p.amount) revert DbnxApprovalAmountMismatch(a.amount, p.amount);
+        if (validUntil > a.validUntil) revert DbnxApprovalWindowExceeded(a.validUntil, validUntil);
+        if (a.migration ? a.destination == DEST_ELIGIBLE_ACQUIRER : a.destination != DEST_ELIGIBLE_ACQUIRER) {
+            revert DbnxApprovalDestinationMismatch(a.destination, DEST_ELIGIBLE_ACQUIRER);
+        }
+        if (a.migration != (p.action == ACTION_SET_MIGRATION_BUDGET)) revert BudgetKindMismatch(p.assetId, a.migration);
+        _budgetAuth[p.assetId] = BudgetAuthorization({docHash: termsDocRoot, remaining: a.amount, migration: a.migration});
+
         _budget[p.assetId] = MintBudget({
             perPeriod: p.amount,
             period: period,
@@ -529,15 +640,18 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         }
         require(reasonCode != bytes32(0), "SFSP: motivo requerido");
         delete _budget[assetId];
-        delete _migrationBudget[assetId];
+        delete _budgetAuth[assetId];
         emit MintBudgetRevoked(assetId, msg.sender, reasonCode);
     }
 
     /// @notice Emisión bajo demanda: acuña al USUARIO exactamente lo que pagó.
-    /// @dev Con la compuerta de suscripción encendida, sólo consume un cupo de
+    /// @dev Además del cupo y los topes: nunca más de lo que DBNX aprobó para el
+    ///      cupo, y —salvo en un cupo de migración— la suscripción primaria
+    ///      sobre el destino (SFSP-120 §0.3 regla 1: acuñar al usuario que pagó
+    ///      es colocar), aquí SIN contexto (ruta de residencia por país). Con la
+    ///      compuerta de suscripción encendida, sólo consume un cupo de
     ///      MIGRACIÓN: una venta tiene que pasar por `mintOnSubscription`, que
-    ///      evalúa SUBSCRIBE (v0.3 §6 y §7). Con la compuerta apagada (valor de
-    ///      despliegue) se comporta como antes.
+    ///      recibe el contexto (ruta de residencia privada).
     /// @param paymentRef hash del recibo del pago confirmado; es el operationId
     ///        y no se puede repetir.
     /// @param evidenceRoot raíz de la evidencia del pago (recibo, tx de USDT, etc.).
@@ -547,8 +661,9 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         nonReentrant
     {
         if (governance.isPaused()) revert Paused();
-        if (address(subscriptionGate) != address(0) && !_migrationBudget[assetId]) revert SubscriptionRequired(assetId);
-        _mintFromBudget(assetId, destination, amount, paymentRef, evidenceRoot);
+        bool sale = !_budgetAuth[assetId].migration;
+        if (sale && address(subscriptionGate) != address(0)) revert SubscriptionRequired(assetId);
+        _mintFromBudget(assetId, destination, amount, paymentRef, evidenceRoot, sale);
     }
 
     /// @notice VENTA primaria bajo demanda: evalúa SUBSCRIBE sobre el
@@ -566,18 +681,21 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
     ) external onlyRole(ISSUER) nonReentrant {
         if (governance.isPaused()) revert Paused();
         if (address(subscriptionGate) == address(0)) revert SubscriptionGateUnset(SFSPCodes.BLOCKED_DECISION);
-        if (_migrationBudget[assetId]) revert BudgetKindMismatch(assetId, true);
+        if (_budgetAuth[assetId].migration) revert BudgetKindMismatch(assetId, true);
         subscriptionGate.enforceSubscription(destination, assetId, amount, ctx);
-        _mintFromBudget(assetId, destination, amount, paymentRef, evidenceRoot);
+        _mintFromBudget(assetId, destination, amount, paymentRef, evidenceRoot, false);
     }
 
     /// @dev Cupo, topes y acuñación, comunes a las dos entradas bajo demanda.
+    /// @param subscribe venta sin contexto: SUBSCRIBE por la ruta de residencia
+    ///        por país (la entrada con contexto ya la aplicó).
     function _mintFromBudget(
         bytes32 assetId,
         address destination,
         uint256 amount,
         bytes32 paymentRef,
-        bytes32 evidenceRoot
+        bytes32 evidenceRoot,
+        bool subscribe
     ) internal {
         if (paymentRef == bytes32(0)) revert PaymentReferenceRequired();
         if (_usedOperationId[paymentRef]) revert OperationReplay(paymentRef);
@@ -592,11 +710,16 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         uint256 used = idx == b.periodIndex ? b.usedInPeriod : 0;
         if (used + amount > b.perPeriod) revert BudgetPeriodExceeded(assetId, used, amount, b.perPeriod);
 
+        BudgetAuthorization storage auth = _budgetAuth[assetId];
+        if (amount > auth.remaining) revert BudgetDbnxExhausted(assetId, auth.remaining, amount);
+        auth.remaining -= amount;
+
         _applyInstrumentCaps(assetId, amount);
         b.periodIndex = idx;
         b.usedInPeriod = used + amount;
 
         _mintTo(assetId, destination, amount, paymentRef);
+        if (subscribe) _enforceSubscription(assetId, destination, amount);
         emit MintExecuted(assetId, bytes32("BUDGET"), destination, amount, paymentRef, evidenceRoot);
         emit MintOnDemand(assetId, destination, paymentRef, amount, used + amount, idx);
     }
@@ -619,13 +742,25 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
 
     /// @dev Único punto que llama al activo. Aquí vive la regla de SFSP-410: no
     ///      se acuña hacia una cuenta interna, venga la emisión de donde venga.
+    ///      Y la de SFSP-300 §0.2: un activo COM no se coloca desde aquí.
     function _mintTo(bytes32 assetId, address destination, uint256 amount, bytes32 operationId) internal {
         if (_internalAccount[destination]) revert MintToInternalAccount(destination);
+        if (_commodity[assetId]) revert CommodityPlacementViaReserveEngine(assetId);
         address assetContract = _assetContract[assetId];
         require(assetContract != address(0), "SFSP: activo no registrado");
         bytes32 declared = ISFSPRegulatedAsset(assetContract).assetId();
         if (declared != assetId) revert AssetMismatch(assetId, declared);
         ISFSPRegulatedAsset(assetContract).mintFromIssuance(destination, amount, operationId);
+    }
+
+    /// @dev SFSP-120 §0.3 regla 1 · la suscripción la aplica el motor del propio
+    ///      activo (el mismo que evaluó MINT), en esta transacción. Este
+    ///      controlador necesita el rol SUBSCRIPTION_EXECUTOR de ese motor; sin
+    ///      él, revierte: no hay colocación sin SUBSCRIBE.
+    function _enforceSubscription(bytes32 assetId, address destination, uint256 amount) internal {
+        ISFSPEligibilityEngine engine = ISFSPRegulatedAsset(_assetContract[assetId]).engine();
+        SFSPTypes.SubscriptionContext memory sinContexto;
+        engine.enforceSubscription(destination, assetId, amount, sinContexto);
     }
 
     // ------------------------------------------------------------- emisión
@@ -688,8 +823,9 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         if (label != ACTION_MINT) revert AuthorizationActionMismatch(ACTION_MINT, label);
         if (!governance.isAuthorizationApproved(approvedDigest)) revert MintNotAuthorized(approvedDigest);
         // v0.3 §5 · verificación previa: el documento de aprobación DBNX va en
-        // `p.evidenceRoot`, así que gobierno lo aprobó dentro del digest.
-        _useDbnxApproval(p.evidenceRoot, p.assetId, p.amount, p.nonce);
+        // `p.evidenceRoot`, así que gobierno lo aprobó dentro del digest. Aquí
+        // se exige la cantidad EXACTA y el destino EXACTO del documento.
+        bool migration = _checkMintApproval(p);
         SFSPAuthorization.Payload memory m = p;
         SFSPAuthorization.authorize(m, approvedDigest);
         governance.consumeAuthorization(approvedDigest);
@@ -698,6 +834,17 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         _checkApprovals(a, signatures);
         _applyCaps(a, p.amount);
         _executeMint(a, p.amount, p.nonce);
+        // SFSP-120 §0.3 · acuñar a un tercero es colocar, salvo la continuidad
+        // de tenencia de una migración que DBNX declaró como tal.
+        if (!migration) _enforceSubscription(a.assetId, a.destination, p.amount);
+    }
+
+    function _checkMintApproval(SFSPAuthorization.Payload calldata p) internal returns (bool) {
+        DbnxApproval storage d = _useDbnxApproval(p.evidenceRoot, p.assetId, p.nonce);
+        if (d.amount != p.amount) revert DbnxApprovalAmountMismatch(d.amount, p.amount);
+        bytes32 dest = bytes32(uint256(uint160(p.destination)));
+        if (d.destination != dest) revert DbnxApprovalDestinationMismatch(d.destination, dest);
+        return d.migration;
     }
 
     /// @dev El payload tiene que describir la MISMA acuñación que el sobre

@@ -5,7 +5,7 @@
 // La prueba 'esquema.test.ts' falla si este archivo y el JSON divergen.
 
 /** Version de la fuente unica desde la que se genero este modulo. */
-export const VERSION_ESPEC_EVENTOS = "draft-0.6";
+export const VERSION_ESPEC_EVENTOS = "draft-0.7";
 
 /** Un campo de un evento, con todo lo que el indexador necesita saber. */
 export interface CampoEventoGenerado {
@@ -36,7 +36,7 @@ export interface EventoGenerado {
   readonly camposDeAtribucion: readonly string[];
 }
 
-/** Los 72 eventos del §3, por su nombre canonico. */
+/** Los 76 eventos del §3, por su nombre canonico. */
 export type NombreEvento =
   | "AssetRegistered"
   | "PolicyUpdated"
@@ -107,6 +107,10 @@ export type NombreEvento =
   | "ExposureParamsSet"
   | "DbnxApprovalRecorded"
   | "DbnxApprovalRevoked"
+  | "InvestorCriteriaSet"
+  | "CommodityAssetFlagged"
+  | "DeskLicenseGateSet"
+  | "DeskLicenseModuleSet"
   | "DbnxApprovalUsed"
   | "SubscriptionGateSet"
   | "SubscriptionRequirementSet";
@@ -309,7 +313,7 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
   RedemptionUpdated: {
     nombre: "RedemptionUpdated",
     emisor: "CommodityEngine",
-    significado: "Avance en la maquina de redencion (SFSP-300 §RedemptionState).",
+    significado: "Avance en la maquina de redencion (SFSP-300 §RedemptionState), con su codigo de motivo (Apendice A/B, reglas 1 y 6): una cancelacion por inelegibilidad lleva el codigo del motor de elegibilidad y se distingue de la del tenedor (CANCELACION_TENEDOR) y de la de operacion (CANCELACION_OPERACION); la incomparecencia, VENCIMIENTO_PLAZO.",
     atribucion: "POR_ACTIVO",
     afectaSuministro: "NINGUNO",
     implementadoEnContratos: true,
@@ -319,8 +323,9 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
       { nombre: "previousState", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
       { nombre: "newState", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
       { nombre: "amount", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
     ],
-    requeridos: ["redemptionId", "assetId", "previousState", "newState", "amount"],
+    requeridos: ["redemptionId", "assetId", "previousState", "newState", "amount", "reasonCode"],
     cantidades: ["amount"],
     camposDeAtribucion: ["assetId"],
   },
@@ -574,7 +579,7 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
   NetworkPermissionChanged: {
     nombre: "NetworkPermissionChanged",
     emisor: "NetworkAdmission",
-    significado: "Alta o baja en la lista de despliegue o en el filtro de transacciones (SFSP-150). Lo emite SFSPNetworkPermissions; en SYSTEM_FUNCTION el selector va en los 4 ultimos bytes de permissionKind.",
+    significado: "Alta o baja en la lista de despliegue o en el filtro de transacciones (SFSP-150). Lo emite SFSPNetworkPermissions; en SYSTEM_FUNCTION el selector va en los 4 ultimos bytes de permissionKind. El corte de un heredado transitorio en su bloque se publica con 'publishLegacyCut' (reasonCode CORTE_MIGRACION, granted = false).",
     atribucion: "GLOBAL",
     afectaSuministro: "NINGUNO",
     implementadoEnContratos: true,
@@ -1280,7 +1285,7 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
   DbnxApprovalRecorded: {
     nombre: "DbnxApprovalRecorded",
     emisor: "IssuanceController",
-    significado: "DBNX registra el hash de un documento de aprobacion de emision: activo, cantidad exacta y vigencia (SFSP v0.3 §5). NO es emision ni capacidad: es la pieza que la acunacion verifica en forma antes de ejecutar.",
+    significado: "DBNX registra el hash de un documento de aprobacion de emision: activo, cantidad, vigencia y destino o regla de destino (SFSP v0.3 §5, SFSP-200 §0.5 fila 1). En 'mint' el destino es la direccion exacta y la cantidad es exacta; en un cupo (setMintBudget) la cantidad es el total del cupo y la regla es ADQUIRENTE_ELEGIBLE (colocacion: SUBSCRIBE) o la raiz del padron (migration = true: continuidad de tenencia, sin SUBSCRIBE). NO es emision ni capacidad: es la pieza que la acunacion verifica en forma antes de ejecutar.",
     atribucion: "POR_ACTIVO",
     afectaSuministro: "NINGUNO",
     implementadoEnContratos: true,
@@ -1291,8 +1296,10 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
       { nombre: "amount", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
       { nombre: "validFrom", tipo: "uint64", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
       { nombre: "validUntil", tipo: "uint64", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "destination", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "migration", tipo: "bool", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
     ],
-    requeridos: ["docHash", "assetId", "signer", "amount", "validFrom", "validUntil"],
+    requeridos: ["docHash", "assetId", "signer", "amount", "validFrom", "validUntil", "destination", "migration"],
     cantidades: ["amount"],
     camposDeAtribucion: ["assetId"],
   },
@@ -1309,6 +1316,71 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
       { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
     ],
     requeridos: ["docHash", "by", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  InvestorCriteriaSet: {
+    nombre: "InvestorCriteriaSet",
+    emisor: "EligibilityEngine",
+    significado: "D13 · gobierno fija, con orden y acta, el criterio de INVERSIONISTA_ACREDITADO o INVERSIONISTA_SOFISTICADO. Hasta entonces una SUBSCRIBE que dependa de ese perfil devuelve BLOCKED_DECISION (SFSP-140 §4 regla 2).",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "purpose", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "criteriaHash", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["purpose", "criteriaHash", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  CommodityAssetFlagged: {
+    nombre: "CommodityAssetFlagged",
+    emisor: "IssuanceController",
+    significado: "Un activo se marca (o desmarca, solo la Junta) como COM en el controlador de emision: desde ahi no se acuna a un tercero, porque la colocacion de un commodity exige capacidad en onzas y pasa por el motor de reservas (SFSP-300 §0.2, T-300-30).",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "commodity", tipo: "bool", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "by", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["assetId", "commodity", "by", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: ["assetId"],
+  },
+  DeskLicenseGateSet: {
+    nombre: "DeskLicenseGateSet",
+    emisor: "TreasuryDesk",
+    significado: "La Junta cablea el registro de licencias que consulta la tesorería cotizadora. Sin registro, la tesorería no cotiza (LICENCIA_NO_OTORGADA).",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "gate", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "by", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["gate", "by"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  DeskLicenseModuleSet: {
+    nombre: "DeskLicenseModuleSet",
+    emisor: "TreasuryDesk",
+    significado: "La Junta declara un modulo de licencia del que depende un lado de la tesoreria (quien la opera y con que licencia, v0.3 §13.3, SFSP-140 §3.2): un evento por modulo, con su posicion y el total de la lista. Sin modulos declarados, BLOCKED_DECISION.",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "side", tipo: "uint8", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "moduleId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "index", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "count", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["side", "moduleId", "index", "count"],
     cantidades: [],
     camposDeAtribucion: [],
   },
@@ -1435,6 +1507,10 @@ export const EVENTOS_CONOCIDOS: Readonly<Record<NombreEvento, string>> = {
   ExposureParamsSet: "EligibilityEngine",
   DbnxApprovalRecorded: "IssuanceController",
   DbnxApprovalRevoked: "IssuanceController",
+  InvestorCriteriaSet: "EligibilityEngine",
+  CommodityAssetFlagged: "IssuanceController",
+  DeskLicenseGateSet: "TreasuryDesk",
+  DeskLicenseModuleSet: "TreasuryDesk",
   DbnxApprovalUsed: "IssuanceController",
   SubscriptionGateSet: "IssuanceController",
   SubscriptionRequirementSet: "NativeVault",

@@ -2,11 +2,12 @@
 const assert = require("node:assert/strict");
 const F = require("./fixture");
 const H = require("./helpers");
-const { buildAuthorization, acunar, quemarConGobierno } = require("./authorization");
+const { buildAuthorization, acunar, quemarConGobierno, colocable } = require("./authorization");
 const OA = require("./orden-autorizada");
 
 async function seed(f, to, amount, tag) {
   await f.issuance.send("setInstrumentLimits", [f.ASSET_NEW, 1000000, 1000000], f.board);
+  await colocable(f, [to]);
   const { auth, sigs } = await buildAuthorization(f, {
     destination: to,
     amount,

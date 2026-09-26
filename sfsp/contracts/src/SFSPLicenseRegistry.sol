@@ -23,9 +23,9 @@ import {ILicenseGate} from "./lib/ILicenseGate.sol";
 ///         argumentos reales y consumida (patrón de `consumeAuthorization`).
 ///      Ningún número de licencia vive en el código: entra por la orden.
 ///      Implementa `ILicenseGate`: es la compuerta que reciben el motor de
-///      reservas y los demás módulos. El id del módulo es el que preguntan (por
-///      ejemplo `CUSTODIA_CLASE_G` para la custodia interna y los canales físicos),
-///      y gobierno lo declara con ese mismo id.
+///      reservas, la tesorería y los demás módulos. El id del módulo es el que
+///      preguntan (por ejemplo `MOD_CUSTODIA_CLIENTES` para la custodia interna
+///      y los canales físicos), y gobierno lo declara con ese mismo id.
 contract SFSPLicenseRegistry is SFSPAccessControl, ILicenseGate {
     // Apéndice A · Licencia. El orden es parte del contrato: no se reordena.
     enum LicenseState { EN_TRAMITE, OTORGADA, VIGENTE, SUSPENDIDA, VENCIDA, REVOCADA }
@@ -114,7 +114,9 @@ contract SFSPLicenseRegistry is SFSPAccessControl, ILicenseGate {
     /// @dev Alcances de las órdenes: el `assetId` del §12.1 no puede ser cero.
     bytes32 public constant SCOPE_LICENSE = bytes32("SFSP:GOV:LICENSE");
     bytes32 public constant SCOPE_MODULE = bytes32("SFSP:GOV:MODULE");
-    bytes32 public constant REASON_TERM_EXPIRED = bytes32("PLAZO_VENCIDO");
+    /// @dev Código del catálogo (ESTADOS-Y-EVENTOS §C) para toda transición
+    ///      automática por vencimiento de plazo.
+    bytes32 public constant REASON_TERM_EXPIRED = bytes32("VENCIMIENTO_PLAZO");
     /// @dev Techo técnico (gas), no un parámetro económico.
     uint256 public constant MAX_DEPENDENCIES = 4;
 
@@ -187,6 +189,19 @@ contract SFSPLicenseRegistry is SFSPAccessControl, ILicenseGate {
         if (!m.exists) return false;
         Availability a = _effectiveAvailability(m);
         return a == Availability.DISPONIBLE || a == Availability.BETA;
+    }
+
+    /// @notice `ILicenseGate` · ¿`number` es el número de otorgamiento de una
+    ///         licencia VIGENTE de la que depende `moduleId`?
+    function moduleHasLicenseNumber(bytes32 moduleId, bytes32 number) external view returns (bool) {
+        if (number == bytes32(0)) return false;
+        Module storage m = _modules[moduleId];
+        uint256 n = m.depKeys.length;
+        for (uint256 i = 0; i < n; i++) {
+            bytes32 id = _slot[m.depKeys[i]];
+            if (isLicenseEffective(id) && _licenses[id].grant.number == number) return true;
+        }
+        return false;
     }
 
     /// @notice Disponibilidad PÚBLICA efectiva, en la taxonomía única.

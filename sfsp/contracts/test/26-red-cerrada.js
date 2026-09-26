@@ -9,6 +9,7 @@ const assert = require("node:assert/strict");
 const F = require("./fixture");
 const H = require("./helpers");
 const OA = require("./orden-autorizada");
+const V = require("./v03");
 
 const ACCION = H.b32("SET_NETWORK_PERMISSION");
 const ALCANCE = H.b32("SFSP:NET:ADMISSION");
@@ -195,6 +196,27 @@ describe("SFSP-150 · red cerrada: SFSPNetworkPermissions", function () {
     assert.equal(await permitido(np, f.alice, f.assetNew.address, TRANSFER), true);
   });
 
+  it("SFSP-700 §0.3 paso 4 · el corte del heredado se publica con CORTE_MIGRACION (el bloqueo no es invisible)", async function () {
+    const corte = (await bloque()) + 10;
+    await aplicar(f, np, [cambio({ kind: K.LEGACY, subject: heredado.address, assetId: ASSET_HEREDADO, untilBlock: corte })]);
+    // Antes del corte no hay nada que publicar.
+    await V.revertCon(np.send("publishLegacyCut", [heredado.address], extrano), np, "CutNotReached");
+    await minar(corte - (await bloque()));
+    assert.equal(await permitido(np, f.alice, heredado.address, TRANSFER), false, "el bloqueo ya ocurrió solo");
+    // Cualquiera lo publica; el evento lleva el código del catálogo y una operación reproducible.
+    const rc = await np.send("publishLegacyCut", [heredado.address], extrano);
+    const ev = rc.logs.map((l) => np.iface.parseLog(l)).find((e) => e.name === "NetworkPermissionChanged");
+    assert.equal(ev.args.subject.toLowerCase(), heredado.address.toLowerCase());
+    assert.equal(ev.args.permissionKind, K.LEGACY);
+    assert.equal(ev.args.granted, false);
+    assert.equal(ev.args.reasonCode, H.b32("CORTE_MIGRACION"));
+    assert.equal(ev.args.operationId, H.keccak256(H.defaultAbiCoder.encode(["address", "uint64"], [heredado.address, corte])));
+    assert.equal(Number((await np.call("destinationOf", [heredado.address])).kind), 0);
+    assert.equal(await permitido(np, f.alice, heredado.address, TRANSFER), false);
+    // Una vez publicado, no hay nada más que publicar; y un destino que no es heredado no se toca.
+    await V.revertCon(np.send("publishLegacyCut", [heredado.address], extrano), np, "NotLegacy");
+  });
+
   it("T-150-04 · un corte en el pasado se rechaza al dar de alta", async function () {
     const cs = [cambio({ kind: K.LEGACY, subject: heredado.address, assetId: ASSET_HEREDADO, untilBlock: 1 })];
     const { p, d } = await orden(f, np, cs);
@@ -357,10 +379,11 @@ describe("SFSP-150 · red cerrada: SFSPNetworkPermissions", function () {
       .filter((x) => x.type === "function" && x.stateMutability !== "view" && x.stateMutability !== "pure")
       .map((x) => x.name)
       .sort();
-    assert.deepEqual(escritoras, ["applyChanges", "grantRole", "purgeExcluded", "revokeRole"]);
+    assert.deepEqual(escritoras, ["applyChanges", "grantRole", "publishLegacyCut", "purgeExcluded", "revokeRole"]);
     for (const [fn, args, frag] of [
       ["grantRole", [await np.call("TECH_OPS"), extrano], "Unauthorized"],
       ["purgeExcluded", [heredado.address], "NotExcluded"],
+      ["publishLegacyCut", [heredado.address], "NotLegacy"],
     ]) {
       await H.expectRevert(np.send(fn, args, extrano), frag);
     }

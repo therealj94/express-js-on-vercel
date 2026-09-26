@@ -81,17 +81,20 @@ module.exports = {
       },
     ],
     overrides: {
-      // SFSPReserveEngine (sin desplegar) roza el límite de 24.576 bytes de
-      // EIP-170: con el generador clásico le quedaban ~600 bytes y las
-      // correcciones de la revisión (custodios suspendibles, vigencia máxima
-      // de atestación, concentración por activo, un token por activo) no caben.
-      // Sólo este archivo se compila por la vía IR: mismo compilador fijado,
-      // mismo evmVersion y mismo optimizador. El resto del árbol no cambia.
+      // EIP-170 · SFSPReserveEngine (sin desplegar) roza el límite de 24.576
+      // bytes. Las correcciones de la revisión del 26-sep de las dos ramas
+      // (custodios suspendibles, vigencia máxima de atestación, concentración
+      // por activo, un token por activo; SUBSCRIBE en place, canales por orden
+      // de gobierno, cobertura medida) no caben con el generador clásico.
+      // Sólo este archivo se compila por la vía IR y con el optimizador
+      // orientado a tamaño (runs = 1): mismo compilador fijado (P09), mismo
+      // evmVersion; queda registrado en el build-info. El resto del árbol no
+      // cambia.
       "src/SFSPReserveEngine.sol": {
         version: FIJADO.version,
         settings: {
           evmVersion: "paris",
-          optimizer: { enabled: true, runs: 200 },
+          optimizer: { enabled: true, runs: 1 },
           viaIR: true,
         },
       },

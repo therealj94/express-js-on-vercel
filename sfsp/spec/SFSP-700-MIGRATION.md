@@ -45,9 +45,9 @@ Flujo por activo:
 | 1 | Desplegar el contrato conforme con su Asset Passport | SFSP-100 | `AssetRegistered` |
 | 2 | Anunciar un **bloque de corte** reproducible y fijar `migrationId` | Gobernanza (D09) | `GovernanceAction` |
 | 3 | **Padrón**: instantánea de saldos a ese bloque, raíz de Merkle y total `S0` del padrón (Σ `oldUnits`) publicados (sin publicar direcciones) | `migracion-410/construir-padron.mjs`, `verificar-padron.mjs` | Raíz y `S0` |
-| 4 | **Bloquear el heredado** con el filtro de transacciones desde el bloque de corte. Sustituye la pausa o la quema que los heredados no tienen | SFSP-150 | `NetworkPermissionChanged`, código `CORTE_MIGRACION` |
+| 4 | **Bloquear el heredado** con el filtro de transacciones desde el bloque de corte. Sustituye la pausa o la quema que los heredados no tienen | SFSP-150; al llegar el bloque, `SFSPNetworkPermissions.publishLegacyCut(heredado)` publica el corte (cualquiera puede llamarla; no cambia el filtro, deja constancia) | `NetworkPermissionChanged` con código `CORTE_MIGRACION` |
 | 5 | Topes del instrumento fijados contando `S0_cupo` | `setInstrumentLimits` (Junta) | `GovernanceAction` |
-| 6 | **Un** cupo por activo: `SET_MIGRATION_BUDGET` (cupo de migración, SFSP-410 R13) con monto por periodo = `S0_cupo`, máximo por operación = mayor monto del padrón, vigencia de días, `termsDocRoot` = raíz del padrón. Quórum, espera y consumo único | `setMintBudget` (SFSP-410 R5) | `MintBudgetSet` |
+| 6 | **Aprobación DBNX** del padrón (v0.3 §5): un documento de **migración** con cantidad = `S0_cupo`, destino = raíz del padrón y vigencia que cubre la ventana. **Un** cupo por activo: `SET_MIGRATION_BUDGET` (cupo de migración, SFSP-410 R13) con monto por periodo = `S0_cupo`, máximo por operación = mayor monto del padrón, vigencia de días, `termsDocRoot` = hash de ese documento DBNX. Quórum, espera y consumo único | `registerDbnxApproval(..., raíz, true)` y `setMintBudget` (SFSP-410 R5): el cupo exige el documento, del mismo activo, vigente, sin usar y de migración (y la etiqueta SET_MIGRATION_BUDGET exige un documento de migración) | `DbnxApprovalRecorded`, `DbnxApprovalUsed`, `MintBudgetSet` |
 | 7 | **Acuñar a cada tenedor su saldo equivalente en la misma dirección**: un `mintOnDemand` por hoja, con `paymentRef = keccak256("MIGRACION\|<assetId>\|<dirección>")` en hex y minúsculas, y `evidenceRoot` = raíz del padrón | `mintOnDemand` | `MintExecuted` + `MintOnDemand` |
 | 8 | Cerrar el cupo al terminar o al vencer | `revokeMintBudget(assetId, "MIGRACION_FIN")` | `MintBudgetRevoked` |
 | 9 | **Conciliación publicada**: para cada `MintOnDemand` de la ventana existe una hoja `(migrationId, destino, oldUnits)` del padrón con prueba válida y `monto == floor(oldUnits·num/den)`; `paymentRef` se recalcula desde el destino; la suma es ≤ `S0_cupo` y la diferencia son los pendientes (§3). Un evento que no case es incidente: pausa y revocación | Indexador | `ConciliationRecorded` |
@@ -57,7 +57,7 @@ Flujo por activo:
 
 Por qué este camino:
 
-1. Pasa por `_mintTo` y aplica **R1** (nunca a una cuenta interna), **R3** (elegibilidad), **R8** (topes) y **R9** (pausa). La ruta `SFSPMigrationRegistry` → `mintForMigration` no aplica R1 ni los topes (REV-410-12).
+1. Pasa por `_mintTo` y aplica **R1** (nunca a una cuenta interna), **R3** (elegibilidad `MINT`), **R8** (topes) y **R9** (pausa). La ruta `SFSPMigrationRegistry` → `mintForMigration` no aplica R1 ni los topes (REV-410-12). Con un documento DBNX de migración no se evalúa `SUBSCRIBE`: es continuidad de una tenencia, no una colocación nueva (SFSP-120 §0.3). Un cupo comercial, con destino «adquirente elegible», sí lo evalúa.
 2. `paymentRef` por (activo, dirección) es un **anulador en cadena**: la misma dirección no cobra dos veces el mismo activo, ni en reintentos ni en rondas posteriores.
 3. Los firmantes aprueban **ese** padrón y **ese** total, con espera. Una aprobación por activo en vez de una por persona.
 
@@ -65,8 +65,8 @@ Lo que se pierde y cómo se mitiga (detalle en ADR-016 §4):
 
 | Riesgo | Mitigación obligatoria |
 |---|---|
-| El reparto individual **no se comprueba en cadena**: dentro de `S0_cupo`, la llave del emisor podría acuñar a una dirección elegible fuera del padrón | Ventana corta; máximo por operación = mayor monto; conciliación publicada del paso 9; revocación al terminar. Queda **detectable**, no impedido |
-| Ocupa el único cupo del activo | Orden fijo: migración → `revokeMintBudget` → cupo comercial |
+| El reparto individual **no se comprueba en cadena**: dentro de `S0_cupo`, la llave del emisor podría acuñar a una dirección elegible fuera del padrón | Ventana corta; máximo por operación = mayor monto; conciliación publicada del paso 9; revocación al terminar. Queda **detectable**, no impedido. El total, en cambio, sí se comprueba en cadena: el cupo no crea más que lo aprobado por DBNX en toda su vida |
+| Ocupa el único cupo del activo | Orden fijo: migración → `revokeMintBudget` → cupo comercial. En código: `setMintBudget` revierte con `BudgetInForce` mientras el cupo vigente no se revoque (T-700-27) |
 | Un saldo = una operación | Un saldo desproporcionado va por orden `MINT` individual, fuera del cupo |
 | Consume el tope acumulado | Fijar los topes del instrumento contando `S0_cupo` (paso 5) |
 | No emite los eventos de migración de esta serie | El indexador reconoce la migración por `paymentRef` con prefijo `MIGRACION` (§0.6) |
@@ -137,19 +137,27 @@ ORIGEN es la moneda nativa y no depende de un contrato. **El nombre de marca sal
 
 Método: `../migracion-410/censo-tokens-5550.mjs` (saldos de la 5550 a la fecha; de la 8532 solo se usan las direcciones como diccionario). La corrección figura como C1 del plan v0.3 y se lleva al siguiente borrador rector.
 
-1. Hipótesis: saldos creados en la cadena intermedia del 15 al 25 de agosto. La fuente para cerrarla es el respaldo del reinicio del 25 de agosto, cuya lectura exige **rotar antes las credenciales** (fase 0, punto 0.9). **No se buscan saldos en la 8532.**
-2. **Ninguna migración a contrato conforme de AUKA ni de ONDK se ejecuta antes de cerrar esta conciliación.** Un padrón de AUKA u ONDK con esos residuos sin resolver no se aprueba.
-3. El tratamiento de los adquirentes tempranos de ONDK se decide con el panorama completo, incluida esta conciliación, y **antes** de migrar ONDK.
+**Estado a 26-sep (una sola versión para la spec, el plan, `DIA-D.md` y `migracion-410/LEEME.md`):**
+
+| Parte | Estado |
+|---|---|
+| **Ubicación** | **Cerrada.** Con el respaldo del reinicio del 25-ago, en el bloque 273.831 los 46 tokens con emisión cuadran exacto: los 804,5 ONDK están en 2 direcciones y los 9.823,01 AUKA en 3. Eran saldos creados en la cadena intermedia del 15 al 25-ago (C1 y C2 del plan v0.3) |
+| **Tratamiento** | **Abierto: decisión de la Junta.** Que un saldo esté ubicado no dice si da derecho a migrar. Si esos saldos de la cadena intermedia se migran, se excluyen o se tratan aparte, y el tratamiento de los adquirentes tempranos de ONDK, lo decide la Junta con acta (D26) |
+
+1. La ubicación se hizo sin buscar saldos en la 8532: de ella solo se usan las direcciones como diccionario.
+2. **Ninguna migración a contrato conforme de AUKA ni de ONDK se ejecuta antes del acta de tratamiento.** En código: `migracion-410/lote-migracion.mjs` deja la orden del cupo de AUKA u ONDK en `BLOCKED_DECISION` mientras su configuración no traiga `actaConciliacion` (el hash del acta), y también si el censo no cuadra (T-700-25).
+3. El tratamiento de los adquirentes tempranos de ONDK se decide con este panorama completo y **antes** de migrar ONDK.
 
 ### 0.6 Diferencia con el código actual
 
 | Pieza | Estado |
 |---|---|
-| `SFSPIssuanceController` con `setMintBudget`, `mintOnDemand`, `revokeMintBudget` | Existe, con pruebas (SFSP-410) |
+| `SFSPIssuanceController` con `setMintBudget`, `mintOnDemand`, `revokeMintBudget` | Existe, con pruebas (SFSP-410). `setMintBudget` exige el documento DBNX (`termsDocRoot`) y no sustituye un cupo vigente (`BudgetInForce`, T-700-27) |
 | Constructor y verificador del padrón | Existen (`migracion-410/`) |
+| Lote de migración (`lote-migracion.mjs`) | Existe. Sale `BLOCKED_DECISION` sin documento DBNX, con un censo que no cuadra, para AUKA y ONDK sin `actaConciliacion` (T-700-25) y para un activo COM (serie 300) |
 | `SFSPMigrationRegistry` (reclamo firmado) | Existe; queda para las excepciones de §0.3 |
-| Filtro de transacciones (bloqueo del heredado) | **No existe** (SFSP-150, fase 2 punto 7) |
-| Reconocimiento de la migración por `paymentRef` en el indexador y conciliación publicada | **No existe** (fase 2 punto 8) |
+| Filtro de transacciones (bloqueo del heredado) | Existe `SFSPNetworkPermissions` (SFSP-150) con `publishLegacyCut`, que publica el corte con `CORTE_MIGRACION`. Falta probarlo en la 5534 con los validadores |
+| Reconocimiento de la migración por `paymentRef` en el indexador y conciliación publicada (`ConciliationRecorded`, T-700-21) | **No existe** (fase 2 punto 8) |
 
 ### 0.7 Pruebas de aceptación nuevas
 

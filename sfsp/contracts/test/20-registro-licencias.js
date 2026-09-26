@@ -156,7 +156,8 @@ describe("SFSP v0.3 §6 · registro de licencias (SFSP-140)", function () {
       const st = evs.find((e) => e.name === "LicenseStatusChanged");
       assert.equal(st.args.previousState, LS.VIGENTE);
       assert.equal(st.args.newState, LS.VENCIDA);
-      assert.equal(st.args.reasonCode, H.b32("PLAZO_VENCIDO"));
+      // Código del catálogo (ESTADOS-Y-EVENTOS §C) para toda transición por plazo.
+      assert.equal(st.args.reasonCode, H.b32("VENCIMIENTO_PLAZO"));
       const mod = evs.find((e) => e.name === "ModuleAvailabilityChanged");
       assert.equal(mod.args.moduleId, MOD_CUSTODIA);
       assert.equal(mod.args.newAvailability, AV.PROXIMAMENTE);

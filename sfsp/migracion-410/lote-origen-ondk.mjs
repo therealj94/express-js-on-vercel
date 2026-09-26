@@ -135,7 +135,7 @@ const lote = {
   },
   raizLote, etiquetaLote: ETIQ,
   requisitosDeEjecucion: {
-    cupo: { perPeriodMinimoWei: suma(aEnviar).toString(), maxPerOperationMinimoWei: maxOp.toString(), accion: "SET_RELEASE_BUDGET (quórum + timelock, SFSP-410 R5)" },
+    cupo: { perPeriodMinimoWei: suma(aEnviar).toString(), maxPerOperationMinimoWei: maxOp.toString(), accion: "SET_DISTRIBUTION_BUDGET (quórum + timelock, SFSP-410 R5 y R13) si la Junta califica el lote como distribución, no venta. Con SET_RELEASE_BUDGET cada envío es una colocación y evalúa SUBSCRIBE (SFSP-120 §0.3): sin países abiertos sale BLOCKED_DECISION" },
     boveda: BOVEDA || "SFSPNativeVault no desplegada en 5550",
     identidad: "cada destino debe ser elegible (engine.evaluateOperation MINT sobre el assetId de ORIGEN): alta de identidad por propósito",
     ejecutor: "llave ISSUER de servicio (sin poder de aprobación)",

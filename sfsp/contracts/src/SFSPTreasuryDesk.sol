@@ -4,7 +4,9 @@ pragma solidity 0.8.28;
 import {SFSPAccessControl} from "./lib/SFSPAccessControl.sol";
 import {SFSPReentrancyGuard} from "./lib/SFSPReentrancyGuard.sol";
 import {SFSPCodes} from "./lib/SFSPCodes.sol";
-import {ISFSPGovernanceController, ISFSPIdentityAdapter} from "./lib/ISFSP.sol";
+import {SFSPTypes} from "./lib/SFSPTypes.sol";
+import {ISFSPGovernanceController, ISFSPIdentityAdapter, ISFSPEligibilityEngine} from "./lib/ISFSP.sol";
+import {ILicenseGate} from "./lib/ILicenseGate.sol";
 import {SFSPOracleRegistry} from "./SFSPOracleRegistry.sol";
 
 /// @title Tesorería cotizadora de ORIGEN · SFSP v0.3 §10.4.
@@ -17,14 +19,26 @@ import {SFSPOracleRegistry} from "./SFSPOracleRegistry.sol";
 ///           2. Frescura con tolerancia: si la lectura del oráculo no está OK
 ///              (vieja o fuera de tolerancia) o es más vieja que la tolerancia
 ///              propia de la tesorería, la cotización se suspende sola.
-///           3. Límite por IDENTIDAD y ventana: se cuenta por compromiso de
-///              identidad (H16), no por dirección; dos direcciones de la misma
-///              persona comparten el mismo cupo.
+///           3. Límite por IDENTIDAD y ventana. El agregado por identidad —todas
+///              las direcciones de la persona— lo calcula Genesis ID FUERA de la
+///              cadena (v0.3 §11, SFSP-110 §0) y trae aquí sólo el RESULTADO para
+///              la dirección que opera: cuánto le queda en esta ventana. Ningún
+///              compromiso estable de la identidad viaja en la cadena. Además, en
+///              la cadena, una sola dirección nunca pasa del límite por identidad.
 ///           4. Inventario asignado y publicado por ventana, por lado: agotado,
 ///              la tesorería cierra ese lado hasta la ventana siguiente.
 ///           5. Asimetría: diferencial de compra y de venta independientes.
 ///         Sin parámetros fijados por la Junta (v0.3 §18: diferencial,
 ///         tolerancia, límites) no cotiza: BLOCKED_DECISION.
+///
+///         Licencias (v0.3 §6 y §13.3, SFSP-140 §3.2): cada lado exige los
+///         módulos que la Junta declare (quién opera la tesorería y con qué
+///         licencia es SU decisión). Sin módulos declarados: BLOCKED_DECISION;
+///         con alguno no habilitado en el registro: LICENCIA_NO_OTORGADA.
+///
+///         Vender ORIGEN desde la tesorería contra moneda fiduciaria es la
+///         «puerta única»: una SUSCRIPCIÓN primaria sobre MON (SFSP-120 §0.5
+///         regla 3). `sell` aplica SUBSCRIBE sobre el comprador.
 ///
 ///         La tesorería no condiciona su actuación a un nivel de precio: sólo deja
 ///         de cotizar cuando la referencia deja de ser confiable.
@@ -60,10 +74,23 @@ contract SFSPTreasuryDesk is SFSPAccessControl, SFSPReentrancyGuard {
         uint64 oracleRound;
     }
 
+    /// @dev Genesis ID: registra el resultado del límite por identidad.
+    bytes32 public constant LIMIT_OPERATOR = keccak256("SFSP.ROLE.LIMIT_OPERATOR");
+    uint256 public constant MAX_MODULES = 4;
+
+    /// @dev Resultado del límite por identidad para UNA dirección y un lado:
+    ///      lo que le queda a su identidad en la ventana en curso.
+    struct LimitClearance {
+        uint256 remaining;
+        uint64 window;
+    }
+
     ISFSPGovernanceController public immutable governance;
     ISFSPIdentityAdapter public immutable identity;
+    ISFSPEligibilityEngine public immutable eligibility;
     SFSPOracleRegistry public immutable oracle;
     bytes32 public immutable assetId; // ORIGEN
+    ILicenseGate public licenseGate;
 
     Params private _params;
     /// @dev Diferencial observado del mercado (control 1) y cuándo se observó.
@@ -71,7 +98,9 @@ contract SFSPTreasuryDesk is SFSPAccessControl, SFSPReentrancyGuard {
     uint64 public marketSpreadObservedAt;
 
     mapping(uint64 => uint256[2]) private _inventoryUsed; // ventana => [vende, compra]
-    mapping(bytes32 => mapping(uint64 => uint256)) private _identityUsed; // compromiso => ventana => usado
+    mapping(address => mapping(uint64 => uint256)) private _accountUsed; // dirección => ventana => usado
+    mapping(address => mapping(uint8 => LimitClearance)) private _clearance; // dirección => lado
+    mapping(uint8 => bytes32[]) private _requiredModules; // lado => módulos
     mapping(bytes32 => bool) private _usedOperation;
     uint256 private _buyNonce;
 
@@ -90,6 +119,9 @@ contract SFSPTreasuryDesk is SFSPAccessControl, SFSPReentrancyGuard {
     event DeskParametersCleared(bytes32 indexed assetId, bytes32 reasonCode);
     event MarketSpreadObserved(bytes32 indexed assetId, address indexed by, uint16 marketSpreadBps);
     event DeskFunded(bytes32 indexed assetId, address indexed from, uint256 amount);
+    event DeskLicenseGateSet(address indexed gate, address indexed by);
+    /// @dev Un evento por módulo: `index` de `count` en la lista del lado.
+    event DeskLicenseModuleSet(uint8 indexed side, bytes32 indexed moduleId, uint8 index, uint8 count);
     event DeskTradeExecuted(
         bytes32 indexed assetId,
         bytes32 indexed operationId,
@@ -104,6 +136,7 @@ contract SFSPTreasuryDesk is SFSPAccessControl, SFSPReentrancyGuard {
     error Paused();
     error QuoteUnavailable(uint8 code, bytes32 reason);
     error IdentityNotBound(address account);
+    error IdentityLimitUnknown(address account, uint8 code);
     error IdentityLimitExceeded(uint256 used, uint256 requested, uint256 limit);
     error InventoryExhausted(uint8 side, uint256 used, uint256 requested, uint256 inventory);
     error PriceMoved(uint256 quoted, uint256 limit);
@@ -113,13 +146,22 @@ contract SFSPTreasuryDesk is SFSPAccessControl, SFSPReentrancyGuard {
     error InsufficientDeskBalance(uint256 balance, uint256 needed);
     error TransferFailed();
 
-    constructor(address board, address governance_, address identity_, address oracle_, bytes32 assetId_)
-        SFSPAccessControl(board)
-    {
-        require(governance_ != address(0) && identity_ != address(0) && oracle_ != address(0), "SFSP: dependencias=0");
+    constructor(
+        address board,
+        address governance_,
+        address identity_,
+        address eligibility_,
+        address oracle_,
+        bytes32 assetId_
+    ) SFSPAccessControl(board) {
+        require(
+            governance_ != address(0) && identity_ != address(0) && eligibility_ != address(0) && oracle_ != address(0),
+            "SFSP: dependencias=0"
+        );
         require(assetId_ != bytes32(0), "SFSP: activo=0");
         governance = ISFSPGovernanceController(governance_);
         identity = ISFSPIdentityAdapter(identity_);
+        eligibility = ISFSPEligibilityEngine(eligibility_);
         oracle = SFSPOracleRegistry(oracle_);
         assetId = assetId_;
     }
@@ -166,6 +208,42 @@ contract SFSPTreasuryDesk is SFSPAccessControl, SFSPReentrancyGuard {
         emit DeskParametersCleared(assetId, reasonCode);
     }
 
+    /// @notice Cablea el registro de licencias. Sin él, no cotiza.
+    function setLicenseGate(address gate) external onlyRole(DBNX_BOARD) {
+        licenseGate = ILicenseGate(gate);
+        emit DeskLicenseGateSet(gate, msg.sender);
+    }
+
+    /// @notice Módulos de los que depende un lado (decisión de la Junta: quién
+    ///         opera la tesorería y bajo qué licencia; p. ej., para vender contra
+    ///         moneda fiduciaria, SFSP-140 §3.2 regla 1). Todos a la vez.
+    function setRequiredModules(uint8 side, bytes32[] calldata modules) external onlyRole(DBNX_BOARD) {
+        if (side > 1 || modules.length == 0 || modules.length > MAX_MODULES) revert InvalidParams("MODULES");
+        _requiredModules[side] = modules;
+        for (uint256 i = 0; i < modules.length; i++) {
+            if (modules[i] == bytes32(0)) revert InvalidParams("MODULES");
+            emit DeskLicenseModuleSet(side, modules[i], uint8(i), uint8(modules.length));
+        }
+    }
+
+    function requiredModules(uint8 side) external view returns (bytes32[] memory) {
+        return _requiredModules[side];
+    }
+
+    /// @notice Genesis ID registra, para la dirección que va a operar, lo que le
+    ///         queda a su IDENTIDAD del límite de la ventana en curso en ese lado.
+    ///         El agregado entre direcciones se calcula fuera de la cadena.
+    function recordLimitClearance(address account, uint8 side, uint256 remaining) external onlyRole(LIMIT_OPERATOR) {
+        if (!_params.set) revert QuoteUnavailable(SFSPCodes.BLOCKED_DECISION, bytes32("DESK_PARAMS_NOT_SET"));
+        if (account == address(0) || side > 1 || remaining > _params.perIdentityLimit) revert InvalidParams("CLEARANCE");
+        _clearance[account][side] = LimitClearance({remaining: remaining, window: currentWindow()});
+    }
+
+    function limitClearanceOf(address account, uint8 side) external view returns (uint256) {
+        LimitClearance memory c = _clearance[account][side];
+        return c.window == currentWindow() ? c.remaining : 0;
+    }
+
     /// @notice Registra el diferencial observado del mercado (operación o Junta).
     function observeMarketSpread(uint16 bps) external {
         if (!hasRole(TECH_OPS, msg.sender) && !hasRole(DBNX_BOARD, msg.sender)) revert Unauthorized(TECH_OPS, msg.sender);
@@ -200,8 +278,10 @@ contract SFSPTreasuryDesk is SFSPAccessControl, SFSPReentrancyGuard {
         return used >= inv ? 0 : inv - used;
     }
 
-    function identityUsed(bytes32 commitment) external view returns (uint256) {
-        return _identityUsed[commitment][currentWindow()];
+    /// @notice Lo que ESTA dirección operó en la ventana en curso (dato público:
+    ///         está en `DeskTradeExecuted`). El agregado por identidad no existe aquí.
+    function accountUsed(address account) external view returns (uint256) {
+        return _accountUsed[account][currentWindow()];
     }
 
     /// @notice Cotización. Devuelve siempre un código del §4; precio 0 si no cotiza.
@@ -222,6 +302,9 @@ contract SFSPTreasuryDesk is SFSPAccessControl, SFSPReentrancyGuard {
             q.reason = SFSPCodes.R_PAUSED;
             return q;
         }
+        // Licencias del lado.
+        (q.code, q.reason) = _licenseCheck(side);
+        if (q.code != SFSPCodes.ALLOW) return q;
         // Control 1: sin una observación del mercado reciente no se puede comparar.
         uint64 seen = marketSpreadObservedAt;
         if (seen == 0 || block.timestamp > uint256(seen) + p.maxMarketSpreadAge) {
@@ -266,19 +349,37 @@ contract SFSPTreasuryDesk is SFSPAccessControl, SFSPReentrancyGuard {
         q.reason = SFSPCodes.R_OK;
     }
 
+    function _licenseCheck(uint8 side) internal view returns (uint8, bytes32) {
+        bytes32[] storage mods = _requiredModules[side];
+        uint256 n = mods.length;
+        if (n == 0) return (SFSPCodes.BLOCKED_DECISION, bytes32("LICENSE_MODULES_UNSET"));
+        if (address(licenseGate) == address(0)) return (SFSPCodes.DENY_AUTHORIZATION, bytes32("LICENCIA_NO_OTORGADA"));
+        for (uint256 i = 0; i < n; i++) {
+            if (!licenseGate.isModuleEnabled(mods[i])) return (SFSPCodes.DENY_AUTHORIZATION, bytes32("LICENCIA_NO_OTORGADA"));
+        }
+        return (SFSPCodes.ALLOW, SFSPCodes.R_OK);
+    }
+
     // ------------------------------------------------------------- ejecución
 
-    /// @dev Control 3: la identidad se prueba por compromiso atado a la dirección.
-    function _chargeIdentity(address account, bytes32 commitment, uint256 amount) internal {
+    /// @dev Control 3: la dirección tiene alta y claim vigente en el propósito
+    ///      de la tesorería; el resultado de Genesis ID para su identidad cubre
+    ///      la operación (sin él: UNKNOWN_SOURCE, nunca se supone cero); y la
+    ///      dirección sola nunca pasa del límite por identidad.
+    function _chargeIdentity(address account, uint8 side, uint256 amount) internal {
         Params memory p = _params;
         (bool bound, bool blocked,, bool claimValid) = identity.purposeStatus(account, p.identityPurpose);
-        if (!bound || blocked || !claimValid || !identity.isCommitmentBound(account, p.identityPurpose, commitment)) {
-            revert IdentityNotBound(account);
-        }
+        if (!bound || blocked || !claimValid) revert IdentityNotBound(account);
         uint64 w = currentWindow();
-        uint256 used = _identityUsed[commitment][w];
+        LimitClearance storage c = _clearance[account][side];
+        if (c.window != w) revert IdentityLimitUnknown(account, SFSPCodes.UNKNOWN_SOURCE);
+        if (amount > c.remaining) {
+            revert IdentityLimitExceeded(p.perIdentityLimit > c.remaining ? p.perIdentityLimit - c.remaining : 0, amount, p.perIdentityLimit);
+        }
+        c.remaining -= amount;
+        uint256 used = _accountUsed[account][w];
         if (used + amount > p.perIdentityLimit) revert IdentityLimitExceeded(used, amount, p.perIdentityLimit);
-        _identityUsed[commitment][w] = used + amount;
+        _accountUsed[account][w] = used + amount;
     }
 
     function _chargeInventory(uint8 side, uint256 amount) internal {
@@ -290,15 +391,22 @@ contract SFSPTreasuryDesk is SFSPAccessControl, SFSPReentrancyGuard {
     }
 
     /// @notice La tesorería VENDE ORIGEN a `to`, que ya pagó en USD fuera de la cadena.
+    /// @dev Es una suscripción primaria sobre MON (SFSP-120 §0.5 regla 3): el
+    ///      motor de elegibilidad aplica SUBSCRIBE sobre `to` en esta misma
+    ///      transacción (país, alcance de la oferta exenta, exposición); la
+    ///      tesorería necesita su rol SUBSCRIPTION_EXECUTOR.
     /// @param expectedRound la lectura del oráculo con la que se cotizó (misma lectura).
     /// @param maxPriceUsd precio máximo aceptado por el comprador.
+    /// @param ctx contexto de la suscripción (`SFSPTypes.SubscriptionContext`):
+    ///        con país y sal, la residencia se prueba por la ruta privada del
+    ///        motor; vacío, por la ruta de residencia por país.
     function sell(
         address to,
-        bytes32 commitment,
         uint256 origenAmount,
         uint64 expectedRound,
         uint256 maxPriceUsd,
-        bytes32 paymentRef
+        bytes32 paymentRef,
+        SFSPTypes.SubscriptionContext calldata ctx
     ) external onlyRole(ISSUER) nonReentrant {
         if (paymentRef == bytes32(0) || _usedOperation[paymentRef]) revert OperationReplay(paymentRef);
         _usedOperation[paymentRef] = true;
@@ -306,8 +414,9 @@ contract SFSPTreasuryDesk is SFSPAccessControl, SFSPReentrancyGuard {
         if (q.code != SFSPCodes.ALLOW) revert QuoteUnavailable(q.code, q.reason);
         if (q.oracleRound != expectedRound) revert RoundMismatch(expectedRound, q.oracleRound);
         if (q.priceUsd > maxPriceUsd) revert PriceMoved(q.priceUsd, maxPriceUsd);
-        _chargeIdentity(to, commitment, origenAmount);
+        _chargeIdentity(to, SIDE_DESK_SELLS, origenAmount);
         _chargeInventory(SIDE_DESK_SELLS, origenAmount);
+        eligibility.enforceSubscription(to, assetId, origenAmount, ctx);
         if (address(this).balance < origenAmount) revert InsufficientDeskBalance(address(this).balance, origenAmount);
         emit DeskTradeExecuted(assetId, paymentRef, to, SIDE_DESK_SELLS, origenAmount, q.usdAmount, q.priceUsd, q.oracleRound);
         (bool ok,) = to.call{value: origenAmount}("");
@@ -316,7 +425,7 @@ contract SFSPTreasuryDesk is SFSPAccessControl, SFSPReentrancyGuard {
 
     /// @notice La tesorería COMPRA el ORIGEN que envía el usuario. El pago en USD
     ///         (`usdAmount` del evento) se liquida fuera de la cadena.
-    function buy(bytes32 commitment, uint64 expectedRound, uint256 minPriceUsd)
+    function buy(uint64 expectedRound, uint256 minPriceUsd)
         external
         payable
         nonReentrant
@@ -326,7 +435,7 @@ contract SFSPTreasuryDesk is SFSPAccessControl, SFSPReentrancyGuard {
         if (q.code != SFSPCodes.ALLOW) revert QuoteUnavailable(q.code, q.reason);
         if (q.oracleRound != expectedRound) revert RoundMismatch(expectedRound, q.oracleRound);
         if (q.priceUsd < minPriceUsd) revert PriceMoved(q.priceUsd, minPriceUsd);
-        _chargeIdentity(msg.sender, commitment, msg.value);
+        _chargeIdentity(msg.sender, SIDE_DESK_BUYS, msg.value);
         _chargeInventory(SIDE_DESK_BUYS, msg.value);
         _buyNonce += 1;
         operationId = keccak256(abi.encode(address(this), msg.sender, _buyNonce));

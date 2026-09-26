@@ -354,7 +354,7 @@ async function atestar(f, o) {
     purpose: opts.purpose,
     claimsRoot: H.b32("claims_root"),
     validFrom: ts - 10,
-    validUntil: ts + 3600,
+    validUntil: ts + (opts.duracion || 3600),
     policyVersion: H.b32("pol_v1"),
   };
   const domain = {

@@ -2,15 +2,28 @@
   "0x5157000000000000000000000000000000000a01": {
     "activo": "SINTA",
     "assetId": "0x534653503a5345433a53494e54413a5331000000000000000000000000000000",
-    "ratio": { "num": "1", "den": "1" }
+    "ratio": {
+      "num": "1",
+      "den": "1"
+    },
+    "clase": "SEC",
+    "dbnxDocHash": "0xd1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1"
   },
   "0x5157000000000000000000000000000000000b02": {
     "activo": "SINTB",
     "assetId": "0x534653503a5345433a53494e54423a5331000000000000000000000000000000",
-    "ratio": { "num": "1", "den": "1000" }
+    "ratio": {
+      "num": "1",
+      "den": "1000"
+    },
+    "clase": "SEC",
+    "dbnxDocHash": "0xd2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2"
   },
   "0x5157000000000000000000000000000000000c03": {
     "activo": "SINTC",
-    "ratio": { "num": "1", "den": "1" }
+    "ratio": {
+      "num": "1",
+      "den": "1"
+    }
   }
 }

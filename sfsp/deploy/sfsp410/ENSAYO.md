@@ -3,7 +3,8 @@
 - Fecha: 2026-09-26 (UTC) · Equipo A
 - Estado: **ENSAYO**. Ningún contrato existe en la 5550. **No se envió ninguna transacción a ninguna red real.**
 - Scripts: `contracts/scripts/desplegar-sfsp410.js` (despliegue), `contracts/scripts/ensayo-fork-5550.js` (ensayo), `contracts/scripts/relay-solo-lectura.js` (relé de lectura)
-- Parámetros: `deploy/sfsp410/parametros.plantilla.json` (plantilla con 165 valores en `null`)
+- Parámetros: `deploy/sfsp410/parametros.plantilla.json` (plantilla con 167 valores sin decidir, incluido `roles.dbnx`)
+- **Nota (26-sep, correcciones de conformidad del v0.3):** los resultados de §2 son de la corrida del bloque 270.661 y **no se han repetido** en la bifurcación (hace falta el RPC de la 5550). El script ya incluye lo que cambió: registra una aprobación DBNX **sintética** por cupo de emisión antes de ejecutarlo y, antes de (c) y (d), monta un entorno de suscripción **sintético** (`scripts/entorno-suscripcion-sintetico.js`, se niega fuera de la red Hardhat en proceso), porque liberar con cupo de venta y acuñar a un usuario ahora evalúan `SUBSCRIBE`. Los mismos pasos se recorrieron en Hardhat local, sin bifurcación.
 
 ## 1. Qué se ensayó
 
@@ -134,8 +135,8 @@ Ninguno se puede dar hoy. Los bloquean D07, D23, D24, D25, D26, D27 y D08, y ade
 | 5 | Verificación independiente: bytecode desplegado frente al de la build, `hasRole` de cada contrato, cuentas internas, pasaportes (`MANIFIESTO` §6). | Auditor / revisor distinto del autor | No |
 | 6 | Proponer las 21 órdenes preparadas en `ordenesDeGobierno`: 17 `SET_POLICY` y 4 cupos (ONDK, IBS, HARV, ORIGEN). AUKA no tiene cupo (SFSP-410 §3.2). | Un firmante propone | No |
 | 7 | Aprobar cada orden. Con el quórum real, quien propone no cuenta. | Otros firmantes, hasta el quórum (D07) | No |
-| 8 | Ejecutar las `SET_POLICY` en el acto. Ejecutar `setMintBudget` y `setReleaseBudget` **después** del timelock y **antes** de que venza la orden (`vigenciaOrdenesSegundos` > timelock; el script lo exige). | TECH_OPS (ejecuta, no aprueba) | No |
-| 9 | Dar de alta a los usuarios reales en el adaptador de identidad con su **atestación Genesis ID** (compromiso por propósito). Sin alta, liberar o acuñar revierte, como se vio en el ensayo. | ATTESTOR (Genesis ID) | No |
+| 8 | Ejecutar las `SET_POLICY` en el acto. Ejecutar `setMintBudget` y `setReleaseBudget` **después** del timelock y **antes** de que venza la orden (`vigenciaOrdenesSegundos` > timelock; el script lo exige). Antes de cada `setMintBudget`, DBNX registra el documento de aprobación cuyo hash es su `termsDocRoot` (v0.3 §5). | DBNX registra · TECH_OPS (ejecuta, no aprueba) | No |
+| 9 | Dar de alta a los usuarios reales en el adaptador de identidad con su **atestación Genesis ID** (compromiso por propósito). Sin alta, liberar o acuñar revierte, como se vio en el ensayo. Para vender o emitir a un usuario hace falta además lo de la compuerta 2b de `DIA-D.md` (países, base de colocación, licencias, residencia acreditada): sin eso `SUBSCRIBE` responde `BLOCKED_DECISION` o `DENY`. | ATTESTOR (Genesis ID) · Junta | No |
 | 10 | Consolidar: cada cuenta interna envía su ORIGEN a la bóveda con `absorb(CONSOLIDACION)` y **deja fuera sólo el colchón de gas** de las cuentas operativas declaradas. Son 31 cuentas con saldo; las 6 del 14-sep concentran el 99,999999 %. Comprobar después que `circulating()` = usuarios + desconocidos pequeños. | Quien controla cada llave (Dirección, D25) | **Sí** (D23, D25) |
 | 11 | Migración SFSP-700 de ONDK, AUKA, IBS y HARV con padrón **sólo de usuarios** (D26). El inventario interno no se migra. Retirar AGKA, MNKA, AUBEX, ASL, LOVE, REST, SOL, AIT, AGRO y POLITICAL. | Junta + ATTESTOR de migración | Sí (D26) |
 | 12 | Ordenex y Veta pasan a `mintOnDemand` y `releaseOnDemand` con la llave ISSUER en KMS. Cualquier firmante puede cortar un cupo al instante. | ISSUER (servicio) · firmantes para cortar | Sí, dentro del cupo |
@@ -161,7 +162,7 @@ node scripts/ensayo-fork-5550.js \
 
 Las cuentas internas reales se leen de un archivo externo (`CUENTAS_INTERNAS`): no viven en este repositorio público. Tarda unos 5 minutos, casi todo en lecturas al RPC. Deja en `--salida` estos archivos: `parametros.SINTETICO.json`, `despliegue-ensayo.json` (direcciones, bloques, SHA-256 de los parámetros, gas por transacción y órdenes de gobierno) y `ensayo-resultado.json`. Sale con código 0 sólo si todo cuadra.
 
-La plantilla sin decidir devuelve `BLOCKED_DECISION` (código 9) con la lista de los 165 valores que faltan:
+La plantilla sin decidir devuelve `BLOCKED_DECISION` (código 9) con la lista de los 167 valores que faltan:
 
 ```
 node scripts/desplegar-sfsp410.js --parametros ../deploy/sfsp410/parametros.plantilla.json

@@ -40,7 +40,7 @@
     "atestadorMigracion": null,
     "auditor": null,
     "dbnx": null,
-    "_dbnxNota": "DBNX del controlador de emision (v0.3 §5): registra el documento de aprobacion de cada emision por mint(). Distinta del emisor y de techOps (DBNX autoriza; Orden Global ejecuta). Sin ella ninguna emision por orden de gobierno se puede ejecutar."
+    "_dbnxNota": "DBNX del controlador de emision (v0.3 §5): registra los documentos de aprobacion (registerDbnxApproval) que exigen mint y setMintBudget. Distinta del emisor y de techOps (DBNX autoriza; Orden Global ejecuta); el contrato lo vuelve a comprobar al usar la aprobacion. Sin ella ninguna emision por orden de gobierno ni cupo se puede ejecutar."
   },
   "origen": {
     "assetId": "SFSP:NATIVE:ORIGEN:5550",
@@ -83,7 +83,7 @@
       "maxAmount": null
     },
     "cupoLiberacion": {
-      "_nota": "D24. Montos en unidades minimas (18 decimales). period y vigencia en segundos; validUntil = timestamp UNIX absoluto. termsDocRoot = hash del acta de la Junta.",
+      "_nota": "D24. Montos en unidades minimas (18 decimales). period y vigencia en segundos; validUntil = timestamp UNIX absoluto. termsDocRoot = hash del acta de la Junta. Es un cupo de VENTA (SET_RELEASE_BUDGET): cada liberacion aplica SUBSCRIBE sobre el comprador (SFSP-120 §0.5 regla 3).",
       "perPeriod": null,
       "period": null,
       "maxPerOperation": null,
@@ -111,7 +111,7 @@
         "cumulativeCap": null
       },
       "cupoEmision": {
-        "_nota": "D24. Montos en unidades minimas (18 decimales). period y vigencia en segundos; validUntil = timestamp UNIX absoluto. termsDocRoot = hash del acta de la Junta.",
+        "_nota": "D24. Montos en unidades minimas (18 decimales). period y vigencia en segundos; validUntil = timestamp UNIX absoluto. termsDocRoot = hash del documento de aprobacion DBNX del cupo (v0.3 §5), registrado antes por DBNX con registerDbnxApproval: su cantidad es el TOTAL que el cupo puede crear (>= perPeriod), su vigencia cubre validUntil y su regla de destino es la del cupo comercial (DEST_ELIGIBLE_ACQUIRER).",
         "perPeriod": null,
         "period": null,
         "maxPerOperation": null,
@@ -240,7 +240,7 @@
         "cumulativeCap": null
       },
       "cupoEmision": {
-        "_nota": "D24. Montos en unidades minimas (18 decimales). period y vigencia en segundos; validUntil = timestamp UNIX absoluto. termsDocRoot = hash del acta de la Junta.",
+        "_nota": "D24. Montos en unidades minimas (18 decimales). period y vigencia en segundos; validUntil = timestamp UNIX absoluto. termsDocRoot = hash del documento de aprobacion DBNX del cupo (v0.3 §5), registrado antes por DBNX con registerDbnxApproval: su cantidad es el TOTAL que el cupo puede crear (>= perPeriod), su vigencia cubre validUntil y su regla de destino es la del cupo comercial (DEST_ELIGIBLE_ACQUIRER).",
         "perPeriod": null,
         "period": null,
         "maxPerOperation": null,
@@ -308,7 +308,7 @@
         "cumulativeCap": null
       },
       "cupoEmision": {
-        "_nota": "D24. Montos en unidades minimas (18 decimales). period y vigencia en segundos; validUntil = timestamp UNIX absoluto. termsDocRoot = hash del acta de la Junta.",
+        "_nota": "D24. Montos en unidades minimas (18 decimales). period y vigencia en segundos; validUntil = timestamp UNIX absoluto. termsDocRoot = hash del documento de aprobacion DBNX del cupo (v0.3 §5), registrado antes por DBNX con registerDbnxApproval: su cantidad es el TOTAL que el cupo puede crear (>= perPeriod), su vigencia cubre validUntil y su regla de destino es la del cupo comercial (DEST_ELIGIBLE_ACQUIRER).",
         "perPeriod": null,
         "period": null,
         "maxPerOperation": null,

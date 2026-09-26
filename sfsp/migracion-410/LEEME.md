@@ -90,7 +90,7 @@ direcciones:
 | ONDK | 136 tenedores. Los 804,5 que faltaban (800 + 4,5) eran saldos creados en la cadena intermedia del 15 al 25-ago |
 | AUKA | 37 tenedores. Los 9.823,01 que faltaban (9.821 + 2 + 0,01) tienen el mismo origen |
 
-Con esto se cierra la conciliación de SFSP-700 §0.5 y del v0.3 §14.5.
+Con esto se cierra la **ubicación** de SFSP-700 §0.5 y del v0.3 §14.5. El **tratamiento** de esos saldos (y de los adquirentes tempranos de ONDK) lo decide la Junta con acta; hasta entonces `lote-migracion.mjs` deja AUKA y ONDK en `BLOCKED_DECISION` (falta `actaConciliacion`).
 
 La clase de cada titular sale de `INTERNAS` y `EN_REVISION`. La lista de internas
 actual es la de ONDK (D25). En los demás tokens, las tenedoras grandes de la
@@ -265,10 +265,10 @@ beneficiario su saldo con `mintOnDemand`:
 | `amountSecondary` (máx. por operación) | el mayor monto, `floor(oldUnits·num/den)` (ver «Riesgos», punto 3) |
 | `period` | tan largo que toda la ventana cae en UN solo periodo: comprobar `floor(ahora/period) == floor(validUntil/period)` |
 | `validUntil` | fin de la ventana de migración (días, no meses) |
-| `termsDocRoot` | la **raíz Merkle del padrón** (`raizMerkle` de `padron-<ACTIVO>.json`) |
+| `termsDocRoot` | el hash del **documento de aprobación DBNX de migración** del padrón (v0.3 §5): cantidad = `S0_cupo`, destino = la **raíz Merkle del padrón** (`raizMerkle` de `padron-<ACTIVO>.json`), clase migración. `setMintBudget` lo exige registrado y de migración |
 | por cada beneficiario | `mintOnDemand(assetId, address, oldUnits·ratio, paymentRef, evidenceRoot)` |
 | `paymentRef` | `keccak256(utf8("MIGRACION|<assetId en hex 0x…, minúsculas>|<dirección en hex, minúsculas>"))` |
-| `evidenceRoot` | la raíz Merkle del padrón (la misma de `termsDocRoot`) |
+| `evidenceRoot` | la raíz Merkle del padrón (el destino del documento DBNX de `termsDocRoot`) |
 
 ### Por qué es sólida
 
@@ -281,9 +281,10 @@ beneficiario su saldo con `mintOnDemand`:
   dirección no puede cobrar dos veces el mismo activo por este camino, ni en
   reintentos ni en rondas posteriores (`OperationReplay`). Por eso NO lleva el
   `migrationId` ni el número de ronda.
-- El digest que aprueba gobierno compromete la raíz del padrón (vía
-  `termsDocRoot` dentro de `budgetTermsRoot`) y el total `S0`: los firmantes
-  aprueban ESE padrón y ESE total, con la espera del timelock.
+- El digest que aprueba gobierno compromete el documento DBNX del padrón (vía
+  `termsDocRoot` dentro de `budgetTermsRoot`), cuyo destino es la raíz del
+  padrón, y el total `S0_cupo`: los firmantes aprueban ESE padrón y ESE total,
+  con la espera del timelock, y el cupo no crea más de lo que DBNX aprobó.
 - Una aprobación por activo en vez de una por persona (33 hoy).
 
 ### Lo que se pierde frente a SFSP-700 (riesgos)
@@ -382,9 +383,9 @@ Todo sale **sin firmar**.
   |---|---|
   | `amount` | `S0_cupo` = Σ `floor(oldUnits·num/den)` de los beneficiarios (unidades del activo nuevo) |
   | `amountSecondary` | El mayor monto |
-  | `termsDocRoot` | La raíz del padrón |
+  | `termsDocRoot` | El hash del documento DBNX de migración (`dbnxDocHash` en ACTIVOS; sin él, `BLOCKED_DECISION`) |
   | `period` | `validUntil + 1`. Así toda la ventana cae en el periodo 0: se cumple `floor(t/period) = 0` para todo `t < validUntil`. |
-  | `evidenceRoot` | `budgetTermsRoot(period, validUntil, raíz)` |
+  | `evidenceRoot` | `budgetTermsRoot(period, validUntil, dbnxDocHash)` |
   | `nonce` | `keccak256("MIGRACION_CUPO|<assetId>|<raíz>")` |
   | digest | SFSP-AUTH-v1, para proponer en gobierno |
 
