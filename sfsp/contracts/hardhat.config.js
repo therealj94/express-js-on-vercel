@@ -71,10 +71,27 @@ subtask(TASK_COMPILE_SOLIDITY_GET_SOLC_BUILD, async (args, _hre, runSuper) => {
 /** @type {import('hardhat/config').HardhatUserConfig} */
 module.exports = {
   solidity: {
-    version: FIJADO.version,
-    settings: {
-      evmVersion: "paris",
-      optimizer: { enabled: true, runs: 200 },
+    compilers: [
+      {
+        version: FIJADO.version,
+        settings: {
+          evmVersion: "paris",
+          optimizer: { enabled: true, runs: 200 },
+        },
+      },
+    ],
+    // EIP-170 · el motor de reservas roza los 24.576 bytes. Se compila con el
+    // MISMO compilador fijado y el optimizador orientado a tamaño (runs = 1): es
+    // el único ajuste por archivo, no cambia la versión ni el binario (P09) y
+    // queda registrado en el build-info.
+    overrides: {
+      "src/SFSPReserveEngine.sol": {
+        version: FIJADO.version,
+        settings: {
+          evmVersion: "paris",
+          optimizer: { enabled: true, runs: 1 },
+        },
+      },
     },
   },
   paths: {

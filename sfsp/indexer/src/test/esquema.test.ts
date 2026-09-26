@@ -51,7 +51,7 @@ const DEL_FASE2 = ['OracleParametersSet', 'OracleParametersCleared', 'OraclePric
 // SFSP v0.3 fase 2 (puntos 1-3) · eventos nuevos, todos con contrato.
 const DEL_V03 = ['LicenseRegistered', 'PlacementBasisSet', 'ExposureParamsSet', 'DbnxApprovalRecorded', 'DbnxApprovalRevoked',
   // Correcciones de conformidad v0.3 (draft-0.7): criterio D13 y marca COM del controlador de emisión.
-  'InvestorCriteriaSet', 'CommodityAssetFlagged'];
+  'InvestorCriteriaSet', 'CommodityAssetFlagged', 'DeskLicenseGateSet', 'DeskLicenseModuleSet'];
 // Del v0.2, los que la fase 2 del v0.3 ya emite desde un contrato.
 const V02_CON_CONTRATO = ['PassportUpdated', 'ExposureLimitRecorded', 'AcquirerDeclarationRecorded', 'LicenseStatusChanged', 'ModuleAvailabilityChanged', 'CountryStatusChanged', 'CoveragePublished', 'NetworkPermissionChanged'];
 

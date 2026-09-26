@@ -24,10 +24,17 @@ import {SFSPOracleRegistry} from "./SFSPOracleRegistry.sol";
 ///             posterior.
 ///
 ///         Parámetros no decididos → BLOCKED_DECISION:
-///           · límites de concentración por custodio (independiente e interno);
+///           · límites de concentración por custodio: el independiente y, APARTE,
+///             el de la custodia interna (v0.3 §18). Sin el interno, un lote de
+///             custodia interna no se asigna ni suma capacidad; los independientes sí;
 ///           · canales de redención (mínimo y diferencial de la liquidación en ORIGEN).
-///         Los canales físicos, además, exigen la licencia de custodia Clase G
-///         vigente en la compuerta de licencias. Sin compuerta: cerrados.
+///         Los canales físicos, además, exigen el módulo MOD_CUSTODIA_CLIENTES
+///         habilitado en el registro de licencias (licencia Clase G vigente) y se
+///         abren sólo por orden de gobierno con LICENCIA_OTORGADA y el número de
+///         la licencia (v0.3 §9.3, SFSP-140 §6, T-300-28). Sin compuerta: cerrados.
+///
+///         Colocar es suscribir: además de la capacidad (RELEASE), `place` aplica
+///         SUBSCRIBE sobre el adquirente en la misma transacción (SFSP-120 §0.3).
 ///
 /// @dev Escalas: onzas finas con 18 decimales (`OZ` = una onza). Peso bruto en
 ///      miligramos. Pureza en partes por millón. Gramo→onza con 31,1035 g (la
@@ -37,12 +44,17 @@ import {SFSPOracleRegistry} from "./SFSPOracleRegistry.sol";
 ///      BLOQUEADO_POR_REDENCION≈RESERVED_FOR_DELIVERY, LIBERADO≈DELIVERED. Los
 ///      nombres que manda son los del Apéndice A del v0.3.
 contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
-    uint256 public constant OZ = 1e18;
-    uint256 public constant BPS = 10_000;
-    uint256 public constant PPM = 1_000_000;
-    uint256 public constant MAX_LOTS_PER_ASSET = 64;
-    bytes32 public constant MODULE_CUSTODY_CLASS_G = bytes32("CUSTODIA_CLASE_G");
-    bytes32 public constant R_LICENSE = bytes32("LICENCIA_NO_OTORGADA");
+    uint256 internal constant OZ = 1e18;
+    uint256 internal constant BPS = 10_000;
+    uint256 internal constant PPM = 1_000_000;
+    uint256 internal constant MAX_LOTS_PER_ASSET = 64;
+    /// @dev SFSP-140 §3.2 · custodia de activos de clientes y redención física
+    ///      de metal; depende de LIC_AUCORP_CUSTODIA_G. Es el identificador del
+    ///      MÓDULO, no el tipo de licencia.
+    bytes32 public constant MODULE_CUSTODY_CLASS_G = bytes32("MOD_CUSTODIA_CLIENTES");
+    bytes32 internal constant R_LICENSE = bytes32("LICENCIA_NO_OTORGADA");
+    bytes32 internal constant R_LICENSE_GRANTED = bytes32("LICENCIA_OTORGADA");
+    bytes32 public constant ACTION_OPEN_PHYSICAL_CHANNEL = bytes32("OPEN_PHYSICAL_CHANNEL");
 
     enum LotState {
         NINGUNO,
@@ -133,6 +145,7 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         bool set;
         bool open;
         uint16 spreadBps; // sólo liquidación en ORIGEN: diferencial publicado
+        uint32 openings; // aperturas de un canal físico: cada una, su orden de gobierno
         uint256 minUnits;
         bytes32 licenseRef;
     }
@@ -204,8 +217,16 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
     event CoveragePublished(
         bytes32 indexed assetId, uint256 fineOuncesAssigned, uint256 unitsPlaced, uint256 unitsInTreasury, uint64 attestedAt
     );
+    /// @dev Apéndice A/B, reglas 1 y 6 · toda transición lleva su código de
+    ///      motivo: una cancelación por inelegibilidad lleva el código del motor,
+    ///      la del tenedor y la de operación se distinguen.
     event RedemptionUpdated(
-        bytes32 indexed redemptionId, bytes32 indexed assetId, uint8 previousState, uint8 newState, uint256 amount
+        bytes32 indexed redemptionId,
+        bytes32 indexed assetId,
+        uint8 previousState,
+        uint8 newState,
+        uint256 amount,
+        bytes32 reasonCode
     );
     event OrigenSettlementFunded(address indexed from, uint256 amount);
 
@@ -222,6 +243,7 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
     error QueueOrder(bytes32 expected);
     error InsufficientSettlementFunds(uint256 balance, uint256 needed);
     error TransferFailed();
+    error AmountZero();
 
     constructor(address board, address governance_, address eligibility_, address oracle_) SFSPAccessControl(board) {
         require(governance_ != address(0) && eligibility_ != address(0) && oracle_ != address(0), "SFSP: dependencias=0");
@@ -271,19 +293,32 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
     }
 
     /// @notice Límite de concentración por custodio · v0.3 §9.2 y §18 (pendiente).
+    /// @dev `maxInternalBps == 0` = límite de la custodia interna SIN FIJAR (null):
+    ///      los lotes de custodia interna no se asignan ni suman capacidad
+    ///      (SFSP-300 §0.3.2, T-300-27); los de custodios independientes sí.
     function setConcentrationLimits(uint16 maxIndependentBps, uint16 maxInternalBps, uint256 minTotalOz)
         external
         onlyRole(DBNX_BOARD)
     {
-        if (maxIndependentBps == 0 || maxIndependentBps > BPS || maxInternalBps == 0 || maxInternalBps > BPS) {
+        if (maxIndependentBps == 0 || maxIndependentBps > BPS || maxInternalBps > BPS) {
             revert InvalidInput("BPS");
         }
         _concentration = Concentration(true, maxIndependentBps, maxInternalBps, minTotalOz);
         emit ConcentrationLimitsSet(maxIndependentBps, maxInternalBps, minTotalOz);
     }
 
-    /// @notice Canal de redención. Un canal físico sólo se abre con la licencia
-    ///         de custodia Clase G vigente, y nunca para AGKA.
+    /// @notice Canal de redención. Un canal físico sólo se ABRE con la licencia
+    ///         de custodia Clase G vigente y por ORDEN DE GOBIERNO, y nunca para AGKA.
+    /// @dev v0.3 §9.3, SFSP-140 §6 regla 3, T-300-28 · abrir un canal físico es
+    ///      una acción de gobernanza registrada en cadena, con código de motivo
+    ///      LICENCIA_OTORGADA y el número de la licencia: gobierno aprueba, con la
+    ///      etiqueta OPEN_PHYSICAL_CHANNEL, el digest
+    ///        keccak256(abi.encode(OPEN_PHYSICAL_CHANNEL, chainid, este contrato,
+    ///          assetId, canal, minUnits, licenseRef, LICENCIA_OTORGADA, aperturas))
+    ///      y aquí se recalcula y se gasta. `licenseRef` tiene que ser el número
+    ///      de una licencia VIGENTE de la que depende MOD_CUSTODIA_CLIENTES en el
+    ///      registro. Cerrar un canal y fijar la liquidación en ORIGEN no abren
+    ///      nada y siguen siendo de la Junta.
     function setChannel(
         bytes32 assetId,
         Channel channel,
@@ -295,12 +330,25 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         CommodityAsset storage a = _assets[assetId];
         if (!a.configured) revert InvalidInput("ASSET");
         if (spreadBps >= BPS) revert InvalidInput("SPREAD");
+        uint32 openings = _channels[assetId][uint8(channel)].openings;
         if (open && channel != Channel.LIQUIDACION_ORIGEN) {
             if (!a.physicalAllowed) revert Rejected(SFSPCodes.DENY_POLICY, bytes32("PHYSICAL_NOT_ALLOWED"));
             if (!_custodyLicensed()) revert Rejected(SFSPCodes.DENY_AUTHORIZATION, R_LICENSE);
-            if (licenseRef == bytes32(0)) revert InvalidInput("LICENSE_REF");
+            if (!licenseGate.moduleHasLicenseNumber(MODULE_CUSTODY_CLASS_G, licenseRef)) {
+                revert Rejected(SFSPCodes.DENY_AUTHORIZATION, bytes32("LICENSE_NUMBER"));
+            }
+            bytes32 d = keccak256(
+                abi.encode(
+                    ACTION_OPEN_PHYSICAL_CHANNEL, block.chainid, address(this), assetId, channel, minUnits, licenseRef, R_LICENSE_GRANTED, openings
+                )
+            );
+            if (governance.authorizationActionOf(d) != ACTION_OPEN_PHYSICAL_CHANNEL) {
+                revert Rejected(SFSPCodes.DENY_AUTHORIZATION, bytes32("GOVERNANCE_ORDER_REQUIRED"));
+            }
+            governance.consumeAuthorization(d);
+            openings += 1;
         }
-        _channels[assetId][uint8(channel)] = ChannelConfig(true, open, spreadBps, minUnits, licenseRef);
+        _channels[assetId][uint8(channel)] = ChannelConfig(true, open, spreadBps, openings, minUnits, licenseRef);
         emit RedemptionChannelSet(assetId, uint8(channel), open, minUnits, spreadBps, licenseRef);
     }
 
@@ -376,9 +424,14 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         if (l.state != LotState.VERIFICADO) revert InvalidTransition(uint8(l.state));
         Custodian memory c = _custodians[l.custodianId];
         if (c.internalCustody && !_custodyLicensed()) revert Rejected(SFSPCodes.DENY_AUTHORIZATION, R_LICENSE);
-        if (!_lotValid(l)) revert Rejected(SFSPCodes.UNKNOWN_SOURCE, bytes32("ATTESTATION_NOT_VALID"));
         Concentration memory k = _concentration;
         if (!k.set) revert Blocked(SFSPCodes.BLOCKED_DECISION, bytes32("CONCENTRATION_NOT_SET"));
+        // El límite de la custodia interna es una decisión aparte (v0.3 §18):
+        // sin él, un lote interno no se asigna; uno independiente, sí.
+        if (c.internalCustody && k.maxInternalBps == 0) {
+            revert Blocked(SFSPCodes.BLOCKED_DECISION, bytes32("INTERNAL_CONCENTRATION_NOT_SET"));
+        }
+        if (!_lotValid(l)) revert Rejected(SFSPCodes.UNKNOWN_SOURCE, bytes32("ATTESTATION_NOT_VALID"));
 
         uint256 newTotal = totalAssignedOz + l.fineOz;
         uint256 newCust = custodianAssignedOz[l.custodianId] + l.fineOz;
@@ -423,6 +476,8 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
     function _lotValid(Lot storage l) internal view returns (bool) {
         if (block.timestamp >= l.attestationValidUntil || block.timestamp >= l.insuranceValidUntil) return false;
         if (_custodians[l.custodianId].internalCustody) {
+            // Sin límite interno fijado, la custodia interna no suma (T-300-27).
+            if (_concentration.maxInternalBps == 0) return false;
             if (block.timestamp >= l.auditVerifiedUntil || !_custodyLicensed()) return false;
         }
         return true;
@@ -456,6 +511,8 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
     }
 
     // =============================================================== lecturas
+    // (Los datos de un custodio no tienen vista: son inmutables tras el alta y
+    //  están completos en `CustodianRegistered`. EIP-170 aprieta aquí.)
 
     function assetOf(bytes32 assetId) external view returns (CommodityAsset memory) {
         return _assets[assetId];
@@ -467,10 +524,6 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
 
     function lotsOf(bytes32 assetId) external view returns (bytes32[] memory) {
         return _assetLots[assetId];
-    }
-
-    function custodianOf(bytes32 custodianId) external view returns (Custodian memory) {
-        return _custodians[custodianId];
     }
 
     function channelOf(bytes32 assetId, Channel channel) external view returns (ChannelConfig memory) {
@@ -503,10 +556,17 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
     }
 
     /// @notice Cobertura contra lo COLOCADO.
+    /// @dev SFSP-300 §0.2 salvaguarda 4 · lo que cuenta como colocado es lo que
+    ///      está FUERA de la billetera de tesorería, no sólo lo que pasó por
+    ///      `place`: una unidad que salió por otra vía (una transferencia directa
+    ///      desde la tesorería, una acuñación a un tercero) es obligación igual,
+    ///      y si no hay metal para ella el invariante cae y la colocación se
+    ///      detiene. La tesorería se lee de su saldo real, no por diferencia.
     /// @return coveredOz onzas asignadas, vigentes y no entregadas.
     /// @return obligationsOz colocado en onzas + obligaciones con tokens ya quemados.
-    /// @return unitsPlaced unidades en manos de terceros.
-    /// @return unitsInTreasury acuñado sin colocar (se reporta aparte, no cuenta).
+    /// @return unitsPlaced unidades en manos de terceros: las colocadas por
+    ///         `place` o, si son más, las que hay fuera de la tesorería.
+    /// @return unitsInTreasury saldo de la billetera de tesorería (aparte, no cuenta).
     /// @return oldestAttestedAt la atestación vigente más antigua (0 si no hay).
     function coverage(bytes32 assetId)
         public
@@ -522,13 +582,14 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
             if (oldestAttestedAt == 0 || l.attestedAt < oldestAttestedAt) oldestAttestedAt = l.attestedAt;
         }
         unitsPlaced = a.unitsPlaced;
-        obligationsOz = unitsToOzSafe(a, unitsPlaced) + a.ozPendingDelivery;
-        uint256 supply = a.configured ? a.token.totalSupply() : 0;
-        unitsInTreasury = supply > unitsPlaced ? supply - unitsPlaced : 0;
-    }
-
-    function unitsToOzSafe(CommodityAsset storage a, uint256 units) internal view returns (uint256) {
-        return a.unitsPerOunce == 0 ? 0 : units * (OZ / a.unitsPerOunce);
+        if (a.configured) {
+            uint256 supply = a.token.totalSupply();
+            unitsInTreasury = a.token.balanceOf(a.treasuryWallet);
+            uint256 outside = supply > unitsInTreasury ? supply - unitsInTreasury : 0;
+            if (outside > unitsPlaced) unitsPlaced = outside;
+            obligationsOz = unitsToOz(assetId, unitsPlaced);
+        }
+        obligationsOz += a.ozPendingDelivery;
     }
 
     /// @notice Invariante SFSP-300 §3 contra lo colocado.
@@ -561,6 +622,9 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         _usedOperation[operationId] = true;
         (uint8 code, bytes32 reason,) = eligibility.evaluateOperation(to, assetId, bytes32("RELEASE"), units, bytes32(0));
         if (code != SFSPCodes.ALLOW) revert Rejected(code, reason);
+        // SFSP-120 §0.3 reglas 1 y 3 · para COM, RELEASE y además SUBSCRIBE
+        // sobre el adquirente (país, alcance de la oferta exenta, exposición).
+        eligibility.enforceSubscription(to, assetId, units);
 
         // Un descuadre (p. ej. un lote comprometido que venció) detiene toda colocación.
         (uint256 covered, uint256 obligations,,,) = coverage(assetId);
@@ -608,10 +672,10 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
 
     // =============================================================== redención (v0.3 §9.3)
 
-    function _move(bytes32 id, Redemption storage r, RedemptionState to) internal {
+    function _move(bytes32 id, Redemption storage r, RedemptionState to, bytes32 reason) internal {
         RedemptionState prev = r.state;
         r.state = to;
-        emit RedemptionUpdated(id, r.assetId, uint8(prev), uint8(to), r.units);
+        emit RedemptionUpdated(id, r.assetId, uint8(prev), uint8(to), r.units, reason);
     }
 
     function _require(Redemption storage r, RedemptionState s) internal view {
@@ -652,7 +716,7 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         r.channel = channel;
         r.units = units;
         r.oz = unitsToOz(assetId, units);
-        _move(id, r, RedemptionState.SOLICITADA);
+        _move(id, r, RedemptionState.SOLICITADA, "SOLICITUD_TENEDOR");
         a.token.lockUnits(msg.sender, units, id);
     }
 
@@ -660,13 +724,15 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
     function verifyEligibility(bytes32 id) external onlyRole(TECH_OPS) nonReentrant {
         Redemption storage r = _redemptions[id];
         _require(r, RedemptionState.SOLICITADA);
-        (uint8 code,,) = eligibility.evaluateOperation(r.holder, r.assetId, bytes32("REDEEM"), r.units, bytes32(0));
+        (uint8 code, bytes32 reason,) =
+            eligibility.evaluateOperation(r.holder, r.assetId, bytes32("REDEEM"), r.units, bytes32(0));
         if (code != SFSPCodes.ALLOW) {
-            _move(id, r, RedemptionState.CANCELADA);
+            // El motivo de la cancelación es el del motor: queda en el evento.
+            _move(id, r, RedemptionState.CANCELADA, reason);
             _assets[r.assetId].token.unlockUnits(id);
             return;
         }
-        _move(id, r, RedemptionState.ELEGIBLE);
+        _move(id, r, RedemptionState.ELEGIBLE, reason);
     }
 
     /// @notice Entra en la cola del activo, por orden de llegada.
@@ -677,7 +743,7 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         a.queueTail += 1;
         r.queuePos = a.queueTail;
         _queue[r.assetId][a.queueTail] = id;
-        _move(id, r, RedemptionState.EN_COLA);
+        _move(id, r, RedemptionState.EN_COLA, "ORDEN_DE_LLEGADA");
     }
 
     /// @notice Bloquea lo que se va a entregar: para los canales físicos, metal de
@@ -710,7 +776,7 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         } else if (lotId != bytes32(0)) {
             revert InvalidInput("LOT_NOT_EXPECTED");
         }
-        _move(id, r, RedemptionState.BLOQUEADA);
+        _move(id, r, RedemptionState.BLOQUEADA, "BLOQUEO_PARA_LIQUIDAR");
     }
 
     /// @notice Liquidación en ORIGEN: quema y paga en la misma transacción.
@@ -735,8 +801,8 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         a.token.burnLocked(id);
         a.unitsPlaced -= r.units;
         _decommit(r.assetId, r.oz, bytes32(0));
-        _move(id, r, RedemptionState.LIQUIDADA);
-        _move(id, r, RedemptionState.ENTREGADA);
+        _move(id, r, RedemptionState.LIQUIDADA, "LIQUIDACION_ORIGEN");
+        _move(id, r, RedemptionState.ENTREGADA, "LIQUIDACION_ORIGEN");
         (bool ok,) = r.holder.call{value: pay}("");
         if (!ok) revert TransferFailed();
     }
@@ -748,7 +814,7 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         _require(r, RedemptionState.BLOQUEADA);
         if (r.channel != Channel.ENVIO_ASEGURADO) revert InvalidInput("CHANNEL");
         _burnPhysical(id, r);
-        _move(id, r, RedemptionState.LIQUIDADA);
+        _move(id, r, RedemptionState.LIQUIDADA, "QUEMA_ENVIO");
     }
 
     /// @notice Confirmación de la entrega por el custodio del lote.
@@ -764,7 +830,7 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
             _require(r, RedemptionState.BLOQUEADA);
             if (block.timestamp > r.deadline) revert InvalidInput("DEADLINE_PASSED");
             _burnPhysical(id, r);
-            _move(id, r, RedemptionState.LIQUIDADA);
+            _move(id, r, RedemptionState.LIQUIDADA, "QUEMA_CONTRA_ENTREGA");
         } else {
             // Entregar sin haber quemado es exactamente lo que no puede pasar.
             _require(r, RedemptionState.LIQUIDADA);
@@ -774,7 +840,7 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         _assets[r.assetId].ozPendingDelivery -= r.oz;
         _unassign(l, r.oz);
         _refreshLot(r.lotId, l);
-        _move(id, r, RedemptionState.ENTREGADA);
+        _move(id, r, RedemptionState.ENTREGADA, "ENTREGA_CONFIRMADA");
     }
 
     function _burnPhysical(bytes32 id, Redemption storage r) internal {
@@ -794,7 +860,7 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         _require(r, RedemptionState.BLOQUEADA);
         if (r.channel != Channel.RETIRO_PRESENCIAL || block.timestamp <= r.deadline) revert InvalidInput("NOT_EXPIRED");
         _unblock(id, r);
-        _move(id, r, RedemptionState.VENCIDA_POR_INCOMPARECENCIA);
+        _move(id, r, RedemptionState.VENCIDA_POR_INCOMPARECENCIA, "VENCIMIENTO_PLAZO");
     }
 
     /// @notice Cancela antes de liquidar (tenedor u operación). Después de quemar
@@ -806,7 +872,7 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         if (s == RedemptionState.NINGUNO || uint8(s) > uint8(RedemptionState.BLOQUEADA)) revert InvalidTransition(uint8(s));
         if (s == RedemptionState.BLOQUEADA) _unblock(id, r);
         else _assets[r.assetId].token.unlockUnits(id);
-        _move(id, r, RedemptionState.CANCELADA);
+        _move(id, r, RedemptionState.CANCELADA, msg.sender == r.holder ? bytes32("CANCELACION_TENEDOR") : bytes32("CANCELACION_OPERACION"));
     }
 
     function _unblock(bytes32 id, Redemption storage r) internal {
@@ -823,7 +889,7 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
 
     /// @notice La tesorería deposita ORIGEN para liquidar redenciones.
     function fundOrigenSettlement() external payable onlyRole(TECH_OPS) {
-        require(msg.value > 0, "SFSP: monto=0");
+        if (msg.value == 0) revert AmountZero();
         emit OrigenSettlementFunded(msg.sender, msg.value);
     }
 }

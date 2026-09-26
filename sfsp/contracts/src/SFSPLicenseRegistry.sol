@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {SFSPAccessControl} from "./lib/SFSPAccessControl.sol";
 import {SFSPAuthorization} from "./lib/SFSPAuthorization.sol";
 import {ISFSPGovernanceController} from "./lib/ISFSP.sol";
+import {ILicenseGate} from "./lib/ILicenseGate.sol";
 
 /// @title Registro de licencias (SFSP v0.3 §6 · SFSP-140).
 /// @notice Cada módulo del protocolo declara de qué licencias depende y una
@@ -21,7 +22,9 @@ import {ISFSPGovernanceController} from "./lib/ISFSP.sol";
 ///         aprobada con doble control y con motivo, recalculada aquí desde los
 ///         argumentos reales y consumida (patrón de `consumeAuthorization`).
 ///      Ningún número de licencia vive en el código: entra por la orden.
-contract SFSPLicenseRegistry is SFSPAccessControl {
+///      Es además la compuerta (`ILicenseGate`) que consultan los módulos que
+///      dependen de una licencia, como el motor de reservas.
+contract SFSPLicenseRegistry is SFSPAccessControl, ILicenseGate {
     // Apéndice A · Licencia. El orden es parte del contrato: no se reordena.
     enum LicenseState { EN_TRAMITE, OTORGADA, VIGENTE, SUSPENDIDA, VENCIDA, REVOCADA }
 
@@ -109,7 +112,9 @@ contract SFSPLicenseRegistry is SFSPAccessControl {
     /// @dev Alcances de las órdenes: el `assetId` del §12.1 no puede ser cero.
     bytes32 public constant SCOPE_LICENSE = bytes32("SFSP:GOV:LICENSE");
     bytes32 public constant SCOPE_MODULE = bytes32("SFSP:GOV:MODULE");
-    bytes32 public constant REASON_TERM_EXPIRED = bytes32("PLAZO_VENCIDO");
+    /// @dev Código del catálogo (ESTADOS-Y-EVENTOS §C) para toda transición
+    ///      automática por vencimiento de plazo.
+    bytes32 public constant REASON_TERM_EXPIRED = bytes32("VENCIMIENTO_PLAZO");
     /// @dev Techo técnico (gas), no un parámetro económico.
     uint256 public constant MAX_DEPENDENCIES = 4;
 
@@ -167,6 +172,25 @@ contract SFSPLicenseRegistry is SFSPAccessControl {
         Module storage m = _modules[moduleId];
         if (!m.exists || m.declared == Availability.PROXIMAMENTE) return false;
         return _allEffective(m);
+    }
+
+    /// @notice `ILicenseGate` · lo que consulta un módulo consumidor: su
+    ///         operación depende de que el módulo esté disponible.
+    function isModuleEnabled(bytes32 moduleId) external view returns (bool) {
+        return isModuleAvailable(moduleId);
+    }
+
+    /// @notice `ILicenseGate` · ¿`number` es el número de otorgamiento de una
+    ///         licencia VIGENTE de la que depende `moduleId`?
+    function moduleHasLicenseNumber(bytes32 moduleId, bytes32 number) external view returns (bool) {
+        if (number == bytes32(0)) return false;
+        Module storage m = _modules[moduleId];
+        uint256 n = m.depKeys.length;
+        for (uint256 i = 0; i < n; i++) {
+            bytes32 id = _slot[m.depKeys[i]];
+            if (isLicenseEffective(id) && _licenses[id].grant.number == number) return true;
+        }
+        return false;
     }
 
     /// @notice Disponibilidad PÚBLICA efectiva, en la taxonomía única.

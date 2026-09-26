@@ -158,7 +158,7 @@ function validar(P) {
 
   const r = P.roles;
   const roles = {};
-  for (const k of ["junta", "techOps", "emisor", "atestador", "atestadorMigracion", "auditor"]) roles[k] = dir(r[k], `roles.${k}`);
+  for (const k of ["junta", "techOps", "emisor", "atestador", "atestadorMigracion", "auditor", "dbnx"]) roles[k] = dir(r[k], `roles.${k}`);
   const desplegador = dir(P.desplegador, "desplegador");
   const d = desplegador.toLowerCase();
   if (Object.values(roles).some((a) => a.toLowerCase() === d) || firmantes.some((a) => a.toLowerCase() === d)) {
@@ -175,6 +175,11 @@ function validar(P) {
   }
   if ([roles.techOps, roles.emisor].some((a) => a.toLowerCase() === roles.junta.toLowerCase())) {
     throw new ErrorParametros("roles: la Junta no puede ser techOps ni emisor");
+  }
+  // v0.3 §5 · DBNX autoriza, Orden Global ejecuta: la cuenta DBNX no puede ser
+  // la que acuña (el contrato también lo impide) ni la que ejecuta los cupos.
+  if ([roles.techOps, roles.emisor].some((a) => a.toLowerCase() === roles.dbnx.toLowerCase())) {
+    throw new ErrorParametros("roles: dbnx no puede ser techOps ni emisor (separación de funciones, v0.3 §5)");
   }
 
   const ci = P.cuentasInternas;
@@ -484,6 +489,8 @@ function nonceOrden(sha, tipo, assetId, accion) {
 // --------------------------------------------------------------- despliegue
 
 const ROLES = ["DBNX_BOARD", "TECH_OPS", "ATTESTOR", "ISSUER", "AUDITOR"];
+/** Activos de la clase COM (SFSP-300): se marcan en el controlador de emisión. */
+const ACTIVOS_COM = new Set(["AUKA", "AGKA"]);
 
 /**
  * Despliega todo. `prov` es un proveedor EIP-1193. Devuelve el registro de despliegue.
@@ -566,7 +573,15 @@ async function desplegar(o) {
     await a.c.send("setIssuanceController", [issuance.address]);
     await a.c.send("setMigrationRegistry", [migration.address]);
     await issuance.send("registerAssetContract", [a.assetId, a.c.address]);
+    // SFSP-300 §0.2 · un COM no se coloca desde el controlador de emisión
+    // (exige capacidad en onzas: motor de reservas). Se marca al desplegar.
+    if (ACTIVOS_COM.has(a.simbolo)) await issuance.send("setCommodityAsset", [a.assetId, true, b32("SFSP300:CLASE_COM")]);
   }
+  // SFSP-120 §0.3 · emitir al usuario que pagó (mintOnDemand, mint) y vender
+  // ORIGEN desde la bóveda (releaseOnDemand) es COLOCAR: el motor aplica
+  // SUBSCRIBE a petición de esos dos ejecutores, y sólo de ellos.
+  R.SUBSCRIPTION_EXECUTOR = await engine.call("SUBSCRIPTION_EXECUTOR");
+  for (const ej of [issuance, vault]) await engine.send("grantRole", [R.SUBSCRIPTION_EXECUTOR, ej.address]);
 
   // ---- 3. catálogo (TECH_OPS provisional del desplegador en el registro)
   ctx.paso = "3-pasaportes";
@@ -617,6 +632,8 @@ async function desplegar(o) {
   await conceder(engine, "TECH_OPS", V.roles.techOps);
   await conceder(issuance, "ISSUER", V.roles.emisor);
   await conceder(issuance, "TECH_OPS", V.roles.techOps);
+  R.DBNX = await issuance.call("DBNX");
+  await conceder(issuance, "DBNX", V.roles.dbnx);
   await conceder(migration, "ATTESTOR", V.roles.atestadorMigracion);
   await conceder(vault, "ISSUER", V.roles.emisor);
   await conceder(vault, "TECH_OPS", V.roles.techOps);
@@ -656,6 +673,12 @@ async function desplegar(o) {
   // liberaciones revierten el primer día.
   for (const ej of [...activos.map((a) => a.c), issuance, registry, engine, migration, vault]) {
     if (!(await governance.call("hasRole", [R.TECH_OPS, ej.address]))) fallos.push(`governance: ${ej.nombre} sin TECH_OPS (no podrá consumir aprobaciones)`);
+  }
+  for (const ej of [issuance, vault]) {
+    if (!(await engine.call("hasRole", [R.SUBSCRIPTION_EXECUTOR, ej.address]))) fallos.push(`engine: ${ej.nombre} sin SUBSCRIPTION_EXECUTOR (no podrá colocar)`);
+  }
+  for (const a of activos) {
+    if (ACTIVOS_COM.has(a.simbolo) && !(await issuance.call("isCommodityAsset", [a.assetId]))) fallos.push(`issuance: ${a.simbolo} no quedó marcado COM`);
   }
   for (const c of V.internas) {
     if (!(await issuance.call("isInternalAccount", [c.direccion]))) fallos.push(`issuance: ${c.direccion} no quedó interna`);

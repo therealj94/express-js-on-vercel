@@ -36,7 +36,7 @@ export interface EventoGenerado {
   readonly camposDeAtribucion: readonly string[];
 }
 
-/** Los 69 eventos del §3, por su nombre canonico. */
+/** Los 71 eventos del §3, por su nombre canonico. */
 export type NombreEvento =
   | "AssetRegistered"
   | "PolicyUpdated"
@@ -106,7 +106,9 @@ export type NombreEvento =
   | "DbnxApprovalRecorded"
   | "DbnxApprovalRevoked"
   | "InvestorCriteriaSet"
-  | "CommodityAssetFlagged";
+  | "CommodityAssetFlagged"
+  | "DeskLicenseGateSet"
+  | "DeskLicenseModuleSet";
 
 /** Esquema completo por evento. Generado: editar el JSON, no esto. */
 export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
@@ -306,7 +308,7 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
   RedemptionUpdated: {
     nombre: "RedemptionUpdated",
     emisor: "CommodityEngine",
-    significado: "Avance en la maquina de redencion (SFSP-300 §RedemptionState).",
+    significado: "Avance en la maquina de redencion (SFSP-300 §RedemptionState), con su codigo de motivo (Apendice A/B, reglas 1 y 6): una cancelacion por inelegibilidad lleva el codigo del motor de elegibilidad y se distingue de la del tenedor (CANCELACION_TENEDOR) y de la de operacion (CANCELACION_OPERACION); la incomparecencia, VENCIMIENTO_PLAZO.",
     atribucion: "POR_ACTIVO",
     afectaSuministro: "NINGUNO",
     implementadoEnContratos: true,
@@ -316,8 +318,9 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
       { nombre: "previousState", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
       { nombre: "newState", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
       { nombre: "amount", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
     ],
-    requeridos: ["redemptionId", "assetId", "previousState", "newState", "amount"],
+    requeridos: ["redemptionId", "assetId", "previousState", "newState", "amount", "reasonCode"],
     cantidades: ["amount"],
     camposDeAtribucion: ["assetId"],
   },
@@ -571,7 +574,7 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
   NetworkPermissionChanged: {
     nombre: "NetworkPermissionChanged",
     emisor: "NetworkAdmission",
-    significado: "Alta o baja en la lista de despliegue o en el filtro de transacciones (SFSP-150). Lo emite SFSPNetworkPermissions; en SYSTEM_FUNCTION el selector va en los 4 ultimos bytes de permissionKind.",
+    significado: "Alta o baja en la lista de despliegue o en el filtro de transacciones (SFSP-150). Lo emite SFSPNetworkPermissions; en SYSTEM_FUNCTION el selector va en los 4 ultimos bytes de permissionKind. El corte de un heredado transitorio en su bloque se publica con 'publishLegacyCut' (reasonCode CORTE_MIGRACION, granted = false).",
     atribucion: "GLOBAL",
     afectaSuministro: "NINGUNO",
     implementadoEnContratos: true,
@@ -1312,6 +1315,38 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
     cantidades: [],
     camposDeAtribucion: ["assetId"],
   },
+  DeskLicenseGateSet: {
+    nombre: "DeskLicenseGateSet",
+    emisor: "TreasuryDesk",
+    significado: "La Junta cablea el registro de licencias que consulta la tesorería cotizadora. Sin registro, la tesorería no cotiza (LICENCIA_NO_OTORGADA).",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "gate", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "by", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["gate", "by"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  DeskLicenseModuleSet: {
+    nombre: "DeskLicenseModuleSet",
+    emisor: "TreasuryDesk",
+    significado: "La Junta declara un modulo de licencia del que depende un lado de la tesoreria (quien la opera y con que licencia, v0.3 §13.3, SFSP-140 §3.2): un evento por modulo, con su posicion y el total de la lista. Sin modulos declarados, BLOCKED_DECISION.",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "side", tipo: "uint8", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "moduleId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "index", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "count", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["side", "moduleId", "index", "count"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
 };
 
 /** Nombre de evento -> emisor declarado. Compatibilidad con el §3. */
@@ -1385,6 +1420,8 @@ export const EVENTOS_CONOCIDOS: Readonly<Record<NombreEvento, string>> = {
   DbnxApprovalRevoked: "IssuanceController",
   InvestorCriteriaSet: "EligibilityEngine",
   CommodityAssetFlagged: "IssuanceController",
+  DeskLicenseGateSet: "TreasuryDesk",
+  DeskLicenseModuleSet: "TreasuryDesk",
 };
 
 /**

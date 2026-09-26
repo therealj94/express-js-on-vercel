@@ -12,7 +12,7 @@
     "draft-0.5: SFSP-410 (politica de suministro: circulante = usuarios). Se anaden los eventos del cupo de emision, de las cuentas internas y de la boveda nativa de ORIGEN.",
     "draft-0.6: SFSP v0.3 fase 2 (puntos 1-3). Tienen contrato LicenseStatusChanged y ModuleAvailabilityChanged (SFSPLicenseRegistry), CountryStatusChanged, ExposureLimitRecorded y AcquirerDeclarationRecorded (SFSPEligibilityEngine; esta ultima cambia de emisor: la declaracion del adquirente se registra donde se exige, en el motor) y PassportUpdated (SFSPAssetRegistry). Se anaden LicenseRegistered, PlacementBasisSet, ExposureParamsSet, DbnxApprovalRecorded y DbnxApprovalRevoked.",
     "SFSP-150 (26-sep-2026): NetworkPermissionChanged pasa a implementado (SFSPNetworkPermissions, la lista que consulta el filtro de red de Besu).",
-    "draft-0.7 (26-sep-2026, correcciones de conformidad v0.3): DbnxApprovalRecorded anade destino o regla de destino y la clase migracion (SFSP-200 §0.5 fila 1); ExposureLimitRecorded y AcquirerDeclarationRecorded pasan a ser el resultado por adquisicion, sin compromiso de identidad (v0.3 §11/§12, SFSP-110 §0); se anaden InvestorCriteriaSet (D13) y CommodityAssetFlagged (SFSP-300 §0.2)."
+    "draft-0.7 (26-sep-2026, correcciones de conformidad v0.3): DbnxApprovalRecorded anade destino o regla de destino y la clase migracion (SFSP-200 §0.5 fila 1); ExposureLimitRecorded y AcquirerDeclarationRecorded pasan a ser el resultado por adquisicion, sin compromiso de identidad (v0.3 §11/§12, SFSP-110 §0); se anaden InvestorCriteriaSet (D13) y CommodityAssetFlagged (SFSP-300 §0.2); RedemptionUpdated anade reasonCode (Apendice A/B, reglas 1 y 6); se anaden DeskLicenseGateSet y DeskLicenseModuleSet (licencias de la tesoreria cotizadora)."
   ],
   "version": "draft-0.7",
   "reglas": [
@@ -543,7 +543,7 @@
     {
       "nombre": "RedemptionUpdated",
       "emisor": "CommodityEngine",
-      "significado": "Avance en la maquina de redencion (SFSP-300 §RedemptionState).",
+      "significado": "Avance en la maquina de redencion (SFSP-300 §RedemptionState), con su codigo de motivo (Apendice A/B, reglas 1 y 6): una cancelacion por inelegibilidad lleva el codigo del motor de elegibilidad y se distingue de la del tenedor (CANCELACION_TENEDOR) y de la de operacion (CANCELACION_OPERACION); la incomparecencia, VENCIMIENTO_PLAZO.",
       "atribucion": "POR_ACTIVO",
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": true,
@@ -587,6 +587,14 @@
           "obligatorio": true,
           "atribuyeActivo": false,
           "esCantidad": true
+        },
+        {
+          "nombre": "reasonCode",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
         }
       ]
     },
@@ -1253,7 +1261,7 @@
     {
       "nombre": "NetworkPermissionChanged",
       "emisor": "NetworkAdmission",
-      "significado": "Alta o baja en la lista de despliegue o en el filtro de transacciones (SFSP-150). Lo emite SFSPNetworkPermissions; en SYSTEM_FUNCTION el selector va en los 4 ultimos bytes de permissionKind.",
+      "significado": "Alta o baja en la lista de despliegue o en el filtro de transacciones (SFSP-150). Lo emite SFSPNetworkPermissions; en SYSTEM_FUNCTION el selector va en los 4 ultimos bytes de permissionKind. El corte de un heredado transitorio en su bloque se publica con 'publishLegacyCut' (reasonCode CORTE_MIGRACION, granted = false).",
       "atribucion": "GLOBAL",
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": true,
@@ -3153,6 +3161,74 @@
         {
           "nombre": "reasonCode",
           "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "DeskLicenseGateSet",
+      "emisor": "TreasuryDesk",
+      "significado": "La Junta cablea el registro de licencias que consulta la tesorería cotizadora. Sin registro, la tesorería no cotiza (LICENCIA_NO_OTORGADA).",
+      "atribucion": "GLOBAL",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        {
+          "nombre": "gate",
+          "tipo": "address",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "by",
+          "tipo": "address",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "DeskLicenseModuleSet",
+      "emisor": "TreasuryDesk",
+      "significado": "La Junta declara un modulo de licencia del que depende un lado de la tesoreria (quien la opera y con que licencia, v0.3 §13.3, SFSP-140 §3.2): un evento por modulo, con su posicion y el total de la lista. Sin modulos declarados, BLOCKED_DECISION.",
+      "atribucion": "GLOBAL",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        {
+          "nombre": "side",
+          "tipo": "uint8",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "moduleId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "index",
+          "tipo": "uint8",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "count",
+          "tipo": "uint8",
           "indexado": false,
           "obligatorio": true,
           "atribuyeActivo": false,

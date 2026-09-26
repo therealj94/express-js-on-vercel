@@ -32,6 +32,14 @@
  * Identidad: las direcciones de la bifurcación no tienen alta en el adaptador de
  * identidad (que es nuevo). El ensayo da de alta COMPROMISOS SINTÉTICOS para las
  * direcciones que usa. En producción cada alta es una atestación Genesis ID real.
+ *
+ * SFSP v0.3 (correcciones de conformidad): (c) y (d) son COLOCACIONES, así que el
+ * motor aplica SUBSCRIBE sobre el usuario, y el cupo de ONDK exige el documento de
+ * aprobación DBNX (v0.3 §5). El ensayo registra una aprobación DBNX SINTÉTICA por
+ * cupo y monta un entorno de suscripción SINTÉTICO
+ * (scripts/entorno-suscripcion-sintetico.js). En la 5550, sin las decisiones de
+ * la Junta (países, base de colocación, licencias, DBNX), esas operaciones
+ * responden BLOCKED_DECISION o DENY, que es lo correcto.
  */
 const fs = require("node:fs");
 const os = require("node:os");
@@ -127,7 +135,7 @@ async function main() {
   const P = JSON.parse(fs.readFileSync(PLANTILLA, "utf8"));
   const tsFork = BigInt(cab.timestamp);
   const ahora = BigInt((await rpc("eth_getBlockByNumber", ["latest", false])).timestamp);
-  const [desplegador, f1, f2, f3, f4, junta, techOps, emisor, atestador, atestadorMig, auditor] = cuentas;
+  const [desplegador, f1, f2, f3, f4, junta, techOps, emisor, atestador, atestadorMig, auditor, dbnx] = cuentas;
   const firmantes = [f1, f2, f3, f4].sort((a, b) => (BigInt(a) < BigInt(b) ? -1 : 1));
   const GOV = { quorum: 2, quorumUpgrade: 3, timelock: 3600, maxPausa: 86400, vigencia: 3 * 3600 };
   const pas = (unit) => ({
@@ -154,13 +162,13 @@ async function main() {
     red: { ...P.red, genesisHash: (await rpc("eth_getBlockByNumber", ["0x0", false])).hash },
     desplegador,
     gobierno: { ...P.gobierno, firmantes, quorum: GOV.quorum, quorumUpgrade: GOV.quorumUpgrade, timelockSegundos: GOV.timelock, pausaMaximaSegundos: GOV.maxPausa, vigenciaOrdenesSegundos: GOV.vigencia },
-    roles: { ...P.roles, junta, techOps, emisor, atestador, atestadorMigracion: atestadorMig, auditor },
+    roles: { ...P.roles, junta, techOps, emisor, atestador, atestadorMigracion: atestadorMig, auditor, dbnx },
     origen: { ...P.origen, pasaporte: pas("ORIGEN"), politicaElegibilidad: pol(["MINT"]), cupoLiberacion: cupo(1000, 100, "SINTETICO:ACTA:CUPO:ORIGEN") },
     activos: P.activos.map((a) => ({
       ...a,
       erc20Interop: true,
       limites: { outstandingLimit: (LIM[a.simbolo] * E18).toString(), cumulativeCap: (LIM[a.simbolo] * E18).toString() },
-      cupoEmision: typeof a.cupoEmision === "object" ? cupo(10_000, 1_000, `SINTETICO:ACTA:CUPO:${a.simbolo}`) : a.cupoEmision,
+      cupoEmision: typeof a.cupoEmision === "object" ? cupo(10_000, 1_000, `SINTETICO:DBNX:CUPO:${a.simbolo}`) : a.cupoEmision,
       pasaporte: pas(a.simbolo),
       politicaElegibilidad: pol(a.politicaElegibilidad.acciones),
     })),
@@ -227,6 +235,17 @@ async function main() {
   }
   await rpc("evm_increaseTime", [GOV.timelock + 1]);
   await rpc("evm_mine", []);
+  // v0.3 §5 · cada cupo de emisión exige el documento de aprobación DBNX cuyo
+  // hash es su termsDocRoot. Aquí lo registra la cuenta DBNX SINTÉTICA.
+  ctx.paso = "dbnx-aprobaciones";
+  const DEST = await issuance.call("DEST_ELIGIBLE_ACQUIRER");
+  const ahoraCupo = BigInt((await rpc("eth_getBlockByNumber", ["latest", false])).timestamp);
+  for (const o of reg.ordenesDeGobierno.filter((x) => x.tipo === "SET_MINT_BUDGET")) {
+    const g = o.argumentos;
+    await issuance.send("registerDbnxApproval", [
+      g.termsDocRoot, o.payload.assetId, o.payload.amount, (ahoraCupo - 60n).toString(), (BigInt(g.validUntil) + 86400n).toString(), DEST, false,
+    ], { from: dbnx });
+  }
   ctx.paso = "gobierno-ejecutar-cupos";
   for (const o of reg.ordenesDeGobierno.filter((x) => x.esperaTimelock)) await ejecutar(o);
   resultado.pasos.gobierno = {
@@ -333,6 +352,10 @@ async function main() {
   for (const u of [uOrigen, uOndk, internaOndk]) {
     await identity.send("bindPurposeCommitment", [u, Dp.b32("BASE"), compromiso(u)], { from: atestador });
   }
+  // SFSP-120 §0.3 · (c) y (d) son colocaciones: entorno de suscripción SINTÉTICO.
+  ctx.paso = "suscripcion-sintetica";
+  const { montarSuscripcionSintetica } = require("./entorno-suscripcion-sintetico");
+  await montarSuscripcionSintetica({ reg, junta, firmantes, assetIds: [reg.origen.assetId, reg.activos.ONDK.assetId], usuarios: [uOrigen, uOndk] });
 
   // ------------------------------------------------------------ 8. (c) liberar ORIGEN bajo demanda
   console.log("\n== (c) releaseOnDemand a un usuario real, dentro del cupo ==");

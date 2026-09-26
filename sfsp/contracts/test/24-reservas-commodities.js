@@ -8,13 +8,16 @@ const assert = require("node:assert/strict");
 const F = require("./fixture");
 const H = require("./helpers");
 const C = require("./commodities");
+const V = require("./v03");
 
 const DIA = 86400;
 const E18 = C.E18;
 const LOT = { NINGUNO: 0, RECIBIDO: 1, VERIFICADO: 2, ASIGNADO: 3, PARCIAL: 4, BLOQUEADO: 5, LIBERADO: 6 };
 const RED = { NINGUNO: 0, SOLICITADA: 1, ELEGIBLE: 2, EN_COLA: 3, BLOQUEADA: 4, LIQUIDADA: 5, ENTREGADA: 6, CANCELADA: 7, VENCIDA: 8 };
 const CH = { ORIGEN: 0, ENVIO: 1, PRESENCIAL: 2 };
-const CUSTODIA_G = H.b32("CUSTODIA_CLASE_G");
+// SFSP-140 §3.2 · el MÓDULO del que depende la custodia (no el tipo de licencia).
+const CUSTODIA_G = H.b32("MOD_CUSTODIA_CLIENTES");
+const LIC_G = H.b32("LIC_G_TEST");
 
 // Barra de 1 kg a 999,9: onzas finas = mg × ppm × 1e13 / 311035 (31,1035 g por onza).
 const KG_MG = 1_000_000n;
@@ -48,7 +51,36 @@ async function montar() {
   await x.r.send("registerCustodian", [H.b32("CUST_A"), x.custA, false, H.b32("JUR_A")], x.board);
   await x.r.send("registerCustodian", [H.b32("CUST_B"), x.custB, false, H.b32("JUR_B")], x.board);
   await x.r.send("registerCustodian", [H.b32("CUST_ORDENEX"), x.custInt, true, H.b32("JUR_PROSPERA")], x.board);
+  // El motor gasta órdenes de gobierno (apertura de canales físicos).
+  await f.governance.send("grantRole", [await f.governance.call("TECH_OPS"), x.r.address], x.board);
+  // SFSP-120 §0.3 · colocar es suscribir: alice y bob pueden suscribir AUKA y
+  // AGKA en primaria; el motor de reservas aplica la suscripción.
+  await V.habilitarSuscripcion(f, [C.ASSET_AUKA, C.ASSET_AGKA], [f.alice, f.bob], [x.r.address]);
   return x;
+}
+
+/** Digest de la orden de gobierno que abre un canal físico (SFSPReserveEngine.setChannel). */
+async function digestCanal(x, assetId, canal, minUnits, licRef) {
+  const cfg = await x.r.call("channelOf", [assetId, canal]);
+  return H.keccak256(H.defaultAbiCoder.encode(
+    ["bytes32", "uint256", "address", "bytes32", "uint8", "uint256", "bytes32", "bytes32", "uint32"],
+    [H.b32("OPEN_PHYSICAL_CHANNEL"), await H.chainId(), x.r.address, assetId, canal, String(minUnits), licRef, H.b32("LICENCIA_OTORGADA"), Number(cfg.openings)],
+  ));
+}
+
+/** Abre un canal físico como manda el v0.3 §9.3: licencia vigente, su número y
+ *  una orden de gobierno aprobada con la etiqueta OPEN_PHYSICAL_CHANNEL. */
+async function abrirCanalFisico(x, assetId, canal, minUnits, o) {
+  const opts = o || {};
+  if (!opts.sinCompuerta) {
+    await x.r.send("setLicenseGate", [x.gate.address], x.board);
+    await x.gate.send("set", [CUSTODIA_G, true], x.board);
+    await x.gate.send("setNumber", [CUSTODIA_G, LIC_G], x.board);
+  }
+  const d = await digestCanal(x, assetId, canal, minUnits, LIC_G);
+  const OA = require("./orden-autorizada");
+  await OA.aprobar(x.f, d, H.b32("OPEN_PHYSICAL_CHANNEL"));
+  return x.r.send("setChannel", [assetId, canal, true, String(minUnits), 0, LIC_G], x.board);
 }
 
 function intake(lotId, assetId, custodian, metal, cert, grossMg, ppm) {
@@ -289,9 +321,7 @@ describe("SFSP v0.3 §9 · motor de reservas y commodities (SFSPReserveEngine)",
     });
 
     it("adversario (quema después de entrega): no se confirma una entrega de envío sin quema previa", async function () {
-      await x.r.send("setLicenseGate", [x.gate.address], x.board);
-      await x.gate.send("set", [CUSTODIA_G, true], x.board);
-      await x.r.send("setChannel", [C.ASSET_AUKA, CH.ENVIO, true, String(E18), 0, H.b32("LIC_G_TEST")], x.board);
+      await abrirCanalFisico(x, C.ASSET_AUKA, CH.ENVIO, E18);
       const { id } = await pedir(x, C.ASSET_AUKA, 5n * E18, CH.ENVIO, f.alice);
       await hastaBloqueada(x, id, "L1");
       assert.equal(Number((await x.r.call("lotOf", [H.b32("L1")])).state), LOT.BLOQUEADO);
@@ -314,9 +344,7 @@ describe("SFSP v0.3 §9 · motor de reservas y commodities (SFSPReserveEngine)",
     });
 
     it("positivo: retiro presencial; sin comparecencia vence SIN quemar y el metal vuelve a respaldar", async function () {
-      await x.r.send("setLicenseGate", [x.gate.address], x.board);
-      await x.gate.send("set", [CUSTODIA_G, true], x.board);
-      await x.r.send("setChannel", [C.ASSET_AUKA, CH.PRESENCIAL, true, String(E18), 0, H.b32("LIC_G_TEST")], x.board);
+      await abrirCanalFisico(x, C.ASSET_AUKA, CH.PRESENCIAL, E18);
       const { id } = await pedir(x, C.ASSET_AUKA, 3n * E18, CH.PRESENCIAL, f.alice);
       await hastaBloqueada(x, id, "L1", (await H.now()) + DIA);
       await H.expectRevert(x.r.send("expireNoShow", [id], f.mallory), H.b32("NOT_EXPIRED"));
@@ -332,9 +360,7 @@ describe("SFSP v0.3 §9 · motor de reservas y commodities (SFSPReserveEngine)",
     });
 
     it("positivo: retiro presencial con comparecencia: quema y entrega a la vez", async function () {
-      await x.r.send("setLicenseGate", [x.gate.address], x.board);
-      await x.gate.send("set", [CUSTODIA_G, true], x.board);
-      await x.r.send("setChannel", [C.ASSET_AUKA, CH.PRESENCIAL, true, String(E18), 0, H.b32("LIC_G_TEST")], x.board);
+      await abrirCanalFisico(x, C.ASSET_AUKA, CH.PRESENCIAL, E18);
       const { id } = await pedir(x, C.ASSET_AUKA, 3n * E18, CH.PRESENCIAL, f.alice);
       await hastaBloqueada(x, id, "L1", (await H.now()) + DIA);
       const rec = await x.r.send("confirmDelivery", [id], x.custA);
@@ -344,9 +370,7 @@ describe("SFSP v0.3 §9 · motor de reservas y commodities (SFSPReserveEngine)",
     });
 
     it("adversario: si la licencia deja de estar vigente, el canal físico se cierra solo", async function () {
-      await x.r.send("setLicenseGate", [x.gate.address], x.board);
-      await x.gate.send("set", [CUSTODIA_G, true], x.board);
-      await x.r.send("setChannel", [C.ASSET_AUKA, CH.ENVIO, true, String(E18), 0, H.b32("LIC_G_TEST")], x.board);
+      await abrirCanalFisico(x, C.ASSET_AUKA, CH.ENVIO, E18);
       await x.gate.send("set", [CUSTODIA_G, false], x.board);
       await H.expectRevert(x.r.send("requestRedemption", [C.ASSET_AUKA, String(E18), CH.ENVIO], f.alice), H.b32("LICENCIA_NO_OTORGADA"));
     });
@@ -360,13 +384,8 @@ describe("SFSP v0.3 §9 · motor de reservas y commodities (SFSPReserveEngine)",
       await x.r.sendValue("fundOrigenSettlement", [], x.fondeador, 100n * E18);
     });
 
-    it("negativo: AGKA no abre canales físicos, ni con licencia", async function () {
-      await x.r.send("setLicenseGate", [x.gate.address], x.board);
-      await x.gate.send("set", [CUSTODIA_G, true], x.board);
-      await H.expectRevert(
-        x.r.send("setChannel", [C.ASSET_AGKA, CH.ENVIO, true, String(E18), 0, H.b32("LIC")], x.board),
-        H.b32("PHYSICAL_NOT_ALLOWED"),
-      );
+    it("negativo: AGKA no abre canales físicos, ni con licencia ni con orden", async function () {
+      await H.expectRevert(abrirCanalFisico(x, C.ASSET_AGKA, CH.ENVIO, E18), H.b32("PHYSICAL_NOT_ALLOWED"));
     });
 
     it("adversario (oráculo viejo): con la lectura vencida no se liquida; con lectura fresca, por el ratio", async function () {
@@ -380,6 +399,170 @@ describe("SFSP v0.3 §9 · motor de reservas y commodities (SFSPReserveEngine)",
       await x.r.send("settleInOrigen", [id], x.board);
       const bruto = (4n * E18 * C.PLATA * 17106925n) / (C.ORO * 10000n);
       assert.equal((await C.saldo(f.alice)) - antes, (bruto * 9950n) / 10000n);
+    });
+  });
+
+  describe("SFSP-120 §0.3 · colocar es suscribir: RELEASE y además SUBSCRIBE sobre el adquirente", function () {
+    it("negativo (T-120-21, T-120-25): con capacidad y RELEASE en ALLOW, un residente SOLO_ENTRANTE no recibe", async function () {
+      await loteListo(x, "L1", C.ASSET_AUKA, "CUST_A", x.custA);
+      const carol = f.acc[11];
+      await f.identity.send("bindPurposeCommitment", [carol, F.PURPOSE_BASE, F.compromiso(H.b32("subj_carol"), F.PURPOSE_BASE, H.b32("salt_carol"))], x.board);
+      await V.acreditarResidencia(f, carol, H.b32("HN"), "carol");
+      const release = await f.engine.call("evaluateOperation", [carol, C.ASSET_AUKA, H.b32("RELEASE"), String(E18), H.ZERO32]);
+      assert.equal(Number(release.result), F.CODE.ALLOW, "RELEASE solo no bastaba: era el hueco");
+      await V.revertCon(colocar(x, C.ASSET_AUKA, carol, E18, "op_carol"), f.engine, "SubscriptionRejected");
+      assert.equal((await x.auka.call("balanceOf", [carol])).toString(), "0");
+      assert.equal((await x.r.call("placementCapacityOz", [C.ASSET_AUKA])).toString(), String(OZ_KG), "la capacidad no se tocó");
+    });
+
+    it("negativo: sin el rol de ejecutor en el motor de elegibilidad, el motor de reservas no coloca", async function () {
+      await loteListo(x, "L1", C.ASSET_AUKA, "CUST_A", x.custA);
+      await f.engine.send("revokeRole", [await f.engine.call("SUBSCRIPTION_EXECUTOR"), x.r.address], x.board);
+      await H.expectRevert(colocar(x, C.ASSET_AUKA, f.alice, E18, "op_sin_rol"), "Unauthorized");
+    });
+  });
+
+  describe("C8 · la cobertura cuenta lo que está FUERA de la tesorería (T-300-20 detectado)", function () {
+    it("adversario: una salida directa desde la tesorería cuenta como colocada, cae el invariante y se detiene la colocación", async function () {
+      await loteListo(x, "L1", C.ASSET_AUKA, "CUST_A", x.custA);
+      await colocar(x, C.ASSET_AUKA, f.alice, 10n * E18, "op1");
+      // 40 AUKA salen de la tesorería a bob sin pasar por `place` (sin capacidad).
+      await x.auka.send("transfer", [f.bob, String(40n * E18)], f.treasury);
+      const c = await x.r.call("coverage", [C.ASSET_AUKA]);
+      assert.equal(c.unitsPlaced.toString(), String(50n * E18), "lo que está en manos de terceros, no sólo lo colocado");
+      assert.equal(c.unitsInTreasury.toString(), String(950n * E18), "el saldo real de la tesorería, no una resta");
+      assert.equal(await x.r.call("invariantHolds", [C.ASSET_AUKA]), false, "32,14 oz no cubren 50 unidades");
+      const rec = await x.r.send("publishCoverage", [C.ASSET_AUKA], f.mallory);
+      assert.equal(C.eventos(x.r, rec, "CoveragePublished")[0].unitsPlaced.toString(), String(50n * E18));
+      await H.expectRevert(colocar(x, C.ASSET_AUKA, f.alice, E18, "op2"), "CoverageDeficit");
+    });
+  });
+
+  describe("concentración: el límite de la custodia interna es una decisión aparte (v0.3 §18)", function () {
+    it("negativo (T-300-27): sin límite interno, un lote de Ordenex no se asigna ni suma; los independientes sí", async function () {
+      // Límite independiente fijado; el interno en null (0).
+      await x.r.send("setConcentrationLimits", [6000, 0, String(40n * E18)], x.board);
+      await loteListo(x, "L1", C.ASSET_AUKA, "CUST_A", x.custA);
+      await loteListo(x, "L2", C.ASSET_AUKA, "CUST_B", x.custB, C.XAU, "c2");
+      assert.equal((await x.r.call("placementCapacityOz", [C.ASSET_AUKA])).toString(), String(2n * OZ_KG));
+      await x.r.send("setLicenseGate", [x.gate.address], x.board);
+      await x.gate.send("set", [CUSTODIA_G, true], x.board);
+      await x.r.send("registerLot", [intake("LI", C.ASSET_AUKA, "CUST_ORDENEX", C.XAU, "ci")], x.board);
+      await atestar(x, "LI", x.custInt);
+      await x.r.send("auditVerifyLot", [H.b32("LI"), (await H.now()) + 10 * DIA], x.auditor);
+      const msg = await H.expectRevert(x.r.send("assignLot", [H.b32("LI")], x.board), "Blocked(9");
+      assert.ok(msg.includes(H.b32("INTERNAL_CONCENTRATION_NOT_SET")));
+      // Con el límite interno fijado por la Junta, se asigna y suma.
+      await x.r.send("setConcentrationLimits", [6000, 4000, String(40n * E18)], x.board);
+      await x.r.send("assignLot", [H.b32("LI")], x.board);
+      assert.equal((await x.r.call("placementCapacityOz", [C.ASSET_AUKA])).toString(), String(3n * OZ_KG));
+      // Si la Junta vuelve a dejarlo en null, el lote interno deja de contar solo.
+      await x.r.send("setConcentrationLimits", [6000, 0, String(40n * E18)], x.board);
+      assert.equal(await x.r.call("isLotValid", [H.b32("LI")]), false);
+      assert.equal((await x.r.call("placementCapacityOz", [C.ASSET_AUKA])).toString(), String(2n * OZ_KG));
+    });
+  });
+
+  describe("canales físicos: se abren sólo por orden de gobierno con el número de la licencia (T-300-28)", function () {
+    beforeEach(async function () {
+      await loteListo(x, "L1", C.ASSET_AUKA, "CUST_A", x.custA);
+      await x.r.send("setLicenseGate", [x.gate.address], x.board);
+      await x.gate.send("set", [CUSTODIA_G, true], x.board);
+      await x.gate.send("setNumber", [CUSTODIA_G, LIC_G], x.board);
+    });
+
+    it("negativo: con la licencia vigente pero sin orden de gobierno, la Junta sola no abre el canal", async function () {
+      const msg = await H.expectRevert(
+        x.r.send("setChannel", [C.ASSET_AUKA, CH.ENVIO, true, String(E18), 0, LIC_G], x.board),
+        "Rejected",
+      );
+      assert.ok(msg.includes(H.b32("GOVERNANCE_ORDER_REQUIRED")));
+    });
+
+    it("negativo: con un número que no es el de la licencia del módulo, no abre (ni con orden)", async function () {
+      const falso = H.b32("LIC_INVENTADA");
+      const OA = require("./orden-autorizada");
+      await OA.aprobar(f, await digestCanal(x, C.ASSET_AUKA, CH.ENVIO, E18, falso), H.b32("OPEN_PHYSICAL_CHANNEL"));
+      const msg = await H.expectRevert(
+        x.r.send("setChannel", [C.ASSET_AUKA, CH.ENVIO, true, String(E18), 0, falso], x.board),
+        "Rejected",
+      );
+      assert.ok(msg.includes(H.b32("LICENSE_NUMBER")));
+    });
+
+    it("positivo: con la orden aprobada abre; la orden se gasta y reabrir exige otra", async function () {
+      await abrirCanalFisico(x, C.ASSET_AUKA, CH.ENVIO, E18, { sinCompuerta: true });
+      const cfg = await x.r.call("channelOf", [C.ASSET_AUKA, CH.ENVIO]);
+      assert.equal(cfg.open, true);
+      assert.equal(cfg.licenseRef, LIC_G);
+      assert.equal(Number(cfg.openings), 1);
+      // Cerrar no necesita orden (reduce poder); reabrir, sí, y otra distinta.
+      await x.r.send("setChannel", [C.ASSET_AUKA, CH.ENVIO, false, String(E18), 0, LIC_G], x.board);
+      await H.expectRevert(x.r.send("setChannel", [C.ASSET_AUKA, CH.ENVIO, true, String(E18), 0, LIC_G], x.board), "Rejected");
+      await abrirCanalFisico(x, C.ASSET_AUKA, CH.ENVIO, E18, { sinCompuerta: true });
+      assert.equal(Number((await x.r.call("channelOf", [C.ASSET_AUKA, CH.ENVIO])).openings), 2);
+    });
+  });
+
+  describe("fase 2 punto 1 · el registro de licencias es la compuerta real del motor", function () {
+    it("positivo: con LIC_AUCORP_CUSTODIA_G VIGENTE y MOD_CUSTODIA_CLIENTES declarado, el motor asigna custodia interna y abre el canal", async function () {
+      const lic = f.lic; // el registro que ya cablea el motor de elegibilidad
+      const LIC_ID = H.b32("LIC_AUCORP_CUSTODIA_G");
+      const t = V.terminos(V.TIT.AU_CORP, V.TIPO.CUSTODIA_G, { operator: V.OPER.ORDENEX });
+      await V.licenciaVigente(f, LIC_ID, t, 30);
+      await V.declararModulo(f, V.modulo(CUSTODIA_G, [[V.TIT.AU_CORP, V.TIPO.CUSTODIA_G]], V.AV.DISPONIBLE, H.b32("LICENCIA_OTORGADA")));
+      assert.equal(await lic.call("isModuleEnabled", [CUSTODIA_G]), true);
+      const numero = (await lic.call("licenseOf", [LIC_ID])).grant.number;
+      assert.equal(await lic.call("moduleHasLicenseNumber", [CUSTODIA_G, numero]), true);
+      assert.equal(await lic.call("moduleHasLicenseNumber", [CUSTODIA_G, H.b32("OTRO")]), false);
+
+      await x.r.send("setLicenseGate", [lic.address], x.board);
+      await x.r.send("setConcentrationLimits", [10000, 10000, 0], x.board);
+      await x.r.send("registerLot", [intake("LI", C.ASSET_AUKA, "CUST_ORDENEX", C.XAU, "ci")], x.board);
+      await atestar(x, "LI", x.custInt);
+      await x.r.send("auditVerifyLot", [H.b32("LI"), (await H.now()) + 10 * DIA], x.auditor);
+      // Antes revertía: el registro no tenía la función que el motor consultaba.
+      await x.r.send("assignLot", [H.b32("LI")], x.board);
+      assert.equal(await x.r.call("isLotValid", [H.b32("LI")]), true);
+
+      const OA = require("./orden-autorizada");
+      await OA.aprobar(f, await digestCanal(x, C.ASSET_AUKA, CH.ENVIO, E18, numero), H.b32("OPEN_PHYSICAL_CHANNEL"));
+      await x.r.send("setChannel", [C.ASSET_AUKA, CH.ENVIO, true, String(E18), 0, numero], x.board);
+      assert.equal((await x.r.call("channelOf", [C.ASSET_AUKA, CH.ENVIO])).open, true);
+
+      // Si la licencia se suspende, el módulo se cierra y el lote interno deja de contar.
+      await V.transicion(f, LIC_ID, V.LS.VIGENTE, V.LS.SUSPENDIDA, V.SIN_OTORGAMIENTO, H.b32("LICENCIA_SUSPENDIDA"));
+      assert.equal(await x.r.call("isLotValid", [H.b32("LI")]), false);
+    });
+  });
+
+  describe("Apéndice A/B · toda transición de la redención lleva su código de motivo", function () {
+    beforeEach(async function () {
+      await loteListo(x, "L1", C.ASSET_AUKA, "CUST_A", x.custA);
+      await colocar(x, C.ASSET_AUKA, f.alice, 20n * E18, "op1");
+      await x.r.send("setChannel", [C.ASSET_AUKA, CH.ORIGEN, true, 0, 50, H.ZERO32], x.board);
+    });
+
+    const motivos = (rec) => C.eventos(x.r, rec, "RedemptionUpdated").map((e) => [Number(e.newState), e.reasonCode]);
+
+    it("positivo: la cancelación del tenedor, la de operación y la inelegibilidad se distinguen", async function () {
+      const a = await pedir(x, C.ASSET_AUKA, E18, CH.ORIGEN, f.alice);
+      assert.deepEqual(motivos(a.rec), [[RED.SOLICITADA, H.b32("SOLICITUD_TENEDOR")]]);
+      assert.deepEqual(motivos(await x.r.send("cancelRedemption", [a.id], f.alice)), [[RED.CANCELADA, H.b32("CANCELACION_TENEDOR")]]);
+      const b = await pedir(x, C.ASSET_AUKA, E18, CH.ORIGEN, f.alice);
+      assert.deepEqual(motivos(await x.r.send("cancelRedemption", [b.id], x.board)), [[RED.CANCELADA, H.b32("CANCELACION_OPERACION")]]);
+      // alice deja de ser elegible para REDEEM: la cancelación lleva el código del motor.
+      const c = await pedir(x, C.ASSET_AUKA, E18, CH.ORIGEN, f.alice);
+      await F.fijarPolitica(f, C.ASSET_AUKA, H.b32("REDEEM"), F.policy({ actionAllowed: false }), "redeem_no");
+      assert.deepEqual(motivos(await x.r.send("verifyEligibility", [c.id], x.board)), [[RED.CANCELADA, H.b32("POLICY_FORBIDS_ACTION")]]);
+    });
+
+    it("positivo: la incomparecencia se registra como VENCIMIENTO_PLAZO", async function () {
+      await abrirCanalFisico(x, C.ASSET_AUKA, CH.PRESENCIAL, E18);
+      const { id } = await pedir(x, C.ASSET_AUKA, 2n * E18, CH.PRESENCIAL, f.alice);
+      await hastaBloqueada(x, id, "L1", (await H.now()) + DIA);
+      await H.increaseTime(DIA + 10);
+      assert.deepEqual(motivos(await x.r.send("expireNoShow", [id], f.mallory)), [[RED.VENCIDA, H.b32("VENCIMIENTO_PLAZO")]]);
     });
   });
 });

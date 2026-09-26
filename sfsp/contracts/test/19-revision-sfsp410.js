@@ -134,7 +134,7 @@ describe("Revisión SFSP-410 · correcciones", function () {
         firmantes: [A(1), A(2), A(3)], quorum: 2, quorumUpgrade: 2,
         timelockSegundos: 10, pausaMaximaSegundos: 10, vigenciaOrdenesSegundos: 100,
       });
-      Object.assign(P.roles, { junta: A(0x10), techOps: A(0x11), emisor: A(0x12), atestador: A(0x13), atestadorMigracion: A(0x14), auditor: A(0x15) }, roles);
+      Object.assign(P.roles, { junta: A(0x10), techOps: A(0x11), emisor: A(0x12), atestador: A(0x13), atestadorMigracion: A(0x14), auditor: A(0x15), dbnx: A(0x16) }, roles);
       return P;
     }
     const falla = (P) => { try { Dp.validar(P); return null; } catch (e) { return e.message; } };
@@ -144,6 +144,10 @@ describe("Revisión SFSP-410 · correcciones", function () {
     });
     it("negativo: la Junta como emisor se rechaza", function () {
       assert.match(String(falla(parametros({ emisor: A(0x10) }))), /Junta no puede/);
+    });
+    it("negativo (v0.3 §5): DBNX no puede ser el emisor ni techOps", function () {
+      assert.match(String(falla(parametros({ dbnx: A(0x12) }))), /dbnx no puede ser/);
+      assert.match(String(falla(parametros({ dbnx: A(0x11) }))), /dbnx no puede ser/);
     });
     it("positivo: con roles distintos la validación pasa de ese punto", function () {
       const m = String(falla(parametros({})));

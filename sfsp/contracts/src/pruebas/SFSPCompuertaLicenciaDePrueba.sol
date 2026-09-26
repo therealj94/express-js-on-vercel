@@ -10,6 +10,7 @@ import {ILicenseGate} from "../lib/ILicenseGate.sol";
 contract SFSPCompuertaLicenciaDePrueba is ILicenseGate {
     address public immutable owner;
     mapping(bytes32 => bool) private _enabled;
+    mapping(bytes32 => bytes32) private _number;
 
     constructor() {
         owner = msg.sender;
@@ -20,7 +21,16 @@ contract SFSPCompuertaLicenciaDePrueba is ILicenseGate {
         _enabled[moduleId] = enabled;
     }
 
+    function setNumber(bytes32 moduleId, bytes32 number) external {
+        require(msg.sender == owner, "prueba: solo dueno");
+        _number[moduleId] = number;
+    }
+
     function isModuleEnabled(bytes32 moduleId) external view returns (bool) {
         return _enabled[moduleId];
+    }
+
+    function moduleHasLicenseNumber(bytes32 moduleId, bytes32 number) external view returns (bool) {
+        return _enabled[moduleId] && number != bytes32(0) && _number[moduleId] == number;
     }
 }
