@@ -168,6 +168,9 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
     /// @dev Marcar restringe (TECH_OPS o Junta); desmarcar amplía (sólo Junta).
     function setInternalAccount(address account, bool internalAccount, bytes32 reasonCode) external {
         require(account != address(0), "SFSP: account=0");
+        // La propia bóveda no es una cuenta interna "fuera de la bóveda": marcarla
+        // contaría su saldo dos veces y rebajaría el circulante publicado.
+        require(account != address(this), "SFSP: la boveda no es cuenta interna");
         require(reasonCode != bytes32(0), "SFSP: motivo requerido");
         if (internalAccount) {
             if (!hasRole(TECH_OPS, msg.sender) && !hasRole(DBNX_BOARD, msg.sender)) revert Unauthorized(TECH_OPS, msg.sender);

@@ -1,0 +1,391 @@
+{
+  "schemaVersion": "sfsp410-parametros/draft-0.1",
+  "_estado": "PLANTILLA. Todo valor que decide la Junta esta en null. desplegar-sfsp410.js se niega a correr (BLOCKED_DECISION) mientras quede un solo null. No se elige ningun valor por defecto.",
+  "_referencias": [
+    "spec/SFSP-410-SUPPLY-POLICY.md",
+    "adr/ADR-015-circulante-solo-usuarios-y-boveda-nativa.md",
+    "DECISIONES-SFSP.json (D03 D07 D08 D23 D24 D25 D26 D27)",
+    "deploy/sfsp410/ENSAYO.md"
+  ],
+  "sintetico": false,
+  "red": {
+    "_nota": "chainId y genesisHash se comprueban contra el nodo antes de enviar nada.",
+    "nombre": "principal",
+    "chainId": 5550,
+    "genesisHash": null
+  },
+  "desplegador": null,
+  "_desplegadorNota": "Cuenta (billetera de hardware) que envia las transacciones de despliegue. NO recibe ningun rol permanente: el script le quita todo lo que se dio y lo comprueba con hasRole. No puede ser la Junta, un firmante ni un rol operativo.",
+  "gobierno": {
+    "_decision": "D07",
+    "firmantes": null,
+    "_firmantesNota": "Direcciones de billeteras de hardware de los firmantes. Quien propone no aprueba: hacen falta al menos quorum+1 firmantes.",
+    "quorum": null,
+    "quorumUpgrade": null,
+    "timelockSegundos": null,
+    "pausaMaximaSegundos": null,
+    "vigenciaOrdenesSegundos": null,
+    "_vigenciaNota": "Ventana de las ordenes de gobierno que prepara el script (SET_POLICY, SET_MINT_BUDGET, SET_RELEASE_BUDGET). Tiene que ser MAYOR que timelockSegundos, o los cupos no se podran ejecutar nunca."
+  },
+  "roles": {
+    "_decision": "D27",
+    "junta": null,
+    "_juntaNota": "DBNX_BOARD de todos los contratos. Multifirma (contrato); en red real el script exige que tenga codigo.",
+    "techOps": null,
+    "_techOpsNota": "TECH_OPS: ejecuta ordenes ya aprobadas (setPolicy, setMintBudget, setReleaseBudget), marca cuentas internas, corta cupos. Nunca aprueba.",
+    "emisor": null,
+    "_emisorNota": "ISSUER: llave de servicio en KMS que llama mintOnDemand/releaseOnDemand. Sin poder de aprobacion.",
+    "atestador": null,
+    "_atestadorNota": "ATTESTOR del adaptador de identidad (atestaciones Genesis ID).",
+    "atestadorMigracion": null,
+    "auditor": null
+  },
+  "origen": {
+    "assetId": "SFSP:NATIVE:ORIGEN:5550",
+    "_assetIdNota": "propuesta de nombre",
+    "genesisSupply": "1000000000000000000000000000000",
+    "_genesisNota": "1.000.000.000.000 ORIGEN x 1e18 (dato del genesis, no una decision; ADR-006).",
+    "pasaporte": {
+      "_nota": "Pasaporte SFSP-100 (D08). Textos cortos (<=31 bytes) o bytes32 en hex. Estados: nombres de enum de SFSPTypes.",
+      "issuerId": null,
+      "legalInstrumentId": null,
+      "economicType": null,
+      "legalClass": null,
+      "jurisdiction": null,
+      "unit": "ORIGEN",
+      "rightsTemplateId": null,
+      "rightsTemplateVersion": null,
+      "documentRoot": null,
+      "transferPolicyId": null,
+      "redemptionPolicyId": null,
+      "listingPolicyId": null,
+      "capacidades": "NO_APLICA_NATIVO",
+      "estado": {
+        "legal": null,
+        "admission": null,
+        "trading": null,
+        "transferability": null,
+        "redemption": null
+      }
+    },
+    "politicaElegibilidad": {
+      "_nota": "Politica de elegibilidad por (activo, accion). Se fija con SET_POLICY (doble control). requiredPurpose: 'NINGUNO' = solo alta BASE en el adaptador de identidad; otro texto = claim exigido.",
+      "acciones": [
+        "MINT"
+      ],
+      "requiresHumanReview": null,
+      "requiresAuthorization": null,
+      "jurisdictionAllowlist": null,
+      "jurisdiccionesPermitidas": null,
+      "requiredPurpose": null,
+      "maxAmount": null
+    },
+    "cupoLiberacion": {
+      "_nota": "D24. Montos en unidades minimas (18 decimales). period y vigencia en segundos; validUntil = timestamp UNIX absoluto. termsDocRoot = hash del acta de la Junta.",
+      "perPeriod": null,
+      "period": null,
+      "maxPerOperation": null,
+      "validUntil": null,
+      "termsDocRoot": null
+    }
+  },
+  "activos": [
+    {
+      "simbolo": "ONDK",
+      "assetId": "SFSP:TOKEN:ONDK:V1",
+      "_assetIdNota": "propuesta de nombre (ADR-010); no es decision economica",
+      "contratoViejo": "0xfb83eea4b384a4b18e5a1eba7a4bb4c0b7ca19c1",
+      "decimales": 18,
+      "usuariosEnFoto": {
+        "conDireccion": 35,
+        "sinResolver": 89,
+        "fuente": "censo ONDK bloque 270.540"
+      },
+      "_nota": "Se reemplaza; migracion SFSP-700 solo de saldos de usuarios (D26).",
+      "erc20Interop": null,
+      "limites": {
+        "_nota": "D24 · SFSP-200 §4: stock (maximo en manos de usuarios) y acumulado de vida (quemar no lo recupera).",
+        "outstandingLimit": null,
+        "cumulativeCap": null
+      },
+      "cupoEmision": {
+        "_nota": "D24. Montos en unidades minimas (18 decimales). period y vigencia en segundos; validUntil = timestamp UNIX absoluto. termsDocRoot = hash del acta de la Junta.",
+        "perPeriod": null,
+        "period": null,
+        "maxPerOperation": null,
+        "validUntil": null,
+        "termsDocRoot": null
+      },
+      "pasaporte": {
+        "_nota": "Pasaporte SFSP-100 (D08). Textos cortos (<=31 bytes) o bytes32 en hex. Estados: nombres de enum de SFSPTypes.",
+        "issuerId": null,
+        "legalInstrumentId": null,
+        "economicType": null,
+        "legalClass": null,
+        "jurisdiction": null,
+        "unit": "ONDK",
+        "rightsTemplateId": null,
+        "rightsTemplateVersion": null,
+        "documentRoot": null,
+        "transferPolicyId": null,
+        "redemptionPolicyId": null,
+        "listingPolicyId": null,
+        "capacidades": {
+          "freeze": null,
+          "forcedTransfer": null
+        },
+        "estado": {
+          "legal": null,
+          "admission": null,
+          "trading": null,
+          "transferability": null,
+          "redemption": null
+        }
+      },
+      "politicaElegibilidad": {
+        "_nota": "Politica de elegibilidad por (activo, accion). Se fija con SET_POLICY (doble control). requiredPurpose: 'NINGUNO' = solo alta BASE en el adaptador de identidad; otro texto = claim exigido.",
+        "acciones": [
+          "MINT",
+          "TRANSFER_OUT",
+          "TRANSFER_IN",
+          "MIGRATION_CLAIM"
+        ],
+        "requiresHumanReview": null,
+        "requiresAuthorization": null,
+        "jurisdictionAllowlist": null,
+        "jurisdiccionesPermitidas": null,
+        "requiredPurpose": null,
+        "maxAmount": null
+      }
+    },
+    {
+      "simbolo": "AUKA",
+      "assetId": "SFSP:TOKEN:AUKA:V1",
+      "_assetIdNota": "propuesta de nombre (ADR-010); no es decision economica",
+      "contratoViejo": "0x6facc8df79cedc6c5065442ce27e915aa3a26b9b",
+      "decimales": 18,
+      "usuariosEnFoto": {
+        "usuario": 5,
+        "desconocidoPequeno": 19,
+        "fuente": "foto 270.224"
+      },
+      "_nota": "Commodity: SFSP-410 §3.2, hasta que exista SFSPCommodityEngine se emite SOLO por orden de gobierno (sin cupo).",
+      "erc20Interop": null,
+      "limites": {
+        "_nota": "D24 · SFSP-200 §4: stock (maximo en manos de usuarios) y acumulado de vida (quemar no lo recupera).",
+        "outstandingLimit": null,
+        "cumulativeCap": null
+      },
+      "cupoEmision": "NO_APLICA_SFSP410_3_2",
+      "pasaporte": {
+        "_nota": "Pasaporte SFSP-100 (D08). Textos cortos (<=31 bytes) o bytes32 en hex. Estados: nombres de enum de SFSPTypes.",
+        "issuerId": null,
+        "legalInstrumentId": null,
+        "economicType": null,
+        "legalClass": null,
+        "jurisdiction": null,
+        "unit": "AUKA",
+        "rightsTemplateId": null,
+        "rightsTemplateVersion": null,
+        "documentRoot": null,
+        "transferPolicyId": null,
+        "redemptionPolicyId": null,
+        "listingPolicyId": null,
+        "capacidades": {
+          "freeze": null,
+          "forcedTransfer": null
+        },
+        "estado": {
+          "legal": null,
+          "admission": null,
+          "trading": null,
+          "transferability": null,
+          "redemption": null
+        }
+      },
+      "politicaElegibilidad": {
+        "_nota": "Politica de elegibilidad por (activo, accion). Se fija con SET_POLICY (doble control). requiredPurpose: 'NINGUNO' = solo alta BASE en el adaptador de identidad; otro texto = claim exigido.",
+        "acciones": [
+          "MINT",
+          "TRANSFER_OUT",
+          "TRANSFER_IN",
+          "MIGRATION_CLAIM"
+        ],
+        "requiresHumanReview": null,
+        "requiresAuthorization": null,
+        "jurisdictionAllowlist": null,
+        "jurisdiccionesPermitidas": null,
+        "requiredPurpose": null,
+        "maxAmount": null
+      }
+    },
+    {
+      "simbolo": "IBS",
+      "assetId": "SFSP:TOKEN:IBS:V1",
+      "_assetIdNota": "propuesta de nombre (ADR-010); no es decision economica",
+      "contratoViejo": "0x7af11d3e94a174f6fc290a5b7791a6dee2718e62",
+      "decimales": 18,
+      "usuariosEnFoto": {
+        "usuario": 1,
+        "desconocidoPequeno": 1,
+        "fuente": "foto 270.224"
+      },
+      "_nota": "Clase y serie por definir (D08). Hay dos contratos con el simbolo IBS (SFSP-700): confirmar.",
+      "erc20Interop": null,
+      "limites": {
+        "_nota": "D24 · SFSP-200 §4: stock (maximo en manos de usuarios) y acumulado de vida (quemar no lo recupera).",
+        "outstandingLimit": null,
+        "cumulativeCap": null
+      },
+      "cupoEmision": {
+        "_nota": "D24. Montos en unidades minimas (18 decimales). period y vigencia en segundos; validUntil = timestamp UNIX absoluto. termsDocRoot = hash del acta de la Junta.",
+        "perPeriod": null,
+        "period": null,
+        "maxPerOperation": null,
+        "validUntil": null,
+        "termsDocRoot": null
+      },
+      "pasaporte": {
+        "_nota": "Pasaporte SFSP-100 (D08). Textos cortos (<=31 bytes) o bytes32 en hex. Estados: nombres de enum de SFSPTypes.",
+        "issuerId": null,
+        "legalInstrumentId": null,
+        "economicType": null,
+        "legalClass": null,
+        "jurisdiction": null,
+        "unit": "IBS",
+        "rightsTemplateId": null,
+        "rightsTemplateVersion": null,
+        "documentRoot": null,
+        "transferPolicyId": null,
+        "redemptionPolicyId": null,
+        "listingPolicyId": null,
+        "capacidades": {
+          "freeze": null,
+          "forcedTransfer": null
+        },
+        "estado": {
+          "legal": null,
+          "admission": null,
+          "trading": null,
+          "transferability": null,
+          "redemption": null
+        }
+      },
+      "politicaElegibilidad": {
+        "_nota": "Politica de elegibilidad por (activo, accion). Se fija con SET_POLICY (doble control). requiredPurpose: 'NINGUNO' = solo alta BASE en el adaptador de identidad; otro texto = claim exigido.",
+        "acciones": [
+          "MINT",
+          "TRANSFER_OUT",
+          "TRANSFER_IN",
+          "MIGRATION_CLAIM"
+        ],
+        "requiresHumanReview": null,
+        "requiresAuthorization": null,
+        "jurisdictionAllowlist": null,
+        "jurisdiccionesPermitidas": null,
+        "requiredPurpose": null,
+        "maxAmount": null
+      }
+    },
+    {
+      "simbolo": "HARV",
+      "assetId": "SFSP:TOKEN:HARV:V1",
+      "_assetIdNota": "propuesta de nombre (ADR-010); no es decision economica",
+      "contratoViejo": "0x0fa04d11f28b28cbc9b98dd016f02023addb1923",
+      "decimales": 18,
+      "usuariosEnFoto": {
+        "usuario": 1,
+        "desconocidoPequeno": 1,
+        "fuente": "foto 270.224"
+      },
+      "_nota": "Clase y serie por definir (D08).",
+      "erc20Interop": null,
+      "limites": {
+        "_nota": "D24 · SFSP-200 §4: stock (maximo en manos de usuarios) y acumulado de vida (quemar no lo recupera).",
+        "outstandingLimit": null,
+        "cumulativeCap": null
+      },
+      "cupoEmision": {
+        "_nota": "D24. Montos en unidades minimas (18 decimales). period y vigencia en segundos; validUntil = timestamp UNIX absoluto. termsDocRoot = hash del acta de la Junta.",
+        "perPeriod": null,
+        "period": null,
+        "maxPerOperation": null,
+        "validUntil": null,
+        "termsDocRoot": null
+      },
+      "pasaporte": {
+        "_nota": "Pasaporte SFSP-100 (D08). Textos cortos (<=31 bytes) o bytes32 en hex. Estados: nombres de enum de SFSPTypes.",
+        "issuerId": null,
+        "legalInstrumentId": null,
+        "economicType": null,
+        "legalClass": null,
+        "jurisdiction": null,
+        "unit": "HARV",
+        "rightsTemplateId": null,
+        "rightsTemplateVersion": null,
+        "documentRoot": null,
+        "transferPolicyId": null,
+        "redemptionPolicyId": null,
+        "listingPolicyId": null,
+        "capacidades": {
+          "freeze": null,
+          "forcedTransfer": null
+        },
+        "estado": {
+          "legal": null,
+          "admission": null,
+          "trading": null,
+          "transferability": null,
+          "redemption": null
+        }
+      },
+      "politicaElegibilidad": {
+        "_nota": "Politica de elegibilidad por (activo, accion). Se fija con SET_POLICY (doble control). requiredPurpose: 'NINGUNO' = solo alta BASE en el adaptador de identidad; otro texto = claim exigido.",
+        "acciones": [
+          "MINT",
+          "TRANSFER_OUT",
+          "TRANSFER_IN",
+          "MIGRATION_CLAIM"
+        ],
+        "requiresHumanReview": null,
+        "requiresAuthorization": null,
+        "jurisdictionAllowlist": null,
+        "jurisdiccionesPermitidas": null,
+        "requiredPurpose": null,
+        "maxAmount": null
+      }
+    }
+  ],
+  "activosRetirados": {
+    "_nota": "Sin usuarios en la foto (bloque 270.224): se retiran, no se recrean. Todo su suministro esta en billeteras de la organizacion o pools.",
+    "lista": [
+      "AGKA",
+      "MNKA",
+      "AUBEX",
+      "ASL",
+      "LOVE",
+      "REST",
+      "SOL",
+      "AIT",
+      "AGRO",
+      "POLITICAL"
+    ]
+  },
+  "cuentasInternas": {
+    "_estado": "PROPUESTA, CONFIRMAR (D25). Direccion confirmo de palabra el 26-sep que las del 14-sep y el 11-sep son de Orden Global; falta el acta.",
+    "_aplicaA": [
+      "SFSPIssuanceController.setInternalAccount",
+      "SFSPNativeVault.setInternalAccount"
+    ],
+    "_limite": "SFSPNativeVault admite hasta 64 cuentas internas (MAX_INTERNAL_ACCOUNTS).",
+    "confirmadaPorActa": null,
+    "_pendientesDeClasificar": {
+      "0xd894df2b1eedd017c7bb2b01d9a16391ccc4bda5": "10.007 ORIGEN; citada en pruebas (pregunta 6). NO incluida: si es interna, el circulante baja 10.007.",
+      "0x9af6971a1744ccc34f7e94b69490275c1f760b92": "999.988 IBS; sin mencion (pregunta 5).",
+      "0x6bdc87551a3d7db5dee23c76831c36f18f83cdc8": "66.150 ONDK; el censo ONDK la trata como USUARIO (pregunta 5).",
+      "fuentesReparto11sep": "Las 9 billeteras de origen del reparto ONDK (0xc9a6eb5f..., 0x51996a50..., 0x439dc280..., 0xd868878e..., 0xc16d640f..., 0x12862e2a..., 0x2289a27c..., 0xa1fccbde..., 0x0caeee66...) quedaron en 0; anadirlas cuando se confirme su direccion completa."
+    },
+    "lista": null,
+    "nota": "Las direcciones reales NO viven en el repositorio público (MANIFIESTO §7, SFSP-410 §7). La propuesta de 44 cuentas internas se entrega aparte y se confirma en D25; el archivo de parámetros REAL se arma fuera del repositorio."
+  }
+}

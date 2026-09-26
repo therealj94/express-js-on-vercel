@@ -153,4 +153,9 @@ describe("SFSP-410 · bóveda sellada de ORIGEN (moneda nativa)", function () {
       "Unauthorized"
     );
   });
+
+  it("negativo: la bóveda no se puede marcar como cuenta interna (contaría su saldo dos veces)", async function () {
+    await H.expectRevert(v.send("setInternalAccount", [v.address, true, H.b32("ERROR")], f.board));
+    assert.equal(await v.call("isInternalAccount", [v.address]), false);
+  });
 });
