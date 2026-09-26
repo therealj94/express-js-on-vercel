@@ -174,7 +174,7 @@ Reglas:
 | `ModuleAvailabilityChanged` | Un módulo cambia de valor en la taxonomía de §6.1 por dependencia de licencia |
 | `GovernanceAction` | La habilitación de un módulo (regla 3 de §6) |
 
-Sus campos están en `eventos.json`. Desde draft-0.6 los emite `contracts/src/SFSPLicenseRegistry.sol` (`implementadoEnContratos: true`), junto con `LicenseRegistered` para el alta en `EN_TRAMITE`. Pruebas de aceptación T-140-01 a T-140-06: `contracts/test/20-registro-licencias.js` (T-140-01 se cubre como `isModuleAvailable == false`; el código de motivo `LICENCIA_NO_OTORGADA` lo pone el módulo consumidor, que todavía no está cableado).
+Sus campos están en `eventos.json`. Desde draft-0.6 los emite `contracts/src/SFSPLicenseRegistry.sol` (`implementadoEnContratos: true`), junto con `LicenseRegistered` para el alta en `EN_TRAMITE`. Pruebas de aceptación T-140-01 a T-140-06: `contracts/test/20-registro-licencias.js` (T-140-01 se cubre como `isModuleAvailable == false`; el código de motivo `LICENCIA_NO_OTORGADA` lo pone el módulo consumidor). El registro implementa `ILicenseGate.isModuleEnabled`, la compuerta que cablean los módulos (`SFSPReserveEngine.setLicenseGate`): es verdadera sólo con todas las licencias vigentes y el módulo declarado `DISPONIBLE` o `BETA`; `USO_INTERNO` no habilita una función de cara al cliente, y un módulo no declarado devuelve falso sin revertir. Integración con el motor de reservas en `24-reservas-commodities.js`.
 
 ---
 

@@ -8,6 +8,7 @@ const assert = require("node:assert/strict");
 const F = require("./fixture");
 const H = require("./helpers");
 const C = require("./commodities");
+const V = require("./v03");
 
 const DIA = 86400;
 const E18 = C.E18;
@@ -350,6 +351,46 @@ describe("SFSP v0.3 §9 · motor de reservas y commodities (SFSPReserveEngine)",
       await x.gate.send("set", [CUSTODIA_G, false], x.board);
       await H.expectRevert(x.r.send("requestRedemption", [C.ASSET_AUKA, String(E18), CH.ENVIO], f.alice), H.b32("LICENCIA_NO_OTORGADA"));
     });
+  });
+
+  describe("compuerta REAL: SFSPLicenseRegistry como ILicenseGate (SFSP v0.3 §6)", function () {
+    const LIC_G = H.b32("LIC_AUCORP_CUSTODIA_G");
+    async function registroReal(disponibilidad) {
+      await V.desplegarLicencias(f);
+      await V.licenciaVigente(f, LIC_G, V.terminos(V.TIT.AU_CORP, V.TIPO.CUSTODIA_G, { operator: V.OPER.ORDENEX }));
+      await V.declararModulo(f, V.modulo(CUSTODIA_G, [[V.TIT.AU_CORP, V.TIPO.CUSTODIA_G]], disponibilidad));
+      await x.r.send("setLicenseGate", [f.lic.address], x.board);
+    }
+
+    it("positivo: con la licencia Clase G VIGENTE y el módulo DISPONIBLE, el canal físico abre con el registro real", async function () {
+      await registroReal(V.AV.DISPONIBLE);
+      assert.equal(await f.lic.call("isModuleEnabled", [CUSTODIA_G]), true);
+      await x.r.send("setChannel", [C.ASSET_AUKA, CH.ENVIO, true, String(E18), 0, H.b32("LIC_G_REAL")], x.board);
+      assert.equal((await x.r.call("channelOf", [C.ASSET_AUKA, CH.ENVIO])).open, true);
+    });
+
+    it("negativo: USO_INTERNO, PROXIMAMENTE o un módulo no declarado NO habilitan una función de cara al cliente, y responden con código, no con un revert crudo", async function () {
+      await V.desplegarLicencias(f);
+      await x.r.send("setLicenseGate", [f.lic.address], x.board);
+      // Módulo no declarado: false, no revierte.
+      assert.equal(await f.lic.call("isModuleEnabled", [CUSTODIA_G]), false);
+      await H.expectRevert(
+        x.r.send("setChannel", [C.ASSET_AUKA, CH.ENVIO, true, String(E18), 0, H.b32("LIC")], x.board),
+        H.b32("LICENCIA_NO_OTORGADA"),
+      );
+      await V.licenciaVigente(f, LIC_G, V.terminos(V.TIT.AU_CORP, V.TIPO.CUSTODIA_G));
+      for (const d of [V.AV.USO_INTERNO, V.AV.PROXIMAMENTE]) {
+        await V.declararModulo(f, V.modulo(CUSTODIA_G, [[V.TIT.AU_CORP, V.TIPO.CUSTODIA_G]], d));
+        assert.equal(await f.lic.call("isModuleEnabled", [CUSTODIA_G]), false, "disponibilidad " + d);
+        await H.expectRevert(
+          x.r.send("setChannel", [C.ASSET_AUKA, CH.ENVIO, true, String(E18), 0, H.b32("LIC")], x.board),
+          H.b32("LICENCIA_NO_OTORGADA"),
+        );
+      }
+      await V.declararModulo(f, V.modulo(CUSTODIA_G, [[V.TIT.AU_CORP, V.TIPO.CUSTODIA_G]], V.AV.BETA));
+      assert.equal(await f.lic.call("isModuleEnabled", [CUSTODIA_G]), true, "BETA habilita");
+    });
+
   });
 
   describe("AGKA · liquidación permanente en ORIGEN con el ratio del oráculo", function () {

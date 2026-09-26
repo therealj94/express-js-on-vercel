@@ -2,12 +2,15 @@
 pragma solidity 0.8.28;
 
 /// @title Compuerta mínima de licencias · SFSP v0.3 §6.
-/// @notice Interfaz provisional: el registro de licencias (`SFSPLicenseRegistry`,
-///         fase 2 punto 1) la implementará. Mientras no exista, los módulos que
-///         dependen de una licencia reciben la dirección cero y quedan CERRADOS:
-///         ausencia de registro = licencia no otorgada, nunca «abierto por defecto».
+/// @notice La implementa `SFSPLicenseRegistry` (fase 2 punto 1), que es la
+///         compuerta real que se cablea en los módulos (`setLicenseGate`). Sin
+///         compuerta, los módulos que dependen de una licencia reciben la
+///         dirección cero y quedan CERRADOS: ausencia de registro = licencia no
+///         otorgada, nunca «abierto por defecto».
 interface ILicenseGate {
-    /// @return true sólo si la licencia de la que depende `moduleId` está otorgada
-    ///         y vigente a la fecha del bloque.
+    /// @return true sólo si TODAS las licencias de las que depende `moduleId`
+    ///         están otorgadas y vigentes a la fecha del bloque y el módulo está
+    ///         declarado DISPONIBLE o BETA (una función de cara al cliente no se
+    ///         habilita con USO_INTERNO). Un módulo desconocido devuelve false.
     function isModuleEnabled(bytes32 moduleId) external view returns (bool);
 }

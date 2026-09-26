@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {SFSPAccessControl} from "./lib/SFSPAccessControl.sol";
 import {SFSPAuthorization} from "./lib/SFSPAuthorization.sol";
 import {ISFSPGovernanceController} from "./lib/ISFSP.sol";
+import {ILicenseGate} from "./lib/ILicenseGate.sol";
 
 /// @title Registro de licencias (SFSP v0.3 §6 · SFSP-140).
 /// @notice Cada módulo del protocolo declara de qué licencias depende y una
@@ -21,7 +22,7 @@ import {ISFSPGovernanceController} from "./lib/ISFSP.sol";
 ///         aprobada con doble control y con motivo, recalculada aquí desde los
 ///         argumentos reales y consumida (patrón de `consumeAuthorization`).
 ///      Ningún número de licencia vive en el código: entra por la orden.
-contract SFSPLicenseRegistry is SFSPAccessControl {
+contract SFSPLicenseRegistry is SFSPAccessControl, ILicenseGate {
     // Apéndice A · Licencia. El orden es parte del contrato: no se reordena.
     enum LicenseState { EN_TRAMITE, OTORGADA, VIGENTE, SUSPENDIDA, VENCIDA, REVOCADA }
 
@@ -167,6 +168,21 @@ contract SFSPLicenseRegistry is SFSPAccessControl {
         Module storage m = _modules[moduleId];
         if (!m.exists || m.declared == Availability.PROXIMAMENTE) return false;
         return _allEffective(m);
+    }
+
+    /// @notice `ILicenseGate`: ¿puede operar una función DE CARA AL CLIENTE que
+    ///         depende de este módulo? (custodia Clase G, redención física…).
+    /// @dev Es la compuerta que consultan los módulos (p. ej.
+    ///      `SFSPReserveEngine`). Más estricta que `isModuleAvailable`: exige
+    ///      disponibilidad efectiva DISPONIBLE o BETA, así que un módulo de
+    ///      USO_INTERNO o PROXIMAMENTE, o con alguna licencia no vigente, no
+    ///      habilita nada para terceros. Un módulo no declarado devuelve false,
+    ///      nunca revierte: ausencia de registro = licencia no otorgada.
+    function isModuleEnabled(bytes32 moduleId) external view returns (bool) {
+        Module storage m = _modules[moduleId];
+        if (!m.exists) return false;
+        Availability a = _effectiveAvailability(m);
+        return a == Availability.DISPONIBLE || a == Availability.BETA;
     }
 
     /// @notice Disponibilidad PÚBLICA efectiva, en la taxonomía única.
