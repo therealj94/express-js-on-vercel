@@ -50,6 +50,12 @@ export interface EntradaRiesgo {
   faltanDatos?: string[]
   /** Cuánto declaró que espera mover al año, en USD. Decide el nivel de diligencia. */
   volumenEsperadoUsd?: number | null
+  /**
+   * Fecha en que venció el documento, si ya venció HOY. Se calcula en vivo: los
+   * hallazgos del documento se guardaron al revisarlo, y un documento vigente
+   * entonces puede haber caducado mientras esperaba la decisión.
+   */
+  documentoVencidoEl?: string | null
 }
 
 /**
@@ -80,8 +86,14 @@ export function evaluarRiesgo(e: EntradaRiesgo): EvaluacionRiesgo {
     const graves = e.documento.hallazgos.filter((h: Hallazgo) => h.gravedad === 'grave')
     const avisos = e.documento.hallazgos.filter((h: Hallazgo) => h.gravedad === 'aviso')
     for (const g of graves) bloqueos.push(g.detalle)
+    // Caducó DESPUÉS de revisarlo: si ya venía vencido, el hallazgo de arriba lo dice.
+    const caducoDespues = Boolean(e.documentoVencidoEl) &&
+      !graves.some((g: Hallazgo) => g.clave === 'documento.vencido')
+    if (caducoDespues) {
+      bloqueos.push(`El documento venció el ${e.documentoVencidoEl}, después de revisarlo: hace falta uno vigente`)
+    }
     if (avisos.length) sumar('documento.avisos', avisos.length * 5, `${avisos.length} aviso(s) en el documento`)
-    if (!graves.length) sumar('documento.ok', 0, 'El documento pasa todas las comprobaciones')
+    if (!graves.length && !caducoDespues) sumar('documento.ok', 0, 'El documento pasa todas las comprobaciones')
   }
 
   // ── Tamizado de sanciones ─────────────────────────────────────────────────

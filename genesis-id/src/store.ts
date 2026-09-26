@@ -356,6 +356,46 @@ export async function iniciar(): Promise<void> {
 }
 
 /**
+ * Abre el almacén SOLO PARA LEER, para los scripts que se corren a mano.
+ *
+ * POR QUE NO VALE `iniciar()` FUERA DEL SERVICIO
+ *
+ * El estado vive en la memoria del proceso y se vuelca ENTERO sobre un solo
+ * documento, y la bitácora se escribe con un contador (`bitacoraGuardadas`) que
+ * lleva cada proceso por su cuenta sobre un índice único en `i`. Un segundo
+ * proceso que abra el mismo Mongo con `iniciar()` y guarde algo pisa la foto
+ * del servicio vivo y le ocupa los `i` siguientes: desde ese momento cada
+ * volcado del servicio choca con E11000, nada más se persiste —aunque siga
+ * contestando 200— y al siguiente reinicio se pierde todo lo hecho en memoria.
+ * Además `iniciar()` tiene sus propias escrituras (limpiar copias de la
+ * bitácora, mudar la bitácora y los movimientos fuera del estado).
+ *
+ * Esto solo lee el documento de estado (o el archivo) y cierra la conexión. No
+ * carga la bitácora, no crea índices, no migra nada. Y deja el almacén marcado:
+ * cualquier volcado posterior en este proceso LANZA en vez de escribir.
+ */
+let soloLectura = false
+
+export async function iniciarSoloLectura(): Promise<void> {
+  soloLectura = true
+  if (motor === 'mongodb') {
+    const { MongoClient } = await import('mongodb')
+    const cliente = new MongoClient(MONGO_URL)
+    await cliente.connect()
+    try {
+      const estado: any = cliente.db(MONGO_BASE).collection('estado')
+      const doc = await estado.findOne({ _id: 'genesis' })
+      datos = doc?.datos ? { ...vacio(), ...doc.datos } : vacio()
+    } finally {
+      await cliente.close()
+    }
+  } else {
+    datos = leerArchivo() ?? vacio()
+  }
+  bitacoraGuardadas = datos.bitacora.length
+}
+
+/**
  * Cómo fue el último volcado.
  *
  * Hasta ahora, un guardado que fallaba solo dejaba un `console.error` en el
@@ -398,6 +438,10 @@ function enFila(): Promise<void> {
 }
 
 async function volcar(): Promise<void> {
+  if (soloLectura) {
+    // Ver `iniciarSoloLectura`: este proceso no es el servicio y no escribe.
+    throw new Error('Almacén abierto en solo lectura: este proceso no puede guardar')
+  }
   try {
     if (motor === 'mongodb' && coleccion) {
       /* La bitácora PRIMERO y aparte. Se escriben las entradas nuevas en su

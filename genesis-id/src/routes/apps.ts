@@ -9,7 +9,6 @@ import { Router } from 'express'
 import { exigeApp, limite, pesada } from '../middleware/proteger.js'
 import * as ids from '../motor/identidades.js'
 import { bloqueada, RESPUESTA as BLOQUEADA } from '../motor/bloqueo.js'
-import { estadoPublicado } from '../motor/estados.js'
 import * as biz from '../motor/negocios.js'
 import { registrarMovimientos } from '../aml/casos.js'
 import { tamizarDireccion } from '../aml/tamiz.js'
@@ -80,6 +79,10 @@ appsRouter.post('/identidades/:id/documento', limite(30), pesada, exigeApp('iden
   // teléfono y aquí solo entran las palabras. Se acota el largo porque de una
   // cédula salen unas pocas líneas, no un documento entero.
   const anverso = typeof textoAnverso === 'string' ? textoAnverso.slice(0, 4000) : null
+  // Una verificada no reescribe sus datos por aquí (ver `documentoCerrado`).
+  const previa = ids.porId(req.params.id)
+  const cerrado = previa ? ids.documentoCerrado(previa) : null
+  if (cerrado) return res.status(409).json({ error: cerrado.motivo, codigo: cerrado.codigo })
   const identidad = ids.adjuntarDocumento(
     req.params.id, mrz, `app:${req.app_ecosistema!.clave}`, anverso)
   if (!identidad) return res.status(404).json({ error: 'Identidad no encontrada' })
@@ -179,6 +182,8 @@ appsRouter.post('/identidades/:id/documento-fotos', limite(20), pesada, exigeApp
   // guardar. El segundo se puede reintentar y hay que decirlo así — el trámite
   // no avanzó, no es que el documento no sirva.
   if (!r.identidad) return res.status(404).json({ error: 'Identidad no encontrada' })
+  // Una tercera: la identidad no admite documento ahora (ya verificada).
+  if (r.codigo) return res.status(409).json({ error: r.motivo, codigo: r.codigo })
   if (!r.ok) return res.status(503).json({ error: r.motivo })
   const vista = await ids.estadoParaUsuarioConFoto(r.identidad)
   res.json({
@@ -417,8 +422,16 @@ appsRouter.get('/identidades/por-gid/:gid', limite(120), exigeApp('gid.perfil'),
    vínculo sin dirección es una billetera que el límite no ve. Esta vez no hay
    válvula: no hay integrador viejo que dependa de vincular sin dirección, y
    los vínculos que ya existen sin ella no se tocan (ver
-   scripts/revisar-v03-identidades.ts). Se comprueba al final, después del
-   bloqueo y del correo, para que esas respuestas no cambien. */
+   src/migraciones/v03-estados-y-vinculos.ts). Se comprueba al final, después del
+   bloqueo y del correo, para que esas respuestas no cambien.
+
+   Y UNA DIRECCIÓN, UNA IDENTIDAD. Si la billetera ya está atada a OTRA
+   identidad, 409 `VINCULO_DIRECCION_AJENA`: si no, `GET /direccion/:dir`
+   —lo que consulta el explorador— se la atribuía a quien tuviera la identidad
+   más vieja, y el límite de exposición la contaría en dos GID. Lo que ya estaba
+   compartido de antes no se rompe: la identidad que ya tenía la dirección
+   puede volver a vincularla. GENESIS_VINCULO_DIRECCION_AJENA=permitir es la
+   válvula de emergencia, como la del correo: pasa, pero queda anotado. */
 appsRouter.post('/vinculos', limite(60), exigeApp('vinculo.crear'), async (req, res) => {
   const { identidadId, cuenta, direccion, email } = req.body ?? {}
   if (!identidadId || !cuenta) {
@@ -459,6 +472,18 @@ appsRouter.post('/vinculos', limite(60), exigeApp('vinculo.crear'), async (req, 
       codigo: CODIGOS_VINCULO.DIRECCION_INVALIDA,
     })
   }
+  const otra = ids.otraIdentidadConDireccion(billetera, objetivo.id)
+  if (otra) {
+    registrar(`app:${req.app_ecosistema!.clave}`, 'vinculo.direccionAjena', objetivo.id, {
+      cuenta: String(cuenta), direccion: billetera, otraIdentidad: otra.id,
+    })
+    if (process.env.GENESIS_VINCULO_DIRECCION_AJENA !== 'permitir') {
+      return res.status(409).json({
+        error: 'Esa dirección de billetera ya está atada a otra identidad',
+        codigo: CODIGOS_VINCULO.DIRECCION_AJENA,
+      })
+    }
+  }
 
   const identidad = ids.vincular(
     String(identidadId), req.app_ecosistema!.clave, String(cuenta),
@@ -493,12 +518,14 @@ appsRouter.get('/gid/:gid', limite(300), exigeApp('gid.verificar'), async (req, 
        del mismo hecho es como una se queda vieja: sin esto, ordenscan seguiría
        diciendo que una persona bloqueada está verificada. */
     const bloq = bloqueada(identidad)
+    /* Y la rama corta dice SOLO sí o no (más `bloqueada`, que ya decía): ni el
+       estado publicado ni ningún otro. Es la clave de un explorador público, y
+       distinguir «suspendida» —una decisión de cumplimiento— de «vencida» o
+       «rechazada» es justo lo que el alcance `gid.verificar` promete no
+       contar. El estado de los seis va en `perfilPublico`, con `gid.perfil`. */
     return res.json(puedeVerPerfil
       ? { tipo: 'personal', ...ids.perfilPublico(identidad) }
-      : {
-          tipo: 'personal', gid, verificada: identidad.estado === 'verificada' && !bloq, bloqueada: bloq,
-          estadoPublicado: estadoPublicado(identidad.estado),
-        })
+      : { tipo: 'personal', gid, verificada: identidad.estado === 'verificada' && !bloq, bloqueada: bloq })
   }
   res.json({ tipo: 'negocio', ...biz.perfilNegocio(negocio!) })
 })
