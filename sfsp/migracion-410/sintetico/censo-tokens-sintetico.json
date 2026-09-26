@@ -1,0 +1,76 @@
+{
+  "formato": "sfsp-censo-tokens/v1",
+  "advertencia": "DATOS SINTÉTICOS. Ninguna dirección ni saldo es real: sirven para probar lote-migracion.mjs.",
+  "resumen": {
+    "chainId": 5550,
+    "bloque": 100000,
+    "hash": "0x5151515151515151515151515151515151515151515151515151515151515151",
+    "timestamp": 1790000000,
+    "candidatas": 9,
+    "actividad5550": { "transacciones": 0, "eventos": 0 },
+    "tokens": [
+      {
+        "contrato": "0x5157000000000000000000000000000000000a01",
+        "symbol": "SINTA",
+        "decimals": 18,
+        "ranuraSaldos": 0,
+        "totalSupply": "997.5",
+        "conDireccion": "987.5",
+        "residuoSinTitular": "7.5",
+        "tenedores": 7
+      },
+      {
+        "contrato": "0x5157000000000000000000000000000000000b02",
+        "symbol": "SINTB",
+        "decimals": 18,
+        "ranuraSaldos": 0,
+        "totalSupply": "30.000000000000000123",
+        "conDireccion": "30.000000000000000123",
+        "residuoSinTitular": "0",
+        "tenedores": 2
+      },
+      {
+        "contrato": "0x5157000000000000000000000000000000000c03",
+        "symbol": "SINTC",
+        "decimals": 18,
+        "ranuraSaldos": 0,
+        "totalSupply": "5",
+        "conDireccion": "5",
+        "residuoSinTitular": "0",
+        "tenedores": 1
+      }
+    ]
+  },
+  "tokens": {
+    "0x5157000000000000000000000000000000000a01": {
+      "symbol": "SINTA",
+      "tenedores": [
+        { "address": "0x51570000000000000000000000000000000000a1", "saldoRaw": "500000000000000000000", "saldo": "500", "clase": "USUARIO", "nota": "", "fuente": "sintetico" },
+        { "address": "0x51570000000000000000000000000000000000A2", "saldoRaw": "250000000000000000000", "saldo": "250", "clase": "USUARIO", "nota": "mayúsculas a propósito: la paymentRef va en minúsculas", "fuente": "sintetico" },
+        { "address": "0x51570000000000000000000000000000000000a3", "saldoRaw": "100500000000000000000", "saldo": "100.5", "clase": "USUARIO", "nota": "", "fuente": "sintetico" },
+        { "address": "0x51570000000000000000000000000000000000f1", "saldoRaw": "100000000000000000000", "saldo": "100", "clase": "INTERNA-OrdenGlobal", "nota": "tesorería sintética", "fuente": "sintetico" },
+        { "address": "0x51570000000000000000000000000000000000c1", "saldoRaw": "20000000000000000000", "saldo": "20", "clase": "CONTRATO", "nota": "pool sintético", "fuente": "sintetico" },
+        { "address": "0x51570000000000000000000000000000000000e1", "saldoRaw": "12000000000000000000", "saldo": "12", "clase": "EN-REVISION", "nota": "pendiente de decisión", "fuente": "sintetico" },
+        { "address": "0x51570000000000000000000000000000000000a4", "saldoRaw": "5000000000000000000", "saldo": "5", "clase": "USUARIO", "nota": "la lista INTERNAS la declara interna", "fuente": "sintetico" },
+        { "address": "ranura:0x5157515751575157515751575157515751575157515751575157515751575157", "saldoRaw": "2500000000000000000", "saldo": "2.5", "clase": "SIN-RESOLVER", "nota": "clave sin preimagen", "fuente": "inventario" }
+      ],
+      "permisos": []
+    },
+    "0x5157000000000000000000000000000000000b02": {
+      "symbol": "SINTB",
+      "tenedores": [
+        { "address": "0x51570000000000000000000000000000000000a1", "saldoRaw": "20000000000000000123", "saldo": "20.000000000000000123", "clase": "USUARIO", "nota": "resto por el ratio", "fuente": "sintetico" },
+        { "address": "0x51570000000000000000000000000000000000b1", "saldoRaw": "10000000000000000000", "saldo": "10", "clase": "USUARIO", "nota": "", "fuente": "sintetico" }
+      ],
+      "permisos": []
+    },
+    "0x5157000000000000000000000000000000000c03": {
+      "symbol": "SINTC",
+      "tenedores": [
+        { "address": "0x51570000000000000000000000000000000000a1", "saldoRaw": "5000000000000000000", "saldo": "5", "clase": "USUARIO", "nota": "", "fuente": "sintetico" }
+      ],
+      "permisos": []
+    }
+  },
+  "vacios": []
+}

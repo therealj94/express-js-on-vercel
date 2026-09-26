@@ -19,6 +19,10 @@ Nada de lo que hay aquí firma ni envía transacciones. El cliente RPC
 | `censo-tokens-5550.mjs` | Censo de **todos** los tokens ERC-20 de la 5550, con saldos a la fecha. Resuelve cada clave de saldo a su dirección con un solo conjunto de candidatas para todos los tokens (actividad de la 5550 + respaldo de la 8532 como diccionario + Veta/Genesis ID). Concilia cada token contra `totalSupply()`. Produce `censo-tokens.*`, `padron-titulares.csv` y el `censo-ondk.json` de los otros dos. |
 | `lote-origen-ondk.mjs` | Lote «todo tenedor de ONDK con dirección llega a ≥ 1 ORIGEN», sin firmar, en dos formatos. `--simular` lo ejecuta en hardhat local. |
 | `simular-lote-origen.cjs` | Simulacro del lote en la cadena hardhat en memoria (chainId 31337). |
+| `lote-migracion.mjs` | Migración a la **misma dirección** por cupo del padrón (v0.3 §14.3). Genera, por activo y sin firmar, la orden `SET_MINT_BUDGET` y las llamadas `mintOnDemand`. `--simular` lo ejecuta en hardhat local. Ver «Lote de migración por cupo del padrón». |
+| `simular-lote-migracion.cjs` | Simulacro de ese lote en hardhat en memoria. |
+| `sintetico/` | Censo, activos e internas **sintéticos** para probar `lote-migracion.mjs`. No son datos reales. |
+| `../contracts/test/27-lote-migracion.js` | Prueba del generador y del simulacro con los datos sintéticos. |
 | `lib/comun.mjs` | RPC de sólo lectura, Merkle idéntico al contrato, ids, lector xlsx mínimo, CSV. |
 | `lib/clasificacion.mjs` | Cuentas internas / de Orden Global / contratos y direcciones citadas en archivos de prueba, derivadas de los datos de entrada. |
 | `../contracts/test/18-migracion-padron.js` | Prueba (datos sintéticos) de que el registro acepta el formato del constructor y rechaza a quien no está. |
@@ -326,3 +330,120 @@ beneficiario su saldo con `mintOnDemand`:
    MISMA `paymentRef` por (activo, dirección): si esa dirección ya cobró en la
    ronda 1, revierte con `OperationReplay`, que es exactamente lo que impide
    el doble derecho entre saldo por dirección y saldo por ranura.
+
+## Lote de migración por cupo del padrón (`lote-migracion.mjs`, 26-sep-2026)
+
+El v0.3 §14.3 pide acuñar el equivalente **en la misma dirección**, sin reclamo
+por firma. El PLAN v0.3 (C9) adopta como camino la alternativa de arriba. Este
+script la lleva a la práctica. **La Junta la aprueba** con D26 y un ADR que
+enmiende SFSP-700: hasta entonces, el lote es una propuesta.
+
+### Entradas
+
+Todas se leen fuera del repositorio, salvo los ejemplos sintéticos.
+
+| Variable | Contenido |
+|---|---|
+| `CENSO` | `censo-tokens.json` de `censo-tokens-5550.mjs` (formato `sfsp-censo-tokens/v1`) |
+| `ACTIVOS` | `{ "<contrato heredado>": { "activo", "assetId", "ratio": { "num", "den" } } }`. Si falta el `assetId` (D08/D26) o el ratio (D09), ese activo sale `BLOCKED_DECISION` y no genera nada. |
+| `INTERNAS` | Opcional. `{dirección: motivo}`, cuentas internas (D25) además de las del censo |
+| `EMISOR` | Dirección de `SFSPIssuanceController`. Sin ella, la orden sale `BLOCKED_DECISION` y las llamadas llevan un marcador en `to`. |
+| `VALIDO_HASTA`, `ORDEN_NO_ANTES`, `ORDEN_VENCE` | Unix. Fin de la ventana y vigencia de la orden. Sin ellas, la orden sale `BLOCKED_DECISION` (sin digest), pero las llamadas se generan igual, porque no dependen de la ventana. |
+| `BLOQUE_CORTE`, `MIG_ID_<ACTIVO>` | Opcionales. Bloque de corte y `migrationId` del padrón (D09). Por omisión, el bloque del censo y el id determinista de `lib/comun.mjs`. |
+| `SALIDA` | Obligatoria y **fuera del repositorio**: el script se niega a escribir dentro. |
+
+### Qué produce, por activo
+
+Todo sale **sin firmar**.
+
+- **Padrón.** Hojas `keccak256(abi.encode(migrationId, dirección, oldUnits))`,
+  las mismas de SFSP-700 y `construir-padron.mjs`. La raíz es la del padrón.
+- **Orden `SET_MINT_BUDGET`:**
+
+  | Campo | Valor |
+  |---|---|
+  | `amount` | `S0` = Σ `oldUnits·ratio` de los beneficiarios |
+  | `amountSecondary` | El mayor monto |
+  | `termsDocRoot` | La raíz del padrón |
+  | `period` | `validUntil + 1`. Así toda la ventana cae en el periodo 0: se cumple `floor(t/period) = 0` para todo `t < validUntil`. |
+  | `evidenceRoot` | `budgetTermsRoot(period, validUntil, raíz)` |
+  | `nonce` | `keccak256("MIGRACION_CUPO|<assetId>|<raíz>")` |
+  | digest | SFSP-AUTH-v1, para proponer en gobierno |
+
+- **Llamadas** `mintOnDemand(assetId, dirección, oldUnits·ratio, paymentRef, raíz)`,
+  en el orden de las hojas, cada una con su prueba Merkle.
+  `paymentRef = keccak256(utf8("MIGRACION|<assetId hex minúsculas>|<dirección minúsculas>"))`.
+  La dirección se pasa **siempre** a minúsculas, aunque el censo traiga
+  mayúsculas.
+- **Exclusiones, cada una con su motivo:**
+  - `INTERNA-OrdenGlobal` y la lista `INTERNAS`;
+  - `CONTRATO`;
+  - `EN-REVISION` (pendiente, no descartada);
+  - `SIN-RESOLVER`, el residuo sin titular por ranura;
+  - saldo cero;
+  - monto cero tras aplicar el ratio.
+
+  El residuo del censo (`residuoSinTitular`) **nunca** entra en `S0`.
+- **Restos del ratio**: `oldUnits·num mod den` por titular, para anotarlos fuera
+  de cadena (D09).
+- **Conciliación con el censo**: Σ saldos de los tenedores + residuo =
+  `totalSupply`. También Σ `oldUnits` del padrón y Σ excluido.
+- **Archivos** en `SALIDA`:
+  - `lote-migracion.json` (todo);
+  - `lote-migracion-<ACTIVO>.mintOnDemand.json`;
+  - `lote-migracion-<ACTIVO>.orden-cupo.json`;
+  - con `--simular`, también `simulacion-lote-migracion.json`.
+
+Si una dirección aparece dos veces en un mismo activo, el proceso **se detiene**.
+
+### Simulacro (hardhat en memoria, chainId 31337)
+
+Por activo, el simulacro hace esto:
+
+1. Despliega el protocolo y un `SFSPRegulatedAsset` con el `assetId` del lote.
+2. Fija `setInstrumentLimits(S0, S0)`.
+3. Da de alta la identidad sintética de cada titular.
+4. Aprueba el cupo con quórum y espera. Lleva los montos y la raíz del lote; la
+   cadena, el contrato y la ventana son los del simulacro.
+5. Ejecuta el **calldata exacto** de cada `mintOnDemand`.
+
+Y comprueba cuatro cosas:
+
+- cada titular recibe **exactamente** su saldo;
+- `totalSupply` = Σ = `S0`, y el cupo queda en 0;
+- repetir una `paymentRef` revierte con `OperationReplay`;
+- acuñar a una cuenta interna revierte con `MintToInternalAccount`. Se prueba
+  antes del lote, con cupo disponible, para que no lo tape el cupo agotado.
+
+### Reproducir con los datos sintéticos
+
+```bash
+cd sfsp/migracion-410
+CENSO=sintetico/censo-tokens-sintetico.json ACTIVOS=sintetico/activos-sintetico.json \
+INTERNAS=sintetico/internas-sintetico.json SALIDA=<carpeta fuera del repo> \
+VALIDO_HASTA=1790600000 ORDEN_NO_ANTES=1790400000 ORDEN_VENCE=1790500000 \
+EMISOR=0x5157000000000000000000000000000000000e00 node lote-migracion.mjs --simular
+```
+
+Salida del 26-sep-2026:
+
+| Activo | Resultado |
+|---|---|
+| SINTA | 3 titulares, S0 850,5, 5 excluidas, la orden `LISTA_PARA_PROPONER`, el censo cuadra |
+| SINTB | 2 titulares, ratio 1/1000 con un resto anotado |
+| SINTC | `BLOCKED_DECISION` (sin `assetId`) |
+
+En los dos simulacros, todo en verde. La misma comprobación corre en la suite:
+`contracts/test/27-lote-migracion.js`.
+
+### Con datos reales (cuando la Junta lo apruebe)
+
+1. `censo-tokens-5550.mjs` en el bloque de corte.
+2. `ACTIVOS` con los `assetId` y ratios firmados (D08, D09, D26).
+3. `lote-migracion.mjs`. Se publican la raíz y `S0` de cada activo, no las
+   direcciones.
+4. Los pasos 2 a 8 del «Procedimiento» de arriba: internas, elegibilidad, topes,
+   orden, emisión, revocación y conciliación publicada.
+
+Ninguna migración de AUKA ni de ONDK se ejecuta antes de conciliar sus residuos
+(SFSP-700 §0.5).
