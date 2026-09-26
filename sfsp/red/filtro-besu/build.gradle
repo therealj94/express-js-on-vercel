@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'sfsp.red'
-version = '0.1.0'
+version = '0.2.0'
 
 def besuVersion = '26.7.1'
 
@@ -28,6 +28,21 @@ dependencies {
   compileOnly 'io.consensys.tuweni:tuweni-bytes:2.7.2'
   compileOnly 'info.picocli:picocli:4.7.7'
   compileOnly 'org.slf4j:slf4j-api:2.0.17'
+
+  // Pruebas (`gradle test`): JUnit 5 más las mismas clases de Besu con que se compila.
+  testImplementation platform('org.junit:junit-bom:5.13.4')
+  testImplementation 'org.junit.jupiter:junit-jupiter'
+  testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+configurations {
+  // Las pruebas corren con las clases de Besu que el jar NO empaqueta (compileOnly).
+  testImplementation.extendsFrom compileOnly
+}
+
+test {
+  useJUnitPlatform()
+  testLogging { events 'passed', 'failed'; exceptionFormat 'full' }
 }
 
 jar {
