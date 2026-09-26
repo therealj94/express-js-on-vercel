@@ -42,6 +42,8 @@ test('la version del esquema cargado es la que expone el indexador', () => {
 // Quince del §3 del contrato interno y catorce del Apendice B del borrador v0.2.
 const DEL_TRES = ['AssetRegistered','PolicyUpdated','SupplyAuthorized','MintExecuted','BurnExecuted','TreasuryReleased','ReserveAttested','ReserveExpired','DisclosurePublished','RiskChanged','TradeSettled','RedemptionUpdated','RecoveryExecuted','MigrationClaimed','GovernanceAction'];
 const DEL_V02 = ['PassportUpdated','AssetStatusChanged','SupplyExpansionDeclared','SplitExecuted','IdentityLinkChanged','EligibilityRecorded','ExposureLimitRecorded','AcquirerDeclarationRecorded','CoveragePublished','LicenseStatusChanged','ModuleAvailabilityChanged','CountryStatusChanged','NetworkPermissionChanged','ConciliationRecorded'];
+// Del v0.2, los que ya tienen contrato.
+const V02_CON_CONTRATO = ['NetworkPermissionChanged'];
 // Los seis del registro did:sfsp de organizaciones (SFSP-160).
 const DEL_160 = ['OrgDidRegistered','OrgDidControllerChanged','OrgDidKeyChanged','OrgDidAttestorChanged','OrgDidDocumentChanged','OrgDidDeactivated'];
 // SFSP-410 · política de suministro: cupo de emisión, cuentas internas y bóveda nativa.
@@ -54,7 +56,8 @@ test('los quince eventos del §3, los catorce del v0.2 los seis de SFSP-160 y lo
   assert.equal(Object.keys(ESQUEMA_EVENTOS).length, DEL_TRES.length + DEL_V02.length + DEL_160.length + DEL_410.length);
   // Los del v0.2 todavia no tienen contrato: si alguno dijera lo contrario, la
   // prueba H15 de contracts/ exigiria un ABI que no existe.
-  for (const e of espec.eventos) if (DEL_V02.includes(e.nombre)) assert.equal(e.implementadoEnContratos, false, e.nombre);
+  // Excepcion: NetworkPermissionChanged ya lo emite SFSPNetworkPermissions (SFSP-150).
+  for (const e of espec.eventos) if (DEL_V02.includes(e.nombre)) assert.equal(e.implementadoEnContratos, V02_CON_CONTRATO.includes(e.nombre), e.nombre);
   // Los de SFSP-160 SI tienen contrato (SFSPDidRegistry): H15 exige su ABI exacto.
   for (const e of espec.eventos) if (DEL_160.includes(e.nombre)) assert.equal(e.implementadoEnContratos, true, e.nombre);
   for (const ev of espec.eventos) {

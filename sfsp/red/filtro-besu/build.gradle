@@ -1,0 +1,41 @@
+// SFSP-150 · complemento de filtro de red para Besu 26.7.1.
+// La versión de Besu se fija aquí y tiene que ser EXACTAMENTE la de los nodos:
+// la API de complementos no garantiza compatibilidad entre versiones de Besu.
+plugins {
+  id 'java-library'
+}
+
+group = 'sfsp.red'
+version = '0.1.0'
+
+def besuVersion = '26.7.1'
+
+java {
+  toolchain { languageVersion = JavaLanguageVersion.of(25) }
+}
+
+repositories {
+  mavenCentral()
+  maven { url 'https://hyperledger.jfrog.io/artifactory/besu-maven/' }
+  maven { url 'https://artifacts.consensys.net/public/maven/maven/' }
+}
+
+dependencies {
+  // compileOnly: Besu ya trae estas clases; el jar del complemento NO las empaqueta.
+  compileOnly "org.hyperledger.besu:besu-plugin-api:${besuVersion}"
+  compileOnly "org.hyperledger.besu:besu-datatypes:${besuVersion}"
+  compileOnly "org.hyperledger.besu:besu-evm:${besuVersion}"
+  compileOnly 'io.consensys.tuweni:tuweni-bytes:2.7.2'
+  compileOnly 'info.picocli:picocli:4.7.7'
+  compileOnly 'org.slf4j:slf4j-api:2.0.17'
+}
+
+jar {
+  manifest {
+    attributes('Implementation-Title': 'sfsp-filtro-red', 'Implementation-Version': project.version)
+  }
+}
+
+tasks.withType(JavaCompile).configureEach {
+  options.compilerArgs << '-Xlint:deprecation'
+}

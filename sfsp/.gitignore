@@ -1,6 +1,9 @@
 # Nada compilado ni descargado entra al repositorio.
 node_modules/
 dist/
+# Complemento Java de la red cerrada: la salida de Gradle no se versiona.
+red/filtro-besu/build/
+red/filtro-besu/.gradle/
 artifacts/
 cache/
 typechain-types/

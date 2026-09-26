@@ -563,10 +563,10 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
   NetworkPermissionChanged: {
     nombre: "NetworkPermissionChanged",
     emisor: "NetworkAdmission",
-    significado: "Alta o baja en la lista de despliegue o en el filtro de transacciones (SFSP-150).",
+    significado: "Alta o baja en la lista de despliegue o en el filtro de transacciones (SFSP-150). Lo emite SFSPNetworkPermissions; en SYSTEM_FUNCTION el selector va en los 4 ultimos bytes de permissionKind.",
     atribucion: "GLOBAL",
     afectaSuministro: "NINGUNO",
-    implementadoEnContratos: false,
+    implementadoEnContratos: true,
     campos: [
       { nombre: "subject", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
       { nombre: "permissionKind", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },

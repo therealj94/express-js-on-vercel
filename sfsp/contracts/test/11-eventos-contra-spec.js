@@ -30,6 +30,7 @@ const CONTRATO = {
   MigrationRegistry: "SFSPMigrationRegistry",
   DidRegistry: "SFSPDidRegistry",
   NativeVault: "SFSPNativeVault",
+  NetworkAdmission: "SFSPNetworkPermissions",
 };
 
 describe("H15 · el ABI compilado coincide con spec/eventos.json", function () {
