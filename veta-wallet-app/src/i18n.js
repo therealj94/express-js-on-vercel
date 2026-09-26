@@ -58,6 +58,7 @@ const S = {
     // home
     'home.balance': 'BALANCE TOTAL', 'home.live': 'Blockchain Orden Global · en vivo', 'home.today': 'hoy',
     'home.noPriceHint': 'Algún precio no está disponible en este momento. Reintenta en unos segundos para actualizar el balance.',
+    'home.sinRefHint': 'Los activos «sin referencia» no tienen precio de mercado, así que no suman al total.',
     'home.offlineBanner': 'Sin conexión — mostrando datos guardados',
     'home.onlineBanner': 'Conectado',
     'home.notificationsA11y': 'Ver notificaciones',
@@ -512,7 +513,7 @@ const S = {
     'seed.webP': 'Tu frase de recuperación está disponible en la versión web: entra a vetawallet.com → Settings → Seed para verla. Pronto podrás consultarla también desde la app.',
     'seed.pwTitle': 'Confirma para ver tu frase semilla',
     // token detail
-    'tok.price': 'Precio', 'tok.movs': 'Movimientos', 'tok.empty': 'Sin movimientos de {s} todavía.',
+    'tok.price': 'Precio', 'tok.sinRef': 'sin referencia', 'tok.movs': 'Movimientos', 'tok.empty': 'Sin movimientos de {s} todavía.',
     'tok.viewAll': 'Ver actividad completa', 'tok.contract': 'Contrato', 'tok.copied': 'Contrato copiado', 'tok.native': 'Token nativo',
     'tok.received': 'Recibido', 'tok.sent': 'Enviado',
     // genesis flow
@@ -860,6 +861,7 @@ const S = {
     'auth.errSocial': "We couldn't verify your identity. Try your email and password.",
     'home.balance': 'TOTAL BALANCE', 'home.live': 'Orden Global Blockchain · live', 'home.today': 'today',
     'home.noPriceHint': 'A price is unavailable right now. Retry in a few seconds to refresh the balance.',
+    'home.sinRefHint': 'Assets with «no price reference» have no market price, so they are not included in the total.',
     'home.offlineBanner': 'No connection — showing saved data',
     'home.onlineBanner': 'Back online',
     'home.notificationsA11y': 'View notifications',
@@ -1300,7 +1302,7 @@ const S = {
     'seed.reveal': 'Reveal my phrase', 'seed.webT': 'Available in the web wallet',
     'seed.webP': 'Your recovery phrase is available in the web version: go to vetawallet.com → Settings → Seed to view it. Soon you will be able to see it from the app too.',
     'seed.pwTitle': 'Confirm to view your seed phrase',
-    'tok.price': 'Price', 'tok.movs': 'Transactions', 'tok.empty': 'No {s} transactions yet.',
+    'tok.price': 'Price', 'tok.sinRef': 'no price reference', 'tok.movs': 'Transactions', 'tok.empty': 'No {s} transactions yet.',
     'tok.viewAll': 'View full activity', 'tok.contract': 'Contract', 'tok.copied': 'Contract copied', 'tok.native': 'Native token',
     'tok.received': 'Received', 'tok.sent': 'Sent',
     'gen.stepDataT': 'Your details',

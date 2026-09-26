@@ -30,7 +30,11 @@ export default function Home({ nav }) {
   // aparecer como si valiera cero: se refleja como "sin precio" en la ficha.
   const priced = list.filter((t) => t.hasPrice);
   const total = priced.reduce((s, t) => s + t.qty * t.price, 0);
-  const holdingNoPrice = list.some((t) => t.qty > 0 && !t.hasPrice);
+  // «Reintenta» solo vale para un precio que se espera y no llegó (ORIGEN,
+  // AUKA, AGKA, ONDK). Un activo «sin referencia» no tiene precio y reintentar
+  // no cambia nada: se dice eso, en su propia línea.
+  const holdingNoPrice = list.some((t) => t.qty > 0 && !t.hasPrice && !t.sinReferencia);
+  const holdingSinRef = list.some((t) => t.qty > 0 && t.sinReferencia);
   // Primera carga: no hay cuenta todavía o llegó sin balances. Mientras
   // llegan los datos, pintamos skeletons para que no se vea un flash con
   // "$0.00" y "0 ORIGEN" antes de tener saldos reales.
@@ -216,7 +220,7 @@ export default function Home({ nav }) {
                   {t.publico === false && <Text style={styles.noListado}>{tr('home.noListado')}</Text>}
                 </View>
                 <Text style={styles.tPrice}>
-                  {t.hasPrice ? money(t.price) : '—'}
+                  {t.hasPrice ? money(t.price) : t.sinReferencia ? tr('tok.sinRef') : '—'}
                   {t.hasPrice && t.chg != null && (
                     <Text style={{ color: t.chg < 0 ? C.down : C.up, fontWeight: '600' }}>  {t.chg > 0 ? '+' : ''}{t.chg.toFixed(2)}%</Text>
                   )}
@@ -231,6 +235,9 @@ export default function Home({ nav }) {
         )}
         {holdingNoPrice && !hidden && (
           <Text style={styles.noPriceHint}>{tr('home.noPriceHint')}</Text>
+        )}
+        {holdingSinRef && !hidden && (
+          <Text style={styles.noPriceHint}>{tr('home.sinRefHint')}</Text>
         )}
       </ScrollView>
     </View>
