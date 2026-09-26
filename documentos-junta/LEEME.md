@@ -28,7 +28,7 @@ es la **5550**. Está explicado en la sección 6.7 del Documento 8, y actualizar
 
 ## El animatic
 
-La previsualización de 2:00 del tráiler está en `recursos/animatic/Pesalo-animatic-v2.mp4`, con los tiempos
+La previsualización de 2:00 del tráiler está en `recursos/animatic/Pesalo-animatic-v3.mp4`, con los tiempos
 exactos del guion y voces provisionales. No es la pieza final: las imágenes son referencias y las voces son sintéticas.
 
 ## Cómo se generan

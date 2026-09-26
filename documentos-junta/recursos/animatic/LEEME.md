@@ -1,9 +1,27 @@
 # Animatic · «Pésalo»
 
-`Pesalo-animatic-v2.mp4`: 2:00 exactos, 1920×1080, 24 fps, estéreo. Es la **previsualización** del tráiler del
+`Pesalo-animatic-v3.mp4`: 2:00 exactos, 1920×1080, 24 fps, estéreo. Es la **previsualización** del tráiler del
 Documento 9, no la pieza final. Tiene los tiempos de los dieciséis bloques: el contador de 4 a 0, la ventana que
 se cierra hasta ser una línea, el CERO, los golpes de pico, la tesis del minero en negro, el cuadro que se abre
 en doce fotogramas, el relevo de oficios, el coro, la salida, el plato que cae en 1:52 y las cartelas.
+
+## Versión 3: voces de Gemini, con acento y dirección
+
+Las treinta líneas y el coro se rehicieron con las voces de Gemini (Google AI Studio, capa gratuita): diez voces
+distintas, dirigidas línea por línea con indicaciones cortas entre corchetes («seco», «cansada», «despacio,
+grave»). Son mucho más naturales que las locales de la versión 2, que quedan como respaldo en `voces.py`.
+
+- Cómo se hizo: `voces_gemini2.py` genera cada línea, la pasa por el reconocedor de voz y la repite si no se
+  entiende o si el modelo leyó en voz alta la indicación (pasó tres veces: «Seco. Reparto.»). Reparte las
+  peticiones entre cuatro modelos de voz de Gemini, porque la capa gratuita limita cuántas se hacen por minuto.
+- El coro son siete voces —seis en español y una en portugués— estiradas sin cambiar el tono y alineadas a la
+  vendedora.
+- Donde una voz no cabía en su plano se aceleró entre 5 y 12 % sin cambiar el tono; el cuadro del minero se abre
+  cuando termina su frase y el clic de RECHAZAR se corrió cuatro décimas.
+- La mezcla final se entiende en un 93 % según el reconocedor; lo que marca como error son dudas suyas entre
+  «Botei» y «Lotei», y entre «Peso» y «Beso».
+- Con esa clave no se pudo usar Veo (video), Lyria (música) ni la generación de imágenes: piden facturación
+  activada en el proyecto de Google.
 
 ## Versión 2: con voces
 
@@ -26,6 +44,6 @@ entender el montaje; en la pieza real son sonido directo de gente real.
 - **La sala de máquinas y el puesto de cumplimiento** son dibujos.
 - **El texto legal** lleva «[dirección web pendiente]».
 
-Máster base (México y Centroamérica). Para regenerarlo: `python3 voces.py && python3 audio.py && python3 video.py`
+Máster base (México y Centroamérica). Para regenerarlo: `python3 voces_gemini2.py && python3 audio.py && python3 video.py` (necesita una clave de Google AI Studio en `../.gk`, fuera del repositorio; `voces.py` es la alternativa local sin clave)
 (numpy, scipy, Pillow, imageio-ffmpeg, kokoro-onnx, piper-tts; los modelos de voz se bajan de Hugging Face).
 Tipografía: Barlow Condensed, licencia OFL.

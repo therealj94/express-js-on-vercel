@@ -203,9 +203,9 @@ figura(40.0, 44.0, 84, {'pico', 'bombo'})
 figura(44.0, 48.0, 84, {'pico', 'bombo', 'cajon'})
 figura(48.0, 51.0, 84, {'pico', 'bombo', 'cajon', 'surdo'})
 figura(51.0, 55.0, 84, {'pico', 'bombo', 'cajon', 'surdo', 'tambora'})
-figura(55.0, 59.0, 84, {'pico', 'bombo', 'cajon', 'surdo', 'tambora', 'zapateo'})
-figura(59.0, 61.5, 84, {'bombo'}, 0.35)                                   # se bajan las capas en el gesto
-figura(61.5, 66.0, 84, {'pico', 'bombo', 'cajon', 'surdo', 'tambora', 'zapateo'})
+figura(55.0, 59.4, 84, {'pico', 'bombo', 'cajon', 'surdo', 'tambora', 'zapateo'})
+figura(59.4, 61.9, 84, {'bombo'}, 0.35)                                   # se bajan las capas en el gesto
+figura(61.9, 66.0, 84, {'pico', 'bombo', 'cajon', 'surdo', 'tambora', 'zapateo'})
 figura(66.0, 83.0, 96, {'pico', 'bombo', 'cajon', 'surdo', 'tambora', 'zapateo'})    # único escalón, 84 → 96
 figura(83.0, 99.0, 96, {'bombo', 'cajon', 'surdo', 'zapateo'}, 0.55)
 figura(99.0, 105.0, 96, {'bombo', 'surdo'}, 0.35)
@@ -224,8 +224,8 @@ poner(55.0, pad_ruido(11.0, 100, 700, .02, .3, .3))                             
 n = int(.06*SR); clic = hp(ruido(n), 1500) * env_exp(n, .004)
 clic_grave = signal.resample(clic, n * 4)                                           # dos octavas abajo
 g_ = golpe(70, 45, .8, .25, 0); g_[:len(clic_grave)] += clic_grave * 1.2
-poner(60.0, reverb(g_, 1.2, .35), 0.9)  # RECHAZAR
-poner(63.6, hp(ruido(n), 1500) * env_exp(n, .004) * 0.35)                          # aprueba el siguiente
+poner(60.4, reverb(g_, 1.2, .35), 0.9)  # RECHAZAR
+poner(64.0, hp(ruido(n), 1500) * env_exp(n, .004) * 0.35)                          # aprueba el siguiente
 poner(83.0, pad_ruido(22.0, 250, 3500, .03, .5, .5))                               # mercado en el mostrador
 for k in range(40):
     poner(83.0 + rng.uniform(0, 21.5), bp(ruido(int(.08*SR)), 1500, 5000) * env_exp(int(.08*SR), .015) * rng.uniform(.02, .05), pan=rng.uniform(-.8, .8))
@@ -242,17 +242,17 @@ for k in range(6):
 VOZ_L = np.zeros(N); VOZ_R = np.zeros(N)
 import json as _json
 DV = _json.load(open(pathlib.Path(__file__).parent / 'voz' / 'duraciones.json'))
-COLOCACION = {  # línea: (segundo, sala, ganancia, paneo)
- 1: (0.6, 'seca', 1.0, -0.1), 2: (2.65, 'seca', 1.0, 0.1), 3: (4.15, 'seca', 1.0, -0.05), 4: (5.6, 'seca', 1.0, 0.05),
- 5: (8.4, 'mercado', 1.0, 0), 6: (11.5, 'mercado', 0.6, 0),
+COLOCACION = {  # línea: (segundo, sala, ganancia, paneo) — ajustado a las voces de Gemini
+ 1: (0.5, 'seca', 1.0, -0.1), 2: (2.75, 'seca', 1.0, 0.1), 3: (4.65, 'seca', 1.0, -0.05), 4: (5.8, 'seca', 1.0, 0.05),
+ 5: (8.2, 'mercado', 1.0, 0), 6: (11.85, 'mercado', 0.6, 0),
  7: (13.5, 'cuarto', 0.95, -0.1), 8: (17.4, 'cuarto', 0.95, 0), 9: (20.6, 'cuarto', 0.95, 0), 10: (23.7, 'cuarto', 0.95, 0.1),
- 11: (28.6, 'seca', 0.95, -0.2), 111: (28.74, 'seca', 0.6, 0.3),
- 12: (35.9, 'cueva', 1.15, 0), 13: (39.5, 'cueva_chica', 1.05, 0),
- 14: (46.3, 'cuarto', 1.0, 0), 15: (49.2, 'cuarto', 1.0, 0),
- 16: (51.3, 'cuarto', 0.95, 0), 17: (53.25, 'cuarto', 0.95, 0),
- 18: (55.8, 'seca', 1.0, 0), 19: (57.6, 'seca', 1.0, 0), 20: (63.8, 'cuarto', 1.0, 0),
+ 11: (28.6, 'seca', 0.95, -0.2), 111: (29.0, 'seca', 0.42, 0.35),
+ 12: (35.85, 'cueva', 1.15, 0), 13: (40.3, 'cueva_chica', 1.05, 0),
+ 14: (46.3, 'cuarto', 1.0, 0), 15: (49.45, 'cuarto', 1.0, 0),
+ 16: (51.25, 'cuarto', 0.95, 0), 17: (53.2, 'cuarto', 0.95, 0),
+ 18: (55.7, 'seca', 1.0, 0), 19: (58.0, 'seca', 1.0, 0), 20: (64.1, 'cuarto', 1.0, 0),
  21: (66.15, 'seca', 1.0, 0), 22: (67.55, 'seca', 1.0, 0), 23: (68.95, 'seca', 1.0, 0), 24: (70.35, 'seca', 1.0, 0),
- 25: (71.75, 'seca', 1.0, 0), 26: (73.15, 'seca', 1.0, 0),
+ 25: (71.75, 'seca', 1.35, 0), 26: (73.15, 'seca', 1.0, 0),
  30: (74.6, 'sala', 1.2, 0),
  31: (100.3, 'cuarto', 1.3, 0),
  32: (109.6, 'seca', 1.0, 0), 33: (112.05, 'seca', 1.2, 0),
