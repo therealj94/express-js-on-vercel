@@ -1872,8 +1872,9 @@ const VETA = (() => {
 
   async function refrescarPrecios() {
     if (!cartera || !cartera.length) return;
-    let p = {}, chg = {};
-    try { ({ p = {}, chg = {} } = (await CADENA.precios()) || {}); } catch {}
+    let p = null, chg = null;
+    try { ({ p, chg } = (await CADENA.precios()) || {}); } catch {}
+    p = p || {}; chg = chg || {};
     const llegaron = SIGUEN_FEED.filter(s => p[s] > 0);
     sellarPrecios(llegaron);
     // La onza del sorteo viaja gratis en este mismo ciclo: si el reloj de
