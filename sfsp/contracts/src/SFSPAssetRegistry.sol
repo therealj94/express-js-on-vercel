@@ -86,6 +86,12 @@ contract SFSPAssetRegistry is SFSPAccessControl {
     bytes32 public constant PASSPORT_SCOPE = bytes32("SFSP:GOV:PASSPORT_UPDATE");
     bytes32 public constant ACTION_PASSPORT_UPDATE = bytes32("PASSPORT_UPDATE");
     bytes32 public constant REASON_ID_ASSIGNED = bytes32("ID_JERARQUICO_ASIGNADO");
+    /// @dev v0.3 §4.2 · asignar el identificador jerárquico es definitivo y el
+    ///      resto del protocolo lo usa como referencia: se aprueba con su propia
+    ///      orden de gobierno ligada al contenido, como cualquier otra versión
+    ///      del pasaporte. TECH_OPS ejecuta; no decide.
+    bytes32 public constant ACTION_ASSIGN_HID = bytes32("ASSIGN_HID");
+    bytes32 public constant HID_SCOPE = bytes32("SFSP:GOV:HIERARCHICAL_ID");
 
     /// @dev Metadatos de cada versión: cuándo, por qué y la huella de lo vigente.
     struct PassportVersion {
@@ -479,10 +485,22 @@ contract SFSPAssetRegistry is SFSPAccessControl {
         SFSPAuthorization.Payload calldata auth,
         bytes32 approvedDigest
     ) internal {
+        _authorizeVersionedOrder(ACTION_PASSPORT_UPDATE, assetId, previous, contenido, auth, approvedDigest);
+    }
+
+    /// @dev Orden de gobierno que sube la versión del pasaporte: acción,
+    ///      activo, versión anterior y nueva, y contenido recalculados aquí; la
+    ///      etiqueta aprobada tiene que ser la acción; y el digest se gasta.
+    function _authorizeVersionedOrder(
+        bytes32 action,
+        bytes32 assetId,
+        uint32 previous,
+        bytes32 contenido,
+        SFSPAuthorization.Payload calldata auth,
+        bytes32 approvedDigest
+    ) internal {
         if (address(governance) == address(0)) revert GovernanceNotWired();
-        if (auth.action != ACTION_PASSPORT_UPDATE) {
-            revert AuthorizationActionMismatch(ACTION_PASSPORT_UPDATE, auth.action);
-        }
+        if (auth.action != action) revert AuthorizationActionMismatch(action, auth.action);
         if (auth.assetId != assetId) revert AuthorizationActionMismatch(assetId, auth.assetId);
         if (auth.amount != previous) revert PolicyVersionMismatch(previous, uint32(auth.amount));
         if (auth.amountSecondary != previous + 1) {
@@ -490,7 +508,7 @@ contract SFSPAssetRegistry is SFSPAccessControl {
         }
         if (auth.evidenceRoot != contenido) revert PolicyContentMismatch(contenido, auth.evidenceRoot);
         bytes32 label = governance.authorizationActionOf(approvedDigest);
-        if (label != ACTION_PASSPORT_UPDATE) revert AuthorizationActionMismatch(ACTION_PASSPORT_UPDATE, label);
+        if (label != action) revert AuthorizationActionMismatch(action, label);
         if (!governance.isAuthorizationApproved(approvedDigest)) revert PassportNotAuthorized(approvedDigest);
         SFSPAuthorization.Payload memory m = auth;
         SFSPAuthorization.authorize(m, approvedDigest);
@@ -560,16 +578,34 @@ contract SFSPAssetRegistry is SFSPAccessControl {
         return _assetByHid[keccak256(abi.encode(assetClass, authority, serial))];
     }
 
+    /// @notice Compromiso del contenido de una asignación de identificador
+    ///         jerárquico: el aprobador calcula exactamente lo mismo.
+    function hierarchicalIdContent(bytes32 assetId, bytes32 assetClass, bytes32 authority)
+        public
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encode(HID_SCOPE, assetId, assetClass, authority));
+    }
+
     /// @notice Asigna el identificador jerárquico estable (clase / autoridad /
     ///         correlativo). Una sola vez: después no cambia, aunque cambie el
     ///         contrato del activo, porque no se deriva de su dirección.
     /// @dev El correlativo NO lo elige el llamador: es el siguiente de
     ///      (clase, autoridad), así que no hay huecos ni repetidos.
-    function assignHierarchicalId(bytes32 assetId, bytes32 assetClass, bytes32 authority)
-        external
-        onlyRole(TECH_OPS)
-        returns (uint32 serial)
-    {
+    ///      Como es definitivo, consume el correlativo y sube la versión del
+    ///      pasaporte, exige una orden de gobierno ASSIGN_HID con doble control:
+    ///      `assetId` el activo, `amount` la versión anterior, `amountSecondary`
+    ///      la nueva y `evidenceRoot` = `hierarchicalIdContent(...)`. Una sola
+    ///      llave TECH_OPS ya no fija por error una clase o autoridad para
+    ///      siempre.
+    function assignHierarchicalId(
+        bytes32 assetId,
+        bytes32 assetClass,
+        bytes32 authority,
+        SFSPAuthorization.Payload calldata auth,
+        bytes32 approvedDigest
+    ) external onlyRole(TECH_OPS) returns (uint32 serial) {
         if (!_registered[assetId]) revert NotRegistered(assetId);
         if (_hid[assetId].serial != 0) revert HierarchicalIdAlreadyAssigned(assetId);
         if (
@@ -579,13 +615,16 @@ contract SFSPAssetRegistry is SFSPAccessControl {
             revert HierarchicalIdInvalid(bytes32("CLASS"));
         }
         _validateAuthority(authority);
+        uint32 previous = _passportVersion[assetId];
+        _authorizeVersionedOrder(
+            ACTION_ASSIGN_HID, assetId, previous, hierarchicalIdContent(assetId, assetClass, authority), auth, approvedDigest
+        );
         bytes32 pair = keccak256(abi.encode(assetClass, authority));
         serial = _lastSerial[pair] + 1;
         _lastSerial[pair] = serial;
         _hid[assetId] = SFSPTypes.HierarchicalId({assetClass: assetClass, authority: authority, serial: serial});
         _assetByHid[keccak256(abi.encode(assetClass, authority, serial))] = assetId;
 
-        uint32 previous = _passportVersion[assetId];
         _detailsAt[assetId][previous + 1] = _detailsAt[assetId][previous];
         _bumpVersion(assetId, previous, previous + 1, REASON_ID_ASSIGNED);
     }

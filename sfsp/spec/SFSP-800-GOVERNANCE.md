@@ -444,6 +444,7 @@ pausa y la quema. La regla se corrige aquí:
 | Liquidación | `SETTLE_DVP` | Orden autorizada por ambas partes + contrato canónico | activo, partes, cantidad, efectivo, nonce |
 | Cambio de quórum | `SET_QUORUM` | Doble control con el quórum **anterior** | acción afectada, valor nuevo, nonce |
 | Cambio de política | `SET_POLICY` | Doble control | política, versión anterior y nueva, nonce |
+| Identificador jerárquico | `ASSIGN_HID` | Doble control; definitivo (no se reasigna) | activo, versión del pasaporte anterior y nueva, `hierarchicalIdContent(activo, clase, autoridad)` en `evidenceRoot`, nonce |
 
 Los quórums concretos de cada fila son `null` hasta **D07**. Una acción con su
 quórum sin fijar devuelve `BLOCKED_DECISION` y **no** se ejecuta con un valor

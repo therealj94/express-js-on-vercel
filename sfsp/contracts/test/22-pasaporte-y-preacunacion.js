@@ -137,11 +137,28 @@ describe("SFSP v0.3 §4.2 · pasaporte ampliado", function () {
   });
 
   describe("identificador jerárquico", function () {
+    /** Asigna con una orden ASSIGN_HID aprobada con doble control. */
+    async function asignarId(assetId, clase, autoridad, o) {
+      const x = o || {};
+      const previa = Number(await f.registry.call("passportVersionOf", [assetId]));
+      const contenido = await f.registry.call("hierarchicalIdContent", [assetId, x.claseOrden || clase, autoridad]);
+      const ord = await V.ordenGob(f, {
+        contrato: f.registry, action: "ASSIGN_HID", scope: assetId,
+        amount: previa, amountSecondary: previa + 1, evidenceRoot: contenido,
+        etiqueta: x.etiqueta, aprobar: x.aprobar,
+      });
+      if (x.aprobar === false) {
+        await f.governance.send("proposeAuthorization", [ord.digest, H.b32("ASSIGN_HID")], f.signers[0]);
+        await f.governance.send("approveAuthorization", [ord.digest], f.signers[1]);
+      }
+      return await f.registry.send("assignHierarchicalId", [assetId, clase, autoridad, ord.tupla, ord.digest], x.from || f.board);
+    }
+
     it("positivo: clase/autoridad/correlativo, estable, correlativo sin huecos y con búsqueda inversa", async function () {
-      const rc = await f.registry.send("assignHierarchicalId", [F.ASSET_NEW, H.b32("SECURITY"), H.b32("DBNX")], f.board);
+      const rc = await asignarId(F.ASSET_NEW, H.b32("SECURITY"), H.b32("DBNX"));
       const ev = V.logsDe(f.registry, rc).find((e) => e.name === "PassportUpdated");
       assert.equal(ev.args.reasonCode, H.b32("ID_JERARQUICO_ASIGNADO"));
-      await f.registry.send("assignHierarchicalId", [F.ASSET_OLD, H.b32("SECURITY"), H.b32("DBNX")], f.board);
+      await asignarId(F.ASSET_OLD, H.b32("SECURITY"), H.b32("DBNX"));
       const a = await f.registry.call("hierarchicalIdOf", [F.ASSET_NEW]);
       const b = await f.registry.call("hierarchicalIdOf", [F.ASSET_OLD]);
       assert.equal(Number(a.serial), 1);
@@ -150,7 +167,7 @@ describe("SFSP v0.3 §4.2 · pasaporte ampliado", function () {
       // Otra autoridad empieza su propio correlativo.
       const id = H.b32("SFSP:COM:TEST:1");
       await f.registry.send("registerAsset", [F.passport(id)], f.board);
-      await f.registry.send("assignHierarchicalId", [id, H.b32("COMMODITY"), H.b32("DBNX_COM")], f.board);
+      await asignarId(id, H.b32("COMMODITY"), H.b32("DBNX_COM"));
       assert.equal(Number((await f.registry.call("hierarchicalIdOf", [id])).serial), 1);
     });
 
@@ -165,17 +182,31 @@ describe("SFSP v0.3 §4.2 · pasaporte ampliado", function () {
         [H.b32("SECURITY"), "0x4442004e58" + "00".repeat(27), "HierarchicalIdInvalid"],
       ];
       for (const [clase, autoridad, frag] of malos) {
-        await H.expectRevert(f.registry.send("assignHierarchicalId", [F.ASSET_NEW, clase, autoridad], f.board), frag);
+        await H.expectRevert(asignarId(F.ASSET_NEW, clase, autoridad), frag);
       }
+      await H.expectRevert(asignarId(F.ASSET_NEW, H.b32("SECURITY"), H.b32("DBNX"), { from: f.mallory }), "Unauthorized");
+      await asignarId(F.ASSET_NEW, H.b32("SECURITY"), H.b32("DBNX"));
+      await H.expectRevert(asignarId(F.ASSET_NEW, H.b32("MONETARY"), H.b32("DBNX")), "HierarchicalIdAlreadyAssigned");
+    });
+
+    it("negativo (una sola llave no decide): sin quórum, con otro contenido o con otra etiqueta no se asigna ni se gasta el correlativo", async function () {
+      // TECH_OPS con una orden aprobada para SECURITY no puede asignar COMMODITY.
       await H.expectRevert(
-        f.registry.send("assignHierarchicalId", [F.ASSET_NEW, H.b32("SECURITY"), H.b32("DBNX")], f.mallory),
-        "Unauthorized",
+        asignarId(F.ASSET_NEW, H.b32("COMMODITY"), H.b32("DBNX"), { claseOrden: H.b32("SECURITY") }),
+        "PolicyContentMismatch",
       );
-      await f.registry.send("assignHierarchicalId", [F.ASSET_NEW, H.b32("SECURITY"), H.b32("DBNX")], f.board);
+      // Una orden aprobada como PASSPORT_UPDATE no vale como ASSIGN_HID.
       await H.expectRevert(
-        f.registry.send("assignHierarchicalId", [F.ASSET_NEW, H.b32("MONETARY"), H.b32("DBNX")], f.board),
-        "HierarchicalIdAlreadyAssigned",
+        asignarId(F.ASSET_NEW, H.b32("SECURITY"), H.b32("DBNX"), { etiqueta: "PASSPORT_UPDATE" }),
+        "AuthorizationActionMismatch",
       );
+      // Con un solo aprobador, no.
+      await H.expectRevert(asignarId(F.ASSET_NEW, H.b32("SECURITY"), H.b32("DBNX"), { aprobar: false }), "PassportNotAuthorized");
+      assert.equal(Number((await f.registry.call("hierarchicalIdOf", [F.ASSET_NEW])).serial), 0);
+      assert.equal(Number(await f.registry.call("passportVersionOf", [F.ASSET_NEW])), 1);
+      // La orden correcta asigna el correlativo 1: ninguno se perdió.
+      await asignarId(F.ASSET_NEW, H.b32("SECURITY"), H.b32("DBNX"));
+      assert.equal(Number((await f.registry.call("hierarchicalIdOf", [F.ASSET_NEW])).serial), 1);
     });
   });
 });
