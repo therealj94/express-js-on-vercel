@@ -71,10 +71,30 @@ subtask(TASK_COMPILE_SOLIDITY_GET_SOLC_BUILD, async (args, _hre, runSuper) => {
 /** @type {import('hardhat/config').HardhatUserConfig} */
 module.exports = {
   solidity: {
-    version: FIJADO.version,
-    settings: {
-      evmVersion: "paris",
-      optimizer: { enabled: true, runs: 200 },
+    compilers: [
+      {
+        version: FIJADO.version,
+        settings: {
+          evmVersion: "paris",
+          optimizer: { enabled: true, runs: 200 },
+        },
+      },
+    ],
+    overrides: {
+      // SFSPReserveEngine (sin desplegar) roza el límite de 24.576 bytes de
+      // EIP-170: con el generador clásico le quedaban ~600 bytes y las
+      // correcciones de la revisión (custodios suspendibles, vigencia máxima
+      // de atestación, concentración por activo, un token por activo) no caben.
+      // Sólo este archivo se compila por la vía IR: mismo compilador fijado,
+      // mismo evmVersion y mismo optimizador. El resto del árbol no cambia.
+      "src/SFSPReserveEngine.sol": {
+        version: FIJADO.version,
+        settings: {
+          evmVersion: "paris",
+          optimizer: { enabled: true, runs: 200 },
+          viaIR: true,
+        },
+      },
     },
   },
   paths: {

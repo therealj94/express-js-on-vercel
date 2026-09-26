@@ -94,6 +94,17 @@ justo antes de cada compilación: si no cuadra, `hardhat compile` aborta. Lo
 comprobamos añadiéndole un byte al binario: el comprobador devuelve
 `HUELLA_DISTINTA` con salida 1 y la compilación falla.
 
+## Un solo contrato por la vía IR
+
+`hardhat.config.js` compila **un** archivo, `src/SFSPReserveEngine.sol`, con
+`viaIR: true` (entrada `overrides`). El compilador es el mismo binario fijado,
+con el mismo `evmVersion` (`paris`) y el mismo optimizador (200 pasadas); sólo
+cambia el generador de código. El motivo es el límite de 24.576 bytes de
+EIP-170: con el generador clásico al motor de reservas le quedaban ~600 bytes y
+las correcciones de la revisión del 26-sep-2026 no cabían. El resto de los
+contratos sale byte a byte igual que antes (comprobado comparando el bytecode
+desplegado de los 40 artefactos). El motor no está desplegado.
+
 ## Nota sobre el tamaño
 
 El binario pesa 15,7 MB. Vendorizarlo es un coste real en el repositorio y una
