@@ -47,6 +47,10 @@ const referencia = require('./referencia');
 const decimales = require('./decimales');
 const redes = require('./redesUsdt');
 const billeteras = require('./billeteras');
+// SFSP-410 · la entrega bajo demanda desde la bóveda. Apagada por omisión
+// (SFSP410_EMISION != '1'): con el interruptor apagado este archivo hace
+// EXACTAMENTE lo de antes. Ver lib/sfsp410.js y SFSP410.md.
+const sfsp410 = require('./sfsp410');
 const { Usuario } = require('../models');
 const { DepositoExterno } = require('./vigiaDepositosExternos');
 
@@ -311,26 +315,13 @@ async function abrir(usuario, { montoMicro, cadena: red, aceptoRecalculo, reglaR
    * primero en depositar cobra y el resto espera a una persona.
    *
    * Fail-closed a proposito: si el inventario no se puede leer, no se abre la
-   * orden. Cobrar a ciegas es peor que hacer esperar. */
-  const caliente = cadena.direccionCaliente();
-  if (!caliente) {
-    throw fallo('ENTREGA_SIN_BILLETERA',
-      'La entrega de ORIGEN no esta disponible en este momento. No mandes nada todavia.', 503);
-  }
-  const inventario = await cadena.saldoDe(caliente, 'ORIGEN');
-  if (!inventario.ok) {
-    throw fallo('INVENTARIO_ILEGIBLE',
-      'No puedo confirmar el ORIGEN disponible ahora mismo. Proba en un rato.', 503);
-  }
-  const vivas = await OrdenCompra.find({
-    estado: { $in: ['esperando', 'recalculada', 'entregando', 'en-revision'] },
-  }).select('origenWei origenWeiCotizado').lean();
-  const comprometido = vivas.reduce((a, o) => a + BigInt(o.origenWei || o.origenWeiCotizado || 0), 0n);
-  if (BigInt(inventario.wei) < comprometido + BigInt(cotizado)) {
-    console.error(`[compra] SIN INVENTARIO al abrir: hay ${inventario.wei} wei, comprometidos ${comprometido}, piden ${cotizado}`);
-    throw fallo('SIN_INVENTARIO',
-      'No hay suficiente ORIGEN disponible para esa compra ahora mismo. No mandes nada todavia.', 503);
-  }
+   * orden. Cobrar a ciegas es peor que hacer esperar.
+   *
+   * SFSP-410: con el interruptor encendido NO hay inventario que mirar —la
+   * caliente ya no entrega—; la misma guarda se hace contra el CUPO de la
+   * bóveda (guardaDeCupoSfsp410, más abajo). Apagado, esto sigue igual. */
+  if (sfsp410.activo()) await guardaDeCupoSfsp410(cotizado);
+  else await guardaDeInventario(cotizado);
 
   const orden = await OrdenCompra.create({
     userId: String(usuario._id),
@@ -346,6 +337,71 @@ async function abrir(usuario, { montoMicro, cadena: red, aceptoRecalculo, reglaR
     reglaRecalculo: REGLA_RECALCULO,
   });
   return paraPantalla(orden);
+}
+
+/** Lo que ya está prometido: el ORIGEN de las órdenes vivas. */
+async function comprometidoVivo() {
+  const vivas = await OrdenCompra.find({
+    estado: { $in: ['esperando', 'recalculada', 'entregando', 'en-revision'] },
+  }).select('origenWei origenWeiCotizado').lean();
+  return vivas.reduce((a, o) => a + BigInt(o.origenWei || o.origenWeiCotizado || 0), 0n);
+}
+
+/** La guarda de delante con la caliente (SFSP410 apagado). Es el bloque que
+ *  vivía dentro de `abrir`, movido tal cual: ver el comentario de allí. */
+async function guardaDeInventario(cotizado) {
+  const caliente = cadena.direccionCaliente();
+  if (!caliente) {
+    throw fallo('ENTREGA_SIN_BILLETERA',
+      'La entrega de ORIGEN no esta disponible en este momento. No mandes nada todavia.', 503);
+  }
+  const inventario = await cadena.saldoDe(caliente, 'ORIGEN');
+  if (!inventario.ok) {
+    throw fallo('INVENTARIO_ILEGIBLE',
+      'No puedo confirmar el ORIGEN disponible ahora mismo. Proba en un rato.', 503);
+  }
+  const comprometido = await comprometidoVivo();
+  if (BigInt(inventario.wei) < comprometido + BigInt(cotizado)) {
+    console.error(`[compra] SIN INVENTARIO al abrir: hay ${inventario.wei} wei, comprometidos ${comprometido}, piden ${cotizado}`);
+    throw fallo('SIN_INVENTARIO',
+      'No hay suficiente ORIGEN disponible para esa compra ahora mismo. No mandes nada todavia.', 503);
+  }
+}
+
+/**
+ * SFSP-410 · la misma guarda de delante, contra el CUPO de la bóveda.
+ *
+ * La regla no cambia —no se congela un precio que no se puede entregar—,
+ * cambia de dónde sale lo entregable: ya no de un saldo de la caliente sino de
+ * lo que queda del cupo del periodo (y del saldo de la bóveda, el menor de los
+ * dos), menos lo ya comprometido. Fail-closed igual: si no se puede leer, no
+ * nace la orden.
+ *
+ * El cupo se renueva por periodo y gobierno lo puede cortar en cualquier
+ * momento, así que esto es una guarda, no una reserva: si al entregar ya no
+ * alcanza, la orden va a la cola de gobierno (ver entregarSfsp410), no se
+ * pierde.
+ */
+async function guardaDeCupoSfsp410(cotizado) {
+  const cap = await sfsp410.capacidadOrigen();
+  if (!cap.ok) {
+    console.error(`[compra] SFSP410: no se pudo leer el cupo de la bóveda: ${cap.error}`);
+    throw fallo('CUPO_ILEGIBLE',
+      'No puedo confirmar el ORIGEN disponible ahora mismo. Proba en un rato.', 503);
+  }
+  if (BigInt(cotizado) > BigInt(cap.maxPorOperacionWei)) {
+    throw fallo('SOBRE_MAXIMO_OPERACION',
+      'Esa compra supera el máximo por operación que se puede entregar ahora. Probá con un monto menor.', 400);
+  }
+  const restante = BigInt(cap.restanteWei);
+  const boveda = BigInt(cap.saldoBovedaWei);
+  const disponible = restante < boveda ? restante : boveda;
+  const comprometido = await comprometidoVivo();
+  if (disponible < comprometido + BigInt(cotizado)) {
+    console.error(`[compra] SFSP410 SIN CUPO al abrir: quedan ${disponible} wei, comprometidos ${comprometido}, piden ${cotizado}`);
+    throw fallo('SIN_CUPO',
+      'No hay suficiente ORIGEN disponible para esa compra ahora mismo. No mandes nada todavia.', 503);
+  }
 }
 
 // ── Lo que ve la pantalla ───────────────────────────────────────────────────
@@ -576,6 +632,10 @@ async function entregar(ordenId) {
     return { ok: false, estado, motivo };
   };
 
+  // SFSP-410 encendido: la entrega es una liberación de la bóveda, no un envío
+  // desde la caliente. Apagado, se sigue exactamente por aquí abajo.
+  if (sfsp410.activo()) return entregarSfsp410(o, soltar);
+
   /* Sin billetera de entrega la orden queda EN REVISION, no fallida.
    *
    * La diferencia importa y se aprendio el 5 de septiembre: ORDENEX_HOT_KEY
@@ -619,6 +679,131 @@ async function entregar(ordenId) {
     console.error(`[compra] EN DUDA: la orden ${o._id} pudo haber emitido ${o.origenWei} wei a ${o.aWallet} — ${e.message}`);
     return soltar('en-duda', `${e.codigo || ''} ${e.message}`.trim());
   }
+}
+
+/** El prefijo con el que se reconocen las órdenes paradas por SFSP-410. */
+const MOTIVO_SFSP410 = 'SFSP410';
+const MOTIVO_COLA_GOBIERNO = `${MOTIVO_SFSP410} · cola de gobierno`;
+
+/** La referencia de pago de una orden: una por orden, para siempre. */
+const referenciaDeOrden = (o) => sfsp410.referenciaDePago('ordenex', 'compra-usdt', String(o._id));
+
+/** Lo que prueba el pago de una orden, para el evidenceRoot. */
+const evidenciaDeOrden = (o) => ({
+  sistema: 'ordenex',
+  orden: String(o._id),
+  red: o.cadena,
+  txDeposito: o.txDeposito,
+  cantidadUsdt: o.cantidadUsdt,
+  precioWei: o.precioAplicadoWei || o.precioWei,
+  origenWei: o.origenWei,
+  destino: o.aWallet,
+});
+
+/**
+ * SFSP-410 · entregar una orden liberando ORIGEN de la bóveda.
+ *
+ * Llega con la orden YA en 'entregando' (la guarda atómica de `entregar` no
+ * cambia). La referencia del pago es la de la orden (ver lib/sfsp410.js), así
+ * que esto es idempotente en la cadena: si una vuelta anterior entregó y se
+ * cayó antes de anotarlo, esta vuelta choca con OperationReplay, lee la
+ * primera entrega y la anota. No hay forma de entregar dos veces la misma
+ * orden, ni siquiera reintentando una en duda.
+ *
+ * Adónde va cada "no":
+ *   cupo agotado / sin cupo / topes → 'en-revision' con motivo «SFSP410 · cola
+ *       de gobierno»: NO se reintenta sola (sería un bucle contra un cupo
+ *       vacío); vuelve a la fila con POST /admin/sfsp410/reintentar/:id cuando
+ *       gobierno lo resuelva o empiece el periodo siguiente.
+ *   pausa de gobierno, destino no elegible, configuración → 'en-revision'.
+ *   destino que es cuenta interna → 'fallida' (es de la orden, no de la casa).
+ *   sin respuesta tras firmar → 'en-duda'. Reintentarla es seguro.
+ */
+async function entregarSfsp410(o, soltar) {
+  if (billeteras.esDeLaCasa(o.aWallet)) return soltar('fallida', 'el destino es una billetera de la casa');
+  if (BigInt(o.origenWei) <= 0n) {
+    return soltar('fallida', 'la cantidad no llega ni a un wei de ORIGEN');
+  }
+
+  let r;
+  try {
+    r = await sfsp410.entregarOrigen(o.aWallet, o.origenWei, referenciaDeOrden(o), evidenciaDeOrden(o));
+  } catch (e) {
+    // Sólo lanza ANTES de firmar (configuración, red, argumentos): no hay nada
+    // en vuelo. Es un error de la CASA, así que la orden queda viva.
+    return soltar('en-revision', `${MOTIVO_SFSP410} · ${e.codigo || ''} ${e.message}`.replace(/ +/g, ' ').trim());
+  }
+
+  if (r.ok) {
+    const nota = r.estado === 'ya-entregado'
+      ? `${MOTIVO_SFSP410} · ya estaba entregada en la cadena${r.discrepancia ? ` — ${r.discrepancia}` : ''}`
+      : null;
+    if (r.discrepancia) console.error(`[compra] SFSP410 DISCREPANCIA en la orden ${o._id}: ${r.discrepancia}`);
+    await OrdenCompra.updateOne({ _id: o._id }, { estado: 'entregada', hash: r.hash, motivo: nota });
+    await DepositoExterno.updateOne({ _id: o.depositoId }, { estado: 'acreditado' });
+    await anotarPorPagar(o, r.hash);
+    console.log(`[compra] SFSP410 ${r.estado}: ${o.origenWei} wei de ORIGEN a ${o.aWallet} · ${r.hash} · ref ${r.paymentRef}`);
+    return { ok: true, estado: 'entregada', hash: r.hash, paymentRef: r.paymentRef, sfsp410: r.estado };
+  }
+
+  const detalle = `${r.codigo}: ${r.mensaje}`;
+  switch (r.estado) {
+    case 'cola-gobierno':
+      console.error(`[compra] SFSP410 cola de gobierno: orden ${o._id} · ${detalle}`);
+      return soltar('en-revision', `${MOTIVO_COLA_GOBIERNO} · ${detalle}`);
+    case 'rechazada':
+      return soltar('fallida', `${MOTIVO_SFSP410} · ${detalle}`);
+    case 'en-duda':
+      console.error(`[compra] SFSP410 EN DUDA: la orden ${o._id} pudo haber liberado ${o.origenWei} wei a ${o.aWallet} (${r.hash || 'sin hash'})`);
+      await OrdenCompra.updateOne({ _id: o._id }, { hash: r.hash || null });
+      return soltar('en-duda', `${MOTIVO_SFSP410} · ${detalle}`);
+    default: // 'esperar' (pausa) y 'revisar'
+      return soltar('en-revision', `${MOTIVO_SFSP410} · ${detalle}`);
+  }
+}
+
+/**
+ * SFSP-410 · devuelve a la fila de entrega una orden que SFSP-410 dejó parada
+ * (cola de gobierno, pausa, en duda). Es seguro porque la referencia de pago
+ * es la de la orden: si ya se había entregado, la siguiente vuelta lo
+ * encuentra en la cadena y no entrega otra vez.
+ *
+ * Sólo toca órdenes cuyo motivo empieza por «SFSP410»: las paradas del camino
+ * viejo (la caliente) no se resuelven desde aquí.
+ */
+async function reintentarSfsp410(id) {
+  if (!sfsp410.activo()) {
+    throw fallo('SFSP410_APAGADO', 'SFSP410_EMISION está apagado: no hay nada que reintentar por aquí.', 409);
+  }
+  const o = await OrdenCompra.findOneAndUpdate(
+    {
+      _id: id,
+      estado: { $in: ['en-revision', 'en-duda'] },
+      depositoId: { $ne: null },
+      motivo: { $regex: `^${MOTIVO_SFSP410}` },
+    },
+    { estado: 'esperando', motivo: `${MOTIVO_SFSP410} · devuelta a la fila por una persona` },
+    { new: true }
+  ).lean();
+  if (!o) throw fallo('NO_SE_PUEDE_REINTENTAR', 'Esa orden no está parada por SFSP-410.', 409);
+  return { id: String(o._id), estado: o.estado };
+}
+
+/** SFSP-410 · para el panel: configuración (sin secretos), cupo y cola. */
+async function estadoSfsp410() {
+  const configuracion = sfsp410.configuracion();
+  const capacidad = configuracion.encendido ? await sfsp410.capacidadOrigen() : null;
+  let paradas = [];
+  try {
+    paradas = await OrdenCompra.find({
+      estado: { $in: ['en-revision', 'en-duda'] },
+      motivo: { $regex: `^${MOTIVO_SFSP410}` },
+    }).sort({ updatedAt: -1 }).limit(50)
+      .select('userId cadena aWallet origenWei estado motivo hash updatedAt').lean();
+  } catch (e) {
+    paradas = { error: e.message };
+  }
+  return { configuracion, capacidad, paradas };
 }
 
 /**
@@ -781,5 +966,6 @@ module.exports = {
   OrdenCompra, PorPagar, PLAZO_SEG, REGLA_RECALCULO,
   abrir, ver, mias, cancelar, atender, confirmarRecalculo, entregar,
   ciclo, arrancar, resumen, precioAhora, deuda,
-  _adentro: { origenWeiDe, microACanonico, paraPantalla, pasoDe, anotarPorPagar },
+  reintentarSfsp410, estadoSfsp410,
+  _adentro: { origenWeiDe, microACanonico, paraPantalla, pasoDe, anotarPorPagar, referenciaDeOrden, evidenciaDeOrden },
 };

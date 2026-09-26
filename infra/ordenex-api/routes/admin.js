@@ -46,4 +46,24 @@ router.get('/estado', admin, estado);
 router.post('/precio-declarado', admin, declararPrecio);
 router.delete('/precio-declarado/:id', admin, borrarPrecioDeclarado);
 
+// SFSP-410 · la entrega bajo demanda desde la bóveda (ver SFSP410.md).
+// GET dice si está encendida, qué está configurado (NUNCA la llave, sólo si
+// está puesta), cuánto cupo queda y qué órdenes están paradas. POST devuelve a
+// la fila una orden parada por SFSP-410 cuando gobierno ya lo resolvió.
+// `compra` se pide dentro del handler: esta ruta no carga nada al montarse.
+router.get('/sfsp410', admin, async (req, res) => {
+  try {
+    res.json(await require('../lib/compra').estadoSfsp410());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+router.post('/sfsp410/reintentar/:id', admin, async (req, res) => {
+  try {
+    res.json(await require('../lib/compra').reintentarSfsp410(req.params.id));
+  } catch (e) {
+    res.status(e.status || 400).json({ error: e.message, codigo: e.codigo || null });
+  }
+});
+
 module.exports = router;

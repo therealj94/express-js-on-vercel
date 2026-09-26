@@ -32,6 +32,12 @@ import Users from "../models/Users";
 import OrigenBalance from "../models/OrigenBalance";
 import Deposit from "../models/Deposit";
 import { getOrigenPriceUsd } from "../lib/origenPrice";
+// SFSP-410 · entrega en cadena desde la boveda. Apagada por omision
+// (SFSP410_EMISION != "1"): apagada, este archivo hace exactamente lo de antes.
+import mongoose from "mongoose";
+import sfsp410 from "../lib/sfsp410";
+import EntregaOrigen from "../models/EntregaOrigen";
+import { intentarEntrega, reintentarPendientes, paraPantalla } from "../lib/entregaOrigen";
 
 // ─── USDT en Polygon (PoS) ────────────────────────────────────────────────────
 const USDT_POLYGON = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
@@ -97,6 +103,10 @@ function respuestaSaldo(saldo, precio) {
 // que abrir la pantalla ya detecte sin pedir otra llamada.
 // ============================================================
 async function revisarYAcreditar(user) {
+  // SFSP-410: antes de mirar lo nuevo, se retoman las entregas en cadena que
+  // quedaron a medias (espaciadas; nunca las que esperan a gobierno).
+  if (sfsp410.activo()) await reintentarPendientes(user._id).catch(() => 0);
+
   const saldo = await saldoDe(user._id);
 
   let enCadenaWei;
@@ -139,6 +149,10 @@ async function revisarYAcreditar(user) {
 
   const precio = await getOrigenPriceUsd();
   if (!precio || precio <= 0) throw new Error("No se pudo obtener el precio de ORIGEN");
+
+  // SFSP-410 encendido: el deposito se entrega EN CADENA a la direccion del
+  // usuario, desde la boveda, en vez de subir el saldo interno.
+  if (sfsp410.activo()) return acreditarEnCadena(user, saldo, { nuevoWei, enCadenaWei, precio });
 
   const usdtAmount = Number(ethers.formatUnits(nuevoWei, USDT_DECIMALS));
   const origenAmount = usdtAmount / precio;
@@ -186,6 +200,99 @@ async function revisarYAcreditar(user) {
 }
 
 // ============================================================
+// SFSP-410 · el deposito se entrega en cadena, no en la base.
+//
+// Mismo candado de marca de agua que arriba, sin el $inc del saldo interno:
+// el ORIGEN no se apunta en OrigenBalance, sale de la boveda
+// (SFSPNativeVault.releaseOnDemand) a user.address. La referencia de pago es
+// la del Deposit (SFSP410/v1|veta|deposito-usdt|<_id>), que nace aqui y no se
+// repite nunca — NO el rango de la marca de agua, que si puede repetirse si
+// el USDT sale y vuelve a entrar.
+//
+// Orden de escritura: candado → EntregaOrigen ('pendiente') → Deposit →
+// intento. Si la entrega no se pudo anotar se deshace el candado: un USDT
+// visto y sin anotar en ningun sitio seria dinero sin dueño.
+// ============================================================
+async function acreditarEnCadena(user, saldo, { nuevoWei, enCadenaWei, precio }) {
+  // USD por ORIGEN en 18 decimales, via nanodolares: el precio es un double.
+  const precioWei = BigInt(Math.round(precio * 1e9)) * 10n ** 9n;
+  if (precioWei <= 0n) throw new Error("Precio de ORIGEN invalido");
+  // USDT (6 dec) → 18 dec → ORIGEN wei. Trunca: nunca se entrega de mas.
+  const origenWei = (BigInt(nuevoWei) * 10n ** 12n * 10n ** 18n) / precioWei;
+  const usdtAmount = Number(ethers.formatUnits(nuevoWei, USDT_DECIMALS));
+  const origenAmount = Number(ethers.formatEther(origenWei));
+
+  const desde = saldo.creditedUsdtWei || "0";
+  const hasta = BigInt(enCadenaWei).toString();
+
+  const actualizado = await OrigenBalance.findOneAndUpdate(
+    { _id: saldo._id, creditedUsdtWei: desde },
+    { $set: { creditedUsdtWei: hasta, lastCheckedAt: new Date() } },
+    { new: true }
+  );
+  if (!actualizado) {
+    return { saldo: await OrigenBalance.findById(saldo._id), acreditado: null };
+  }
+
+  const depositId = new mongoose.Types.ObjectId();
+  const ref = sfsp410.referenciaDePago("veta", "deposito-usdt", String(depositId));
+  const evidencia = {
+    sistema: "veta",
+    deposito: String(depositId),
+    red: RED,
+    token: TOKEN,
+    contrato: USDT_POLYGON,
+    direccion: user.address,
+    desdeWei: desde,
+    hastaWei: hasta,
+    usdtWei: BigInt(nuevoWei).toString(),
+    precioWei: precioWei.toString(),
+    origenWei: origenWei.toString(),
+  };
+
+  let entrega;
+  try {
+    entrega = await EntregaOrigen.create({
+      userId: user._id,
+      depositId,
+      destino: user.address,
+      origenWei: origenWei.toString(),
+      canonica: ref.canonica,
+      paymentRef: ref.paymentRef,
+      evidenceRoot: sfsp410.raizDeEvidencia(evidencia),
+      estado: "pendiente",
+    });
+  } catch (e) {
+    await OrigenBalance.updateOne(
+      { _id: saldo._id, creditedUsdtWei: hasta },
+      { $set: { creditedUsdtWei: desde } }
+    );
+    throw e;
+  }
+
+  const registro = await Deposit.create({
+    _id: depositId,
+    userId: user._id,
+    address: user.address,
+    network: RED,
+    token: TOKEN,
+    usdtWei: BigInt(nuevoWei).toString(),
+    usdtAmount,
+    origenAmount,
+    origenPriceUsd: precio,
+    fromWei: desde,
+    toWei: hasta,
+  });
+
+  console.log(
+    `[deposit] SFSP410 ${user._id}: +${usdtAmount} USDT -> ${origenAmount} ORIGEN en cadena @ ${precio} · ref ${ref.paymentRef}`
+  );
+
+  const resultado = await intentarEntrega(entrega);
+  return { saldo: actualizado, acreditado: registro, precio, entrega: paraPantalla(resultado) };
+}
+
+// ============================================================
 // GET /wallet/deposit-info
 // Todo lo que la pantalla de deposito necesita, y de paso revisa la cadena.
 // ============================================================
@@ -194,7 +301,7 @@ export const depositInfo = async (req, res) => {
     const user = await usuarioDeLaPeticion(req);
     if (!user) return res.status(401).json({ message: "Usuario no encontrado" });
 
-    const [{ saldo, acreditado, sinRed }, precio] = await Promise.all([
+    const [{ saldo, acreditado, sinRed, entrega }, precio] = await Promise.all([
       revisarYAcreditar(user).catch((e) => {
         console.error("[deposit-info] fallo la revision:", e.message);
         return { saldo: null, acreditado: null, sinRed: true };
@@ -221,6 +328,8 @@ export const depositInfo = async (req, res) => {
             at: acreditado.createdAt,
           }
         : null,
+      // SFSP-410: solo existe con el interruptor encendido.
+      ...(entrega ? { entrega } : {}),
     });
   } catch (error) {
     console.error("[deposit-info]", error);
@@ -237,7 +346,7 @@ export const checkDeposit = async (req, res) => {
     const user = await usuarioDeLaPeticion(req);
     if (!user) return res.status(401).json({ message: "Usuario no encontrado" });
 
-    const { saldo, acreditado, precio, sinRed } = await revisarYAcreditar(user);
+    const { saldo, acreditado, precio, sinRed, entrega } = await revisarYAcreditar(user);
     const precioFinal = precio || (await getOrigenPriceUsd().catch(() => null));
 
     res.json({
@@ -251,6 +360,8 @@ export const checkDeposit = async (req, res) => {
             at: acreditado.createdAt,
           }
         : null,
+      // SFSP-410: solo existe con el interruptor encendido.
+      ...(entrega ? { entrega } : {}),
     });
   } catch (error) {
     console.error("[deposit-check]", error);

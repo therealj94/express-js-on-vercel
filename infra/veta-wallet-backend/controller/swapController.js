@@ -45,6 +45,9 @@ import OrigenBalance from "../models/OrigenBalance";
 import { getOrigenPriceUsd } from "../lib/origenPrice";
 import { precioDeGas } from "../lib/gas";
 import { proveedorPolygon } from "../lib/polygon";
+// SFSP-410 · con SFSP410_EMISION=1 el ORIGEN de la recarga vuelve a la boveda
+// (absorb) en vez de ir a TREASURY_OG_ADDRESS. Apagado, nada cambia.
+import sfsp410 from "../lib/sfsp410";
 
 // ─── USDT on Polygon (PoS) ────────────────────────────────────────────────────
 const USDT_POLYGON  = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
@@ -88,6 +91,18 @@ async function sendOrigenToTreasury({ provider, decryptedKey, treasuryAddress, a
 
   // Retornamos sin esperar minado — el hash es prueba suficiente del broadcast
   return tx;
+}
+
+// ─── SFSP-410: el ORIGEN de la recarga vuelve a la boveda ────────────────────
+// Con la politica «circulante = lo que tienen los usuarios», el ORIGEN que un
+// usuario entrega para cargar su tarjeta deja de existir para el circulante:
+// no va a una tesoreria (eso seria acumular inventario), se reabsorbe en la
+// boveda sellada con absorb(RECARGA_TARJETA). Firma el usuario, con su llave,
+// igual que el envio al treasury. Devuelve la TransactionResponse (hash y
+// wait()), asi que liquidarFondeo la trata exactamente igual.
+const MOTIVO_RECARGA = "RECARGA_TARJETA";
+async function sendOrigenToVault({ decryptedKey, amountWei }) {
+  return sfsp410.devolverOrigen(amountWei, MOTIVO_RECARGA, { llave: decryptedKey });
 }
 
 // ─── Helper: treasury Polygon wallet sends USDT → CryptoMate card top-up ─────
@@ -165,7 +180,10 @@ export const fundCard = async (req, res) => {
     }
 
     // 5. Check required env vars
-    const requiredEnv = ["TREASURY_OG_ADDRESS", "TREASURY_POLYGON_PRIVATE_KEY"];
+    // SFSP-410 encendido: el ORIGEN va a la boveda, no a TREASURY_OG_ADDRESS.
+    const requiredEnv = sfsp410.activo()
+      ? ["SFSP410_VAULT_ADDRESS", "TREASURY_POLYGON_PRIVATE_KEY"]
+      : ["TREASURY_OG_ADDRESS", "TREASURY_POLYGON_PRIVATE_KEY"];
     const missing     = requiredEnv.filter((k) => !process.env[k]);
     if (missing.length > 0) {
       return res.status(500).json({ message: `Missing env vars: ${missing.join(", ")}` });
@@ -298,7 +316,9 @@ export const fundCard = async (req, res) => {
     // clave del usuario. No se mezclan las dos fuentes en una misma recarga —
     // si una mitad falla habria que devolver la otra, y ese camino tiene mas
     // formas de salir mal que de salir bien.
-    const ogTx = await sendOrigenToTreasury({
+    const ogTx = sfsp410.activo()
+      ? await sendOrigenToVault({ decryptedKey, amountWei: ogAmountWei })
+      : await sendOrigenToTreasury({
       provider:        ogProvider,
       decryptedKey,
       treasuryAddress: process.env.TREASURY_OG_ADDRESS,
