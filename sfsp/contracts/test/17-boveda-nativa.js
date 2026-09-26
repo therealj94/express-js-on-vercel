@@ -144,14 +144,24 @@ describe("SFSP-410 · bóveda sellada de ORIGEN (moneda nativa)", function () {
   it("negativo: no existe retiro de administrador; sólo ISSUER ejecuta las salidas", async function () {
     const abi = (await require("hardhat").artifacts.readArtifact("SFSPNativeVault")).abi;
     const salidas = abi.filter((x) => x.type === "function" && x.stateMutability !== "view" && x.stateMutability !== "pure").map((x) => x.name).sort();
+    // v0.3 §7 · `releaseOnSubscription` es la salida de VENTA (evalúa SUBSCRIBE)
+    // y `setSubscriptionRequired` una configuración de la Junta que no mueve
+    // fondos. No hay ninguna salida más.
     assert.deepEqual(salidas, [
-      "absorb", "grantRole", "release", "releaseOnDemand", "revokeReleaseBudget", "revokeRole", "setInternalAccount", "setReleaseBudget",
+      "absorb", "grantRole", "release", "releaseOnDemand", "releaseOnSubscription", "revokeReleaseBudget", "revokeRole",
+      "setInternalAccount", "setReleaseBudget", "setSubscriptionRequired",
     ]);
     await fijarCupo(f, v, 10n * ETH, 4n * ETH);
     await H.expectRevert(
       v.send("releaseOnDemand", [f.alice, String(ETH), H.b32("p_x"), H.b32("r")], f.alice),
       "Unauthorized"
     );
+    const ctx = { country: H.ZERO32, residenceSalt: H.ZERO32, clearanceNonce: H.ZERO32, acquisitionCost: "0" };
+    await H.expectRevert(
+      v.send("releaseOnSubscription", [f.alice, String(ETH), H.b32("p_y"), H.b32("r"), ctx], f.alice),
+      "Unauthorized"
+    );
+    await H.expectRevert(v.send("setSubscriptionRequired", [false, H.b32("X")], f.alice), "Unauthorized");
   });
 
   it("negativo: la bóveda no se puede marcar como cuenta interna (contaría su saldo dos veces)", async function () {

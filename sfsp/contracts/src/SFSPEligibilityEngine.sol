@@ -30,6 +30,25 @@ import {
 ///      no del residente, y es opcional (falsa por defecto). Por el v0.3 §7 no
 ///      debe activarse en acciones distintas de `SUBSCRIBE`; la residencia del
 ///      adquirente la gobierna la matriz de países de este contrato.
+///
+///      Privacidad (v0.3 §11 y §12), corrección de la revisión del 26-sep:
+///        · La residencia NO se publica por país. Antes había un propósito por
+///          país (`keccak(etiqueta, ISO2)`), enumerable: `purposeStatus` o los
+///          logs decían el país de cada dirección. Ahora hay UN propósito,
+///          RESIDENCIA, cuyo compromiso es keccak(etiqueta, país, sal) con una
+///          sal por DIRECCIÓN; el país sólo aparece en la transacción de la
+///          suscripción que lo acredita.
+///        · BLOQUEADO alcanza a la IDENTIDAD, no a la dirección que declaró el
+///          país: el atestador da de alta el propósito JURISDICCION_BLOQUEADA
+///          en TODAS las direcciones del residente (Genesis ID sabe cuáles son;
+///          la cadena no). Lo público es «sujeto a bloqueo», que es lo que hace
+///          falta para aplicarlo.
+///        · El límite de exposición se agrega FUERA de la cadena (SFSP-110 §0,
+///          SFSP-120 §0.7): el operador registra aquí sólo el RESULTADO, una
+///          autorización por (dirección, activo, operación). No se guarda el
+///          ingreso ni un compromiso común a todas las direcciones.
+///      La suscripción se hace cumplir en la ruta de dinero con
+///      `enforceSubscription`, que llaman los ejecutores de venta.
 contract SFSPEligibilityEngine is SFSPAccessControl {
     // Acciones canónicas evaluables.
     bytes32 public constant ACTION_MINT = bytes32("MINT");
@@ -78,31 +97,30 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     ///      todo país no evaluado. El orden es parte del contrato.
     enum CountryState { SOLO_ENTRANTE, PERMITIDO, PERMITIDO_CON_CONDICIONES, BLOQUEADO }
 
-    /// @dev Lo que una suscripción aporta y una transferencia no necesita.
-    ///      `country` es la residencia que el adquirente ACREDITA (claim vigente
-    ///      en el propósito de residencia de ese país); `exposureRef` es su
-    ///      compromiso en el propósito EXPOSICION —el mismo para todas las
-    ///      direcciones de una identidad—; `acquisitionCost` es el costo de
-    ///      adquisición en la unidad de cuenta del protocolo.
-    struct SubscriptionContext {
-        bytes32 country;
-        bytes32 exposureRef;
-        uint256 acquisitionCost;
-    }
+    /// @dev El contexto de una suscripción es `SFSPTypes.SubscriptionContext`:
+    ///      lo comparten el motor y los ejecutores de venta.
 
     /// @dev Parámetros del límite de exposición (v0.3 §8.5, decisión D03/D04 en
     ///      §18). `set == false` ⇒ BLOCKED_DECISION: no hay valor por defecto.
+    ///      La cadena publica la FÓRMULA; el agregado por identidad y el ingreso
+    ///      autodeclarado viven fuera (Genesis ID), que calcula con ella.
     struct ExposureParams {
         bool set;
         uint32 incomeBps;       // porcentaje del ingreso autodeclarado, en pb
         uint256 floor;          // piso, en unidad de cuenta
         uint256 ceiling;        // techo, en unidad de cuenta
-        uint64 declarationTtl;  // vigencia de una autodeclaración
+        uint64 declarationTtl;  // vigencia de una autodeclaración y techo de una autorización
     }
 
-    struct IncomeDeclaration {
-        uint256 declaredIncome;
+    /// @dev Resultado del agregado de exposición, calculado FUERA de la cadena:
+    ///      «esta dirección puede adquirir hasta `maxCost` de este activo, una
+    ///      vez, antes de `validUntil`». No lleva ingreso, ni agregado, ni nada
+    ///      común a las demás direcciones de la identidad.
+    struct ExposureClearance {
+        bytes32 assetId;
+        uint256 maxCost;
         uint64 validUntil;
+        bool used;
     }
 
     /// @dev Base legal de la colocación primaria de un activo: la licencia o
@@ -126,6 +144,12 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     event ExposureParamsSet(
         bytes32 indexed digest, uint32 incomeBps, uint256 floor, uint256 ceiling, uint64 declarationTtl
     );
+    /// @notice Apéndice B «Elegibilidad evaluada»: una suscripción se hizo
+    ///         cumplir en la ruta de dinero. Sin dirección ni identidad: sólo el
+    ///         compromiso de la evaluación, que quien tiene sus datos recalcula.
+    event EligibilityRecorded(
+        bytes32 indexed assetId, bytes32 indexed evaluationCommitment, bytes32 action, uint32 policyVersion
+    );
 
     error OrderMismatch(bytes32 field, bytes32 expected, bytes32 got);
     error CountryCodeInvalid(bytes32 countryCode);
@@ -135,12 +159,12 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     error ReasonRequired();
     error ExposureParamsInvalid(bytes32 reason);
     error ExposureParamsNotSet(uint8 code);
-    error ExposureRefUnbound(address account);
-    error ExposureLimitExceeded(uint256 used, uint256 requested, uint256 limit);
-    error ExposureDeclarationMissing(uint8 code);
     error NotGrowthSegment(bytes32 assetId);
     error DeclarationInvalid(bytes32 reason);
     error LicenseRegistryNotWired();
+    /// @dev La suscripción no es ALLOW (incluye REVIEW_REQUIRED y
+    ///      BLOCKED_DECISION): la venta no se ejecuta.
+    error SubscriptionRejected(uint8 code, bytes32 reason);
 
     bytes32 public constant ACTION_SET_COUNTRY = bytes32("SET_COUNTRY");
     bytes32 public constant ACTION_SET_EXPOSURE_PARAMS = bytes32("SET_EXPOSURE_PARAMS");
@@ -148,11 +172,25 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     bytes32 public constant SCOPE_COUNTRY = bytes32("SFSP:GOV:COUNTRY_MATRIX");
     bytes32 public constant SCOPE_EXPOSURE = bytes32("SFSP:GOV:EXPOSURE_LIMIT");
 
-    /// @dev Propósitos de identidad. La residencia es un propósito por país
-    ///      (`residencePurpose`); la exposición se agrega por el compromiso del
-    ///      propósito EXPOSICION, que es por identidad y no por dirección.
-    bytes32 public constant PURPOSE_EXPOSURE = bytes32("EXPOSICION");
-    bytes32 public constant RESIDENCE_TAG = keccak256("SFSP.PURPOSE.RESIDENCE.v1");
+    /// @dev Propósitos de identidad.
+    ///      · RESIDENCIA: UN solo propósito para todos los países. El compromiso
+    ///        de la dirección es `residenceCommitment(país, sal)`, con una sal
+    ///        aleatoria de 32 bytes POR DIRECCIÓN; así ni el propósito ni el
+    ///        compromiso dicen el país, y dos direcciones de la misma persona no
+    ///        comparten valor. El atestador registra la atestación sobre ese
+    ///        compromiso.
+    ///      · JURISDICCION_BLOQUEADA: el atestador lo da de alta en TODAS las
+    ///        direcciones de un residente de un país BLOQUEADO (y en cada
+    ///        dirección nueva que vincule), y lo retira al levantarse el bloqueo.
+    bytes32 public constant PURPOSE_RESIDENCE = bytes32("RESIDENCIA");
+    bytes32 public constant PURPOSE_JURISDICTION_BLOCK = bytes32("JURISDICCION_BLOQUEADA");
+    bytes32 public constant RESIDENCE_TAG = keccak256("SFSP.RESIDENCE.COMMITMENT.v1");
+    bytes32 public constant CLEARANCE_TAG = keccak256("SFSP.EXPOSURE.CLEARANCE.v1");
+    bytes32 public constant EVALUATION_TAG = keccak256("SFSP.SUBSCRIPTION.EVALUATION.v1");
+    /// @dev Ejecutores de venta (emisión, bóveda nativa, motor de reservas):
+    ///      los únicos que pueden hacer cumplir una suscripción, porque hacerlo
+    ///      gasta la autorización de exposición.
+    bytes32 public constant SUBSCRIPTION_EXECUTOR = keccak256("SFSP.ROLE.SUBSCRIPTION_EXECUTOR");
     /// @dev Los tres perfiles que admite la notificación de oferta exenta
     ///      (v0.3 §6). No son parámetros: los fija el texto de la exención.
     bytes32 public constant PURPOSE_PROSPERA_RESIDENT = bytes32("RESIDENTE_PROSPERA");
@@ -163,13 +201,14 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     bytes32 public constant REGIME_CRECIMIENTO = bytes32("CRECIMIENTO");
     bytes32 public constant DECLARATION_TAG = keccak256("SFSP.EXPOSURE.DECLARATION.v1");
     bytes32 public constant ACQUIRER_TAG = keccak256("SFSP.ACQUIRER.DECLARATION.v1");
-    /// @dev Quien registra declaraciones y adquisiciones en nombre del
-    ///      adquirente. Lo hace un operador, no la dirección del adquirente: si
-    ///      lo hiciera cada dirección, la transacción uniría en público todas
-    ///      las direcciones de una misma identidad (H16).
+    /// @dev El agregador de exposición (Genesis ID): calcula FUERA de la cadena
+    ///      el agregado de todas las direcciones de una identidad y registra
+    ///      aquí sólo el resultado. Nunca publica ingreso ni un valor común a
+    ///      varias direcciones (H16, v0.3 §11).
     bytes32 public constant EXPOSURE_OPERATOR = keccak256("SFSP.ROLE.EXPOSURE_OPERATOR");
-    /// @dev Techo técnico de la lista de países bloqueados: cada evaluación la
-    ///      recorre. No es un parámetro económico.
+    /// @dev Techo técnico de la lista pública de países bloqueados, que el
+    ///      atestador lee para aplicar JURISDICCION_BLOQUEADA. No es un
+    ///      parámetro económico.
     uint256 public constant MAX_BLOCKED_COUNTRIES = 64;
 
     ISFSPLicenseRegistry public licenses;
@@ -177,9 +216,7 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     bytes32[] private _blockedCountries;
     mapping(bytes32 => uint256) private _blockedIndex;              // país => índice + 1
     ExposureParams private _exposure;
-    mapping(bytes32 => IncomeDeclaration) private _income;           // exposureRef => declaración
-    mapping(bytes32 => uint256) private _exposureUsed;               // exposureRef => costo agregado
-    mapping(bytes32 => mapping(bytes32 => uint32)) private _acquirerDecl; // ref => activo => versión
+    mapping(bytes32 => ExposureClearance) private _clearance;       // clearanceId => autorización
     mapping(bytes32 => PlacementBasis) private _placement;
 
     error PolicyNotAuthorized(bytes32 digest);
@@ -363,11 +400,54 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
         bytes32 assetId,
         uint256 amount,
         bytes32 authorizationDigest,
-        SubscriptionContext calldata ctx
+        SFSPTypes.SubscriptionContext calldata ctx
     ) external view returns (uint8 result, bytes32 reasonCode, uint32 policyVersion) {
+        return _evaluateSubscription(account, assetId, amount, authorizationDigest, ctx);
+    }
+
+    function _evaluateSubscription(
+        address account,
+        bytes32 assetId,
+        uint256 amount,
+        bytes32 authorizationDigest,
+        SFSPTypes.SubscriptionContext calldata ctx
+    ) internal view returns (uint8 result, bytes32 reasonCode, uint32 policyVersion) {
         (result, reasonCode, policyVersion) = _evaluate(account, assetId, ACTION_SUBSCRIBE, amount, authorizationDigest);
         if (result == SFSPCodes.ALLOW) (result, reasonCode) = _subscriptionCheck(account, assetId, ctx);
         return _finish(assetId, ACTION_SUBSCRIBE, result, reasonCode, policyVersion);
+    }
+
+    /// @notice Hace cumplir una suscripción primaria en la ruta de dinero.
+    /// @dev v0.3 §6 y §7, SFSP-120 §0.3 regla 1: la venta (emisión bajo
+    ///      demanda de venta, liberación de ORIGEN desde la bóveda, colocación
+    ///      de reservas) evalúa `SUBSCRIBE` sobre el adquirente, y la vista y la
+    ///      escritura no se separan: se evalúa y, en el Mercado de Crecimiento,
+    ///      se gasta la autorización de exposición en la MISMA transacción.
+    ///      Cualquier resultado distinto de ALLOW revierte, también
+    ///      REVIEW_REQUIRED y BLOCKED_DECISION. Sin autorización de gobierno
+    ///      presentada: una política SUBSCRIBE que la exija deniega.
+    function enforceSubscription(
+        address account,
+        bytes32 assetId,
+        uint256 amount,
+        SFSPTypes.SubscriptionContext calldata ctx
+    ) external onlyRole(SUBSCRIPTION_EXECUTOR) returns (uint32 policyVersion) {
+        uint8 code;
+        bytes32 reason;
+        (code, reason, policyVersion) = _evaluateSubscription(account, assetId, amount, bytes32(0), ctx);
+        if (code != SFSPCodes.ALLOW) revert SubscriptionRejected(code, reason);
+        (bytes32 segment,) = registry.segmentOf(assetId);
+        if (segment == SFSPTypes.SEGMENT_CRECIMIENTO) {
+            // `_exposureCheck` ya comprobó que existe, está vigente, sin usar y
+            // cubre el costo: aquí se gasta. Una autorización, una adquisición.
+            _clearance[exposureClearanceId(account, assetId, ctx.clearanceNonce)].used = true;
+        }
+        emit EligibilityRecorded(
+            assetId,
+            keccak256(abi.encode(EVALUATION_TAG, account, assetId, amount, ctx)),
+            ACTION_SUBSCRIBE,
+            policyVersion
+        );
     }
 
     /// @dev Paso 12 (revisión humana), común a todas las entradas: se responde
@@ -476,10 +556,13 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
             if (!claimKnown) return (SFSPCodes.UNKNOWN_SOURCE, SFSPCodes.R_CLAIM_MISSING);
             if (!claimValid) return (SFSPCodes.DENY_ELIGIBILITY, SFSPCodes.R_CLAIM_MISSING);
         }
-        // v0.3 §7 · BLOQUEADO deniega TODAS las acciones. Se busca si la cuenta
-        // tiene alta de residencia en algún país bloqueado; no hace falta que el
-        // llamador declare el país, así que no se elude callándolo.
-        if (_residesInBlockedCountry(account)) return (SFSPCodes.DENY_JURISDICTION, R_COUNTRY_BLOCKED);
+        // v0.3 §7 · BLOQUEADO deniega TODAS las acciones. Lo marca el propósito
+        // JURISDICCION_BLOQUEADA, que el atestador da de alta en TODAS las
+        // direcciones del residente: no depende de que ESTA dirección haya
+        // declarado su país, así que no se elude callándolo ni usando otra
+        // dirección de la misma persona.
+        (bool sanctioned,,,) = identity.purposeStatus(account, PURPOSE_JURISDICTION_BLOCK);
+        if (sanctioned) return (SFSPCodes.DENY_JURISDICTION, R_COUNTRY_BLOCKED);
         return (SFSPCodes.ALLOW, SFSPCodes.R_OK);
     }
 
@@ -517,9 +600,9 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     bytes32 internal constant R_EXEMPT_SCOPE = bytes32("EXEMPT_OFFER_SCOPE");
     bytes32 internal constant R_SEGMENT_UNKNOWN = bytes32("SEGMENT_UNKNOWN");
     bytes32 internal constant R_EXPOSURE_UNSET = bytes32("EXPOSURE_PARAMS_UNSET");
-    bytes32 internal constant R_EXPOSURE_REF = bytes32("EXPOSURE_REF_UNBOUND");
-    bytes32 internal constant R_INCOME_MISSING = bytes32("INCOME_DECLARATION_MISSING");
-    bytes32 internal constant R_ACQUIRER_MISSING = bytes32("ACQUIRER_DECLARATION_MISSING");
+    bytes32 internal constant R_CLEARANCE_MISSING = bytes32("EXPOSURE_CLEARANCE_MISSING");
+    bytes32 internal constant R_CLEARANCE_USED = bytes32("EXPOSURE_CLEARANCE_USED");
+    bytes32 internal constant R_CLEARANCE_EXPIRED = bytes32("EXPOSURE_CLEARANCE_EXPIRED");
     bytes32 internal constant R_COST_UNKNOWN = bytes32("ACQUISITION_COST_UNKNOWN");
     bytes32 internal constant R_EXPOSURE_LIMIT = bytes32("EXPOSURE_LIMIT_EXCEEDED");
     bytes32 internal constant R_LICENSES_UNWIRED = bytes32("LICENSE_REGISTRY_UNSET");
@@ -533,8 +616,24 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
 
     // ------------------------------------------------------------- lecturas
 
-    function residencePurpose(bytes32 countryCode) public pure returns (bytes32) {
-        return keccak256(abi.encode(RESIDENCE_TAG, countryCode));
+    /// @notice Compromiso de residencia de UNA dirección en el propósito
+    ///         RESIDENCIA. `salt` es aleatoria, de 32 bytes y propia de esa
+    ///         dirección: con la sal secreta el país no se adivina (hay pocos
+    ///         países), y con una sal por dirección dos direcciones de la misma
+    ///         persona no comparten valor en el almacenamiento.
+    function residenceCommitment(bytes32 countryCode, bytes32 salt) public pure returns (bytes32) {
+        return keccak256(abi.encode(RESIDENCE_TAG, countryCode, salt));
+    }
+
+    /// @notice Identificador de una autorización de exposición: por dirección,
+    ///         activo y operación. Lo calcula el operador fuera de la cadena y
+    ///         lo registra SIN la dirección; la suscripción lo recalcula.
+    function exposureClearanceId(address account, bytes32 assetId, bytes32 nonce) public pure returns (bytes32) {
+        return keccak256(abi.encode(CLEARANCE_TAG, account, assetId, nonce));
+    }
+
+    function clearanceOf(bytes32 clearanceId) external view returns (ExposureClearance memory) {
+        return _clearance[clearanceId];
     }
 
     function countryStatusOf(bytes32 countryCode) external view returns (CountryState) {
@@ -553,21 +652,13 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
         return _placement[assetId];
     }
 
-    function exposureUsedOf(bytes32 exposureRef) external view returns (uint256) {
-        return _exposureUsed[exposureRef];
-    }
-
-    function acquirerDeclarationVersion(bytes32 exposureRef, bytes32 assetId) external view returns (uint32) {
-        return _acquirerDecl[exposureRef][assetId];
-    }
-
-    /// @notice Límite vigente de una identidad; `known == false` si faltan los
-    ///         parámetros o la declaración de ingreso está vencida o no existe.
-    function exposureLimitOf(bytes32 exposureRef) public view returns (bool known, uint256 limit) {
+    /// @notice La fórmula canónica del límite (v0.3 §8.5) para un ingreso
+    ///         autodeclarado. Es una VISTA: el agregador la consulta con
+    ///         `eth_call`, así que el ingreso nunca entra en una transacción ni
+    ///         en el almacenamiento. `known == false` sin parámetros fijados.
+    function exposureLimitFor(uint256 declaredIncome) external view returns (bool known, uint256 limit) {
         if (!_exposure.set) return (false, 0);
-        IncomeDeclaration storage d = _income[exposureRef];
-        if (d.validUntil <= block.timestamp) return (false, 0);
-        limit = (d.declaredIncome * _exposure.incomeBps) / 10000;
+        limit = (declaredIncome * _exposure.incomeBps) / 10000;
         if (limit < _exposure.floor) limit = _exposure.floor;
         if (limit > _exposure.ceiling) limit = _exposure.ceiling;
         return (true, limit);
@@ -577,23 +668,29 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
 
     /// @dev País → base de colocación (y alcance de la oferta exenta) →
     ///      exposición. Cada paso devuelve su código; ninguno se degrada a ALLOW.
-    function _subscriptionCheck(address account, bytes32 assetId, SubscriptionContext calldata ctx)
+    function _subscriptionCheck(address account, bytes32 assetId, SFSPTypes.SubscriptionContext calldata ctx)
         internal
         view
         returns (uint8, bytes32)
     {
-        (uint8 c, bytes32 r) = _countryCheck(account, ctx.country);
+        (uint8 c, bytes32 r) = _countryCheck(account, ctx.country, ctx.residenceSalt);
         if (c != SFSPCodes.ALLOW) return (c, r);
         (c, r) = _placementCheck(account, assetId);
         if (c != SFSPCodes.ALLOW) return (c, r);
         return _exposureCheck(account, assetId, ctx);
     }
 
-    function _countryCheck(address account, bytes32 country) internal view returns (uint8, bytes32) {
+    function _countryCheck(address account, bytes32 country, bytes32 salt) internal view returns (uint8, bytes32) {
         // Residencia no acreditada = país no evaluado = SOLO_ENTRANTE.
         if (country == bytes32(0)) return (SFSPCodes.DENY_JURISDICTION, R_INBOUND_ONLY);
-        (bool bound,,, bool valid) = identity.purposeStatus(account, residencePurpose(country));
-        if (!bound || !valid) return (SFSPCodes.UNKNOWN_SOURCE, R_COUNTRY_UNPROVEN);
+        // El país declarado tiene que ser EL de la residencia acreditada de esta
+        // dirección: el compromiso guardado es keccak(etiqueta, país, sal), así
+        // que otro país (o la sal de otra dirección) no coincide.
+        if (salt == bytes32(0) || !identity.isCommitmentBound(account, PURPOSE_RESIDENCE, residenceCommitment(country, salt))) {
+            return (SFSPCodes.UNKNOWN_SOURCE, R_COUNTRY_UNPROVEN);
+        }
+        (,,, bool valid) = identity.purposeStatus(account, PURPOSE_RESIDENCE);
+        if (!valid) return (SFSPCodes.UNKNOWN_SOURCE, R_COUNTRY_UNPROVEN);
         CountryState st = _country[country];
         if (st == CountryState.SOLO_ENTRANTE) return (SFSPCodes.DENY_JURISDICTION, R_INBOUND_ONLY);
         if (st == CountryState.BLOQUEADO) return (SFSPCodes.DENY_JURISDICTION, R_COUNTRY_BLOCKED);
@@ -628,10 +725,12 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
         return bound && !blocked && valid;
     }
 
-    /// @dev v0.3 §8.5 · por identidad (compromiso EXPOSICION), agregado sobre el
-    ///      segmento, a costo de adquisición, % del ingreso autodeclarado con
-    ///      piso y techo. Sólo en el Mercado de Crecimiento.
-    function _exposureCheck(address account, bytes32 assetId, SubscriptionContext calldata ctx)
+    /// @dev v0.3 §8.5 · por identidad, agregado sobre el segmento, a costo de
+    ///      adquisición, % del ingreso autodeclarado con piso y techo. Sólo en
+    ///      el Mercado de Crecimiento. El agregado lo calcula el operador FUERA
+    ///      de la cadena y aquí entra su resultado (SFSP-120 §0.7): sin él, la
+    ///      acción es UNKNOWN_SOURCE; nunca se supone cero.
+    function _exposureCheck(address account, bytes32 assetId, SFSPTypes.SubscriptionContext calldata ctx)
         internal
         view
         returns (uint8, bytes32)
@@ -640,26 +739,16 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
         if (!inForce) return (SFSPCodes.UNKNOWN_SOURCE, R_SEGMENT_UNKNOWN);
         if (segment != SFSPTypes.SEGMENT_CRECIMIENTO) return (SFSPCodes.ALLOW, SFSPCodes.R_OK);
         if (!_exposure.set) return (SFSPCodes.BLOCKED_DECISION, R_EXPOSURE_UNSET);
-        if (ctx.exposureRef == bytes32(0) || !identity.isCommitmentBound(account, PURPOSE_EXPOSURE, ctx.exposureRef)) {
-            return (SFSPCodes.UNKNOWN_SOURCE, R_EXPOSURE_REF);
-        }
-        (bool known, uint256 limit) = exposureLimitOf(ctx.exposureRef);
-        if (!known) return (SFSPCodes.UNKNOWN_SOURCE, R_INCOME_MISSING);
-        if (_acquirerDecl[ctx.exposureRef][assetId] == 0) return (SFSPCodes.DENY_ELIGIBILITY, R_ACQUIRER_MISSING);
         if (ctx.acquisitionCost == 0) return (SFSPCodes.UNKNOWN_SOURCE, R_COST_UNKNOWN);
-        if (_exposureUsed[ctx.exposureRef] + ctx.acquisitionCost > limit) {
-            return (SFSPCodes.DENY_LIMIT, R_EXPOSURE_LIMIT);
-        }
+        ExposureClearance storage c = _clearance[exposureClearanceId(account, assetId, ctx.clearanceNonce)];
+        // Una autorización de otra dirección, de otro activo o con otro nonce
+        // no existe bajo este identificador: abrir otra dirección no abre otro
+        // límite, porque el operador sólo la emite si el AGREGADO cabe.
+        if (c.validUntil == 0 || c.assetId != assetId) return (SFSPCodes.UNKNOWN_SOURCE, R_CLEARANCE_MISSING);
+        if (c.used) return (SFSPCodes.DENY_ELIGIBILITY, R_CLEARANCE_USED);
+        if (block.timestamp >= c.validUntil) return (SFSPCodes.UNKNOWN_SOURCE, R_CLEARANCE_EXPIRED);
+        if (ctx.acquisitionCost > c.maxCost) return (SFSPCodes.DENY_LIMIT, R_EXPOSURE_LIMIT);
         return (SFSPCodes.ALLOW, SFSPCodes.R_OK);
-    }
-
-    function _residesInBlockedCountry(address account) internal view returns (bool) {
-        uint256 n = _blockedCountries.length;
-        for (uint256 i = 0; i < n; i++) {
-            (bool bound,,,) = identity.purposeStatus(account, residencePurpose(_blockedCountries[i]));
-            if (bound) return true;
-        }
-        return false;
     }
 
     // ------------------------------------------------------------- gobierno
@@ -779,67 +868,45 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
         emit PlacementBasisSet(assetId, holder, licenseType, reasonCode);
     }
 
-    // ------------------------------------------------------------- declaraciones
+    // ------------------------------------------------------------- exposición
 
-    /// @notice Autodeclaración de ingreso o patrimonio anual, sin comprobación
-    ///         documental (v0.3 §8.5), en la unidad de cuenta del protocolo.
-    /// @dev El evento publica sólo la referencia de la declaración y su
-    ///      vigencia, nunca el monto. El monto queda en almacenamiento indexado
-    ///      por el compromiso seudónimo (ver decisiones abiertas del lote).
-    function declareIncome(bytes32 exposureRef, uint256 declaredIncome) external onlyRole(EXPOSURE_OPERATOR) {
-        if (!_exposure.set) revert ExposureParamsNotSet(SFSPCodes.BLOCKED_DECISION);
-        if (exposureRef == bytes32(0) || declaredIncome == 0) revert DeclarationInvalid(bytes32("INCOME"));
-        uint64 validUntil = uint64(block.timestamp) + _exposure.declarationTtl;
-        _income[exposureRef] = IncomeDeclaration({declaredIncome: declaredIncome, validUntil: validUntil});
-        emit ExposureLimitRecorded(keccak256(abi.encode(DECLARATION_TAG, exposureRef)), REGIME_CRECIMIENTO, validUntil);
-    }
-
-    /// @notice Declaración del adquirente: aceptación de los términos del
-    ///         activo con la versión del documento aceptado.
-    function recordAcquirerDeclaration(
+    /// @notice El operador registra el RESULTADO del agregado de exposición de
+    ///         una identidad para UNA adquisición (v0.3 §8.5, SFSP-120 §0.7).
+    /// @dev Fuera de la cadena, con los parámetros publicados aquí
+    ///      (`exposureLimitFor`), el agregador suma el costo de adquisición de
+    ///      TODAS las direcciones de la identidad en el segmento, comprueba la
+    ///      declaración de ingreso vigente y la del adquirente para ESTE activo,
+    ///      y sólo si la adquisición cabe registra esta autorización.
+    ///      Lo que NO entra en la cadena (v0.3 §11 y §12): el ingreso, el
+    ///      agregado, y cualquier valor común a varias direcciones. El
+    ///      identificador `clearanceId = exposureClearanceId(dirección, activo,
+    ///      nonce)` se calcula fuera y llega sin la dirección.
+    ///      La declaración del adquirente (aceptación de términos, versionada)
+    ///      queda registrada en la misma llamada, referida a ESTA autorización.
+    function recordExposureClearance(
+        bytes32 clearanceId,
         bytes32 assetId,
-        bytes32 exposureRef,
-        bytes32 documentHash,
-        uint32 documentVersion
+        uint256 maxCost,
+        uint64 validUntil,
+        bytes32 acquirerDocHash,
+        uint32 acquirerDocVersion
     ) external onlyRole(EXPOSURE_OPERATOR) {
-        if (!registry.isRegistered(assetId)) revert DeclarationInvalid(bytes32("ASSET"));
-        if (exposureRef == bytes32(0) || documentHash == bytes32(0) || documentVersion == 0) {
-            revert DeclarationInvalid(bytes32("DOCUMENT"));
-        }
-        _acquirerDecl[exposureRef][assetId] = documentVersion;
-        emit AcquirerDeclarationRecorded(
-            assetId, keccak256(abi.encode(ACQUIRER_TAG, exposureRef, assetId)), documentHash, documentVersion
-        );
-    }
-
-    /// @notice Registra una adquisición en el Mercado de Crecimiento y la suma
-    ///         a la exposición AGREGADA de la identidad, a costo de adquisición.
-    /// @dev Revierte si excede: el `evaluateSubscription` es una vista, y esta
-    ///      es la escritura que lo hace cumplir en la ruta de dinero. La
-    ///      dirección tiene que estar dada de alta en EXPOSICION con ESE
-    ///      compromiso, así que abrir otra dirección no abre otro límite.
-    function recordAcquisition(address account, bytes32 exposureRef, bytes32 assetId, uint256 cost)
-        external
-        onlyRole(EXPOSURE_OPERATOR)
-    {
+        if (!_exposure.set) revert ExposureParamsNotSet(SFSPCodes.BLOCKED_DECISION);
         (bytes32 segment, bool inForce) = registry.segmentOf(assetId);
         if (!inForce || segment != SFSPTypes.SEGMENT_CRECIMIENTO) revert NotGrowthSegment(assetId);
-        if (!identity.isCommitmentBound(account, PURPOSE_EXPOSURE, exposureRef)) revert ExposureRefUnbound(account);
-        if (!_exposure.set) revert ExposureParamsNotSet(SFSPCodes.BLOCKED_DECISION);
-        (bool known, uint256 limit) = exposureLimitOf(exposureRef);
-        if (!known) revert ExposureDeclarationMissing(SFSPCodes.UNKNOWN_SOURCE);
-        uint256 used = _exposureUsed[exposureRef];
-        if (cost == 0) revert DeclarationInvalid(bytes32("COST"));
-        if (used + cost > limit) revert ExposureLimitExceeded(used, cost, limit);
-        _exposureUsed[exposureRef] = used + cost;
-    }
-
-    /// @notice Descuenta de la exposición el costo de adquisición de lo que se
-    ///         dejó de tener. La apreciación no cuenta, ni al subir ni al bajar.
-    function releaseExposure(bytes32 exposureRef, uint256 cost) external onlyRole(EXPOSURE_OPERATOR) {
-        uint256 used = _exposureUsed[exposureRef];
-        if (cost == 0 || cost > used) revert DeclarationInvalid(bytes32("COST"));
-        _exposureUsed[exposureRef] = used - cost;
+        if (clearanceId == bytes32(0) || maxCost == 0) revert DeclarationInvalid(bytes32("CLEARANCE"));
+        // Un identificador, una autorización: no se reescribe ni se reactiva.
+        if (_clearance[clearanceId].validUntil != 0) revert DeclarationInvalid(bytes32("CLEARANCE_EXISTS"));
+        // La autorización no dura más que una autodeclaración.
+        if (validUntil <= block.timestamp || validUntil > block.timestamp + _exposure.declarationTtl) {
+            revert DeclarationInvalid(bytes32("WINDOW"));
+        }
+        if (acquirerDocHash == bytes32(0) || acquirerDocVersion == 0) revert DeclarationInvalid(bytes32("DOCUMENT"));
+        _clearance[clearanceId] = ExposureClearance({assetId: assetId, maxCost: maxCost, validUntil: validUntil, used: false});
+        emit ExposureLimitRecorded(keccak256(abi.encode(DECLARATION_TAG, clearanceId)), REGIME_CRECIMIENTO, validUntil);
+        emit AcquirerDeclarationRecorded(
+            assetId, keccak256(abi.encode(ACQUIRER_TAG, clearanceId, assetId)), acquirerDocHash, acquirerDocVersion
+        );
     }
 
     /// @dev Patrón de `consumeAuthorization`: acción, alcance y contenido

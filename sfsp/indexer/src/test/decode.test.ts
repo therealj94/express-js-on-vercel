@@ -18,8 +18,8 @@ const DEL_FASE2 = ['OracleParametersSet', 'OracleParametersCleared', 'OraclePric
 
 // SFSP v0.3 fase 2 · licencias, base de colocación, exposición y aprobación DBNX.
 const DEL_V03 = ['LicenseRegistered', 'PlacementBasisSet', 'ExposureParamsSet', 'DbnxApprovalRecorded', 'DbnxApprovalRevoked',
-  // Revision 26-sep (contratos-licencias): consumo de la aprobacion DBNX.
-  'DbnxApprovalUsed'] as const;
+  // Revision 26-sep (contratos-licencias): consumo de la aprobacion DBNX y compuertas de SUBSCRIBE.
+  'DbnxApprovalUsed', 'SubscriptionGateSet', 'SubscriptionRequirementSet'] as const;
 
 test('los quince eventos del §3, los catorce del v0.2, los seis de SFSP-160, los nueve de SFSP-410 y los de la fase 2 del v0.3 estan registrados', () => {
   const todos = [...DEL_TRES, ...DEL_V02, ...DEL_160, ...DEL_410, ...DEL_FASE2, ...DEL_V03];

@@ -19,7 +19,7 @@ Nada de lo que hay aquí firma ni envía transacciones. El cliente RPC
 | `censo-tokens-5550.mjs` | Censo de **todos** los tokens ERC-20 de la 5550, con saldos a la fecha. Resuelve cada clave de saldo a su dirección con un solo conjunto de candidatas para todos los tokens (actividad de la 5550 + respaldo de la 8532 como diccionario + Veta/Genesis ID). Concilia cada token contra `totalSupply()`. Produce `censo-tokens.*`, `padron-titulares.csv` y el `censo-ondk.json` de los otros dos. |
 | `lote-origen-ondk.mjs` | Lote «todo tenedor de ONDK con dirección llega a ≥ 1 ORIGEN», sin firmar, en dos formatos. `--simular` lo ejecuta en hardhat local. |
 | `simular-lote-origen.cjs` | Simulacro del lote en la cadena hardhat en memoria (chainId 31337). |
-| `lote-migracion.mjs` | Migración a la **misma dirección** por cupo del padrón (v0.3 §14.3). Genera, por activo y sin firmar, la orden `SET_MINT_BUDGET` y las llamadas `mintOnDemand`. `--simular` lo ejecuta en hardhat local. Ver «Lote de migración por cupo del padrón». |
+| `lote-migracion.mjs` | Migración a la **misma dirección** por cupo del padrón (v0.3 §14.3). Genera, por activo y sin firmar, la orden `SET_MIGRATION_BUDGET` (cupo de migración, SFSP-410 R13) y las llamadas `mintOnDemand`. `--simular` lo ejecuta en hardhat local. Ver «Lote de migración por cupo del padrón». |
 | `simular-lote-migracion.cjs` | Simulacro de ese lote en hardhat en memoria. |
 | `sintetico/` | Censo, activos e internas **sintéticos** para probar `lote-migracion.mjs`. No son datos reales. |
 | `../contracts/test/27-lote-migracion.js` | Prueba del generador y del simulacro con los datos sintéticos. |
@@ -242,7 +242,7 @@ aceptarlo expresamente (D26 + ADR) antes de usarlo en la 5550.
 ### Qué es
 
 Por cada activo nuevo (ONDK, AUKA, IBS, HARV), **una** orden de gobierno
-`SET_MINT_BUDGET` cuyo cupo es exactamente el padrón, y el emisor acuña a cada
+`SET_MIGRATION_BUDGET` cuyo cupo es exactamente el padrón, y el emisor acuña a cada
 beneficiario su saldo con `mintOnDemand`:
 
 | Campo | Valor |
@@ -314,7 +314,7 @@ beneficiario su saldo con `mintOnDemand`:
 3. Comprobar elegibilidad de cada beneficiario (`evaluateOperation(..., "MINT", ...)`
    en lectura). Los no elegibles salen de esta ronda y pasan a la siguiente.
 4. Topes del instrumento con `S0` incluido (`setInstrumentLimits`, Junta).
-5. Orden `SET_MINT_BUDGET` con los valores de la tabla; proponer, aprobar,
+5. Orden `SET_MIGRATION_BUDGET` con los valores de la tabla; proponer, aprobar,
    esperar el timelock, ejecutar (`setMintBudget`, TECH_OPS).
 6. Emisor: un `mintOnDemand` por beneficiario, en orden de hoja, con la
    `paymentRef` canónica. Un `OperationReplay` es «ya migrado», no un error.
@@ -358,7 +358,7 @@ Todo sale **sin firmar**.
 
 - **Padrón.** Hojas `keccak256(abi.encode(migrationId, dirección, oldUnits))`,
   las mismas de SFSP-700 y `construir-padron.mjs`. La raíz es la del padrón.
-- **Orden `SET_MINT_BUDGET`:**
+- **Orden `SET_MIGRATION_BUDGET`:**
 
   | Campo | Valor |
   |---|---|

@@ -6,7 +6,8 @@ import {SFSPEIP712} from "./lib/SFSPEIP712.sol";
 import {SFSPReentrancyGuard} from "./lib/SFSPReentrancyGuard.sol";
 import {SFSPCodes} from "./lib/SFSPCodes.sol";
 import {SFSPAuthorization} from "./lib/SFSPAuthorization.sol";
-import {ISFSPGovernanceController, ISFSPRegulatedAsset} from "./lib/ISFSP.sol";
+import {SFSPTypes} from "./lib/SFSPTypes.sol";
+import {ISFSPGovernanceController, ISFSPRegulatedAsset, ISFSPEligibilityEngine} from "./lib/ISFSP.sol";
 
 /// @title Controlador de emisión: consume SignedAuthorization del §2.4.
 /// @notice Tres topes distintos, a propósito:
@@ -395,7 +396,44 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
     // ------------------------------------------------ SFSP-410 · cupo de emisión
 
     bytes32 public constant ACTION_SET_MINT_BUDGET = bytes32("SET_MINT_BUDGET");
+    /// @dev v0.3 §6/§7 · cupo de MIGRACIÓN (padrón, v0.3 §14.3; ADR-016). No
+    ///      es una venta: su emisión no es una suscripción primaria.
+    ///      Se aprueba con su propia etiqueta, así que los firmantes ven en el
+    ///      registro que están aprobando una migración y no un cupo de venta.
+    ///      El cupo `SET_MINT_BUDGET` es de VENTA.
+    bytes32 public constant ACTION_SET_MIGRATION_BUDGET = bytes32("SET_MIGRATION_BUDGET");
     bytes32 public constant BUDGET_TERMS_TAG = keccak256("SFSP.MINT_BUDGET.TERMS.v1");
+
+    // ---- v0.3 §6 y §7 · SUBSCRIBE en la ruta de dinero
+    /// @dev Motor de elegibilidad que hace cumplir la suscripción. Mientras sea
+    ///      cero rige el comportamiento anterior (compatibilidad: el emisor
+    ///      acuña bajo demanda sin evaluar SUBSCRIBE) y `mintOnSubscription`
+    ///      responde BLOCKED_DECISION. Al fijarlo, un cupo de VENTA sólo se
+    ///      consume por `mintOnSubscription`; `mintOnDemand` queda para los
+    ///      cupos de MIGRACIÓN. Lo fija la Junta: elegir el motor es elegir la
+    ///      regla.
+    ISFSPEligibilityEngine public subscriptionGate;
+    mapping(bytes32 => bool) private _migrationBudget;
+
+    event SubscriptionGateSet(address indexed gate, address indexed by, bytes32 reasonCode);
+    error SubscriptionRequired(bytes32 assetId);
+    error SubscriptionGateUnset(uint8 code);
+    error BudgetKindMismatch(bytes32 assetId, bool migrationBudget);
+
+    /// @notice Enciende (motor ≠ 0) o apaga (cero) la exigencia de SUBSCRIBE en
+    ///         la emisión bajo demanda de venta.
+    /// @dev El motor tiene que conceder a este contrato el rol
+    ///      SUBSCRIPTION_EXECUTOR; si no, toda venta revierte (falla cerrada).
+    function setSubscriptionGate(address gate, bytes32 reasonCode) external onlyRole(DBNX_BOARD) {
+        require(reasonCode != bytes32(0), "SFSP: motivo requerido");
+        subscriptionGate = ISFSPEligibilityEngine(gate);
+        emit SubscriptionGateSet(gate, msg.sender, reasonCode);
+    }
+
+    /// @notice true si el cupo vigente del activo es de MIGRACIÓN.
+    function isMigrationBudget(bytes32 assetId) external view returns (bool) {
+        return _migrationBudget[assetId];
+    }
 
     /// @dev Cupo pre-aprobado por gobierno para emitir BAJO DEMANDA: cuando el
     ///      pago de un usuario se confirma, el emisor acuña exactamente eso al
@@ -437,8 +475,11 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
 
     /// @notice Fija el cupo de un activo con doble control Y espera.
     /// @dev Cambiar un cupo es cambiar cuánto puede crear el sistema sin volver a
-    ///      preguntar: se exige la acción SET_MINT_BUDGET, quórum, la espera del
-    ///      timelock contada desde la propuesta, y el digest se gasta.
+    ///      preguntar: se exige la acción SET_MINT_BUDGET (venta) o
+    ///      SET_MIGRATION_BUDGET (migración), quórum, la espera del timelock
+    ///      contada desde la propuesta, y el digest se gasta. La etiqueta
+    ///      aprobada tiene que ser la misma acción: el tipo de cupo lo deciden
+    ///      los firmantes, no el ejecutor.
     function setMintBudget(
         SFSPAuthorization.Payload calldata p,
         bytes32 approvedDigest,
@@ -447,7 +488,9 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         bytes32 termsDocRoot
     ) external nonReentrant {
         if (!hasRole(TECH_OPS, msg.sender) && !hasRole(DBNX_BOARD, msg.sender)) revert Unauthorized(TECH_OPS, msg.sender);
-        if (p.action != ACTION_SET_MINT_BUDGET) revert AuthorizationActionMismatch(ACTION_SET_MINT_BUDGET, p.action);
+        if (p.action != ACTION_SET_MINT_BUDGET && p.action != ACTION_SET_MIGRATION_BUDGET) {
+            revert AuthorizationActionMismatch(ACTION_SET_MINT_BUDGET, p.action);
+        }
         if (p.origin != address(0) || p.destination != address(0)) revert BudgetInvalid(bytes32("PARTIES"));
         if (p.amount == 0 || p.amountSecondary == 0 || p.amountSecondary > p.amount) revert BudgetInvalid(bytes32("AMOUNTS"));
         if (period == 0 || validUntil <= block.timestamp) revert BudgetInvalid(bytes32("WINDOW"));
@@ -455,8 +498,8 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         if (p.evidenceRoot != terms) revert BudgetTermsMismatch(p.evidenceRoot, terms);
         if (!_limits[p.assetId].configured) revert LimitsNotFixed(p.assetId, SFSPCodes.BLOCKED_DECISION);
 
-        if (governance.authorizationActionOf(approvedDigest) != ACTION_SET_MINT_BUDGET) {
-            revert AuthorizationActionMismatch(ACTION_SET_MINT_BUDGET, governance.authorizationActionOf(approvedDigest));
+        if (governance.authorizationActionOf(approvedDigest) != p.action) {
+            revert AuthorizationActionMismatch(p.action, governance.authorizationActionOf(approvedDigest));
         }
         if (!governance.isAuthorizationApproved(approvedDigest)) revert MintNotAuthorized(approvedDigest);
         uint64 readyAt = governance.authorizationProposedAt(approvedDigest) + governance.timelockDelay();
@@ -466,6 +509,7 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         SFSPAuthorization.authorize(m, approvedDigest);
         governance.consumeAuthorization(approvedDigest);
 
+        _migrationBudget[p.assetId] = p.action == ACTION_SET_MIGRATION_BUDGET;
         _budget[p.assetId] = MintBudget({
             perPeriod: p.amount,
             period: period,
@@ -485,10 +529,15 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         }
         require(reasonCode != bytes32(0), "SFSP: motivo requerido");
         delete _budget[assetId];
+        delete _migrationBudget[assetId];
         emit MintBudgetRevoked(assetId, msg.sender, reasonCode);
     }
 
     /// @notice Emisión bajo demanda: acuña al USUARIO exactamente lo que pagó.
+    /// @dev Con la compuerta de suscripción encendida, sólo consume un cupo de
+    ///      MIGRACIÓN: una venta tiene que pasar por `mintOnSubscription`, que
+    ///      evalúa SUBSCRIBE (v0.3 §6 y §7). Con la compuerta apagada (valor de
+    ///      despliegue) se comporta como antes.
     /// @param paymentRef hash del recibo del pago confirmado; es el operationId
     ///        y no se puede repetir.
     /// @param evidenceRoot raíz de la evidencia del pago (recibo, tx de USDT, etc.).
@@ -498,6 +547,38 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         nonReentrant
     {
         if (governance.isPaused()) revert Paused();
+        if (address(subscriptionGate) != address(0) && !_migrationBudget[assetId]) revert SubscriptionRequired(assetId);
+        _mintFromBudget(assetId, destination, amount, paymentRef, evidenceRoot);
+    }
+
+    /// @notice VENTA primaria bajo demanda: evalúa SUBSCRIBE sobre el
+    ///         adquirente y, si es ALLOW, acuña dentro del cupo de venta.
+    /// @dev La evaluación y la escritura (gasto de la autorización de
+    ///      exposición en el Mercado de Crecimiento) ocurren en el motor en ESTA
+    ///      transacción. Un cupo de MIGRACIÓN no vende.
+    function mintOnSubscription(
+        bytes32 assetId,
+        address destination,
+        uint256 amount,
+        bytes32 paymentRef,
+        bytes32 evidenceRoot,
+        SFSPTypes.SubscriptionContext calldata ctx
+    ) external onlyRole(ISSUER) nonReentrant {
+        if (governance.isPaused()) revert Paused();
+        if (address(subscriptionGate) == address(0)) revert SubscriptionGateUnset(SFSPCodes.BLOCKED_DECISION);
+        if (_migrationBudget[assetId]) revert BudgetKindMismatch(assetId, true);
+        subscriptionGate.enforceSubscription(destination, assetId, amount, ctx);
+        _mintFromBudget(assetId, destination, amount, paymentRef, evidenceRoot);
+    }
+
+    /// @dev Cupo, topes y acuñación, comunes a las dos entradas bajo demanda.
+    function _mintFromBudget(
+        bytes32 assetId,
+        address destination,
+        uint256 amount,
+        bytes32 paymentRef,
+        bytes32 evidenceRoot
+    ) internal {
         if (paymentRef == bytes32(0)) revert PaymentReferenceRequired();
         if (_usedOperationId[paymentRef]) revert OperationReplay(paymentRef);
         _usedOperationId[paymentRef] = true;

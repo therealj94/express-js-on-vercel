@@ -5,6 +5,7 @@ import {SFSPAccessControl} from "./lib/SFSPAccessControl.sol";
 import {SFSPReentrancyGuard} from "./lib/SFSPReentrancyGuard.sol";
 import {SFSPCodes} from "./lib/SFSPCodes.sol";
 import {SFSPAuthorization} from "./lib/SFSPAuthorization.sol";
+import {SFSPTypes} from "./lib/SFSPTypes.sol";
 import {ISFSPGovernanceController, ISFSPEligibilityEngine} from "./lib/ISFSP.sol";
 
 /// @title Bóveda sellada de la moneda nativa (ORIGEN) · SFSP-410 §4.
@@ -25,6 +26,11 @@ import {ISFSPGovernanceController, ISFSPEligibilityEngine} from "./lib/ISFSP.sol
 contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
     bytes32 public constant ACTION_RELEASE = bytes32("RELEASE_NATIVE");
     bytes32 public constant ACTION_SET_RELEASE_BUDGET = bytes32("SET_RELEASE_BUDGET");
+    /// @dev v0.3 §6/§7 · cupo de MIGRACIÓN (p. ej. el lote de 1 ORIGEN a los
+    ///      tenedores de ONDK). No es una venta. `SET_RELEASE_BUDGET` es de VENTA:
+    ///      la compra de ORIGEN a la tesorería es la puerta única y es una
+    ///      SUBSCRIBE (SFSP-120 §0.5, punto 3).
+    bytes32 public constant ACTION_SET_MIGRATION_BUDGET = bytes32("SET_MIGRATION_BUDGET");
     bytes32 public constant BUDGET_TERMS_TAG = keccak256("SFSP.RELEASE_BUDGET.TERMS.v1");
     uint256 public constant MAX_INTERNAL_ACCOUNTS = 64;
 
@@ -45,6 +51,14 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
     }
 
     ReleaseBudget private _budget;
+    /// @dev true si el cupo vigente es de MIGRACIÓN.
+    bool private _budgetIsMigration;
+    /// @notice v0.3 §6 y §7 · con true, un cupo de VENTA sólo se consume por
+    ///         `releaseOnSubscription`, que evalúa SUBSCRIBE; `releaseOnDemand`
+    ///         queda para los cupos de MIGRACIÓN. false (valor de despliegue)
+    ///         conserva el comportamiento anterior para no romper a quien ya
+    ///         integra `releaseOnDemand`; se enciende antes de vender.
+    bool public subscriptionRequired;
     mapping(bytes32 => bool) private _usedOperation;
     mapping(address => bool) private _internalAccount;
     address[] private _internalList;
@@ -72,6 +86,7 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
     );
     event ReleaseBudgetRevoked(bytes32 indexed assetId, address indexed by, bytes32 reasonCode);
     event VaultInternalAccountFlagged(address indexed account, bool internalAccount, address indexed by, bytes32 reasonCode);
+    event SubscriptionRequirementSet(bytes32 indexed assetId, bool required, address indexed by, bytes32 reasonCode);
 
     error Paused();
     error OperationReplay(bytes32 operationId);
@@ -90,6 +105,8 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
     error InternalAccountUnflagNeedsBoard(address account);
     error TooManyInternalAccounts();
     error TransferFailed();
+    error SubscriptionRequired();
+    error BudgetKindMismatch(bool migrationBudget);
 
     constructor(address board, address governance_, address engine_, bytes32 assetId_, uint256 genesisSupply_)
         SFSPAccessControl(board)
@@ -149,6 +166,20 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
 
     function releaseBudget() external view returns (ReleaseBudget memory) {
         return _budget;
+    }
+
+    function releaseBudgetIsMigration() external view returns (bool) {
+        return _budgetIsMigration;
+    }
+
+    /// @notice Enciende o apaga la exigencia de SUBSCRIBE en la liberación de
+    ///         venta. La Junta, con motivo. El motor (`engine`) tiene que
+    ///         conceder a esta bóveda SUBSCRIPTION_EXECUTOR; si no, toda venta
+    ///         revierte (falla cerrada).
+    function setSubscriptionRequired(bool required, bytes32 reasonCode) external onlyRole(DBNX_BOARD) {
+        require(reasonCode != bytes32(0), "SFSP: motivo requerido");
+        subscriptionRequired = required;
+        emit SubscriptionRequirementSet(assetId, required, msg.sender, reasonCode);
     }
 
     function budgetRemaining() external view returns (uint256) {
@@ -230,7 +261,9 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
         bytes32 termsDocRoot
     ) external nonReentrant {
         if (!hasRole(TECH_OPS, msg.sender) && !hasRole(DBNX_BOARD, msg.sender)) revert Unauthorized(TECH_OPS, msg.sender);
-        if (p.action != ACTION_SET_RELEASE_BUDGET) revert AuthorizationActionMismatch(ACTION_SET_RELEASE_BUDGET, p.action);
+        if (p.action != ACTION_SET_RELEASE_BUDGET && p.action != ACTION_SET_MIGRATION_BUDGET) {
+            revert AuthorizationActionMismatch(ACTION_SET_RELEASE_BUDGET, p.action);
+        }
         if (p.assetId != assetId) revert BudgetInvalid(bytes32("ASSET"));
         if (p.origin != address(0) || p.destination != address(0)) revert BudgetInvalid(bytes32("PARTIES"));
         if (p.amount == 0 || p.amountSecondary == 0 || p.amountSecondary > p.amount) revert BudgetInvalid(bytes32("AMOUNTS"));
@@ -238,8 +271,8 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
         bytes32 terms = budgetTermsRoot(period, validUntil, termsDocRoot);
         if (p.evidenceRoot != terms) revert BudgetTermsMismatch(p.evidenceRoot, terms);
 
-        if (governance.authorizationActionOf(approvedDigest) != ACTION_SET_RELEASE_BUDGET) {
-            revert AuthorizationActionMismatch(ACTION_SET_RELEASE_BUDGET, governance.authorizationActionOf(approvedDigest));
+        if (governance.authorizationActionOf(approvedDigest) != p.action) {
+            revert AuthorizationActionMismatch(p.action, governance.authorizationActionOf(approvedDigest));
         }
         if (!governance.isAuthorizationApproved(approvedDigest)) revert ReleaseNotAuthorized(approvedDigest);
         uint64 readyAt = governance.authorizationProposedAt(approvedDigest) + governance.timelockDelay();
@@ -249,6 +282,7 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
         SFSPAuthorization.authorize(m, approvedDigest);
         governance.consumeAuthorization(approvedDigest);
 
+        _budgetIsMigration = p.action == ACTION_SET_MIGRATION_BUDGET;
         _budget = ReleaseBudget({
             perPeriod: p.amount,
             period: period,
@@ -267,16 +301,41 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
         }
         require(reasonCode != bytes32(0), "SFSP: motivo requerido");
         delete _budget;
+        delete _budgetIsMigration;
         emit ReleaseBudgetRevoked(assetId, msg.sender, reasonCode);
     }
 
     /// @notice Libera al USUARIO exactamente lo que pagó, dentro del cupo.
+    /// @dev Con `subscriptionRequired`, sólo consume un cupo de MIGRACIÓN: la
+    ///      venta pasa por `releaseOnSubscription` (v0.3 §7, puerta única).
     function releaseOnDemand(address destination, uint256 amount, bytes32 paymentRef, bytes32 evidenceRoot)
         external
         onlyRole(ISSUER)
         nonReentrant
     {
         if (governance.isPaused()) revert Paused();
+        if (subscriptionRequired && !_budgetIsMigration) revert SubscriptionRequired();
+        _releaseFromBudget(destination, amount, paymentRef, evidenceRoot);
+    }
+
+    /// @notice VENTA de ORIGEN desde la bóveda: evalúa SUBSCRIBE sobre el
+    ///         adquirente (país, alcance de la oferta exenta, exposición) y, si
+    ///         es ALLOW, libera dentro del cupo de venta. Un cupo de MIGRACIÓN no
+    ///         vende.
+    function releaseOnSubscription(
+        address destination,
+        uint256 amount,
+        bytes32 paymentRef,
+        bytes32 evidenceRoot,
+        SFSPTypes.SubscriptionContext calldata ctx
+    ) external onlyRole(ISSUER) nonReentrant {
+        if (governance.isPaused()) revert Paused();
+        if (_budgetIsMigration) revert BudgetKindMismatch(true);
+        engine.enforceSubscription(destination, assetId, amount, ctx);
+        _releaseFromBudget(destination, amount, paymentRef, evidenceRoot);
+    }
+
+    function _releaseFromBudget(address destination, uint256 amount, bytes32 paymentRef, bytes32 evidenceRoot) internal {
         if (paymentRef == bytes32(0) || amount == 0) revert BudgetInvalid(bytes32("ARGS"));
         if (_usedOperation[paymentRef]) revert OperationReplay(paymentRef);
         _usedOperation[paymentRef] = true;

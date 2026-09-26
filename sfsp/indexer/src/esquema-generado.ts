@@ -36,7 +36,7 @@ export interface EventoGenerado {
   readonly camposDeAtribucion: readonly string[];
 }
 
-/** Los 68 eventos del §3, por su nombre canonico. */
+/** Los 70 eventos del §3, por su nombre canonico. */
 export type NombreEvento =
   | "AssetRegistered"
   | "PolicyUpdated"
@@ -105,7 +105,9 @@ export type NombreEvento =
   | "ExposureParamsSet"
   | "DbnxApprovalRecorded"
   | "DbnxApprovalRevoked"
-  | "DbnxApprovalUsed";
+  | "DbnxApprovalUsed"
+  | "SubscriptionGateSet"
+  | "SubscriptionRequirementSet";
 
 /** Esquema completo por evento. Generado: editar el JSON, no esto. */
 export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
@@ -467,10 +469,10 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
   EligibilityRecorded: {
     nombre: "EligibilityRecorded",
     emisor: "EligibilityEngine",
-    significado: "Referencia verificable de una evaluacion de elegibilidad. Sin identidad, sin direccion y sin resultado detallado: el detalle vive en el dominio privado (SFSP-600 §0). Sustituye al evento retirado que publicaba la evaluacion completa.",
+    significado: "Referencia verificable de una evaluacion de elegibilidad HECHA CUMPLIR en la ruta de dinero (hoy: SUBSCRIBE en la venta primaria, SFSPEligibilityEngine.enforceSubscription). Sin identidad, sin direccion y sin resultado detallado: evaluationCommitment = keccak256(etiqueta, direccion, activo, monto, contexto), que recalcula quien tiene esos datos (SFSP-600 §0). Sustituye al evento retirado que publicaba la evaluacion completa.",
     atribucion: "POR_ACTIVO",
     afectaSuministro: "NINGUNO",
-    implementadoEnContratos: false,
+    implementadoEnContratos: true,
     campos: [
       { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
       { nombre: "evaluationCommitment", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
@@ -484,7 +486,7 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
   ExposureLimitRecorded: {
     nombre: "ExposureLimitRecorded",
     emisor: "EligibilityEngine",
-    significado: "Registro del regimen de limite de exposicion aplicable a una identidad (Mercado de Crecimiento). Solo la referencia de la declaracion.",
+    significado: "El agregador de exposicion (fuera de la cadena) registra el RESULTADO para una adquisicion en el Mercado de Crecimiento: una autorizacion de un solo uso por (direccion, activo, operacion). declarationRef = keccak256(etiqueta, clearanceId). Ni ingreso, ni agregado, ni un valor comun a las direcciones de una identidad (v0.3 §11 y §12).",
     atribucion: "GLOBAL",
     afectaSuministro: "NINGUNO",
     implementadoEnContratos: true,
@@ -1173,7 +1175,7 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
   AcquirerDeclarationRecorded: {
     nombre: "AcquirerDeclarationRecorded",
     emisor: "EligibilityEngine",
-    significado: "El adquirente reconoce los terminos, con la version del documento aceptado (v0.2 §8.3 bloque 7).",
+    significado: "El adquirente reconoce los terminos, con la version del documento aceptado (v0.2 §8.3 bloque 7). Se registra junto con la autorizacion de exposicion a la que se refiere; declarationRef = keccak256(etiqueta, clearanceId, assetId).",
     atribucion: "POR_ACTIVO",
     afectaSuministro: "NINGUNO",
     implementadoEnContratos: true,
@@ -1293,6 +1295,39 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
     cantidades: ["amount"],
     camposDeAtribucion: ["assetId"],
   },
+  SubscriptionGateSet: {
+    nombre: "SubscriptionGateSet",
+    emisor: "IssuanceController",
+    significado: "SFSP v0.3 §6 y §7 · la Junta fija (o quita, con cero) el motor que hace cumplir SUBSCRIBE en la emision bajo demanda de venta. Con motor fijado, un cupo de venta solo se consume por mintOnSubscription.",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "gate", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "by", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["gate", "by", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  SubscriptionRequirementSet: {
+    nombre: "SubscriptionRequirementSet",
+    emisor: "NativeVault",
+    significado: "SFSP v0.3 §7 (puerta unica) · la Junta enciende o apaga la exigencia de SUBSCRIBE en la liberacion de venta de ORIGEN. Encendida, un cupo de venta solo se consume por releaseOnSubscription.",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "required", tipo: "bool", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "by", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["assetId", "required", "by", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: ["assetId"],
+  },
 };
 
 /** Nombre de evento -> emisor declarado. Compatibilidad con el §3. */
@@ -1365,6 +1400,8 @@ export const EVENTOS_CONOCIDOS: Readonly<Record<NombreEvento, string>> = {
   DbnxApprovalRecorded: "IssuanceController",
   DbnxApprovalRevoked: "IssuanceController",
   DbnxApprovalUsed: "IssuanceController",
+  SubscriptionGateSet: "IssuanceController",
+  SubscriptionRequirementSet: "NativeVault",
 };
 
 /**

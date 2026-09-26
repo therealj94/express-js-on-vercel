@@ -63,6 +63,18 @@ interface ISFSPEligibilityEngine {
         uint256 amount,
         bytes32 authorizationDigest
     ) external view returns (uint8 result, bytes32 reasonCode, uint32 policyVersion);
+
+    /// @dev v0.3 §6 y §7 · SFSP-120 §0.3 · la ESCRITURA que hace cumplir
+    ///      `SUBSCRIBE` en la ruta de dinero: evalúa la suscripción, revierte si
+    ///      no es ALLOW y, en el Mercado de Crecimiento, gasta la autorización
+    ///      de exposición en la MISMA transacción. Sólo la llaman los ejecutores
+    ///      de venta (rol SUBSCRIPTION_EXECUTOR).
+    function enforceSubscription(
+        address account,
+        bytes32 assetId,
+        uint256 amount,
+        SFSPTypes.SubscriptionContext calldata ctx
+    ) external returns (uint32 policyVersion);
 }
 
 interface ISFSPGovernanceController {

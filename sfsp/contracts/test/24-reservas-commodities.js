@@ -16,6 +16,7 @@ const LOT = { NINGUNO: 0, RECIBIDO: 1, VERIFICADO: 2, ASIGNADO: 3, PARCIAL: 4, B
 const RED = { NINGUNO: 0, SOLICITADA: 1, ELEGIBLE: 2, EN_COLA: 3, BLOQUEADA: 4, LIQUIDADA: 5, ENTREGADA: 6, CANCELADA: 7, VENCIDA: 8 };
 const CH = { ORIGEN: 0, ENVIO: 1, PRESENCIAL: 2 };
 const CUSTODIA_G = H.b32("CUSTODIA_CLASE_G");
+const PA = H.b32("PA");
 
 // Barra de 1 kg a 999,9: onzas finas = mg × ppm × 1e13 / 311035 (31,1035 g por onza).
 const KG_MG = 1_000_000n;
@@ -49,6 +50,14 @@ async function montar() {
   await x.r.send("registerCustodian", [H.b32("CUST_A"), x.custA, false, H.b32("JUR_A")], x.board);
   await x.r.send("registerCustodian", [H.b32("CUST_B"), x.custB, false, H.b32("JUR_B")], x.board);
   await x.r.send("registerCustodian", [H.b32("CUST_ORDENEX"), x.custInt, true, H.b32("JUR_PROSPERA")], x.board);
+
+  // SFSP-120 §0.3 regla 3 · colocar exige RELEASE y SUBSCRIBE. Entorno de
+  // suscripción sintético: PA PERMITIDO, base de colocación con licencia plena
+  // (el alcance de la oferta exenta se prueba en 21 y 28) y residencia en PA de
+  // los adquirentes de estas pruebas.
+  await f.engine.send("grantRole", [await f.engine.call("SUBSCRIPTION_EXECUTOR"), x.r.address], x.board);
+  await V.entornoSuscripcion(f, [C.ASSET_AUKA, C.ASSET_AGKA], { base: "ICL" });
+  for (const d of [f.alice, f.bob]) await V.altaResidencia(f, d, PA);
   return x;
 }
 
@@ -81,8 +90,18 @@ async function loteListo(x, lotId, assetId, custodian, attestor, metal, cert, di
   await x.r.send("assignLot", [H.b32(lotId)], x.board);
 }
 
-async function colocar(x, assetId, to, unidades, op) {
-  return x.r.send("place", [assetId, to, String(unidades), H.b32(op)], x.board);
+/** Coloca con el contexto de suscripción del adquirente (residencia en PA).
+ *  La atestación de residencia dura una hora en el fixture y algunas pruebas
+ *  adelantan días: se renueva antes de colocar. */
+async function colocar(x, assetId, to, unidades, op, pais) {
+  const country = pais || PA;
+  const salt = V.salResidencia(to);
+  const c = await x.f.engine.call("residenceCommitment", [country, salt]);
+  if (await x.f.identity.call("isCommitmentBound", [to, await x.f.engine.call("PURPOSE_RESIDENCE"), c])) {
+    await V.acreditar(x.f, c, await x.f.engine.call("PURPOSE_RESIDENCE"));
+  }
+  const ctx = V.ctxSuscripcion({ country, salt });
+  return x.r.send("place", [assetId, to, String(unidades), H.b32(op), ctx], x.board);
 }
 
 async function pedir(x, assetId, unidades, canal, holder) {
@@ -211,6 +230,22 @@ describe("SFSP v0.3 §9 · motor de reservas y commodities (SFSPReserveEngine)",
       assert.equal(Number((await x.r.call("lotOf", [H.b32("L1")])).state), LOT.PARCIAL);
       assert.equal((await x.r.call("placementCapacityOz", [C.ASSET_AUKA])).toString(), String(OZ_KG - 32n * E18));
       await H.expectRevert(colocar(x, C.ASSET_AUKA, f.bob, E18, "op2"), "PlacementCapacityExceeded");
+    });
+
+    it("negativo (SFSP-120 §0.3): un residente de un país SOLO_ENTRANTE no recibe una colocación aunque haya capacidad", async function () {
+      await loteListo(x, "L1", C.ASSET_AUKA, "CUST_A", x.custA);
+      const carol = f.acc[11];
+      await f.identity.send("bindPurposeCommitment", [carol, F.PURPOSE_BASE, F.compromiso(H.b32("subj_carol"), F.PURPOSE_BASE, H.b32("salt_carol"))], x.board);
+      await V.altaResidencia(f, carol, H.b32("HN"));
+      // RELEASE (capacidad) la dejaría pasar; SUBSCRIBE no.
+      assert.equal(Number((await f.engine.call("evaluateOperation", [carol, C.ASSET_AUKA, H.b32("RELEASE"), String(E18), H.ZERO32])).result), F.CODE.ALLOW);
+      const msg = await V.revertCon(colocar(x, C.ASSET_AUKA, carol, E18, "op_hn", H.b32("HN")), f.engine, "SubscriptionRejected");
+      assert.ok(msg.includes(H.b32("COUNTRY_INBOUND_ONLY").slice(2)));
+      assert.equal((await x.auka.call("balanceOf", [carol])).toString(), "0");
+      assert.equal((await x.r.call("placementCapacityOz", [C.ASSET_AUKA])).toString(), String(OZ_KG), "no consume capacidad");
+      // Sin el rol de ejecutor en el motor, ninguna colocación pasa (falla cerrada).
+      await f.engine.send("revokeRole", [await f.engine.call("SUBSCRIPTION_EXECUTOR"), x.r.address], x.board);
+      await H.expectRevert(colocar(x, C.ASSET_AUKA, f.alice, E18, "op_sin_rol"), "Unauthorized");
     });
 
     it("negativo: no se coloca a la propia tesorería, a un sujeto sin alta, ni se repite la operación", async function () {
@@ -391,6 +426,18 @@ describe("SFSP v0.3 §9 · motor de reservas y commodities (SFSPReserveEngine)",
       assert.equal(await f.lic.call("isModuleEnabled", [CUSTODIA_G]), true, "BETA habilita");
     });
 
+    it("positivo: un lote de custodia interna se asigna con el registro real y las vistas de capacidad no revierten", async function () {
+      await registroReal(V.AV.DISPONIBLE);
+      await x.r.send("setConcentrationLimits", [10000, 10000, 0], x.board);
+      await x.r.send("registerLot", [intake("LI", C.ASSET_AUKA, "CUST_ORDENEX", C.XAU, "ci")], x.board);
+      await atestar(x, "LI", x.custInt);
+      await x.r.send("auditVerifyLot", [H.b32("LI"), (await H.now()) + 10 * DIA], x.auditor);
+      await x.r.send("assignLot", [H.b32("LI")], x.board);
+      assert.equal(await x.r.call("isLotValid", [H.b32("LI")]), true);
+      assert.equal((await x.r.call("placementCapacityOz", [C.ASSET_AUKA])).toString(), String(OZ_KG));
+      await colocar(x, C.ASSET_AUKA, f.alice, E18, "op_int");
+      assert.equal((await x.auka.call("balanceOf", [f.alice])).toString(), String(E18));
+    });
   });
 
   describe("AGKA · liquidación permanente en ORIGEN con el ratio del oráculo", function () {

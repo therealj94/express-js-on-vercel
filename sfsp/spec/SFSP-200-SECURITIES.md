@@ -166,6 +166,8 @@ En el Mercado de Crecimiento el acceso se controla por **límite de exposición*
 
 Lo acompañan la **fricción proporcional al riesgo** y el registro versionado del reconocimiento (`AcquirerDeclarationRecorded`, `ExposureLimitRecorded`). Porcentaje, piso y techo: `null`.
 
+**Dónde se calcula (v0.3 §11 y §12, SFSP-110 §0).** El agregado por Genesis ID se calcula **fuera de la cadena**, porque la relación entre direcciones vive en Genesis ID y la cadena no debe poder reconstruirla. El agregador usa la fórmula publicada en cadena (`SFSPEligibilityEngine.exposureLimitFor`, una vista: el ingreso no entra en ninguna transacción) y, si la adquisición cabe, registra el **resultado**: una autorización de un solo uso por (dirección, activo, operación) con el costo máximo que cubre (`recordExposureClearance`), junto con la versión de la declaración del adquirente. La venta la gasta en la misma transacción (`enforceSubscription`). En cadena no quedan el ingreso autodeclarado, el agregado ni un compromiso común a las direcciones de la identidad. T-200-22 y T-200-23 se verifican en el agregador; en cadena, que la autorización de una dirección no la usa otra ni se usa dos veces (`21-paises-suscripcion-exposicion.js`).
+
 **Este acceso abierto aplica solo a los activos cuya colocación admite oferta al público.** Para los colocados bajo la oferta exenta rige el alcance de SFSP-120 §0.5 (v0.3 §8.5). Pendiente de verificación legal: si la jurisdicción de DBNX impone restricciones por perfil, conviven con el límite de exposición.
 
 ### 0.7 Tokenización de acciones (v0.3 §8.9)

@@ -16,7 +16,7 @@ Además, la revisión adversaria encontró que la ruta del registro acuña direc
 
 ## 2. Decisión
 
-1. **Camino normativo de SFSP-700:** por cada activo, **una** orden de gobierno `SET_MINT_BUDGET` cuyo cupo es exactamente el padrón, y el emisor acuña a cada tenedor su saldo **en la misma dirección** con `mintOnDemand`.
+1. **Camino normativo de SFSP-700:** por cada activo, **una** orden de gobierno `SET_MIGRATION_BUDGET` (cupo de MIGRACIÓN; la etiqueta la ven los firmantes y, con la compuerta de suscripción encendida, un cupo `SET_MINT_BUDGET` es de venta y sólo se consume evaluando SUBSCRIBE, SFSP-410 R13) cuyo cupo es exactamente el padrón, y el emisor acuña a cada tenedor su saldo **en la misma dirección** con `mintOnDemand`.
 
    | Campo del cupo | Valor |
    |---|---|

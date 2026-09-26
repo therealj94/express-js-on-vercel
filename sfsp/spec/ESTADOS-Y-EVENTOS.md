@@ -74,7 +74,7 @@ El v0.3 (como el v0.2) da al activo **un único estado en línea**. El repositor
 | 7 | Quema ejecutada | `BurnExecuted` | ✅ RegulatedAsset |
 | 8 | División ejecutada | `SplitExecuted` | sin contrato |
 | 9 | Vínculo de identidad modificado | `IdentityLinkChanged` (solo la referencia del vínculo) | sin contrato |
-| 10 | Elegibilidad evaluada | `EligibilityRecorded` (solo un compromiso; **sin identidad, dirección ni resultado**) | sin contrato |
+| 10 | Elegibilidad evaluada | `EligibilityRecorded` (solo un compromiso; **sin identidad, dirección ni resultado**) | ✅ EligibilityEngine (`enforceSubscription`, suscripción hecha cumplir en la ruta de dinero) |
 | 11 | Límite de exposición registrado | `ExposureLimitRecorded` | ✅ EligibilityEngine |
 | 12 | Declaración del adquirente registrada | `AcquirerDeclarationRecorded` (con `documentHash` y `documentVersion`) | ✅ EligibilityEngine |
 | 13 | Reserva atestada | `ReserveAttested` | ✅ ReserveEngine |
@@ -104,6 +104,7 @@ Eventos de `eventos.json` que no vienen del Apéndice B:
 | SFSP-160 | `OrgDidRegistered`, `OrgDidControllerChanged`, `OrgDidKeyChanged`, `OrgDidAttestorChanged`, `OrgDidDocumentChanged`, `OrgDidDeactivated` (registro `did:sfsp` de organizaciones) | ✅ `SFSPDidRegistry` |
 | SFSP-410 | `InternalAccountFlagged`, `MintBudgetSet`, `MintBudgetRevoked`, `MintOnDemand` (`SFSPIssuanceController`); `NativeAbsorbed`, `NativeReleased`, `ReleaseBudgetSet`, `ReleaseBudgetRevoked`, `VaultInternalAccountFlagged` (`SFSPNativeVault`) | ✅ |
 | v0.3 fase 2 · licencias y elegibilidad | `LicenseRegistered`, `PlacementBasisSet`, `ExposureParamsSet`, `DbnxApprovalRecorded`, `DbnxApprovalRevoked` | ✅ `SFSPLicenseRegistry`, `SFSPEligibilityEngine`, `SFSPIssuanceController` |
+| Revisión 26-sep · aprobación DBNX usada y compuertas de `SUBSCRIBE` | `DbnxApprovalUsed`, `SubscriptionGateSet`, `SubscriptionRequirementSet` | ✅ `SFSPIssuanceController`, `SFSPNativeVault` |
 | v0.3 fase 2 · oráculo, reservas y tesorería | `OracleParametersSet`, `OracleParametersCleared`, `OraclePricePublished`, `CommodityAssetConfigured`, `CustodianRegistered`, `LicenseGateSet`, `ConcentrationLimitsSet`, `RedemptionChannelSet`, `MetalLotRegistered`, `MetalLotStateChanged`, `LotAuditVerified`, `UnitsPlaced`, `OrigenSettlementFunded`, `DeskParametersSet`, `DeskParametersCleared`, `MarketSpreadObserved`, `DeskFunded`, `DeskTradeExecuted` | ✅ `SFSPOracleRegistry`, `SFSPReserveEngine`, `SFSPTreasuryDesk` |
 
 Total en `eventos.json` (draft-0.6): **67 eventos**, 61 con contrato y 6 sin contrato. La prueba H15 de `contracts/` (`test/11-eventos-contra-spec.js`) exige la firma exacta de cada uno que tenga contrato, y la exigirá del resto en cuanto se escriba.

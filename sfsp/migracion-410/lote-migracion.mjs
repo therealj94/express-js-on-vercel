@@ -3,7 +3,7 @@
 //
 // A partir del censo de tokens (`censo-tokens.json`, formato de censo-tokens-5550.mjs)
 // genera, POR ACTIVO y SIN FIRMAR:
-//   1. la orden de gobierno `SET_MINT_BUDGET` del cupo: S0 = suma de lo que se va a
+//   1. la orden de gobierno `SET_MIGRATION_BUDGET` del cupo: S0 = suma de lo que se va a
 //      acuñar, máximo por operación = el mayor saldo, `termsDocRoot` = raíz del padrón;
 //   2. la lista de llamadas `SFSPIssuanceController.mintOnDemand(assetId, dirección,
 //      oldUnits·ratio, paymentRef, evidenceRoot)`, una por titular, con
@@ -35,7 +35,10 @@ export const FORMATO = "sfsp-lote-migracion/v1";
 const ZERO_ADDR = "0x" + "00".repeat(20);
 const ZERO32 = "0x" + "00".repeat(32);
 const b32 = (t) => { const r = toUtf8Bytes(t); if (r.length > 32) throw new Error("bytes32 largo"); return "0x" + Buffer.concat([Buffer.from(r), Buffer.alloc(32 - r.length)]).toString("hex"); };
-const ACCION = b32("SET_MINT_BUDGET");
+// v0.3 §6/§7 · el cupo del padrón es de MIGRACIÓN, no de venta: con la compuerta
+// de suscripción encendida, un cupo SET_MINT_BUDGET sólo se consume evaluando
+// SUBSCRIBE (mintOnSubscription). La migración no es una suscripción primaria.
+const ACCION = b32("SET_MIGRATION_BUDGET");
 const BUDGET_TERMS_TAG = keccak256(toUtf8Bytes("SFSP.MINT_BUDGET.TERMS.v1"));
 const DOMINIO = keccak256(toUtf8Bytes("SFSP-AUTH-v1"));
 const TYPEHASH = keccak256(toUtf8Bytes(
@@ -128,7 +131,7 @@ export function generarLotes(censo, activos, o = {}) {
     const residuoRaw = res.residuoSinTitular !== undefined ? aUnidades(String(res.residuoSinTitular).replace(/^-/, ""), dec) * (String(res.residuoSinTitular).startsWith("-") ? -1n : 1n) : null;
     const totalSupply = res.totalSupply !== undefined ? aUnidades(res.totalSupply, dec) : null;
 
-    // Orden SET_MINT_BUDGET. period = validUntil + 1 => toda la ventana cae en el periodo 0.
+    // Orden SET_MIGRATION_BUDGET. period = validUntil + 1 => toda la ventana cae en el periodo 0.
     const faltan = [];
     if (!o.validUntil) faltan.push("VALIDO_HASTA (fin de la ventana de migración)");
     if (!o.ordenNoAntes || !o.ordenVence) faltan.push("ORDEN_NO_ANTES / ORDEN_VENCE (vigencia de la orden)");
@@ -142,11 +145,11 @@ export function generarLotes(censo, activos, o = {}) {
       evidenceRoot: period ? budgetTermsRoot(period, o.validUntil, raiz) : null,
     };
     const orden = {
-      accion: "SET_MINT_BUDGET", estado: faltan.length ? "BLOCKED_DECISION" : "LISTA_PARA_PROPONER", faltan, firmado: false,
+      accion: "SET_MIGRATION_BUDGET", estado: faltan.length ? "BLOCKED_DECISION" : "LISTA_PARA_PROPONER", faltan, firmado: false,
       payload, period: period ? period.toString() : null, validUntil: o.validUntil ? String(o.validUntil) : null, termsDocRoot: raiz,
       digest: faltan.length ? null : digestPayload(payload),
       comprobacionPeriodoUnico: period ? "floor(t/period) = 0 para todo t < validUntil < period" : null,
-      aprobacion: "proposeAuthorization(digest, \"SET_MINT_BUDGET\") + quórum + timelock; ejecutor TECH_OPS: setMintBudget(payload, digest, period, validUntil, termsDocRoot)",
+      aprobacion: "proposeAuthorization(digest, \"SET_MIGRATION_BUDGET\") + quórum + timelock; ejecutor TECH_OPS: setMintBudget(payload, digest, period, validUntil, termsDocRoot)",
     };
 
     const llamadas = arbol.entradas.map((e) => {

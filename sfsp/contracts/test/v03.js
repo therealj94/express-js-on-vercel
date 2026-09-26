@@ -223,11 +223,115 @@ async function acreditar(f, commitment, purpose) {
   return await F.atestar(f, { subjectCommitment: commitment, purpose, attestationId: H.b32("att_v03_" + _att) });
 }
 
+// ------------------------------------------------------------ suscripción (v0.3 §6, §7 y §8.5)
+
+/** Sal de residencia sintética y PROPIA de una dirección (32 bytes). */
+function salResidencia(dir) {
+  return H.keccak256(Buffer.from("sal_residencia_sintetica:" + dir.toLowerCase(), "utf8"));
+}
+
+/** Alta de residencia de UNA dirección en el propósito único RESIDENCIA, con
+ *  su compromiso keccak(etiqueta, país, sal) y, si `acreditada`, su atestación. */
+async function altaResidencia(f, dir, pais, o) {
+  const x = o || {};
+  const salt = x.salt || salResidencia(dir);
+  const purpose = await f.engine.call("PURPOSE_RESIDENCE");
+  const c = await f.engine.call("residenceCommitment", [pais, salt]);
+  const rc = await f.identity.send("bindPurposeCommitment", [dir, purpose, c], f.board);
+  if (x.acreditada !== false) await acreditar(f, c, purpose);
+  return { c, purpose, salt, rc };
+}
+
+/** Contexto de suscripción tal como lo recibe el motor. */
+function ctxSuscripcion(o) {
+  const x = o || {};
+  return {
+    country: x.country || H.ZERO32,
+    residenceSalt: x.salt || H.ZERO32,
+    clearanceNonce: x.nonce || H.ZERO32,
+    acquisitionCost: String(x.cost || 0),
+  };
+}
+
+async function fijarPais(f, code, desde, hacia, o) {
+  const x = o || {};
+  const motivo = x.reason || H.b32("ASESORIA_LOCAL_SINT");
+  const evid = x.evidence !== undefined ? x.evidence : H.ZERO32;
+  const contenido = await f.engine.call("countryContent", [code, hacia, motivo, evid]);
+  const ord = await ordenGob(f, {
+    contrato: f.engine, action: "SET_COUNTRY", scope: await f.engine.call("SCOPE_COUNTRY"),
+    amount: x.ordenDesde !== undefined ? x.ordenDesde : desde, amountSecondary: hacia, evidenceRoot: contenido,
+  });
+  return await f.engine.send("setCountryStatus", [code, hacia, motivo, evid, ord.tupla, ord.digest], f.board);
+}
+
+async function fijarBaseColocacion(f, assetId, holder, tipo) {
+  const motivo = H.b32("BASE_COLOCACION_SINT");
+  const contenido = await f.engine.call("placementContent", [assetId, holder, tipo, motivo]);
+  const ord = await ordenGob(f, {
+    contrato: f.engine, action: "SET_PLACEMENT_BASIS", scope: assetId, evidenceRoot: contenido,
+  });
+  return await f.engine.send("setPlacementBasis", [assetId, holder, tipo, motivo, ord.tupla, ord.digest], f.board);
+}
+
+async function fijarParametrosExposicion(f, e) {
+  const motivo = H.b32("ACTA_SINTETICA");
+  const contenido = await f.engine.call("exposureParamsContent", [e, motivo]);
+  const ord = await ordenGob(f, {
+    contrato: f.engine, action: "SET_EXPOSURE_PARAMS", scope: await f.engine.call("SCOPE_EXPOSURE"), evidenceRoot: contenido,
+  });
+  return await f.engine.send("setExposureParams", [e, motivo, ord.tupla, ord.digest], f.board);
+}
+
+const LIC = { EXENTA: H.b32("AUT_OG_OFERTA_EXENTA"), ICL: H.b32("LIC_OG_INVESTMENT_CO") };
+
+/**
+ * Entorno mínimo para que una SUSCRIPCIÓN pueda ser ALLOW: registro de
+ * licencias cableado, política SUBSCRIBE fijada, país PA en PERMITIDO, base de
+ * colocación vigente (la notificación de oferta exenta, que es la real hoy, o
+ * la Investment Company License) y segmento declarado. Todo sintético.
+ */
+async function entornoSuscripcion(f, assetIds, o) {
+  const x = o || {};
+  if (!f.lic) {
+    await desplegarLicencias(f);
+    await f.engine.send("setLicenseRegistry", [f.lic.address], f.board);
+  }
+  const base = x.base || "EXENTA";
+  if (!f._licBase) f._licBase = {};
+  if (!f._licBase[base]) {
+    const t = base === "EXENTA"
+      ? terminos(TIT.ORDEN_GLOBAL, TIPO.OFERTA_EXENTA, { kind: KIND.AUTORIZACION_LIMITADA })
+      : terminos(TIT.ORDEN_GLOBAL, TIPO.INVESTMENT_CO);
+    await licenciaVigente(f, LIC[base], t);
+    f._licBase[base] = true;
+  }
+  if (!f._paisPA) {
+    await fijarPais(f, H.b32("PA"), PAIS.SOLO_ENTRANTE, PAIS.PERMITIDO);
+    f._paisPA = true;
+  }
+  for (const assetId of assetIds) {
+    await F.fijarPolitica(f, assetId, H.b32("SUBSCRIBE"), F.policy({}), "sub_" + assetId.slice(2, 10) + "_" + base);
+    await fijarBaseColocacion(f, assetId, TIT.ORDEN_GLOBAL, base === "EXENTA" ? TIPO.OFERTA_EXENTA : TIPO.INVESTMENT_CO);
+    await fijarSegmento(f, assetId, x.segmento || "PRINCIPAL");
+  }
+}
+
+/** Perfil admitido por la oferta exenta: residente de Próspera, con atestación. */
+async function perfilProspera(f, dir, quien) {
+  const pp = await f.engine.call("PURPOSE_PROSPERA_RESIDENT");
+  const c = await darAlta(f, dir, F.SUBJ[quien] || H.b32("subj_" + quien), pp, H.b32("salt_prospera_" + dir.slice(2, 10)));
+  await acreditar(f, c, pp);
+  return c;
+}
+
 module.exports = {
-  DIA, LS, KIND, AV, PAIS, CAMPO, TIT, OPER, TIPO, SIN_OTORGAMIENTO, VACIO, COBERTURA_VACIA,
+  DIA, LS, KIND, AV, PAIS, CAMPO, TIT, OPER, TIPO, SIN_OTORGAMIENTO, VACIO, COBERTURA_VACIA, LIC,
   ordenGob, logsDe, revertCon,
   desplegarLicencias, terminos, registrarLicencia, ordenTransicion, transicion, otorgamiento,
   licenciaVigente, declararModulo, modulo,
   detalles, campoFechado, ordenPasaporte, fijarDetalles, fijarSegmento,
   darAlta, acreditar,
+  salResidencia, altaResidencia, ctxSuscripcion, fijarPais, fijarBaseColocacion, fijarParametrosExposicion,
+  entornoSuscripcion, perfilProspera,
 };

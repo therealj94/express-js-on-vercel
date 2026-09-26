@@ -12,7 +12,7 @@
     "draft-0.5: SFSP-410 (politica de suministro: circulante = usuarios). Se anaden los eventos del cupo de emision, de las cuentas internas y de la boveda nativa de ORIGEN.",
     "draft-0.6: SFSP v0.3 fase 2 (puntos 1-3). Tienen contrato LicenseStatusChanged y ModuleAvailabilityChanged (SFSPLicenseRegistry), CountryStatusChanged, ExposureLimitRecorded y AcquirerDeclarationRecorded (SFSPEligibilityEngine; esta ultima cambia de emisor: la declaracion del adquirente se registra donde se exige, en el motor) y PassportUpdated (SFSPAssetRegistry). Se anaden LicenseRegistered, PlacementBasisSet, ExposureParamsSet, DbnxApprovalRecorded y DbnxApprovalRevoked.",
     "SFSP-150 (26-sep-2026): NetworkPermissionChanged pasa a implementado (SFSPNetworkPermissions, la lista que consulta el filtro de red de Besu).",
-    "Revision 26-sep (contratos-licencias): se anade DbnxApprovalUsed (IssuanceController): el consumo de la aprobacion DBNX tiene evento y casa con MintExecuted por operationId."
+    "Revision 26-sep (contratos-licencias): EligibilityRecorded pasa a implementado (SFSPEligibilityEngine.enforceSubscription: SUBSCRIBE se hace cumplir en la ruta de dinero). ExposureLimitRecorded y AcquirerDeclarationRecorded conservan su firma y se refieren a una autorizacion de exposicion (el agregado por identidad y el ingreso viven fuera de la cadena). Se anaden DbnxApprovalUsed, SubscriptionGateSet (IssuanceController) y SubscriptionRequirementSet (NativeVault)."
   ],
   "version": "draft-0.6",
   "reglas": [
@@ -993,10 +993,10 @@
     {
       "nombre": "EligibilityRecorded",
       "emisor": "EligibilityEngine",
-      "significado": "Referencia verificable de una evaluacion de elegibilidad. Sin identidad, sin direccion y sin resultado detallado: el detalle vive en el dominio privado (SFSP-600 §0). Sustituye al evento retirado que publicaba la evaluacion completa.",
+      "significado": "Referencia verificable de una evaluacion de elegibilidad HECHA CUMPLIR en la ruta de dinero (hoy: SUBSCRIBE en la venta primaria, SFSPEligibilityEngine.enforceSubscription). Sin identidad, sin direccion y sin resultado detallado: evaluationCommitment = keccak256(etiqueta, direccion, activo, monto, contexto), que recalcula quien tiene esos datos (SFSP-600 §0). Sustituye al evento retirado que publicaba la evaluacion completa.",
       "atribucion": "POR_ACTIVO",
       "afectaSuministro": "NINGUNO",
-      "implementadoEnContratos": false,
+      "implementadoEnContratos": true,
       "campos": [
         {
           "nombre": "assetId",
@@ -1035,7 +1035,7 @@
     {
       "nombre": "ExposureLimitRecorded",
       "emisor": "EligibilityEngine",
-      "significado": "Registro del regimen de limite de exposicion aplicable a una identidad (Mercado de Crecimiento). Solo la referencia de la declaracion.",
+      "significado": "El agregador de exposicion (fuera de la cadena) registra el RESULTADO para una adquisicion en el Mercado de Crecimiento: una autorizacion de un solo uso por (direccion, activo, operacion). declarationRef = keccak256(etiqueta, clearanceId). Ni ingreso, ni agregado, ni un valor comun a las direcciones de una identidad (v0.3 §11 y §12).",
       "atribucion": "GLOBAL",
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": true,
@@ -2787,7 +2787,7 @@
     {
       "nombre": "AcquirerDeclarationRecorded",
       "emisor": "EligibilityEngine",
-      "significado": "El adquirente reconoce los terminos, con la version del documento aceptado (v0.2 §8.3 bloque 7).",
+      "significado": "El adquirente reconoce los terminos, con la version del documento aceptado (v0.2 §8.3 bloque 7). Se registra junto con la autorizacion de exposicion a la que se refiere; declarationRef = keccak256(etiqueta, clearanceId, assetId).",
       "atribucion": "POR_ACTIVO",
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": true,
@@ -3104,6 +3104,82 @@
           "nombre": "operationId",
           "tipo": "bytes32",
           "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "SubscriptionGateSet",
+      "emisor": "IssuanceController",
+      "significado": "SFSP v0.3 §6 y §7 · la Junta fija (o quita, con cero) el motor que hace cumplir SUBSCRIBE en la emision bajo demanda de venta. Con motor fijado, un cupo de venta solo se consume por mintOnSubscription.",
+      "atribucion": "GLOBAL",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        {
+          "nombre": "gate",
+          "tipo": "address",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "by",
+          "tipo": "address",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "reasonCode",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "SubscriptionRequirementSet",
+      "emisor": "NativeVault",
+      "significado": "SFSP v0.3 §7 (puerta unica) · la Junta enciende o apaga la exigencia de SUBSCRIBE en la liberacion de venta de ORIGEN. Encendida, un cupo de venta solo se consume por releaseOnSubscription.",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "required",
+          "tipo": "bool",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "by",
+          "tipo": "address",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "reasonCode",
+          "tipo": "bytes32",
+          "indexado": false,
           "obligatorio": true,
           "atribuyeActivo": false,
           "esCantidad": false

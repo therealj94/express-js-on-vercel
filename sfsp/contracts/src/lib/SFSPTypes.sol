@@ -138,4 +138,23 @@ library SFSPTypes {
         bytes32 authority;   // autoridad de admisión, [A-Z0-9_], 1..16 caracteres
         uint32 serial;       // correlativo por (clase, autoridad), desde 1
     }
+
+    /// @dev v0.3 §7 y §8.5 · lo que una SUSCRIPCIÓN primaria aporta y una
+    ///      transferencia no necesita. Viaja en la transacción de venta
+    ///      (`mintOnSubscription`, `releaseOnSubscription`, `place`), así que
+    ///      NO lleva nada que una en público las direcciones de una persona:
+    ///        · `country` + `residenceSalt`: la residencia que acredita ESTA
+    ///          dirección. En cadena sólo está el compromiso
+    ///          keccak256(etiqueta, país, sal) en el propósito único
+    ///          RESIDENCIA; el país no se deduce de ningún propósito.
+    ///        · `clearanceNonce`: la autorización de exposición que el operador
+    ///          calculó FUERA de la cadena para ESTA dirección, activo y
+    ///          operación (Mercado de Crecimiento). 0 fuera de ese segmento.
+    ///        · `acquisitionCost`: costo de adquisición, en unidad de cuenta.
+    struct SubscriptionContext {
+        bytes32 country;
+        bytes32 residenceSalt;
+        bytes32 clearanceNonce;
+        uint256 acquisitionCost;
+    }
 }

@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {SFSPAccessControl} from "./lib/SFSPAccessControl.sol";
 import {SFSPReentrancyGuard} from "./lib/SFSPReentrancyGuard.sol";
 import {SFSPCodes} from "./lib/SFSPCodes.sol";
+import {SFSPTypes} from "./lib/SFSPTypes.sol";
 import {ISFSPGovernanceController, ISFSPEligibilityEngine} from "./lib/ISFSP.sol";
 import {ILicenseGate} from "./lib/ILicenseGate.sol";
 import {ISFSPCommodityToken} from "./lib/ISFSPCommodityToken.sol";
@@ -548,11 +549,18 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
     // =============================================================== colocación (v0.3 §9.4)
 
     /// @notice Coloca unidades de la tesorería con un tercero. Exige capacidad.
-    function place(bytes32 assetId, address to, uint256 units, bytes32 operationId)
-        external
-        onlyRole(ISSUER)
-        nonReentrant
-    {
+    /// @dev SFSP-120 §0.3 reglas 1 y 3: una colocación exige a la vez RELEASE
+    ///      (capacidad, aquí) y SUBSCRIBE sobre el adquirente (país, alcance de
+    ///      la oferta exenta y exposición), que el motor hace cumplir en esta
+    ///      misma transacción. Este motor tiene que tener SUBSCRIPTION_EXECUTOR
+    ///      en el motor de elegibilidad; si no, toda colocación revierte.
+    function place(
+        bytes32 assetId,
+        address to,
+        uint256 units,
+        bytes32 operationId,
+        SFSPTypes.SubscriptionContext calldata ctx
+    ) external onlyRole(ISSUER) nonReentrant {
         if (governance.isPaused()) revert Paused();
         CommodityAsset storage a = _assets[assetId];
         if (!a.configured) revert InvalidInput("ASSET");
@@ -561,6 +569,7 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         _usedOperation[operationId] = true;
         (uint8 code, bytes32 reason,) = eligibility.evaluateOperation(to, assetId, bytes32("RELEASE"), units, bytes32(0));
         if (code != SFSPCodes.ALLOW) revert Rejected(code, reason);
+        eligibility.enforceSubscription(to, assetId, units, ctx);
 
         // Un descuadre (p. ej. un lote comprometido que venció) detiene toda colocación.
         (uint256 covered, uint256 obligations,,,) = coverage(assetId);

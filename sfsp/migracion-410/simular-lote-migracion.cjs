@@ -8,7 +8,7 @@
  * La prueba test/27-lote-migracion.js llama a `simularLote` con datos sintéticos.
  *
  * Por cada activo comprueba:
- *   1. el cupo SET_MINT_BUDGET se fija con quórum y espera, con S0 y máx/op del lote
+ *   1. el cupo SET_MIGRATION_BUDGET (cupo de MIGRACIÓN, no de venta) se fija con quórum y espera, con S0 y máx/op del lote
  *      y `termsDocRoot` = raíz del padrón;
  *   2. las llamadas se ejecutan con el calldata EXACTO del lote;
  *   3. cada titular recibe EXACTAMENTE su monto;
@@ -67,13 +67,13 @@ async function simularLote(hre, lote) {
   const period = validUntil + 1; // un solo periodo para toda la ventana
   const terms = await f.issuance.call("budgetTermsRoot", [period, validUntil, lote.raizPadron]);
   const po = await OA.orden({
-    verifyingContract: f.issuance.address, action: H.b32("SET_MINT_BUDGET"), assetId,
+    verifyingContract: f.issuance.address, action: H.b32(lote.orden.accion), assetId,
     amount: lote.orden.payload.amount, amountSecondary: lote.orden.payload.amountSecondary,
     nonce: lote.orden.payload.nonce, expiry: ts + 3 * 3600, evidenceRoot: terms,
   });
   if (BigInt(po.amount) !== S0 || BigInt(po.amountSecondary) !== maxOp) throw new Error("la orden no lleva S0 / máx por operación del lote");
   const d = OA.digestDe(po);
-  await OA.aprobar(f, d, H.b32("SET_MINT_BUDGET"));
+  await OA.aprobar(f, d, H.b32(lote.orden.accion));
   await H.increaseTime(F.GOV.timelockDelay + 1);
   await f.issuance.send("setMintBudget", [OA.tupla(po), d, period, validUntil, lote.raizPadron], f.board);
 

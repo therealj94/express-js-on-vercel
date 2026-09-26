@@ -46,6 +46,18 @@ existir, y con ella el inventario que había que vigilar.
 | R10 | La quema de lo que un usuario devuelve exige su consentimiento sobre el digest exacto (activo, titular, monto, motivo) o una orden de gobierno. | `SFSPRegulatedAsset.burn` (ya existente, H02) |
 | R11 | La bóveda no tiene retiro de administrador, dueño ni actualización. | `SFSPNativeVault` (prueba estructural en `17-boveda-nativa.js`) |
 | R12 | Ningún valor económico (cupos, topes, periodos, quórums) está escrito en el código. Sin valor fijado, la capacidad devuelve `BLOCKED_DECISION`. | todos los contratos (I-59) |
+| R13 | **Vender es suscribir** (v0.3 §6 y §7, SFSP-120 §0.3). Con la compuerta de suscripción encendida, un cupo de VENTA (`SET_MINT_BUDGET`, `SET_RELEASE_BUDGET`) sólo se consume por `mintOnSubscription` / `releaseOnSubscription`, que hacen cumplir `SUBSCRIBE` en el motor en la misma transacción (país, alcance de la oferta exenta, exposición). La migración usa un cupo de MIGRACIÓN (`SET_MIGRATION_BUDGET`, misma función `setMintBudget`/`setReleaseBudget`, su propia etiqueta de gobierno) y sigue por `mintOnDemand`/`releaseOnDemand`; un cupo de migración no vende. | `SFSPIssuanceController.setSubscriptionGate`, `SFSPNativeVault.setSubscriptionRequired`, `SFSPEligibilityEngine.enforceSubscription` (`28-suscripcion-ruta-de-dinero.js`) |
+
+> **R13 nace APAGADA (regla de vivo).** La compuerta se despliega en cero
+> (`subscriptionGate = 0`, `subscriptionRequired = false`) para no romper a quien
+> ya integra `mintOnDemand`/`releaseOnDemand` (Ordenex y Veta, detrás de
+> `SFSP410_EMISION`, apagado). Con la compuerta apagada una venta NO evalúa
+> SUBSCRIBE: por eso `SFSP410_EMISION` no se enciende para vender hasta que la
+> compuerta esté encendida y los backends llamen a `*OnSubscription` con el
+> contexto de suscripción de Genesis ID (ver `deploy/sfsp410/DIA-D.md`,
+> compuerta 5). Encenderla la hace la Junta (`DBNX_BOARD`), con motivo y evento
+> (`SubscriptionGateSet`, `SubscriptionRequirementSet`); el motor tiene que
+> conceder `SUBSCRIPTION_EXECUTOR` al emisor, a la bóveda y al motor de reservas.
 
 ## 3. Tokens SFSP (AUKA, AGKA, ONDK y los que vengan)
 

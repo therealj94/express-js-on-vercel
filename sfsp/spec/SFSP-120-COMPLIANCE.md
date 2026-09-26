@@ -58,6 +58,8 @@ Reglas:
 2. Cuando llega la orden, se acata y queda registrada con su fundamento (`evidenceHash` de `CountryStatusChanged`).
 3. Todo cambio de estado de un país es acción de gobernanza (SFSP-800) y emite `CountryStatusChanged`.
 4. La apertura de la suscripción es progresiva: un país pasa a `PERMITIDO` cuando existe asesoría local que lo respalde, con código `APERTURA_PAIS`. La primera ola de países es una decisión abierta (v0.3 §18).
+5. **El bloqueo alcanza a la identidad, no a la dirección que declaró el país.** La cadena no sabe qué direcciones son de la misma persona (v0.3 §11), así que el motor no puede deducirlo: cuando un país pasa a `BLOQUEADO`, el atestador (Genesis ID) da de alta el propósito `JURISDICCION_BLOQUEADA` en **todas** las direcciones vinculadas de cada residente, y en cada dirección nueva que se vincule mientras dure el bloqueo; lo retira al levantarse. El alta es **por dirección**: el puente de Genesis ID tiene que recorrer todos los vínculos. Lo público es «sujeto a bloqueo», que es lo necesario para aplicarlo; el país no. Una suscripción que declara un país `BLOQUEADO` se deniega además por la matriz. Implementado en `SFSPEligibilityEngine._subjectCheck` (`21-paises-suscripcion-exposicion.js`, prueba con dos direcciones de la misma identidad).
+6. **La residencia no se publica por país.** Hay un solo propósito, `RESIDENCIA`. El compromiso de cada dirección es `keccak256(etiqueta, país, sal)` con una sal aleatoria de 32 bytes **por dirección**; el atestador registra la atestación sobre ese compromiso. El país y la sal viajan sólo en la transacción de la suscripción que los acredita. Un propósito por país (el esquema anterior) permitía enumerar unos 250 valores y leer el país de cualquier dirección (SFSP-110 §4.6, SFSP-600 §3.4).
 
 ### 0.5 Interacción con el alcance de la oferta exenta (v0.3 §7, SFSP-140 §4)
 
@@ -93,6 +95,10 @@ El motor recibe, para `SUBSCRIBE` y `TRADE` en el Mercado de Crecimiento, la **e
 ### 0.8 Diferencia con el código actual
 
 `SFSPEligibilityEngine.sol` implementa una **lista blanca de jurisdicciones por activo** (`setJurisdictionAllowed`) que bloquea por defecto. Faltan: los cuatro estados, el estado por defecto `SOLO_ENTRANTE`, la acción `SUBSCRIBE`, la base de colocación en el pasaporte, las atestaciones de alcance de la oferta exenta y el evento `CountryStatusChanged`. Es el punto 2 de la fase 2 del plan v0.3.
+
+**Estado tras la revisión del 26-sep.** Lo anterior está implementado en el motor (`21-paises-suscripcion-exposicion.js`) y, además, **en la ruta de dinero** (regla 1 de §0.3, T-120-25): `SFSPEligibilityEngine.enforceSubscription` evalúa `SUBSCRIBE` y, en el Mercado de Crecimiento, gasta la autorización de exposición en la misma transacción. La llaman `SFSPIssuanceController.mintOnSubscription`, `SFSPNativeVault.releaseOnSubscription` y `SFSPReserveEngine.place` (que exige `RELEASE` **y** `SUBSCRIBE`, regla 3). En el emisor y la bóveda la exigencia nace apagada por compatibilidad con los backends ya desplegados (SFSP-410 R13) y se enciende antes de vender; en el motor de reservas, que es nuevo, rige siempre (`28-suscripcion-ruta-de-dinero.js`, `24-reservas-commodities.js`).
+
+El límite de exposición (§0.7) entra como **resultado**: el agregador de Genesis ID calcula fuera de la cadena la exposición de todas las direcciones de la identidad y su límite con los parámetros publicados (`exposureLimitFor`, vista), y registra una autorización de un solo uso por (dirección, activo, operación) con `recordExposureClearance`. En cadena no quedan el ingreso, el agregado ni un valor común a varias direcciones (v0.3 §11 y §12).
 
 ### 0.9 Pruebas de aceptación nuevas
 
