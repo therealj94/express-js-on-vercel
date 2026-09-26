@@ -65,33 +65,33 @@ El v0.3 (como el v0.2) da al activo **un único estado en línea**. El repositor
 
 | # | Evento del v0.3 | Nombre canónico | Contrato |
 |---|---|---|---|
-| 1 | Activo registrado | `AssetRegistered` | ✅ implementado |
-| 2 | Passport actualizado | `PassportUpdated` | sin contrato |
+| 1 | Activo registrado | `AssetRegistered` | ✅ AssetRegistry |
+| 2 | Passport actualizado | `PassportUpdated` | ✅ AssetRegistry |
 | 3 | Estado de activo modificado | `AssetStatusChanged` (uno por eje) | sin contrato |
-| 4 | Supply autorizado | `SupplyAuthorized` | ✅ |
+| 4 | Supply autorizado | `SupplyAuthorized` | ✅ GovernanceController |
 | 5 | Ampliación declarada | `SupplyExpansionDeclared` | sin contrato |
-| 6 | Emisión ejecutada | `MintExecuted` | ✅ |
-| 7 | Quema ejecutada | `BurnExecuted` | ✅ |
+| 6 | Emisión ejecutada | `MintExecuted` | ✅ IssuanceController |
+| 7 | Quema ejecutada | `BurnExecuted` | ✅ RegulatedAsset |
 | 8 | División ejecutada | `SplitExecuted` | sin contrato |
 | 9 | Vínculo de identidad modificado | `IdentityLinkChanged` (solo la referencia del vínculo) | sin contrato |
 | 10 | Elegibilidad evaluada | `EligibilityRecorded` (solo un compromiso; **sin identidad, dirección ni resultado**) | sin contrato |
-| 11 | Límite de exposición registrado | `ExposureLimitRecorded` | sin contrato |
-| 12 | Declaración del adquirente registrada | `AcquirerDeclarationRecorded` (con `documentHash` y `documentVersion`) | sin contrato |
-| 13 | Reserva atestada | `ReserveAttested` | sin contrato |
-| 14 | Reserva vencida | `ReserveExpired` | sin contrato |
-| 15 | Cobertura publicada | `CoveragePublished` (contra lo **colocado**; tesorería aparte) | sin contrato |
-| 16 | Redención solicitada | `RedemptionUpdated` con `newState` = solicitada | sin contrato |
-| 17 | Redención liquidada | `RedemptionUpdated` con `newState` = liquidada o entregada (la forma de cumplimiento es el estado) | sin contrato |
-| 18 | Divulgación publicada | `DisclosurePublished` | ✅ |
-| 19 | Nivel de riesgo modificado | `RiskChanged` | ✅ |
-| 20 | Operación liquidada | `TradeSettled` | ✅ |
-| 21 | Recuperación ejecutada | `RecoveryExecuted` | ✅ |
-| 22 | Migración reclamada | `MigrationClaimed` (registro por reclamo). En el camino normativo, `MintExecuted` + `MintOnDemand` con `paymentRef` de prefijo `MIGRACION` (ADR-016) | ✅ |
-| 23 | Licencia modificada | `LicenseStatusChanged` | sin contrato |
-| 24 | Módulo habilitado o bloqueado | `ModuleAvailabilityChanged` | sin contrato |
-| 25 | País modificado | `CountryStatusChanged` | sin contrato |
+| 11 | Límite de exposición registrado | `ExposureLimitRecorded` | ✅ EligibilityEngine |
+| 12 | Declaración del adquirente registrada | `AcquirerDeclarationRecorded` (con `documentHash` y `documentVersion`) | ✅ EligibilityEngine |
+| 13 | Reserva atestada | `ReserveAttested` | ✅ ReserveEngine |
+| 14 | Reserva vencida | `ReserveExpired` | ✅ ReserveEngine |
+| 15 | Cobertura publicada | `CoveragePublished` (contra lo **colocado**; tesorería aparte) | ✅ CommodityEngine |
+| 16 | Redención solicitada | `RedemptionUpdated` con `newState` = solicitada | ✅ CommodityEngine |
+| 17 | Redención liquidada | `RedemptionUpdated` con `newState` = liquidada o entregada (la forma de cumplimiento es el estado) | ✅ CommodityEngine |
+| 18 | Divulgación publicada | `DisclosurePublished` | ✅ AssetRegistry |
+| 19 | Nivel de riesgo modificado | `RiskChanged` | ✅ AssetRegistry |
+| 20 | Operación liquidada | `TradeSettled` | ✅ SettlementEngine |
+| 21 | Recuperación ejecutada | `RecoveryExecuted` | ✅ GovernanceController |
+| 22 | Migración reclamada | `MigrationClaimed` (registro por reclamo). En el camino normativo, `MintExecuted` + `MintOnDemand` con `paymentRef` de prefijo `MIGRACION` (ADR-016) | ✅ MigrationRegistry |
+| 23 | Licencia modificada | `LicenseStatusChanged` | ✅ LicenseRegistry |
+| 24 | Módulo habilitado o bloqueado | `ModuleAvailabilityChanged` | ✅ LicenseRegistry |
+| 25 | País modificado | `CountryStatusChanged` | ✅ EligibilityEngine |
 | 26 | Permiso de red modificado | `NetworkPermissionChanged` | sin contrato |
-| 27 | Acción de gobernanza | `GovernanceAction` | ✅ |
+| 27 | Acción de gobernanza | `GovernanceAction` | ✅ GovernanceController |
 | 28 | Conciliación registrada | `ConciliationRecorded` | sin contrato |
 
 **Las 28 filas del Apéndice B tienen evento en `eventos.json`** (27 nombres canónicos: las filas 16 y 17 comparten `RedemptionUpdated`, una transición por evento). Comprobado en `draft-0.5`: no falta ninguno, así que `eventos.json` **no cambia** en esta versión. De esos 27, **10** los emite hoy un contrato y **17** están con `implementadoEnContratos: false`; se emiten desde los contratos de la fase 2 del plan v0.3.
@@ -103,8 +103,10 @@ Eventos de `eventos.json` que no vienen del Apéndice B:
 | Repositorio | `PolicyUpdated`, `TreasuryReleased` | ✅ |
 | SFSP-160 | `OrgDidRegistered`, `OrgDidControllerChanged`, `OrgDidKeyChanged`, `OrgDidAttestorChanged`, `OrgDidDocumentChanged`, `OrgDidDeactivated` (registro `did:sfsp` de organizaciones) | ✅ `SFSPDidRegistry` |
 | SFSP-410 | `InternalAccountFlagged`, `MintBudgetSet`, `MintBudgetRevoked`, `MintOnDemand` (`SFSPIssuanceController`); `NativeAbsorbed`, `NativeReleased`, `ReleaseBudgetSet`, `ReleaseBudgetRevoked`, `VaultInternalAccountFlagged` (`SFSPNativeVault`) | ✅ |
+| v0.3 fase 2 · licencias y elegibilidad | `LicenseRegistered`, `PlacementBasisSet`, `ExposureParamsSet`, `DbnxApprovalRecorded`, `DbnxApprovalRevoked` | ✅ `SFSPLicenseRegistry`, `SFSPEligibilityEngine`, `SFSPIssuanceController` |
+| v0.3 fase 2 · oráculo, reservas y tesorería | `OracleParametersSet`, `OracleParametersCleared`, `OraclePricePublished`, `CommodityAssetConfigured`, `CustodianRegistered`, `LicenseGateSet`, `ConcentrationLimitsSet`, `RedemptionChannelSet`, `MetalLotRegistered`, `MetalLotStateChanged`, `LotAuditVerified`, `UnitsPlaced`, `OrigenSettlementFunded`, `DeskParametersSet`, `DeskParametersCleared`, `MarketSpreadObserved`, `DeskFunded`, `DeskTradeExecuted` | ✅ `SFSPOracleRegistry`, `SFSPReserveEngine`, `SFSPTreasuryDesk` |
 
-Total en `eventos.json`: **44 eventos**, 27 con contrato y 17 sin contrato. La prueba H15 de `contracts/` (`test/11-eventos-contra-spec.js`) exige la firma exacta de cada uno que tenga contrato, y la exigirá del resto en cuanto se escriba.
+Total en `eventos.json` (draft-0.6): **67 eventos**, 60 con contrato y 7 sin contrato. La prueba H15 de `contracts/` (`test/11-eventos-contra-spec.js`) exige la firma exacta de cada uno que tenga contrato, y la exigirá del resto en cuanto se escriba.
 
 ---
 

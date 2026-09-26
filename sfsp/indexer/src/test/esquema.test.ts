@@ -48,18 +48,26 @@ const DEL_160 = ['OrgDidRegistered','OrgDidControllerChanged','OrgDidKeyChanged'
 const DEL_410 = ['InternalAccountFlagged', 'MintBudgetSet', 'MintBudgetRevoked', 'MintOnDemand', 'NativeAbsorbed', 'NativeReleased', 'ReleaseBudgetSet', 'ReleaseBudgetRevoked', 'VaultInternalAccountFlagged'];
 // SFSP v0.3 fase 2 · 4, 5 y 6: oraculo unico, motor de reservas y tesoreria cotizadora.
 const DEL_FASE2 = ['OracleParametersSet', 'OracleParametersCleared', 'OraclePricePublished', 'CommodityAssetConfigured', 'CustodianRegistered', 'LicenseGateSet', 'ConcentrationLimitsSet', 'RedemptionChannelSet', 'MetalLotRegistered', 'MetalLotStateChanged', 'LotAuditVerified', 'UnitsPlaced', 'OrigenSettlementFunded', 'DeskParametersSet', 'DeskParametersCleared', 'MarketSpreadObserved', 'DeskFunded', 'DeskTradeExecuted'];
+// SFSP v0.3 fase 2 (puntos 1-3) · eventos nuevos, todos con contrato.
+const DEL_V03 = ['LicenseRegistered', 'PlacementBasisSet', 'ExposureParamsSet', 'DbnxApprovalRecorded', 'DbnxApprovalRevoked'];
+// Del v0.2, los que la fase 2 del v0.3 ya emite desde un contrato.
+const V02_CON_CONTRATO = ['PassportUpdated', 'ExposureLimitRecorded', 'AcquirerDeclarationRecorded', 'LicenseStatusChanged', 'ModuleAvailabilityChanged', 'CountryStatusChanged', 'CoveragePublished'];
 
-test('los quince eventos del §3, los catorce del v0.2 los seis de SFSP-160 y los nueve de SFSP-410 estan en la fuente unica, con su emisor', () => {
+test('los quince eventos del §3, los catorce del v0.2, los seis de SFSP-160, los nueve de SFSP-410 y los cinco del v0.3 estan en la fuente unica, con su emisor', () => {
   const nombres = espec.eventos.map((e) => e.nombre);
-  for (const n of [...DEL_TRES, ...DEL_V02, ...DEL_160, ...DEL_410, ...DEL_FASE2]) assert.ok(nombres.includes(n), 'falta ' + n);
-  assert.equal(espec.eventos.length, DEL_TRES.length + DEL_V02.length + DEL_160.length + DEL_410.length + DEL_FASE2.length);
-  assert.equal(Object.keys(ESQUEMA_EVENTOS).length, DEL_TRES.length + DEL_V02.length + DEL_160.length + DEL_410.length + DEL_FASE2.length);
-  // Los del v0.2 todavia no tienen contrato: si alguno dijera lo contrario, la
-  // prueba H15 de contracts/ exigiria un ABI que no existe.
-  // Excepcion: CoveragePublished ya lo emite SFSPReserveEngine (fase 2).
-  for (const e of espec.eventos) if (DEL_V02.includes(e.nombre)) assert.equal(e.implementadoEnContratos, e.nombre === 'CoveragePublished', e.nombre);
-  // Los de la fase 2 tienen contrato: H15 exige su ABI exacto.
-  for (const e of espec.eventos) if (DEL_FASE2.includes(e.nombre)) assert.equal(e.implementadoEnContratos, true, e.nombre);
+  const todos = [...DEL_TRES, ...DEL_V02, ...DEL_160, ...DEL_410, ...DEL_FASE2, ...DEL_V03];
+  for (const n of todos) assert.ok(nombres.includes(n), 'falta ' + n);
+  assert.equal(espec.eventos.length, todos.length);
+  assert.equal(Object.keys(ESQUEMA_EVENTOS).length, todos.length);
+  // Los del v0.2 sin contrato todavia: si alguno dijera lo contrario, la prueba
+  // H15 de contracts/ exigiria un ABI que no existe. Los que ya lo tienen, al
+  // reves: H15 exige su ABI exacto.
+  for (const e of espec.eventos) {
+    if (!DEL_V02.includes(e.nombre)) continue;
+    assert.equal(e.implementadoEnContratos, V02_CON_CONTRATO.includes(e.nombre), e.nombre);
+  }
+  // Los de la fase 2 del v0.3 tienen contrato: H15 exige su ABI exacto.
+  for (const e of espec.eventos) if (DEL_FASE2.includes(e.nombre) || DEL_V03.includes(e.nombre)) assert.equal(e.implementadoEnContratos, true, e.nombre);
   // Los de SFSP-160 SI tienen contrato (SFSPDidRegistry): H15 exige su ABI exacto.
   for (const e of espec.eventos) if (DEL_160.includes(e.nombre)) assert.equal(e.implementadoEnContratos, true, e.nombre);
   for (const ev of espec.eventos) {

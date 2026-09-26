@@ -70,6 +70,10 @@ async function buildAuthorization(f, overrides) {
  * son parámetros libres del emisor.
  */
 async function ordenDeEmision(f, auth, amount, operationId) {
+  // v0.3 §5 · verificación previa a la acuñación: DBNX registra el documento
+  // de aprobación por la cantidad EXACTA y su hash viaja en `evidenceRoot`,
+  // dentro del digest que aprueba gobierno.
+  const docHash = await aprobacionDbnx(f, auth.assetId, amount, "doc_" + operationId);
   const p = await OA.orden({
     verifyingContract: f.issuance.address,
     action: H.b32("MINT"),
@@ -78,10 +82,33 @@ async function ordenDeEmision(f, auth, amount, operationId) {
     destination: auth.destination,
     amount: String(amount),
     nonce: operationId,
+    evidenceRoot: docHash,
   });
   const digest = OA.digestDe(p);
   await OA.aprobar(f, digest, p.action);
   return { p, tupla: OA.tupla(p), digest };
+}
+
+/**
+ * v0.3 §5 · DBNX registra un documento de aprobación sintético para `assetId`
+ * por exactamente `amount`, vigente desde ahora. Devuelve su hash.
+ */
+async function aprobacionDbnx(f, assetId, amount, etiqueta, over) {
+  const o = over || {};
+  const ts = await H.now();
+  const docHash = H.keccak256(Buffer.from("DBNX:APROBACION:" + etiqueta, "utf8"));
+  await f.issuance.send(
+    "registerDbnxApproval",
+    [
+      docHash,
+      assetId,
+      String(amount),
+      String(o.validFrom !== undefined ? o.validFrom : ts - 60),
+      String(o.validUntil !== undefined ? o.validUntil : ts + 7200),
+    ],
+    o.from || f.dbnx,
+  );
+  return docHash;
 }
 
 /** Acuña: aprueba la orden de esta acuñación concreta y la ejecuta. */
@@ -117,6 +144,7 @@ async function quemarConGobierno(f, asset, assetId, holder, amount, reason, nonc
 module.exports = {
   buildAuthorization,
   ordenDeEmision,
+  aprobacionDbnx,
   acunar,
   ordenDeQuema,
   quemarConGobierno,

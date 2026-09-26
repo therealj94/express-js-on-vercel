@@ -36,6 +36,9 @@ const CONTRATO = {
   ReserveEngine: "SFSPReserveEngine",
   CommodityEngine: "SFSPReserveEngine",
   TreasuryDesk: "SFSPTreasuryDesk",
+  // SFSP v0.3 fase 2 · registro de licencias y motor de elegibilidad.
+  LicenseRegistry: "SFSPLicenseRegistry",
+  EligibilityEngine: "SFSPEligibilityEngine",
 };
 
 describe("H15 · el ABI compilado coincide con spec/eventos.json", function () {

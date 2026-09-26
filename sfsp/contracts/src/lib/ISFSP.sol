@@ -14,6 +14,19 @@ interface ISFSPAssetRegistry {
     /// @dev H04 · exclusión técnica PERMANENTE del activo, declarada e irreversible.
     ///      No es un eje del ciclo de vida: un eje puede volver a cambiar.
     function isPermanentlyExcluded(bytes32 assetId) external view returns (bool);
+    /// @dev v0.3 §8.4 · segmento del activo. `inForce == false` si no está
+    ///      declarado o su vigencia pasó: un segmento vencido no se adivina.
+    function segmentOf(bytes32 assetId) external view returns (bytes32 segment, bool inForce);
+}
+
+/// @dev v0.3 §6 · registro de licencias. La resolución es POR TITULAR: se
+///      pregunta por (titular, tipo) y no por el operador del módulo.
+interface ISFSPLicenseRegistry {
+    function resolveLicense(bytes32 holder, bytes32 licenseType)
+        external
+        view
+        returns (bytes32 licenseId, uint8 kind, bool effective);
+    function isModuleAvailable(bytes32 moduleId) external view returns (bool);
 }
 
 interface ISFSPIdentityAdapter {

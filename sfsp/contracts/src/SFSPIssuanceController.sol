@@ -115,6 +115,48 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         uint64 periodIndex
     );
 
+    // ---- SFSP v0.3 §5 · verificación previa a la acuñación
+    /// @dev Rol de DBNX: registra (firma con su transacción) el documento de
+    ///      aprobación de una emisión. DBNX autoriza; Orden Global ejecuta y
+    ///      sólo verifica LA FORMA del documento (v0.3 §5).
+    bytes32 public constant DBNX = keccak256("SFSP.ROLE.DBNX");
+
+    /// @dev Documento de aprobación DBNX registrado en cadena. Sólo su hash:
+    ///      el documento vive fuera. Se gasta en la acuñación que lo usa.
+    struct DbnxApproval {
+        bytes32 assetId;
+        uint256 amount;       // cantidad EXACTA aprobada
+        uint64 validFrom;
+        uint64 validUntil;    // exclusiva
+        address signer;       // cuenta con rol DBNX que lo registró
+        bool revoked;
+        bytes32 usedBy;       // operationId de la acuñación que lo gastó; 0 = sin usar
+    }
+
+    event DbnxApprovalRecorded(
+        bytes32 indexed docHash,
+        bytes32 indexed assetId,
+        address indexed signer,
+        uint256 amount,
+        uint64 validFrom,
+        uint64 validUntil
+    );
+    event DbnxApprovalRevoked(bytes32 indexed docHash, address indexed by, bytes32 reasonCode);
+
+    error DbnxApprovalRequired();
+    error DbnxApprovalUnknown(bytes32 docHash);
+    error DbnxApprovalExists(bytes32 docHash);
+    error DbnxApprovalInvalid(bytes32 reason);
+    error DbnxApprovalSignerNotDbnx(address signer);
+    error DbnxApprovalRevokedErr(bytes32 docHash);
+    error DbnxApprovalAlreadyUsed(bytes32 docHash, bytes32 usedBy);
+    error DbnxApprovalNotInForce(uint64 validFrom, uint64 validUntil, uint256 nowTs);
+    error DbnxApprovalAssetMismatch(bytes32 approved, bytes32 requested);
+    error DbnxApprovalAmountMismatch(uint256 approved, uint256 requested);
+    error DbnxSeparationOfDuties(address account);
+
+    mapping(bytes32 => DbnxApproval) private _dbnxApproval;
+
     struct InstrumentLimits {
         bool configured;          // sin fijar => BLOCKED_DECISION, no un número por defecto
         uint256 outstandingLimit; // cap de STOCK
@@ -190,6 +232,72 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
 
     function reserveOf(bytes32 reserveId) external view returns (IssuanceReserve memory) {
         return _reserves[reserveId];
+    }
+
+    // ------------------------------------------------ v0.3 §5 · aprobación DBNX
+
+    function dbnxApprovalOf(bytes32 docHash) external view returns (DbnxApproval memory) {
+        return _dbnxApproval[docHash];
+    }
+
+    /// @notice DBNX registra el documento de aprobación de una emisión: activo,
+    ///         cantidad exacta y vigencia. Registrar con la cuenta DBNX ES la
+    ///         firma: la transacción la firma una cuenta con ese rol.
+    /// @dev Separación de funciones: quien tiene el rol ISSUER (ejecuta la
+    ///      acuñación) no puede registrar aprobaciones. DBNX no emite ni acuña.
+    function registerDbnxApproval(
+        bytes32 docHash,
+        bytes32 assetId,
+        uint256 amount,
+        uint64 validFrom,
+        uint64 validUntil
+    ) external onlyRole(DBNX) {
+        if (hasRole(ISSUER, msg.sender)) revert DbnxSeparationOfDuties(msg.sender);
+        if (docHash == bytes32(0)) revert DbnxApprovalRequired();
+        if (_dbnxApproval[docHash].signer != address(0)) revert DbnxApprovalExists(docHash);
+        if (assetId == bytes32(0)) revert DbnxApprovalInvalid(bytes32("ASSET"));
+        if (amount == 0) revert DbnxApprovalInvalid(bytes32("AMOUNT"));
+        if (validUntil <= validFrom || validUntil <= block.timestamp) revert DbnxApprovalInvalid(bytes32("WINDOW"));
+        _dbnxApproval[docHash] = DbnxApproval({
+            assetId: assetId,
+            amount: amount,
+            validFrom: validFrom,
+            validUntil: validUntil,
+            signer: msg.sender,
+            revoked: false,
+            usedBy: bytes32(0)
+        });
+        emit DbnxApprovalRecorded(docHash, assetId, msg.sender, amount, validFrom, validUntil);
+    }
+
+    /// @notice DBNX retira una aprobación no usada. Reducir poder no necesita quórum.
+    function revokeDbnxApproval(bytes32 docHash, bytes32 reasonCode) external onlyRole(DBNX) {
+        DbnxApproval storage a = _dbnxApproval[docHash];
+        if (a.signer == address(0)) revert DbnxApprovalUnknown(docHash);
+        if (a.usedBy != bytes32(0)) revert DbnxApprovalAlreadyUsed(docHash, a.usedBy);
+        require(reasonCode != bytes32(0), "SFSP: motivo requerido");
+        a.revoked = true;
+        emit DbnxApprovalRevoked(docHash, msg.sender, reasonCode);
+    }
+
+    /// @dev La verificación de FORMA previa a la acuñación (v0.3 §5): el hash
+    ///      que va en la orden de gobierno (`p.evidenceRoot`) tiene que ser un
+    ///      documento DBNX registrado, firmado por quien TODAVÍA tiene el rol,
+    ///      no revocado, sin usar, vigente, del mismo activo y por la cantidad
+    ///      EXACTA. Si algo falla, revierte; si todo cuadra, se gasta.
+    function _useDbnxApproval(bytes32 docHash, bytes32 assetId, uint256 amount, bytes32 operationId) internal {
+        if (docHash == bytes32(0)) revert DbnxApprovalRequired();
+        DbnxApproval storage a = _dbnxApproval[docHash];
+        if (a.signer == address(0)) revert DbnxApprovalUnknown(docHash);
+        if (!hasRole(DBNX, a.signer)) revert DbnxApprovalSignerNotDbnx(a.signer);
+        if (a.revoked) revert DbnxApprovalRevokedErr(docHash);
+        if (a.usedBy != bytes32(0)) revert DbnxApprovalAlreadyUsed(docHash, a.usedBy);
+        if (block.timestamp < a.validFrom || block.timestamp >= a.validUntil) {
+            revert DbnxApprovalNotInForce(a.validFrom, a.validUntil, block.timestamp);
+        }
+        if (a.assetId != assetId) revert DbnxApprovalAssetMismatch(a.assetId, assetId);
+        if (a.amount != amount) revert DbnxApprovalAmountMismatch(a.amount, amount);
+        a.usedBy = operationId;
     }
 
     // ------------------------------------------------------------- reservas concurrentes
@@ -460,6 +568,9 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
     ///      el ejecutor lo recalcula desde `p` y lo consume. Acuñar menos de lo
     ///      aprobado en el sobre sigue siendo posible —una acuñación parcial es
     ///      legítima— pero cada parcial necesita su propia orden.
+    ///      v0.3 §5 · además, `p.evidenceRoot` es el hash del documento de
+    ///      aprobación DBNX (ver `registerDbnxApproval`): sin él, o con otra
+    ///      cantidad, fuera de vigencia o ya usado, `mint` revierte.
     /// @param p payload del §12.1 con los argumentos REALES de la acuñación.
     /// @param approvedDigest digest que gobierno aprobó.
     function mint(
@@ -480,6 +591,9 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         bytes32 label = governance.authorizationActionOf(approvedDigest);
         if (label != ACTION_MINT) revert AuthorizationActionMismatch(ACTION_MINT, label);
         if (!governance.isAuthorizationApproved(approvedDigest)) revert MintNotAuthorized(approvedDigest);
+        // v0.3 §5 · verificación previa: el documento de aprobación DBNX va en
+        // `p.evidenceRoot`, así que gobierno lo aprobó dentro del digest.
+        _useDbnxApproval(p.evidenceRoot, p.assetId, p.amount, p.nonce);
         SFSPAuthorization.Payload memory m = p;
         SFSPAuthorization.authorize(m, approvedDigest);
         governance.consumeAuthorization(approvedDigest);

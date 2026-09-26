@@ -85,4 +85,57 @@ library SFSPTypes {
         SupplySource supplySource;
         Lifecycle status;
     }
+
+    // ------------------------------------------------------------------
+    // SFSP v0.3 §4.2 · campos del Asset Passport que faltaban.
+    //
+    // No se añaden DENTRO de `Passport`: esa struct es la que reciben
+    // `registerAsset`, el script de despliegue de SFSP-410 y el panel, y
+    // meterle campos cambiaría la codificación ABI de todos ellos. Se guardan
+    // aparte, versionados, en `SFSPAssetRegistry` (ver `passportDetailsOf`).
+    // ------------------------------------------------------------------
+
+    /// @dev Un campo con fecha y vigencia. `value == 0` es «no declarado» y
+    ///      entonces las dos fechas son cero. Un campo cuya vigencia pasó se lee
+    ///      como VENCIDO, nunca como el último valor conocido (v0.3 §4.2).
+    struct DatedField {
+        bytes32 value;      // referencia (hash o identificador), nunca texto libre
+        uint64 asOf;        // fecha del dato (opinión, dictamen, atestación)
+        uint64 validUntil;  // vigencia; exclusiva
+    }
+
+    /// @dev Cobertura: ratio en puntos básicos (10000 = 100 %) y fecha de la
+    ///      última atestación. `asOf == 0` es «no declarada».
+    struct DatedRatio {
+        uint32 ratioBps;
+        uint64 asOf;
+        uint64 validUntil;
+    }
+
+    struct PassportDetails {
+        DatedField auditor;          // auditor de los estados financieros
+        DatedField valuator;         // valuador independiente
+        DatedField custodian;        // custodio o fiduciario
+        DatedField segment;          // SEGMENT_PRINCIPAL / SEGMENT_CRECIMIENTO
+        DatedRatio coverage;         // ratio de cobertura + fecha
+        DatedField releaseSchedule;  // calendario de liberación (hash)
+        DatedField redemptionTerms;  // condiciones de redención (hash)
+        DatedField licenses;         // raíz de las licencias de las que depende
+        DatedField documentRoot;     // raíz documental vigente
+    }
+
+    /// @dev Estado de lectura de un campo fechado.
+    enum FieldStatus { NO_DECLARADO, VIGENTE, VENCIDO }
+
+    /// @dev Segmentos del Mercado de Valores Inclusivo (v0.3 §8.4).
+    bytes32 internal constant SEGMENT_PRINCIPAL = bytes32("PRINCIPAL");
+    bytes32 internal constant SEGMENT_CRECIMIENTO = bytes32("CRECIMIENTO");
+
+    /// @dev Identificador jerárquico estable (v0.3 §4.2): clase / autoridad de
+    ///      admisión / correlativo. No se deriva de la dirección del contrato.
+    struct HierarchicalId {
+        bytes32 assetClass;  // SECURITY, COMMODITY, MONETARY o UTILITY (§4.1)
+        bytes32 authority;   // autoridad de admisión, [A-Z0-9_], 1..16 caracteres
+        uint32 serial;       // correlativo por (clase, autoridad), desde 1
+    }
 }

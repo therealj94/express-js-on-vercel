@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 const F = require("./fixture");
 const H = require("./helpers");
 const OA = require("./orden-autorizada");
-const { buildAuthorization } = require("./authorization");
+const { buildAuthorization, aprobacionDbnx } = require("./authorization");
 
 const DIA = 86400;
 const ETH = 10n ** 18n;
@@ -19,6 +19,8 @@ describe("Revisión SFSP-410 · correcciones", function () {
     });
 
     async function ordenMint(auth, amount, nonce) {
+      // v0.3 §5 · la acuñación exige además el documento de aprobación DBNX.
+      const docHash = await aprobacionDbnx(f, auth.assetId, amount, "rev_" + nonce);
       const p = await OA.orden({
         verifyingContract: f.issuance.address,
         action: H.b32("MINT"),
@@ -27,6 +29,7 @@ describe("Revisión SFSP-410 · correcciones", function () {
         destination: auth.destination,
         amount: String(amount),
         nonce,
+        evidenceRoot: docHash,
       });
       return { p, tupla: OA.tupla(p), digest: OA.digestDe(p) };
     }

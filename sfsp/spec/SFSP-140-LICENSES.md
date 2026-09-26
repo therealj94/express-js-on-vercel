@@ -174,7 +174,7 @@ Reglas:
 | `ModuleAvailabilityChanged` | Un módulo cambia de valor en la taxonomía de §6.1 por dependencia de licencia |
 | `GovernanceAction` | La habilitación de un módulo (regla 3 de §6) |
 
-Sus campos están en `eventos.json`. `LicenseStatusChanged` y `ModuleAvailabilityChanged` siguen con `implementadoEnContratos: false` hasta que exista `SFSPLicenseRegistry`.
+Sus campos están en `eventos.json`. Desde draft-0.6 los emite `contracts/src/SFSPLicenseRegistry.sol` (`implementadoEnContratos: true`), junto con `LicenseRegistered` para el alta en `EN_TRAMITE`. Pruebas de aceptación T-140-01 a T-140-06: `contracts/test/20-registro-licencias.js` (T-140-01 se cubre como `isModuleAvailable == false`; el código de motivo `LICENCIA_NO_OTORGADA` lo pone el módulo consumidor, que todavía no está cableado).
 
 ---
 
