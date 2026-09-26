@@ -130,7 +130,7 @@ describe("Revisión SFSP-410 · correcciones", function () {
         firmantes: [A(1), A(2), A(3)], quorum: 2, quorumUpgrade: 2,
         timelockSegundos: 10, pausaMaximaSegundos: 10, vigenciaOrdenesSegundos: 100,
       });
-      Object.assign(P.roles, { junta: A(0x10), techOps: A(0x11), emisor: A(0x12), atestador: A(0x13), atestadorMigracion: A(0x14), auditor: A(0x15) }, roles);
+      Object.assign(P.roles, { junta: A(0x10), techOps: A(0x11), emisor: A(0x12), atestador: A(0x13), atestadorMigracion: A(0x14), auditor: A(0x15), dbnx: A(0x16) }, roles);
       return P;
     }
     const falla = (P) => { try { Dp.validar(P); return null; } catch (e) { return e.message; } };
@@ -143,7 +143,84 @@ describe("Revisión SFSP-410 · correcciones", function () {
     });
     it("positivo: con roles distintos la validación pasa de ese punto", function () {
       const m = String(falla(parametros({})));
-      assert.doesNotMatch(m, /techOps y emisor|Junta no puede/);
+      assert.doesNotMatch(m, /techOps y emisor|Junta no puede|dbnx/);
+    });
+    it("negativo (v0.3 §5.2): la cuenta DBNX no puede ser el emisor ni techOps; sin ella, BLOCKED_DECISION", function () {
+      assert.match(String(falla(parametros({ dbnx: A(0x12) }))), /dbnx/);
+      assert.match(String(falla(parametros({ dbnx: A(0x11) }))), /dbnx/);
+      const P = parametros({});
+      P.roles.dbnx = null;
+      assert.match(String(falla(P)), /BLOCKED_DECISION/);
+      const plantilla = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "deploy", "sfsp410", "parametros.plantilla.json"), "utf8"));
+      assert.equal(plantilla.roles.dbnx, null, "la plantilla deja DBNX sin decidir (D07/D27)");
+    });
+  });
+
+  describe("despliegue en proceso: el rol DBNX queda concedido y verificado (sin él, toda emisión por mint() revierte)", function () {
+    const path = require("node:path");
+    const fs = require("node:fs");
+    const os = require("node:os");
+    const hre = require("hardhat");
+    const Dp = require("../scripts/desplegar-sfsp410.js");
+    const A = (n) => "0x" + n.toString(16).padStart(40, "0");
+
+    function sinteticos(cuentas) {
+      const P = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "deploy", "sfsp410", "parametros.plantilla.json"), "utf8"));
+      const [desplegador, f1, f2, f3, junta, techOps, emisor, atestador, atestadorMig, auditor, dbnx] = cuentas;
+      const pas = (unit) => ({
+        issuerId: "SINTETICO:EMISOR", legalInstrumentId: "SINTETICO:INSTRUMENTO", economicType: "SINTETICO",
+        legalClass: "SINTETICO:CLASE", jurisdiction: "SINTETICO:JUR", unit,
+        rightsTemplateId: "SINTETICO:DERECHOS", rightsTemplateVersion: "v0", documentRoot: "SINTETICO:DOC",
+        transferPolicyId: "SINTETICO:TRANSFER", redemptionPolicyId: "SINTETICO:REDENCION", listingPolicyId: "SINTETICO:LISTADO",
+        capacidades: { freeze: true, forcedTransfer: true },
+        estado: { legal: "CLASSIFIED", admission: "APPROVED", trading: "NOT_LISTED", transferability: "RESTRICTED", redemption: "NONE" },
+      });
+      const pol = (acciones) => ({
+        acciones, requiresHumanReview: false, requiresAuthorization: false, jurisdictionAllowlist: false,
+        jurisdiccionesPermitidas: [], requiredPurpose: "NINGUNO", maxAmount: "0",
+      });
+      const hasta = Math.floor(Date.now() / 1000) + 400 * 86400;
+      const cupo = (doc) => ({ perPeriod: "1000", period: 86400, maxPerOperation: "100", validUntil: hasta, termsDocRoot: doc });
+      const a0 = P.activos[0];
+      return {
+        ...P,
+        _estado: "SINTETICO — prueba en proceso; nunca va a red real.",
+        sintetico: true,
+        red: { ...P.red, genesisHash: H.ZERO32 },
+        desplegador,
+        gobierno: { ...P.gobierno, firmantes: [f1, f2, f3], quorum: 2, quorumUpgrade: 2, timelockSegundos: 10, pausaMaximaSegundos: 10, vigenciaOrdenesSegundos: 100 },
+        roles: { ...P.roles, junta, techOps, emisor, atestador, atestadorMigracion: atestadorMig, auditor, dbnx },
+        origen: { ...P.origen, pasaporte: pas("ORIGEN"), politicaElegibilidad: pol(["MINT"]), cupoLiberacion: cupo("SINTETICO:CUPO:ORIGEN") },
+        activos: [{
+          ...a0, erc20Interop: true,
+          limites: { outstandingLimit: "1000000", cumulativeCap: "1000000" },
+          cupoEmision: cupo("SINTETICO:CUPO:" + a0.simbolo),
+          pasaporte: pas(a0.simbolo),
+          politicaElegibilidad: pol(a0.politicaElegibilidad.acciones),
+        }],
+        cuentasInternas: { ...P.cuentasInternas, confirmadaPorActa: true, lista: [{ direccion: A(0x51), grupo: "SINTETICA" }] },
+      };
+    }
+
+    it("positivo: el paso 6 concede DBNX a roles.dbnx, el paso 8 lo verifica y esa cuenta registra aprobaciones", async function () {
+      const cuentas = (await H.accounts()).slice(8, 19);
+      const S = sinteticos(cuentas);
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sfsp410-dbnx-"));
+      const ruta = path.join(dir, "parametros.json");
+      fs.writeFileSync(ruta, JSON.stringify(S, null, 2));
+      const reg = await Dp.desplegar({ prov: hre.network.provider, rutaParametros: ruta, real: false, modo: "proceso", log: () => {} });
+      fs.rmSync(dir, { recursive: true, force: true });
+      const fila = reg.roles.find((r) => r.rol === "DBNX");
+      assert.ok(fila, "el registro de despliegue muestra quién es DBNX");
+      assert.equal(fila.cuenta.toLowerCase(), S.roles.dbnx.toLowerCase());
+      assert.equal(fila.verificado, true);
+      const art = await hre.artifacts.readArtifact("SFSPIssuanceController");
+      const iss = new H.Contract(reg.contratos.SFSPIssuanceController.address, art.abi);
+      assert.equal(await iss.call("hasRole", [await iss.call("DBNX"), S.roles.dbnx]), true);
+      assert.equal(await iss.call("hasRole", [await iss.call("DBNX"), S.desplegador]), false);
+      const ts = await H.now();
+      await iss.send("registerDbnxApproval", [H.b32("doc_despliegue"), reg.activos[S.activos[0].simbolo].assetId, 10, ts - 1, ts + 100], S.roles.dbnx);
+      assert.equal((await iss.call("dbnxApprovalOf", [H.b32("doc_despliegue")])).signer.toLowerCase(), S.roles.dbnx.toLowerCase());
     });
   });
 });

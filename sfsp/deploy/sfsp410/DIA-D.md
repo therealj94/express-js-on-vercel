@@ -25,6 +25,7 @@ distinta de quien ejecuta.
 - [ ] **D25** acta: las 6 billeteras del 14-sep, las 9 del 11-sep y las demás de la lista propuesta son de Orden Global y se declaran internas. Resolver `0xd894…`, `0x9af6…`, `0x6bdc…`.
 - [ ] **D26** migrar sólo usuarios; modo de migración (SFSP-700 por reclamo, o cupo único por activo con el padrón como evidencia: ver `migracion-410/LEEME.md` y REV-17).
 - [ ] **D27** llaves: multifirma con billeteras de hardware; **una llave de emisor por sistema** en KMS (REV-03); nada en variables de entorno.
+- [ ] **D07/D27** cuenta **DBNX** del controlador de emisión (`roles.dbnx` de los parámetros): registra el documento de aprobación de cada emisión por `mint()` (v0.3 §5). Distinta del emisor y de techOps; el script lo exige y el paso 8 lo verifica en cadena. Sin ella ninguna emisión por orden de gobierno se ejecuta.
 - [x] **D01 · REV-01** precio único: 1 ORIGEN = gramo de oro / 55 en Veta y Ordenex (decidido por la dirección el 26-sep; falta el acta). **D02** comisión = 0,01 USD por transacción, cobrada en ORIGEN.
 - [ ] SÍ/NO de las direcciones "En revisión" del padrón y confirmación del único usuario de HARV y del contrato correcto de IBS.
 

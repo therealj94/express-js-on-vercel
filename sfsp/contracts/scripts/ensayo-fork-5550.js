@@ -127,7 +127,7 @@ async function main() {
   const P = JSON.parse(fs.readFileSync(PLANTILLA, "utf8"));
   const tsFork = BigInt(cab.timestamp);
   const ahora = BigInt((await rpc("eth_getBlockByNumber", ["latest", false])).timestamp);
-  const [desplegador, f1, f2, f3, f4, junta, techOps, emisor, atestador, atestadorMig, auditor] = cuentas;
+  const [desplegador, f1, f2, f3, f4, junta, techOps, emisor, atestador, atestadorMig, auditor, dbnx] = cuentas;
   const firmantes = [f1, f2, f3, f4].sort((a, b) => (BigInt(a) < BigInt(b) ? -1 : 1));
   const GOV = { quorum: 2, quorumUpgrade: 3, timelock: 3600, maxPausa: 86400, vigencia: 3 * 3600 };
   const pas = (unit) => ({
@@ -154,7 +154,7 @@ async function main() {
     red: { ...P.red, genesisHash: (await rpc("eth_getBlockByNumber", ["0x0", false])).hash },
     desplegador,
     gobierno: { ...P.gobierno, firmantes, quorum: GOV.quorum, quorumUpgrade: GOV.quorumUpgrade, timelockSegundos: GOV.timelock, pausaMaximaSegundos: GOV.maxPausa, vigenciaOrdenesSegundos: GOV.vigencia },
-    roles: { ...P.roles, junta, techOps, emisor, atestador, atestadorMigracion: atestadorMig, auditor },
+    roles: { ...P.roles, junta, techOps, emisor, atestador, atestadorMigracion: atestadorMig, auditor, dbnx },
     origen: { ...P.origen, pasaporte: pas("ORIGEN"), politicaElegibilidad: pol(["MINT"]), cupoLiberacion: cupo(1000, 100, "SINTETICO:ACTA:CUPO:ORIGEN") },
     activos: P.activos.map((a) => ({
       ...a,

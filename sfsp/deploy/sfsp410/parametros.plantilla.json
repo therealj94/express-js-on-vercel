@@ -38,7 +38,9 @@
     "atestador": null,
     "_atestadorNota": "ATTESTOR del adaptador de identidad (atestaciones Genesis ID).",
     "atestadorMigracion": null,
-    "auditor": null
+    "auditor": null,
+    "dbnx": null,
+    "_dbnxNota": "DBNX del controlador de emision (v0.3 §5): registra el documento de aprobacion de cada emision por mint(). Distinta del emisor y de techOps (DBNX autoriza; Orden Global ejecuta). Sin ella ninguna emision por orden de gobierno se puede ejecutar."
   },
   "origen": {
     "assetId": "SFSP:NATIVE:ORIGEN:5550",

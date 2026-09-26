@@ -158,7 +158,7 @@ function validar(P) {
 
   const r = P.roles;
   const roles = {};
-  for (const k of ["junta", "techOps", "emisor", "atestador", "atestadorMigracion", "auditor"]) roles[k] = dir(r[k], `roles.${k}`);
+  for (const k of ["junta", "techOps", "emisor", "atestador", "atestadorMigracion", "auditor", "dbnx"]) roles[k] = dir(r[k], `roles.${k}`);
   const desplegador = dir(P.desplegador, "desplegador");
   const d = desplegador.toLowerCase();
   if (Object.values(roles).some((a) => a.toLowerCase() === d) || firmantes.some((a) => a.toLowerCase() === d)) {
@@ -175,6 +175,13 @@ function validar(P) {
   }
   if ([roles.techOps, roles.emisor].some((a) => a.toLowerCase() === roles.junta.toLowerCase())) {
     throw new ErrorParametros("roles: la Junta no puede ser techOps ni emisor");
+  }
+  // v0.3 §5.2 · DBNX autoriza (registra el documento de aprobación de cada
+  // emisión); Orden Global ejecuta. La cuenta DBNX no puede ser la que acuña
+  // (emisor) ni la que ejecuta órdenes (techOps): el contrato lo vuelve a
+  // comprobar al usar la aprobación.
+  if ([roles.techOps, roles.emisor].some((a) => a.toLowerCase() === roles.dbnx.toLowerCase())) {
+    throw new ErrorParametros("roles: dbnx (autoriza) no puede ser techOps ni emisor (ejecutan)");
   }
 
   const ci = P.cuentasInternas;
@@ -552,6 +559,8 @@ async function desplegar(o) {
   const todos = [governance, registry, identity, engine, issuance, migration, vault, ...activos.map((a) => a.c)];
   const R = {};
   for (const r of ROLES) R[r] = await governance.call(r);
+  // v0.3 §5 · el rol DBNX sólo existe en el controlador de emisión.
+  R.DBNX = await issuance.call("DBNX");
 
   // ---- 2. cableado
   ctx.paso = "2-cableado";
@@ -617,6 +626,8 @@ async function desplegar(o) {
   await conceder(engine, "TECH_OPS", V.roles.techOps);
   await conceder(issuance, "ISSUER", V.roles.emisor);
   await conceder(issuance, "TECH_OPS", V.roles.techOps);
+  // Sin DBNX nadie registra aprobaciones y toda emisión por `mint()` revierte.
+  await conceder(issuance, "DBNX", V.roles.dbnx);
   await conceder(migration, "ATTESTOR", V.roles.atestadorMigracion);
   await conceder(vault, "ISSUER", V.roles.emisor);
   await conceder(vault, "TECH_OPS", V.roles.techOps);
@@ -651,6 +662,10 @@ async function desplegar(o) {
     if (!ok) fallos.push(`${e.contrato}: falta ${e.rol} para ${e.cuenta}`);
   }
   if (await governance.call("isSigner", [D])) fallos.push("el desplegador es firmante de gobierno");
+  if (await issuance.call("hasRole", [R.DBNX, D])) fallos.push("issuance: el desplegador conserva DBNX");
+  // Separación DBNX/emisor (v0.3 §5.2), comprobada en cadena y no sólo en los parámetros.
+  if (await issuance.call("hasRole", [R.ISSUER, V.roles.dbnx])) fallos.push("issuance: la cuenta DBNX tiene ISSUER");
+  if (await issuance.call("hasRole", [R.DBNX, V.roles.emisor])) fallos.push("issuance: el emisor tiene DBNX");
   // REV-410-11 · los ejecutores tienen que poder GASTAR aprobaciones en
   // gobierno (consumeAuthorization exige TECH_OPS); sin esto los cupos y las
   // liberaciones revierten el primer día.
