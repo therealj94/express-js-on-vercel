@@ -61,13 +61,16 @@ que no existen, promesas sin respaldo. Después se consolidó.</p>
   <strong>Sistema Financiero Social y Productivo</strong>: social porque la gente lo usa a diario en su moneda,
   productivo porque el respaldo lo paga una operación minera real. Si en la junta la P significa otra cosa, es un
   cambio de una línea y el resto del documento no se mueve. Lo que sí hay que resolver es el tercer miembro:
-  <strong>DBNX no está documentado en ninguna parte</strong>, y eso se trata en la sección 6.2.
+  <strong>DBNX no está documentado en ninguna parte</strong>, y eso se trata en la sección 6.17.
 </div>
 
-<p>Tres advertencias de lectura. La primera: esto es una auditoría, no una presentación de ventas; cuando una
-pieza está a medias, aquí dice que está a medias. La segunda: el estado de cada pieza cambia con cada
-despliegue, así que el valor del documento está en el mapa y en los huecos, no en el semáforo del día. La
-tercera: las secciones 8 y 9 existen para que nadie prometa en público lo que el producto todavía no sostiene.</p>
+<p>Tres advertencias de lectura. La primera: <strong>esto terminó siendo una auditoría, no una presentación</strong>.
+Empezó como un inventario de lo construido y encontró, de camino, cosas que no son huecos sino problemas:
+afirmaciones publicadas que el código contradice y datos de personas expuestos. Están en la sección 6, en orden
+de gravedad, y las cuatro primeras hay que resolverlas antes de publicar nada. La segunda: el estado de cada
+pieza cambia con cada despliegue, así que el valor del documento está en el mapa y en los huecos, no en el
+semáforo del día. La tercera: las secciones 8 y 9 existen para que nadie prometa en público lo que el producto
+todavía no sostiene.</p>
 
 <h2>1 · Qué es Orden Global, en una página</h2>
 
@@ -351,7 +354,7 @@ JavaScript—, sin datos, sin hojas de estilo y sin lo que instala la máquina.<
       <td><b>Genesis ID</b></td>
       <td>Identidad, verificación, tamizado de sanciones, monitoreo antilavado, sesión única, panel y directorio.</td>
       <td>46 archivos · 12 982 líneas</td>
-      <td class="riesgo">En servicio desde el 6 de septiembre, pero <b>lo que corre no es esta rama</b> (ver 6.1).</td>
+      <td class="riesgo">En servicio desde el 6 de septiembre, pero <b>lo que corre no es esta rama</b> (ver 6.6).</td>
     </tr>
     <tr>
       <td><b>OrdenExchange</b></td>
@@ -369,7 +372,7 @@ JavaScript—, sin datos, sin hojas de estilo y sin lo que instala la máquina.<
       <td><b>MyTokenPay</b> (app y web)</td>
       <td>Directorio de comercios afiliados y pantallas de cobro con código QR.</td>
       <td>88 archivos · 12 711 líneas</td>
-      <td class="riesgo">El directorio y las cuentas son reales; <b>el cobro es maqueta</b>: el dinero no se mueve.</td>
+      <td class="riesgo">El directorio y las cuentas son reales; <b>el cobro está simulado</b>: no toca la cadena ni un banco (6.10).</td>
     </tr>
     <tr>
       <td><b>Genesis ID</b> (app)</td>
@@ -402,6 +405,24 @@ JavaScript—, sin datos, sin hojas de estilo y sin lo que instala la máquina.<
       <td>En servicio para la junta.</td>
     </tr>
     <tr>
+      <td><b>Casa de cambio viva</b></td>
+      <td>Hay una casa de cambio funcionando, con su propio servicio, distinta de la del repositorio.</td>
+      <td class="riesgo">Sin versionar</td>
+      <td class="riesgo">No está en ninguno de los dos repositorios. Nadie puede auditarla. Ver 6.6.</td>
+    </tr>
+    <tr>
+      <td><b>Tarjeta Visa</b></td>
+      <td>Tarjeta real emitida contra un proveedor externo: número, PIN, límites, autenticación de comercio.</td>
+      <td>—</td>
+      <td class="riesgo">Viva y funcionando. No aparece en ningún documento de junta. Ver 6.13.</td>
+    </tr>
+    <tr>
+      <td><b>Rampa por Polygon</b></td>
+      <td>La persona deposita una moneda estable en otra cadena y el servidor le acredita ORIGEN.</td>
+      <td>—</td>
+      <td class="riesgo">Viva dentro de la billetera. Tampoco está en ningún acta. Ver 6.13.</td>
+    </tr>
+    <tr>
       <td><b>AuCorp</b></td>
       <td>La rampa entre dinero de curso legal y metal o token.</td>
       <td>—</td>
@@ -417,7 +438,7 @@ JavaScript—, sin datos, sin hojas de estilo y sin lo que instala la máquina.<
       <td><b>DBNX</b></td>
       <td>Tercer miembro del sistema, según el propio material del ecosistema.</td>
       <td>—</td>
-      <td class="riesgo">Sin documentar. Ver 6.2.</td>
+      <td class="riesgo">Sin documentar. Ver 6.17.</td>
     </tr>
   </tbody>
 </table>
@@ -448,9 +469,9 @@ dónde se atora. Este es el recorrido completo, tal como está escrito hoy.</p>
     <tr><td>7</td><td>El vendedor confirma que recibió y la custodia se libera.</td><td>OrdenExchange · bitácora</td></tr>
     <tr><td>8</td><td>El movimiento entra a la cola de monitoreo antilavado.</td><td>Cola con reintentos → Genesis ID</td></tr>
     <tr><td>9</td><td>Guarda su ORIGEN en Veta Wallet. Es 1/55 de gramo de oro por unidad.</td><td>Cadena 5550 · bóveda</td></tr>
-    <tr><td>10</td><td>Al día siguiente quiere cobrar en su puesto con un código QR.</td><td class="riesgo">MyTokenPay (maqueta, ver 6.4)</td></tr>
+    <tr><td>10</td><td>Al día siguiente quiere cobrar en su puesto con un código QR.</td><td class="riesgo">MyTokenPay (simulado, ver 6.10)</td></tr>
     <tr><td>11</td><td>Cuando quiere lempiras otra vez, vuelve al mercado y vende.</td><td>OrdenExchange</td></tr>
-    <tr><td>12</td><td>Si el monto es grande, no pasa por el mercado: entra o sale por la rampa.</td><td class="riesgo">AuCorp (ver 6.5)</td></tr>
+    <tr><td>12</td><td>Si el monto es grande, no pasa por el mercado: entra o sale por la rampa.</td><td class="riesgo">AuCorp (ver 6.14)</td></tr>
   </tbody>
 </table>
 
@@ -460,295 +481,347 @@ la rampa grande de AuCorp no tiene servicio. No son detalles: el paso 10 es lo q
 comprar, y el paso 12 es la diferencia entre un mercado entre personas y un sistema financiero. Los dos están en
 la sección siguiente, con los demás huecos y sin adornos.</p>
 
-<h2 class="salto">6 · Los huecos, sin adornos</h2>
+<h2 class="salto">6 · Los huecos, por gravedad</h2>
 
-<p>Un documento de revisión que no tenga esta sección no sirve para nada. Cada hueco está descrito con lo que se
-comprobó, con lo que falta y con quién tiene que resolverlo. Van en orden de lo que bloquea a lo demás. El
-primero es el más serio de todos y no estaba en el radar de nadie.</p>
+<p>Esta sección creció. La revisión empezó como un inventario de lo que falta y terminó encontrando cosas que
+no son huecos sino problemas: afirmaciones publicadas que el código contradice y datos de personas expuestos.
+Van en orden de gravedad, no de comodidad. Los cuatro primeros hay que resolverlos <strong>antes</strong> de
+publicar una campaña, y dos de ellos antes de que pase otra semana.</p>
 
-<h3>6.1 · Lo que corre en producción no es lo que hay en esta rama</h3>
+<h3>6.1 · La billetera custodia tiene llave maestra, y lo publicado dice que no</h3>
 
-<p>Genesis ID está en línea y contesta. Pero la versión que contesta no es la de esta rama de trabajo: es un
-código que vive en otra rama, arrancado el 6 de septiembre, y que tiene <strong>105 archivos de programa contra
-los 44 que hay aquí</strong>. Son sesenta y un archivos de diferencia, y no son archivos menores: ahí están el
-segundo factor de autenticación de los operadores, la cadena de auditoría y su anclaje, la interfaz pública
-documentada, el envío y la firma del correo, la credencial digital, los enganches de mensajería, la lectura de
-fotos del documento, el expediente de cada identidad, el bloqueo de cuentas y el almacén de movimientos
-antilavado con su temporizador.</p>
+<p>Veta Wallet es una billetera custodia: guarda la clave privada y la frase de respaldo de cada persona,
+cifradas, en su servidor. Hasta ahí, correcto y declarado. El problema es <strong>con qué se descifran</strong>.
+En las herramientas de migración del repositorio, el descifrado de la clave privada y de la frase semilla de
+<strong>todas</strong> las cuentas se hace con una <strong>variable de entorno del servidor</strong>, recorriendo
+la base entera, sin que intervenga la contraseña de ninguna persona. La contraseña autoriza la operación; no es
+lo que abre la caja.</p>
 
-<p>Esta rama se separó del tronco el 10 de agosto. Todo ese trabajo llegó después y nunca se trajo. La rama
-principal del repositorio tampoco lo tiene. Dicho de la manera más directa posible:</p>
+<p>Y esto es lo que dicen hoy los documentos publicados de la aplicación:</p>
 
-<div class="nota riesgo">
-  <b class="t">Riesgo operativo inmediato</b>
-  <strong>Si alguien despliega esta rama sobre Genesis ID, producción pierde sesenta y un archivos</strong>,
-  incluidos el segundo factor de los operadores, la cadena de auditoría y el almacén de movimientos de
-  cumplimiento. No es un riesgo teórico: el archivo de despliegue de este repositorio publica Genesis ID desde
-  esta misma carpeta. Antes de desplegar cualquier cosa hay que traer esa rama a esta, resolver lo que choque y
-  volver a correr las pruebas. Es trabajo de días, no de semanas, y es lo primero de todo.
-</div>
+<div class="vo">Términos y condiciones, sección 3:
+  «guardamos tu clave privada cifrada y la desciframos <b>con tu contraseña</b> cuando vos lo pedís»
+  «sin esa información los fondos son <b>matemáticamente inaccesibles</b>»
 
-<p>Hay una buena noticia dentro de la mala, y se comprobó una por una: las <strong>doce llamadas</strong> que la
-casa de cambio le hace a Genesis ID —buscar la identidad por correo, crearla, declarar datos, mandar el
-documento, pedir vivacidad, mandar el rostro, mandar la foto, vincular la cuenta, consultar el GID, pedir y
-verificar la sesión única, tamizar una dirección y reportar movimientos— <strong>existen las doce en la interfaz
-pública que Genesis ID publica hoy en producción</strong>. La integración está escrita contra el contrato
-correcto. Lo que falta es poner las dos piezas en la misma versión.</p>
-
-<h3>6.2 · DBNX no está documentado, y PULSE2CHAT no existe</h3>
-
-<p>El propio material del ecosistema nombra al sistema como <strong>Orden Global · AuCorp · DBNX</strong>: los
-tres miembros. De los dos primeros hay sociedad, identificador internacional y función clara. Del tercero, lo
-único que consta en todo el código es una línea de un archivo de presentación, y el mapa interno del ecosistema
-lo marca literalmente como <i>pendiente de documentar</i>.</p>
-
-<p>Al lado de eso hay un caso parecido y más simple: <strong>PULSE2CHAT</strong>, que aparece como pieza del
-ecosistema con la idea de «hablar y pagar», no existe como código en ninguno de los dos repositorios. Buscándolo
-en todo el árbol aparecen dos menciones, y ninguna es programa.</p>
+Política de privacidad, sección 3:
+  «Se descifran únicamente cuando vos lo pedís y <b>con tu contraseña</b>»
+  «<b>Nosotros no conocemos tu contraseña.</b>»</div>
 
 <div class="nota riesgo">
-  <b class="t">Decisión de junta, no de ingeniería</b>
-  Con las dos hay que hacer lo mismo: decir qué son y qué papel tienen —y entonces se documentan y entran en el
-  mapa— o quitarlas del material público hasta que existan. Dejarlas como están es el tipo de detalle por el que
-  una pieza de comunicación buena se cae en la primera entrevista.
+  <b class="t">Por qué esto es lo primero de la lista</b>
+  No es un hueco: es una diferencia entre lo que el producto hace y lo que el producto declara por escrito ante
+  sus usuarios. Quien lee esos términos entiende que ni la empresa puede tocar sus fondos, y sí puede. Hay que
+  hacer las dos cosas, en este orden: <strong>corregir el texto para que diga la verdad</strong> —es una
+  billetera custodia con llave de operador, y eso se puede decir sin vergüenza si se dice— y
+  <strong>revisar el esquema de cifrado</strong>, que además deriva la clave con un método antiguo y de una
+  sola pasada. Mientras tanto, la campaña no puede insinuar en ninguna forma que los fondos solo los toca su
+  dueño.
 </div>
 
-<h3>6.3 · La casa de cambio no está desplegada</h3>
+<h3>6.2 · El directorio de comercios publica documentos de identidad sin pedir nada</h3>
 
-<p>OrdenExchange está escrito, probado y con su panel de operadores; se recorrió el flujo completo por red
-—orden creada, activo en custodia, pago marcado, liberación con contraseña, saldos cuadrando al último
-decimal— y las 76 pruebas pasan. Pero <strong>hoy no está en ningún servidor público</strong>: la dirección
-prevista contesta 404 y la de respaldo no existe. El detalle que lo confirma desde adentro es que el propio
-monitor de salud de Genesis ID vigila esa dirección caída.</p>
+<p>En el servicio de MyTokenPay, las rutas que listan comercios y devuelven el detalle de uno
+—<code>GET /api/companies</code> y <code>GET /api/companies/:id</code>— <strong>no exigen sesión</strong>: la
+autenticación está puesta en las rutas de escritura y en la del propio comercio, pero no en las de lectura. Y lo
+que devuelven no está recortado: sale el objeto completo del comercio, con su bloque de verificación, que incluye
+los <strong>documentos de identidad subidos para el KYB</strong>, el identificador tributario y el dueño.</p>
 
-<p>Es el hueco más fácil de cerrar de toda la lista —es un despliegue— y el más caro de dejar abierto, porque es
-la única puerta por la que el público entra al sistema.</p>
+<p>Es el hallazgo más fácil de arreglar de todo el documento —recortar la respuesta y exigir sesión en el
+detalle— y el más caro de dejar así, porque son datos de personas y de empresas que confiaron.</p>
 
-<h3>6.4 · El cobro de MyTokenPay todavía no mueve dinero</h3>
+<h3>6.3 · La infraestructura se publica sola</h3>
 
-<p>MyTokenPay tiene un directorio de comercios que funciona de verdad, cuentas con registro y recuperación de
-contraseña bien resueltas, verificación de empresas y una interfaz de cobro muy trabajada, con su propio
-generador de códigos QR escrito a mano. Lo que no tiene es el pago: <strong>ningún cobro toca la cadena 5550 ni
-un banco</strong>. Las pantallas se comportan como si el dinero se moviera, y no se mueve.</p>
+<p>Dos exposiciones distintas, las dos innecesarias. La primera: el archivo de datos que alimenta el mapa del
+ecosistema se sirve <strong>público y sin autenticación</strong> desde el servicio de Genesis ID, y contiene las
+direcciones de red de <strong>seis de los siete nodos</strong> de la cadena y su región. La segunda: el archivo
+de configuración de ejemplo de ULTRON, versionado en el repositorio, trae las direcciones de las máquinas de
+apoyo escritas en claro y, además, <strong>la verificación de certificados desactivada</strong> como valor de
+ejemplo.</p>
 
-<p>Esto importa más de lo que parece, porque el cobro con QR es el paso que convierte al ORIGEN en algo que
-sirve para comprar. Mientras siga así, el sistema permite guardar y cambiar, pero no gastar. Y es exactamente el
-gesto que cualquier pieza de comunicación va a querer mostrar.</p>
+<p>Ninguna de las dos entrega una contraseña. Las dos entregan el mapa: a quién atacar y por dónde. El mapa del
+ecosistema es una pieza excelente para explicar el sistema; lo que no puede hacer es llevar las direcciones de
+los nodos dentro.</p>
 
-<h3>6.5 · La rampa grande —AuCorp— no tiene servicio</h3>
+<h3>6.4 · Los documentos legales publicados describen otro producto</h3>
 
-<p>AuCorp es una sociedad real, con identificador internacional propio, y su función en el sistema es la entrada
-y la salida entre dinero de curso legal y metal o token. En el código no hay ningún servicio de AuCorp. Mientras
-eso siga así, <strong>todo el peso de entrar y salir lo carga el mercado entre personas</strong>, que está
-diseñado para montos de gente común. Un comercio que quiera cambiar el equivalente a cien mil lempiras no tiene
-por dónde, y un inversionista tampoco.</p>
+<p>La política de privacidad de la billetera dice que quien recibe el documento de identidad y la selfie es un
+proveedor llamado <strong>Veriff</strong>. Ese proveedor <strong>no aparece en una sola línea de código</strong>.
+Quien de verdad recibe el documento, la lectura de la banda, el rostro, el correo y el nombre es
+<strong>Genesis ID</strong>, que <strong>no está listado en la política</strong>. Es exactamente al revés de
+como está escrito.</p>
 
-<h3>6.6 · Las tres faltas que Genesis ID se marca solo</h3>
+<p>Además, los mismos documentos están mal formados: las tablas de datos personales se publican con la sintaxis
+cruda a la vista, con barras y asteriscos, en las páginas legales en línea. Un documento legal que se ve roto
+comunica lo contrario de lo que pretende.</p>
 
-<p>Hay que decir primero lo bueno, porque es mucho y es verificable en vivo: Genesis ID corre con almacén
-persistente, con las <strong>listas de sanciones cargadas —19 391 fichas, un día de antigüedad—</strong>, con
-biometría automática encendida, con sesión única configurada, con correo funcionando y con la cadena 5550
-contestando el identificador correcto. Su bitácora lleva 2 885 entradas encadenadas y se declara íntegra.</p>
+<h3>6.5 · La emisión ya está completa y el respaldo no está probado</h3>
 
-<p>Y el propio servicio, en su chequeo de salud, se marca tres faltas de cumplimiento que nadie más va a
-señalar:</p>
+<p>Los tokens existen y su emisión se puede leer en la cadena ahora mismo: AUKA 55 000 000, AGKA 500 000 000,
+ONDK 555 000 000, exactos. Eso es lo bueno. Lo incómodo es lo que significa si se toma la definición al pie de
+la letra: <strong>una AUKA es una onza troy de oro</strong>, así que cincuenta y cinco millones de AUKA son
+<strong>más de mil setecientas toneladas</strong> de oro. La emisión está hecha de antemano y en el código no
+hay <strong>ninguna prueba de reservas</strong>: ni atestación, ni ensayador, ni inventario, ni informe, ni un
+número de concesión. Tampoco hay un mecanismo que emita contra metal: los tokens ya están todos ahí.</p>
+
+<div class="nota riesgo">
+  <b class="t">El techo de todo lo que se puede prometer</b>
+  Mientras no exista una atestación mostrable, <strong>lo único que se puede afirmar es la definición</strong>
+  —cuánto vale un ORIGEN— y nunca el agregado. Y hay que dejar de decir «NI 43-101»: la sigla aparece diez veces
+  en el código del sitio y de la billetera, y no hay detrás ni informe, ni fecha, ni el nombre de la persona
+  calificada que lo firma. Sin eso, la sigla no es un respaldo: es un riesgo.
+</div>
+
+<h3>6.6 · El repositorio no representa el sistema</h3>
+
+<p>Este es el hallazgo estructural, y aparece en cinco frentes a la vez:</p>
 
 <ul>
-  <li><strong>La bitácora no está firmada.</strong> Falta la clave de firma. Una bitácora encadenada pero sin
-  firmar demuestra que nadie la alteró por dentro; no demuestra ante un tercero quién la escribió.</li>
-  <li><strong>Tres operadores tienen exigido el segundo factor y no lo han activado.</strong> Son cuentas que
-  aprueban identidades. Es la puerta más sensible del sistema.</li>
-  <li><strong>Hay una rotura de cadena sellada.</strong> Está registrada y sellada, que es lo correcto, pero
-  sigue siendo una rotura que alguien tiene que explicar por escrito.</li>
+  <li><strong>Genesis ID.</strong> Lo que corre en producción tiene más del doble de archivos que lo que hay en
+  esta rama: están de más el segundo factor de los operadores, la cadena de auditoría y su anclaje, la interfaz
+  pública, el correo, la credencial, el expediente y el almacén de movimientos. <strong>Desplegar esta rama sería
+  una regresión de seguridad.</strong></li>
+  <li><strong>La casa de cambio.</strong> Hay una casa de cambio <strong>viva</strong>, con su propio servicio, que
+  <strong>no está en ninguno de los dos repositorios</strong>. La que sí está —con 76 pruebas, custodia con
+  invariantes y 457 bancos— no está desplegada. Están compitiendo la que nadie puede auditar y la que nadie puede
+  usar.</li>
+  <li><strong>El sitio público.</strong> Lo que se sirve no es lo que está versionado.</li>
+  <li><strong>La cadena.</strong> El génesis, la configuración del consenso, las llaves de los siete validadores y
+  el inventario de las máquinas <strong>no están en control de versiones</strong>. Perder la cuenta de nube es
+  perder la cadena.</li>
+  <li><strong>Los documentos de junta.</strong> Ver 6.7.</li>
 </ul>
 
-<p>Ninguna de las tres es grave hoy. Las tres son exactamente lo que un auditor externo mira primero, y las tres
-se cierran con trabajo de horas.</p>
+<h3>6.7 · Los propios documentos de junta describen la cadena vieja</h3>
 
-<h3>6.7 · El precio del oro lo pone una persona a mano</h3>
+<p>De los nueve documentos de junta, <strong>seis hablan de la cadena 8532</strong> y solo dos de la 5550. El
+documento 02, que es el técnico, declara el identificador viejo bajo el título «cómo se comprobó». La cadena
+8532 está congelada desde la migración. Es decir: la carpeta que la junta usa para entender el sistema describe
+un sistema que ya no existe. Este documento y el 9 son los primeros de la serie que hablan de la cadena real.</p>
 
-<p>El precio de referencia del mercado se calcula bien: onza de oro en dólares, entre 31,1035 gramos, entre 55.
-Pero <strong>el precio de la onza y las tasas de cambio los fija un operador en el panel</strong>, o vienen de
-la configuración al arrancar; no hay una fuente automática. El código está escrito con el criterio correcto —si
-no hay precio de metal, la referencia no existe y los anuncios a porcentaje no se pueden publicar, porque es
-preferible que falte a que sea inventado—, pero eso convierte una tarea diaria en una dependencia humana. Con
-mercado abierto en veintitrés monedas, esa tarea no puede depender de que alguien se acuerde.</p>
+<h3>6.8 · Datos de demostración presentados como reales</h3>
 
-<h3>6.8 · Tres aplicaciones terminadas y ninguna publicada</h3>
+<p>El directorio de comercios de MyTokenPay trae treinta negocios que <strong>no existen</strong>: varios tienen
+sitios web con dominios de ejemplo, y veinticuatro están marcados como <strong>«verificados»</strong>. En la
+documentación del proyecto se les llama «negocios reales». Nadie lo hizo con mala intención —es relleno de
+maqueta— pero está a un clic de una captura de pantalla en una nota de prensa.</p>
 
-<p>Veta Wallet, MyTokenPay y la app de Genesis ID están escritas —cerca de treinta y cinco mil líneas entre las
-tres— y ninguna está en una tienda. Veta Wallet va por la compilación 68, con su servidor propio en línea y con
-envíos reales sobre la cadena; tiene apagados a propósito Comprar y Canjear. Y la app de Genesis ID es justo la
-que hace falta para verificarse bien, porque la cámara está en el teléfono. Los obstáculos conocidos son de
-trámite, no de programación: la cuenta de Google en modo individual y la de Apple con organización e
-identificador de empresa. Es el cuello de botella más caro de todos, porque una campaña que lleve gente a una
-tienda vacía se pierde entera.</p>
+<h3>6.9 · Hoy ninguna aplicación completa una verificación de punta a punta</h3>
 
-<h3>6.9 · La comisión cero y los siete validadores</h3>
+<p>Genesis ID es la pieza mejor hecha del conjunto: nadie se verifica solo, el operador deja motivo escrito, hay
+tamizado contra 19 391 fichas que se refrescan solas, biometría automática, lectura de documento según norma,
+prueba de vida, reglas antilavado, cuatro perfiles de operador y bitácora encadenada. Y aun así,
+<strong>ninguna aplicación le completa hoy un trámite de principio a fin</strong>: el puente que existe no lo
+importa nadie, la casa de cambio del repositorio no está desplegada y MyTokenPay llama a dos métodos que no
+existen. Un motor de identidad sin aplicación que lo alimente tiene bitácora, no expedientes.</p>
 
-<p>Mover ORIGEN no cuesta comisión de red porque los siete validadores de la cadena 5550 son propios. Eso es una
-ventaja comercial enorme y hay que decirla con el condicional puesto: <strong>es gratis mientras los nodos sean
-nuestros</strong>. También es un punto de confianza concentrado: quien opera los siete validadores opera la red.
-Abrir validadores a terceros —una cooperativa, una universidad, un socio— es lo que convierte esa concentración
-en credibilidad, y no está hecho.</p>
+<h3>6.10 · El cobro de MyTokenPay no es una maqueta: es una simulación</h3>
 
-<h3>6.10 · Remesas, puentes y bóveda: tres cosas que no se pueden decir todavía</h3>
+<p>Hay que decirlo con precisión porque la diferencia importa. No es que el pago esté a medias:
+<strong>ningún pago toca la cadena ni un banco</strong>. En el proyecto no aparece el identificador de la cadena
+ni un cliente de red. Cada «pago» es una resta guardada en el teléfono. Y el lector de códigos no lee: es un
+temporizador de menos de tres segundos que <strong>elige un comercio al azar</strong>. Funciona perfectamente
+para enseñar el flujo y no se puede filmar ni demostrar como si fuera real.</p>
+
+<h3>6.11 · El mercado no tiene contraparte</h3>
+
+<p>Aunque se despliegue la casa de cambio, el primer día no habrá con quién operar: hoy la casa de cambio viva
+devuelve <strong>cero agentes de cambio, cero ofertas y volumen cero</strong>. Un mercado entre personas sin
+personas no es un mercado. Antes de abrir hacen falta agentes reclutados y con fondos, país por país, y eso es
+trabajo de calle, no de programación.</p>
+
+<h3>6.12 · La cadena es joven y no está respaldada donde importa</h3>
+
+<p>La cadena 5550 funciona: contesta, produce bloques cada diez segundos con una regularidad notable, tiene sus
+siete validadores y está inscrita en los registros públicos. Y tiene alrededor de <strong>un mes de vida</strong>
+—la cuenta de bloques no da para más—, lo cual está bien mientras nadie diga lo contrario. Dos cosas por
+arreglar: lo dicho en 6.6 sobre el control de versiones, y que los vigilantes instalados en los nodos
+<strong>reinician un motor que ya no existe</strong>, herencia de la red anterior; es decir, hoy nadie se
+enteraría de un nodo detenido.</p>
+
+<h3>6.13 · Hay dos productos vivos que ningún documento menciona</h3>
+
+<p>La revisión encontró dos cosas funcionando que no están en ninguna acta ni en ningún documento de junta:</p>
 
 <ul>
-  <li><strong>Remesas.</strong> Sin licencia por país no hay servicio de remesas. Y aquí hay un problema que no
-  es de comunicación sino de producto: la billetera ya lo promete en su propia pantalla. Está en 6.12.</li>
-  <li><strong>Puentes a otras cadenas.</strong> Son plan hasta que se verifiquen. Mientras tanto, el activo vive
-  en su propia red, y eso es lo que hay que decir.</li>
-  <li><strong>Cifra de bóveda.</strong> La definición de un ORIGEN es sólida y comprobable, y la emisión de AUKA
-  y ONDK se puede leer en la cadena en este momento. El total de onzas en bóveda no es publicable hasta que
-  exista una auditoría que se pueda mostrar. Una cifra sin auditoría es peor que ninguna.</li>
+  <li><strong>Una tarjeta Visa real</strong>, emitida contra un proveedor externo, con más de treinta rutas de
+  servicio —número, PIN, autenticación de comercio electrónico, límites—. Es un producto financiero con datos
+  sensibles y no aparece en el mapa del sistema.</li>
+  <li><strong>Una rampa de entrada por otra cadena</strong>: en la billetera, la persona deposita una moneda
+  estable <strong>en la red Polygon</strong> a su propia dirección y el servidor le acredita ORIGEN. Es la rampa
+  que en la sección 6.14 se echa de menos, existiendo ya en otra forma —y contradice, si nadie lo aclara, la
+  frase de que el activo vive solo en su propia red.</li>
 </ul>
 
-<h3>6.11 · El expediente del incidente de claves sigue abierto</h3>
+<h3>6.14 · La rampa grande —AuCorp— sigue sin servicio</h3>
 
-<p>Antes de la migración de la cadena hubo un incidente con claves: cuatro tokens quedaron con contador en cero
-y saldo en cero, y la causa no se ha cerrado. Que no haya vuelto a ocurrir no es lo mismo que saber por qué
-ocurrió. Antes de una campaña que lleve gente a guardar valor en la billetera, ese expediente tiene que estar
-cerrado por escrito.</p>
+<p>AuCorp es una sociedad real con identificador internacional y su función es la entrada y la salida entre
+dinero de curso legal y metal. No hay servicio de AuCorp en el código. Con lo de 6.13 a la vista, el cuadro real
+es este: <strong>hay una rampa de cripto a ORIGEN y no hay rampa de dinero de curso legal a ORIGEN</strong>, que
+es justo al revés de lo que el sistema necesita para la gente a la que dice servir.</p>
 
-<h3>6.12 · La billetera promete remesas en su propia pantalla</h3>
+<h3>6.15 · La billetera promete remesas en su propia pantalla</h3>
 
-<p>Esto salió al preparar la campaña y es el hallazgo más incómodo de los que no estaban en el radar. En el
-código de Veta Wallet hay una pantalla llamada <i>Remesas</i>, y en la pantalla principal hay una tarjeta cuyo
-título dice, textualmente, <strong>«Enviá remesas a tu familia»</strong>, con la bajada <strong>«A cualquier
-país, en segundos y sin bancos»</strong>. Al pie de la pantalla de remesas se lee: <strong>«Las remesas son
-transferencias directas en la blockchain. No hay control de cambios, límites bancarios ni horarios: funcionan
-24/7.»</strong> Las tres frases existen también en inglés. La palabra aparece <strong>74 veces</strong> en el
-código y el marcado del repositorio.</p>
+<p>En el código de Veta Wallet hay una pantalla llamada <i>Remesas</i>, y en la portada una tarjeta que dice
+textualmente <strong>«Enviá remesas a tu familia»</strong>, con la bajada <strong>«A cualquier país, en segundos
+y sin bancos»</strong>. Al pie de esa pantalla: <strong>«no hay control de cambios, límites bancarios ni
+horarios: funcionan 24/7»</strong>. También en inglés. La palabra aparece setenta y cuatro veces en el
+repositorio. Ofrecer envío de dinero a cualquier país sin controles de cambio es exactamente lo que requiere
+licencia en cada país. No lo dice la campaña: lo dice el producto. Se re-rotula antes de publicar nada y antes
+de filmar una sola pantalla.</p>
 
-<div class="nota riesgo">
-  <b class="t">Por qué esto es distinto de los demás huecos</b>
-  Los otros huecos son cosas que faltan. Este es una <strong>afirmación regulatoria hecha por el producto</strong>:
-  ofrecer envío de dinero a cualquier país, sin controles de cambio y sin límites bancarios, es exactamente lo
-  que en cada país requiere licencia. No importa lo que diga el material de campaña —que ya tiene prohibida la
-  palabra—: si alguien abre la aplicación, la aplicación lo promete. Hay que <strong>re-rotular esa pantalla
-  antes de publicar nada</strong> y antes de filmarla: lo que el producto hace de verdad es cambio entre
-  personas y transferencia en la cadena, y así se tiene que llamar.
-</div>
+<h3>6.16 · Las tres faltas que Genesis ID se marca solo</h3>
+
+<p>El propio servicio, en su chequeo de salud, declara tres: la <strong>bitácora no está firmada</strong> —2 886
+asientos, ninguno firmado, y treinta y tres anclas calculadas sin escribir en cadena—; <strong>tres operadores
+tienen exigido el segundo factor y no lo han activado</strong>, y son cuentas que aprueban identidades; y hay
+<strong>una rotura de cadena sellada</strong>, registrada como corresponde pero pendiente de explicar por
+escrito. Ninguna es grave hoy. Las tres son lo primero que mira un auditor externo y las tres se cierran en
+horas.</p>
+
+<h3>6.17 · Y lo que ya estaba en la lista</h3>
+
+<ul>
+  <li><strong>Ninguna de las tres aplicaciones está publicada</strong> en una tienda, y una de ellas es la que
+  hace falta para verificarse bien, porque la cámara está en el teléfono.</li>
+  <li><strong>El precio del oro lo teclea un operador.</strong> El cálculo es correcto —onza entre 31,1035 entre
+  55— y la fuente es manual. Con veintitrés monedas abiertas eso no puede depender de que alguien se acuerde.</li>
+  <li><strong>La comisión cero dura mientras los nodos sean propios.</strong> Es una ventaja real y se dice con
+  el condicional puesto. Abrir un validador a un tercero es lo que convierte la concentración en credibilidad.</li>
+  <li><strong>ONDK no gobierna nada todavía</strong>: no hay propuestas, ni votación, ni quórum en el código.
+  Gobierna la junta, que es legítimo, pero entonces no se le llama gobernanza del token.</li>
+  <li><strong>DBNX sigue sin documentar y PULSE2CHAT no existe como código</strong> en los repositorios, aunque
+  en producción hay una pieza de conversación servida que tampoco está versionada.</li>
+  <li><strong>El expediente del incidente de claves sigue abierto</strong>, y quedan dos campos cifrados
+  irrecuperables de una cuenta real.</li>
+</ul>
 
 <h2 class="salto">7 · Cómo queda el sistema</h2>
 
-<p>Puesto todo junto, así queda —y así se ve el cambio que produjo este ciclo—:</p>
+<p>La respuesta honesta a «cómo va a quedar» tiene dos mitades y hay que decir las dos.</p>
 
 <div class="comparar">
-  <div class="col antes">
-    <div class="cab">Antes de este ciclo</div>
-    <ul>
-      <li>Respaldo, cadena e identidad construidos, sin puerta de entrada para el público.</li>
-      <li>La verificación de identidad existía en Genesis ID, pero cada app la resolvía a su manera.</li>
-      <li>Ningún lugar donde cambiar moneda local por activo y al revés.</li>
-      <li>Listas de bancos aproximadas, que es lo mismo que no tenerlas.</li>
-      <li>Cumplimiento dependiente de que cada llamada saliera bien a la primera.</li>
-    </ul>
-  </div>
   <div class="col ahora">
-    <div class="cab">Como queda</div>
+    <div class="cab">Lo que está construido y comprobado</div>
     <ul>
-      <li>Una puerta pública escrita y probada: casa de cambio entre personas en veintitrés países, con custodia y apelaciones.</li>
-      <li>Una sola identidad para todo el ecosistema, verificada una vez y válida en todas las apps.</li>
-      <li>Nadie se aprueba solo: un operador de cumplimiento decide, con las listas de sanciones cargadas.</li>
-      <li>457 bancos y entidades con su formato de cuenta, generados desde una fuente de datos única.</li>
-      <li>Cumplimiento con cola en disco y reintentos: el expediente no se rompe si un servicio se cae.</li>
+      <li>Una cadena propia que funciona: contesta, produce bloques cada diez segundos y está en los registros públicos.</li>
+      <li>Tokens con emisión exacta y legible en la cadena en este momento.</li>
+      <li>Un motor de identidad serio en producción: nadie se aprueba solo, con listas de sanciones al día y biometría automática.</li>
+      <li>Una casa de cambio escrita y probada para veintitrés países, con custodia, apelaciones y 457 bancos con su formato de cuenta.</li>
+      <li>Una billetera con envíos reales en la cadena y una tarjeta que existe.</li>
       <li>227 pruebas en verde, incluidas 28 de integración real entre la casa de cambio y Genesis ID.</li>
     </ul>
   </div>
+  <div class="col antes">
+    <div class="cab">Lo que hay que arreglar antes de crecer</div>
+    <ul>
+      <li>La billetera tiene llave maestra y los términos publicados dicen que no.</li>
+      <li>Un servicio publica documentos de identidad sin pedir sesión.</li>
+      <li>La infraestructura se publica sola en dos sitios distintos.</li>
+      <li>La emisión está completa y el respaldo no está probado con una atestación mostrable.</li>
+      <li>El repositorio no representa el sistema: producción, sitio, cadena y actas van cada uno por su lado.</li>
+      <li>Ninguna aplicación completa hoy una verificación de punta a punta.</li>
+    </ul>
+  </div>
 </div>
 
-<p>Dicho en una sola frase, que es la que conviene aprenderse: <strong>Orden Global queda como un sistema donde
-el respaldo es metal propio, el registro es una red propia, la identidad es una sola y el cambio a moneda local
-lo hace la gente entre sí, con la empresa como custodia y como juez.</strong> Las cuatro cosas están escritas y
-probadas; la cadena y la identidad, además, están encendidas y contestando hoy.</p>
-
-<p>Y hay que ser igual de claros con la otra mitad: <strong>el sistema está construido y a medio encender</strong>.
-La puerta del público no está desplegada, el cobro con QR todavía no mueve dinero, las tres aplicaciones no
-están en tienda, la rampa grande no existe y lo que corre en producción no es lo que hay en esta rama. Ninguna
-de esas cinco cosas requiere inventar nada nuevo. Las cinco requieren decisiones y semanas.</p>
+<p>Dicho en una frase: <strong>Orden Global tiene construido lo difícil —metal, cadena propia, identidad y una
+casa de cambio para veintitrés países— y tiene sin resolver lo que se puede resolver en semanas: decir la verdad
+en los textos publicados, cerrar dos puertas abiertas, poner el código y la operación en la misma versión y
+probar el respaldo.</strong> Esa es la diferencia entre un proyecto grande y un proyecto creíble, y hoy está a
+unas semanas de distancia, no a un año.</p>
 
 <div class="nota">
-  <b class="t">Las siete decisiones que solo la junta puede tomar</b>
-  Todo lo demás de este documento es ejecución. Estas no: <strong>(1)</strong> ordenar la reconciliación de esta
-  rama con lo que corre en producción antes de cualquier despliegue; <strong>(2)</strong> desplegar la casa de
-  cambio y pasar los servicios a plan pago antes de cualquier anuncio; <strong>(3)</strong> resolver los trámites
-  de tienda y publicar las tres aplicaciones; <strong>(4)</strong> decidir si el cobro con QR de MyTokenPay entra
-  en este trimestre o si la campaña no lo menciona; <strong>(5)</strong> definir qué son DBNX y PULSE2CHAT o
-  quitarlos del material público; <strong>(6)</strong> decidir si AuCorp opera la rampa grande ahora o si el
-  mercado entre personas la sostiene solo.
+  <b class="t">Las decisiones que solo la junta puede tomar</b>
+  <strong>(1)</strong> Corregir los términos y la política de la billetera para que digan lo que el producto hace,
+  y ordenar la revisión del esquema de cifrado. <strong>(2)</strong> Cerrar hoy mismo la ruta que publica
+  documentos de identidad y quitar las direcciones de los nodos del archivo público. <strong>(3)</strong> Decidir
+  cuál casa de cambio es la buena: la que está viva y no está versionada, o la que está probada y no está
+  desplegada. <strong>(4)</strong> Encargar una atestación del metal, o aceptar que no se habla del agregado.
+  <strong>(5)</strong> Reconciliar el código con producción antes de cualquier despliegue. <strong>(6)</strong>
+  Re-rotular la pantalla de remesas. <strong>(7)</strong> Definir qué son DBNX y PULSE2CHAT o quitarlos del
+  material público. <strong>(8)</strong> Publicar las tres aplicaciones y pasar los servicios a plan pago.
 </div>
 
-<h2 class="salto">8 · Los próximos noventa días</h2>
+<h2 class="salto">8 · El orden de salida</h2>
 
-<p>Este plan está ordenado por lo que bloquea a lo demás, no por lo que es más fácil. El primer bloque completo
-tiene que estar cerrado antes de publicar un solo segundo de comercial.</p>
+<p>El plan cambió de forma cuando aparecieron los hallazgos de las secciones 6.1 a 6.4. Ya no empieza por
+encender: empieza por cerrar.</p>
 
 <table>
-  <thead><tr><th>Bloque</th><th>Qué se hace</th><th>Por qué ahora</th></tr></thead>
+  <thead><tr><th style="width:20%">Bloque</th><th>Qué se hace</th><th style="width:26%">Por qué en este orden</th></tr></thead>
   <tbody>
     <tr>
-      <td><b>Días 1–15</b><br>Poner el código en una sola versión</td>
-      <td>Traer a esta rama los sesenta y un archivos de Genesis ID que corren en producción, resolver lo que choque, volver a correr las 227 pruebas y dejar una sola rama de verdad. Cerrar las tres faltas que el propio servicio se marca: firmar la bitácora, activar el segundo factor de los tres operadores y explicar por escrito la rotura sellada. Y re-rotular la pantalla de remesas de la billetera (6.12) antes de que nadie la vea.</td>
-      <td>Mientras esto no esté hecho, cualquier despliegue puede borrar un mes de trabajo de cumplimiento. Bloquea todo lo demás.</td>
+      <td class="riesgo"><b>Esta semana</b><br>Cerrar lo abierto</td>
+      <td>Exigir sesión y recortar la respuesta en las rutas del directorio de comercios. Quitar las direcciones de los nodos del archivo público del mapa. Corregir los términos y la política de la billetera —custodia con llave de operador, y el proveedor de identidad que de verdad recibe los datos— y arreglar su maquetado. Activar el segundo factor de los tres operadores y firmar la bitácora.</td>
+      <td>Son datos de personas y son afirmaciones escritas que hoy no se sostienen. Nada de esto tarda más de unos días y ninguna de las otras cosas vale nada si esto sigue abierto.</td>
     </tr>
     <tr>
-      <td><b>Días 16–30</b><br>Encender la puerta</td>
-      <td>Desplegar la casa de cambio y pasar los dos servicios a plan pago. Fuente automática de precio del oro y de tasas, con el fijado a mano como respaldo. Trámites de tienda y publicación de las tres aplicaciones. Cierre por escrito del expediente de claves.</td>
-      <td>Son las cuatro cosas que convierten una campaña en registros en lugar de en una pantalla que no responde.</td>
+      <td><b>Días 1–20</b><br>Una sola versión</td>
+      <td>Decidir cuál casa de cambio queda y poner la elegida en el repositorio. Traer a esta rama lo que corre en producción de Genesis ID y volver a correr las 227 pruebas. Meter en control de versiones el génesis, la configuración del consenso y el inventario de las máquinas. Arreglar los vigilantes de los nodos. Re-rotular la pantalla de remesas.</td>
+      <td>Mientras el repositorio no represente el sistema, ninguna decisión técnica se puede tomar con datos, y cualquier despliegue puede borrar un mes de trabajo.</td>
     </tr>
     <tr>
-      <td><b>Días 31–60</b><br>Aguantar el volumen</td>
-      <td>Cobro real en MyTokenPay contra la cadena. Segundo operador de cumplimiento con turnos junto a la biometría automática. Primeros agentes de cambio por país, empezando por Honduras, Guatemala y Perú. Definición pública de DBNX y de PULSE2CHAT. Explorador OrdenScan publicado.</td>
-      <td>Cuando la gente entre, el cuello de botella va a ser humano —verificación y liquidez— y el reclamo va a ser «¿y dónde lo gasto?».</td>
+      <td><b>Días 20–45</b><br>Probar lo que se afirma</td>
+      <td>Atestación del metal por un tercero, con informe mostrable, o retirar toda mención agregada y la sigla del informe técnico. Conciliación entre el libro interno, la tesorería en cadena y la bóveda. Cerrar por escrito el expediente de claves. Documentar la tarjeta y la rampa por otra cadena, que existen y no están en ningún acta.</td>
+      <td>Es lo que convierte «respaldado en oro» en una afirmación que aguanta una entrevista, y lo que un tercero serio pide antes de mirar nada más.</td>
     </tr>
     <tr>
-      <td><b>Días 61–90</b><br>Aguantar la confianza</td>
-      <td>Rampa de AuCorp para montos grandes. Primer validador operado por un tercero. Auditoría de bóveda con informe mostrable. Licencia de remesas en el primer país, o retirar la palabra del producto.</td>
-      <td>Son las cuatro cosas que un tercero serio va a pedir antes de tomar el proyecto en serio, y las cuatro toman más de treinta días.</td>
+      <td><b>Días 45–70</b><br>Encender la puerta</td>
+      <td>Desplegar la casa de cambio elegida y pasar los servicios a plan pago. Fuente automática de precio del oro y de tasas, con el fijado a mano como respaldo. Trámites de tienda y publicación de las tres aplicaciones. Cobro real en MyTokenPay contra la cadena, o quitarlo de la demostración.</td>
+      <td>Recién aquí tiene sentido llevar gente: antes, cada persona que llegue se encuentra una puerta cerrada o una pantalla simulada.</td>
+    </tr>
+    <tr>
+      <td><b>Días 70–90</b><br>Que haya con quién operar</td>
+      <td>Agentes de cambio reclutados y con fondos, país por país, empezando por tres. Rampa de dinero de curso legal. Primer validador operado por un tercero. Actualizar los seis documentos de junta que describen la cadena vieja.</td>
+      <td>Un mercado sin contraparte no es un mercado, y una campaña que llega antes que la liquidez se gasta en balde.</td>
     </tr>
   </tbody>
 </table>
 
 <div class="nota bien">
   <b class="t">Lo que no hay que hacer</b>
-  No hay que construir más producto. Con lo que hay escrito hoy —cadena, identidad, billetera, cobros, casa de
-  cambio y asistente— alcanza para abrir en veintitrés países. Los noventa días de arriba son casi todos
-  reconciliación, trámite, gasto y operación; de programación nueva, solo el cobro real de MyTokenPay y la
-  fuente automática de precios. Agregar una pieza nueva antes de encender las que ya están terminadas sería el
-  error más caro del año.
+  No hay que construir más producto. Lo que falta no es software: es corregir textos, cerrar dos rutas, poner
+  todo en una sola versión, probar el respaldo y reclutar gente. De programación nueva quedan tres cosas —el
+  cobro real, la fuente automática de precios y los vigilantes de los nodos— y ninguna pasa de una semana.
+  Agregar una pieza nueva antes de cerrar la sección 6 sería el error más caro del año.
 </div>
 
 <h2 class="salto">9 · Qué se puede decir en público y qué no</h2>
 
 <p>Esta sección existe porque la revisión se hizo, entre otras cosas, para alimentar una campaña. Todo lo de la
-columna izquierda lo sostiene el producto tal como está hoy; todo lo de la derecha sería falso, prematuro o
-imprudente, y compromete a la empresa.</p>
+columna izquierda lo sostiene el producto tal como está hoy y se puede comprobar. Todo lo de la derecha sería
+falso, prematuro o imprudente, y compromete a la empresa. La lista de la derecha creció con lo que apareció en
+la sección 6.</p>
 
 <div class="comparar">
   <div class="col ahora">
     <div class="cab">Se puede afirmar hoy</div>
     <ul>
       <li>Que un ORIGEN es un cincuentaicincoavo de gramo de oro en bóveda. Es una definición, no una cifra de tesorería.</li>
-      <li>Que el respaldo viene de concesiones mineras propias en Danlí y Choluteca, no de metal alquilado.</li>
-      <li>Que la red es propia y que mover ORIGEN en ella no cuesta comisión de red.</li>
-      <li>Que hay una casa de cambio entre personas en veintitrés países, con los bancos y billeteras que cada quien ya usa.</li>
-      <li>Que mientras el dinero viaja, el activo queda en custodia, y que si algo falla lo resuelve un operador leyendo el chat y los comprobantes.</li>
-      <li>Que para operar hay que estar verificado con Genesis ID, y que esa verificación vale en todas las apps del ecosistema.</li>
-      <li>Que la operación diaria está en Tegucigalpa y que el lanzamiento LATAM fue ahí en agosto de 2024.</li>
+      <li>Que la red es propia, que contesta, que produce bloques cada diez segundos y que está inscrita en los registros públicos de cadenas.</li>
+      <li>Que mover ORIGEN en ella no cuesta comisión de red, mientras los nodos sean propios.</li>
+      <li>Que la emisión de cada token se puede leer en la cadena en cualquier momento, por cualquiera.</li>
+      <li>Que el respaldo viene de concesiones mineras propias, sin dar cifras ni citar informes técnicos.</li>
+      <li>Que hay una casa de cambio entre personas escrita y probada para veintitrés países, con los bancos y billeteras que cada quien ya usa.</li>
+      <li>Que mientras el dinero viaja el activo queda en custodia, y que si algo falla lo resuelve un operador leyendo el chat y los comprobantes.</li>
+      <li>Que para operar hay que estar verificado con Genesis ID, que nadie se aprueba solo y que las listas de sanciones se refrescan solas.</li>
     </ul>
   </div>
   <div class="col antes">
     <div class="cab">No se puede afirmar</div>
     <ul>
+      <li><b>Que solo el dueño puede tocar sus fondos</b>, ni que la billetera no es custodia. Hoy hay llave de operador (6.1).</li>
       <li>Rendimientos, revalorización o cualquier promesa de ganancia. No es un instrumento de inversión.</li>
       <li>Que sea un banco, que esté regulada como banco o que los saldos estén asegurados.</li>
-      <li>Remesas como servicio vivo: sin licencia por país, es una calculadora.</li>
-      <li>Cifras de onzas en bóveda o de respaldo total mientras no haya auditoría publicable.</li>
-      <li>Licencias, autorizaciones o avales de la zona de Roatán. No se han obtenido.</li>
-      <li>Alianzas con bancos o billeteras por el hecho de aparecer como destino de pago.</li>
-      <li>Que el puente a otras cadenas esté vivo. Es plan hasta que se verifique.</li>
+      <li>Remesas, envíos a otros países o transferencias sin controles de cambio. Ni en campaña ni en la propia aplicación (6.15).</li>
+      <li>Cifras de onzas en bóveda, respaldo total, ni la sigla del informe técnico minero. No hay atestación mostrable (6.5).</li>
+      <li><b>Que el activo viva solo en su propia red.</b> Hay una rampa de entrada por otra cadena (6.13).</li>
+      <li>Número de comercios afiliados, ni mostrar el directorio actual: los treinta que trae son inventados (6.8).</li>
+      <li>Que el cobro con código QR funcione. Está simulado (6.10).</li>
+      <li>Que ONDK sirva para gobernar. No hay mecanismo de gobernanza (6.17).</li>
+      <li>Licencias, autorizaciones o avales de ninguna jurisdicción, ni de la zona de Roatán.</li>
+      <li>Alianzas con bancos o billeteras por el hecho de aparecer como destino de pago, ni usar sus marcas.</li>
+      <li>Que el puente a otras cadenas esté vivo como producto. Lo que hay es una rampa de depósito, no un puente.</li>
     </ul>
   </div>
 </div>
@@ -757,8 +830,19 @@ imprudente, y compromete a la empresa.</p>
   <b class="t">La regla que resume todas</b>
   Si una frase de campaña necesita que el oyente confíe en algo que no puede comprobar, hay que cambiarla por
   una que se pueda comprobar. La fuerza de este proyecto no está en lo que promete sino en lo que ya pesa: el
-  metal, la red propia, los veintitrés países. Prometer de más es, literalmente, el error de las cuatro eras
-  que el comercial va a criticar.
+  metal, la red propia, los veintitrés países. Prometer de más es, literalmente, el error de las cuatro eras que
+  el comercial va a criticar — y esta vez el riesgo no es solo de reputación: <strong>hay dos textos publicados
+  que ya prometen de más</strong>, y están en 6.1 y en 6.15.
+</div>
+
+<div class="nota">
+  <b class="t">Cómo se hizo esta revisión</b>
+  Ocho auditores leyeron en paralelo el código de cada pieza —no los README, el código— y ocho verificadores
+  independientes trataron de refutar cada hallazgo antes de que entrara aquí. Sobre eso, quien firma este
+  documento comprobó por su cuenta lo más grave: corrió las tres baterías de pruebas, consultó los servicios
+  vivos, leyó los textos legales publicados y la diferencia entre el código de producción y el de esta rama, y
+  confirmó una por una las rutas y los archivos que se citan. Lo que no se pudo comprobar de primera mano no
+  entró, y lo que quedó en duda está dicho como duda.
 </div>
 
 <div class="pie-doc">Documento 8 · Junta Directiva · Orden Global Corp · 26 de septiembre de 2026 · Revisión hecha sobre el código de express-js-on-vercel y ULTRON-APP</div>
