@@ -20,19 +20,20 @@ import { AnimatedScreen } from '../src/components/AnimatedScreen'
 import { GradientButton } from '../src/components/ui/GradientButton'
 import { Card } from '../src/components/ui/Card'
 import { QrBadge } from '../src/components/QrBadge'
-import { useCartStore, cartTotalUsd } from '../src/store/cart'
+import { useCartStore } from '../src/store/cart'
 import { useWalletStore, isPayError } from '../src/store/wallet'
 import { useOrigenUsd, SIN_PRECIO } from '../src/store/precio'
 import { useBusinessStore } from '../src/store/business'
 import { useAuthStore } from '../src/store/auth'
 import { useNotificationsStore } from '../src/store/notifications'
-import { toOrigen, toUsd, fmtOrigen, fmtUsd } from '../src/lib/commerce'
+import { toOrigen, toUsd, fmtOrigen, fmtUsd, cotizar, repartirIgual, sumaPartes, type Cotizacion } from '../src/lib/commerce'
 import { fonts, radius, shadow } from '../src/lib/theme'
 import { useTheme, type ThemeColors } from '../src/hooks/useTheme'
 
 type Stage = 'invoice' | 'qr' | 'split' | 'success'
 const TIPS = [0, 5, 10, 15]
 const MAX_FRIENDS = 4
+const TOTAL_CERO = 'No hay nada que cobrar: el total es 0 ORIGEN.'
 
 interface SplitPerson {
   label: string
@@ -64,96 +65,107 @@ export default function Cobro() {
 
   /* El menú está en USD y se cobra en ORIGEN: la conversión NECESITA el precio
      del oro de ahora. Sin precio fresco no se inventa uno (antes: 2,35 fijo):
-     los montos se pintan «—» y cobrar se bloquea con SIN_PRECIO. */
+     los montos se pintan «—» y cobrar se bloquea con SIN_PRECIO.
+
+     En la factura el monto sigue al precio del momento. Al salir de ella (QR,
+     dividir o pagar) se FIJA: el QR que escanea el cliente, las partes de la
+     cuenta dividida y la venta registrada salen de esa misma cotización, y ya
+     no cambian con cada lectura del oro ni pasan a 0 si el precio caduca a
+     media venta. Volver a la factura vuelve a cotizar. */
   const origenUsd = useOrigenUsd()
   const sinPrecio = origenUsd == null
-  const subtotalUsd = cartTotalUsd(cart.lines)
-  const subtotalOr = toOrigen(subtotalUsd, origenUsd) ?? 0
-  const tipOr = Math.round(subtotalOr * tipPct) / 100
-  const totalOr = Math.round((subtotalOr + tipOr) * 100) / 100
-  const totalUsd = toUsd(totalOr, origenUsd)
-  // Lo que se enseña: «—» sin precio, nunca un 0 que parezca un total.
-  const verOr = (n: number) => fmtOrigen(sinPrecio ? null : n)
+  const enVivo = useMemo(() => cotizar(cart.lines, tipPct, origenUsd), [cart.lines, tipPct, origenUsd])
+  const [fijada, setFijada] = useState<Cotizacion | null>(null)
+  const cot = stage === 'invoice' ? enVivo : fijada
+  const subtotalOr = cot?.subtotalOr ?? 0
+  const tipOr = cot?.tipOr ?? 0
+  const totalOr = cot?.totalOr ?? 0
+  const totalUsd = cot ? toUsd(cot.totalOr, cot.origenUsd) : null
+  // Lo que se enseña: «—» sin cotización, nunca un 0 que parezca un total.
+  const verOr = (n: number) => fmtOrigen(cot ? n : null)
 
-  const saleItems = useMemo(
-    () => cart.lines.map((l) => ({ name: l.item.name, qty: l.qty, priceOrigen: toOrigen(l.item.priceUsd, origenUsd) ?? 0 })),
-    [cart.lines, origenUsd],
-  )
-
-  // Todo lo que cobra pasa por aquí primero.
-  function hayPrecio(): boolean {
-    if (!sinPrecio && totalOr > 0) return true
-    setError(SIN_PRECIO)
-    return false
+  /* La cotización con la que se cobra, o null. Sin precio no hace falta decir
+     nada más: el aviso SIN_PRECIO se deriva de `sinPrecio` y se va solo cuando
+     el precio vuelve (antes se guardaba en `error` y se quedaba puesto). */
+  function cotizacionParaCobrar(): Cotizacion | null {
+    if (!enVivo) return null
+    if (!(enVivo.totalOr > 0)) {
+      setError(TOTAL_CERO)
+      return null
+    }
+    return enVivo
   }
 
-  function finishSale(method: 'wallet' | 'qr' | 'split', payer: string) {
+  function salirDeLaFactura(destino: 'qr' | 'split') {
+    const c = cotizacionParaCobrar()
+    if (!c) return
+    setFijada(c)
+    setSplitPeople(null)
+    setError(null)
+    setStage(destino)
+  }
+
+  function volverALaFactura() {
+    setFijada(null)
+    setError(null)
+    setStage('invoice')
+  }
+
+  function finishSale(method: 'wallet' | 'qr' | 'split', payer: string, c: Cotizacion, totalOrigen = c.totalOr) {
     if (!cart.companyId) return
-    if (!hayPrecio()) return
     business.recordSale({
       companyId: cart.companyId,
       invoiceId,
       payer,
       method,
-      items: saleItems,
-      tipOrigen: tipOr,
-      totalOrigen: totalOr,
+      items: c.items,
+      tipOrigen: c.tipOr,
+      totalOrigen,
     })
     pushNotif({
       kind: 'wallet',
       title: 'Cobro acreditado',
-      body: `${cart.companyName} recibió ${verOr(totalOr)} ORIGEN (factura ${invoiceId}). Ya está en su Veta Wallet.`,
+      body: `${cart.companyName} recibió ${fmtOrigen(totalOrigen)} ORIGEN (factura ${invoiceId}). Ya está en su Veta Wallet.`,
     })
-    setSuccessInfo({ method: method === 'wallet' ? 'Veta Wallet' : method === 'qr' ? 'Código QR' : 'Cuenta dividida', total: totalOr })
+    setSuccessInfo({ method: method === 'wallet' ? 'Veta Wallet' : method === 'qr' ? 'Código QR' : 'Cuenta dividida', total: totalOrigen })
     setStage('success')
   }
 
   function payWithWallet() {
-    if (!hayPrecio()) return
+    const c = cotizacionParaCobrar()
+    if (!c) return
     const res = wallet.pay({
       merchant: cart.companyName,
       merchantId: cart.companyId,
-      amountOrigen: totalOr,
+      amountOrigen: c.totalOr,
       method: 'qr',
       note: `Factura ${invoiceId}`,
-      origenUsd,
+      origenUsd: c.origenUsd,
     })
     if (isPayError(res)) {
       setError(res.error)
       return
     }
     setError(null)
-    finishSale('wallet', user?.fullName ?? 'Cliente')
+    finishSale('wallet', user?.fullName ?? 'Cliente', c)
   }
 
   // ---- split helpers ----
-  function buildEqualSplit(n: number): SplitPerson[] {
-    const base = Math.floor((totalOr / n) * 100) / 100
-    const people: SplitPerson[] = []
-    let acc = 0
-    for (let i = 0; i < n; i++) {
-      const amount = i === n - 1 ? Math.round((totalOr - acc) * 100) / 100 : base
-      acc += amount
-      people.push({ label: `Persona ${i + 1}`, amount, paid: false })
-    }
-    return people
-  }
-
   function generateSplit() {
-    if (!hayPrecio()) return
+    if (!fijada) return
     if (!manualMode) {
-      setSplitPeople(buildEqualSplit(friends))
+      setSplitPeople(repartirIgual(fijada.totalOr, friends).map((amount, i) => ({ label: `Persona ${i + 1}`, amount, paid: false })))
       setError(null)
       return
     }
     const amounts = manualAmounts.slice(0, friends).map((v) => parseFloat(v.replace(',', '.')) || 0)
-    const sum = Math.round(amounts.reduce((a, b) => a + b, 0) * 100) / 100
+    const sum = sumaPartes(amounts)
     if (amounts.some((a) => a <= 0)) {
       setError('Cada persona debe pagar un monto mayor a 0.')
       return
     }
-    if (Math.abs(sum - totalOr) > 0.01) {
-      setError(`La suma (${fmtOrigen(sum)}) debe ser igual al total (${verOr(totalOr)} ORIGEN).`)
+    if (Math.abs(sum - fijada.totalOr) > 0.01) {
+      setError(`La suma (${fmtOrigen(sum)}) debe ser igual al total (${fmtOrigen(fijada.totalOr)} ORIGEN).`)
       return
     }
     setError(null)
@@ -161,11 +173,12 @@ export default function Cobro() {
   }
 
   function markPaid(index: number) {
-    if (!splitPeople) return
+    if (!splitPeople || !fijada) return
     const next = splitPeople.map((p, i) => (i === index ? { ...p, paid: true } : p))
     setSplitPeople(next)
     if (next.every((p) => p.paid)) {
-      finishSale('split', `${next.length} personas`)
+      // Se registra lo que pagaron las personas: la suma de sus partes.
+      finishSale('split', `${next.length} personas`, fijada, sumaPartes(next.map((p) => p.amount)))
     }
   }
 
@@ -186,14 +199,15 @@ export default function Cobro() {
     )
   }
 
-  const qrPayload = `mtp:cobro?c=${cart.companyId}&inv=${invoiceId}&a=${totalOr}`
+  // El QR lleva el monto FIJADO; sin cotización fijada no hay QR que enseñar.
+  const qrPayload = fijada ? `mtp:cobro?c=${cart.companyId}&inv=${invoiceId}&a=${fijada.totalOr}` : null
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <TopHeader
         title={stage === 'split' ? 'Dividir cuenta' : stage === 'qr' ? 'QR de cobro' : 'Factura'}
         sub={cart.companyName}
-        onBack={() => (stage === 'invoice' || stage === 'success' ? router.back() : setStage('invoice'))}
+        onBack={() => (stage === 'invoice' || stage === 'success' ? router.back() : volverALaFactura())}
         colors={colors}
         styles={styles}
       />
@@ -258,12 +272,12 @@ export default function Cobro() {
               </Text>
 
               <View style={styles.altRow}>
-                <AnimatedPressable onPress={() => { if (hayPrecio()) setStage('qr') }} scaleTo={0.96} style={styles.altBtn}>
+                <AnimatedPressable onPress={() => salirDeLaFactura('qr')} scaleTo={0.96} style={styles.altBtn}>
                   <QrCode size={18} color={colors.cyan} />
                   <Text style={styles.altTitle}>QR de cobro</Text>
                   <Text style={styles.altHint}>Escanéalo con MyTokenPay o Veta Wallet</Text>
                 </AnimatedPressable>
-                <AnimatedPressable onPress={() => { if (!hayPrecio()) return; setSplitPeople(null); setStage('split') }} scaleTo={0.96} style={styles.altBtn}>
+                <AnimatedPressable onPress={() => salirDeLaFactura('split')} scaleTo={0.96} style={styles.altBtn}>
                   <Users size={18} color={colors.violet} />
                   <Text style={styles.altTitle}>Dividir cuenta</Text>
                   <Text style={styles.altHint}>Hasta {MAX_FRIENDS} personas, un QR cada una</Text>
@@ -273,7 +287,7 @@ export default function Cobro() {
           )}
 
           {/* ================= QR ÚNICO ================= */}
-          {stage === 'qr' && (
+          {stage === 'qr' && fijada && qrPayload && (
             <View style={{ alignItems: 'center', gap: 14 }}>
               <Text style={styles.qrAmount}>{verOr(totalOr)} ORIGEN</Text>
               <Text style={styles.qrUsd}>≈ {fmtUsd(totalUsd)} · Factura {invoiceId}</Text>
@@ -284,13 +298,14 @@ export default function Cobro() {
                 Pídele al cliente que lo escanee con MyTokenPay o Veta Wallet. El monto se acredita
                 al instante en la Veta Wallet del comercio.
               </Text>
+              {error && <ErrorBox msg={error} colors={colors} />}
               <GradientButton
                 label="Simular pago escaneado"
-                onPress={() => finishSale('qr', 'Cliente con QR')}
+                onPress={() => finishSale('qr', 'Cliente con QR', fijada)}
                 icon={<CheckCircle2 size={16} color={colors.bg} />}
                 style={{ alignSelf: 'stretch' }}
               />
-              <AnimatedPressable onPress={() => setStage('invoice')} style={styles.cancelLink}>
+              <AnimatedPressable onPress={volverALaFactura} style={styles.cancelLink}>
                 <X size={13} color={colors.muted} />
                 <Text style={styles.cancelTxt}>Volver a la factura</Text>
               </AnimatedPressable>
@@ -298,7 +313,7 @@ export default function Cobro() {
           )}
 
           {/* ================= DIVIDIR CUENTA ================= */}
-          {stage === 'split' && !splitPeople && (
+          {stage === 'split' && fijada && !splitPeople && (
             <>
               <Card style={{ gap: 14 }}>
                 <Text style={styles.splitTitle}>¿Entre cuántos dividen {verOr(totalOr)} ORIGEN?</Text>
@@ -356,11 +371,12 @@ export default function Cobro() {
             </>
           )}
 
-          {stage === 'split' && splitPeople && (
+          {stage === 'split' && fijada && qrPayload && splitPeople && (
             <>
               <Text style={styles.splitProgress}>
                 {splitPeople.filter((p) => p.paid).length} de {splitPeople.length} pagos recibidos · Factura {invoiceId}
               </Text>
+              {error && <ErrorBox msg={error} colors={colors} />}
               {splitPeople.map((p, i) => (
                 <Card key={i} style={styles.personCard}>
                   <View style={{ alignItems: 'center', gap: 8 }}>
@@ -369,7 +385,7 @@ export default function Cobro() {
                   <View style={{ flex: 1, gap: 4 }}>
                     <Text style={styles.personLabel}>{p.label}</Text>
                     <Text style={styles.personAmt}>{fmtOrigen(p.amount)} ORIGEN</Text>
-                    <Text style={styles.personUsd}>≈ {fmtUsd(toUsd(p.amount, origenUsd))}</Text>
+                    <Text style={styles.personUsd}>≈ {fmtUsd(toUsd(p.amount, fijada.origenUsd))}</Text>
                     {p.paid ? (
                       <View style={styles.paidPill}>
                         <CheckCircle2 size={13} color={colors.ok} />
