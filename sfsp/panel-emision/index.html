@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panel de emisión y quema</title>
+  <meta name="description" content="SFSP-410 · panel de emisión bajo demanda, quema y cupos de gobierno. Modo prueba contra nodo local.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Cpath d=%27M8 1l7 7-7 7-7-7z%27 fill=%27%23d4af5a%27/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <header class="barra">
+    <div class="marca">
+      <span class="sello" aria-hidden="true">◆</span>
+      <div>
+        <div class="titulo">Panel de emisión y quema</div>
+        <div class="subtitulo">SFSP-410 · circulante = en manos de usuarios</div>
+      </div>
+      <span id="modo" class="modo">MODO PRUEBA</span>
+    </div>
+    <div class="actor">
+      <label for="actor">Actuar como</label>
+      <select id="actor"></select>
+      <span id="actor-rol" class="rol"></span>
+    </div>
+  </header>
+
+  <div id="aviso" class="aviso">
+    Modo prueba: nodo local <b id="aviso-rpc">127.0.0.1:8545</b> · cuentas sintéticas desbloqueadas.
+    Nada de lo que hace este panel toca la red 5550 ni mueve fondos reales.
+  </div>
+
+  <nav class="indice">
+    <a href="#estado">Estado</a><a href="#suministro">Suministro</a><a href="#propuestas">Propuestas</a>
+    <a href="#operacion">Operación</a><a href="#historial">Historial</a><a href="#emergencia">Emergencia</a>
+  </nav>
+
+  <main>
+    <!-- a) Estado -->
+    <section id="estado" class="tarjeta">
+      <h2>Estado</h2>
+      <div class="kpis" id="kpis-estado"><div class="cargando">Conectando con el nodo…</div></div>
+      <div id="reloj-prueba" class="fila-botones oculto">
+        <span class="nota">Reloj de la cadena (sólo prueba):</span>
+        <button class="sec" data-avanzar="3600">Avanzar 1 h</button>
+        <button class="sec" data-avanzar="86400">Avanzar 1 día</button>
+        <button class="sec" id="refrescar">Refrescar</button>
+      </div>
+    </section>
+
+    <!-- b) Suministro -->
+    <section id="suministro">
+      <h2 class="h2-suelto">Suministro por activo</h2>
+      <div id="activos" class="rejilla-activos"></div>
+    </section>
+
+    <!-- c) Propuestas -->
+    <section id="propuestas" class="tarjeta">
+      <h2>Propuestas de gobierno</h2>
+      <div class="dos-col">
+        <form id="form-propuesta" class="formulario" autocomplete="off">
+          <h3>Nueva propuesta</h3>
+          <label>Acción
+            <select name="accion" id="p-accion">
+              <option value="SET_MINT_BUDGET">SET_MINT_BUDGET · cupo de emisión (tokens)</option>
+              <option value="BURN">BURN · quema por gobierno (tokens)</option>
+              <option value="RELEASE_NATIVE">RELEASE_NATIVE · liberar ORIGEN de la bóveda</option>
+              <option value="SET_RELEASE_BUDGET">SET_RELEASE_BUDGET · cupo de liberación ORIGEN</option>
+            </select>
+          </label>
+          <div id="p-campos"></div>
+          <div class="fila-botones">
+            <button type="submit" class="sec">Preparar orden</button>
+            <button type="button" id="p-proponer" disabled>Proponer</button>
+          </div>
+          <div id="p-vista" class="vista oculto"></div>
+        </form>
+        <div>
+          <div class="cabecera-lista">
+            <h3>Propuestas</h3>
+            <label class="check"><input type="checkbox" id="ver-ejecutadas"> mostrar ejecutadas</label>
+          </div>
+          <div id="lista-propuestas" class="lista"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- d) Operación bajo demanda -->
+    <section id="operacion" class="tarjeta">
+      <h2>Operación bajo demanda <span class="etq">demo</span></h2>
+      <p class="nota">El emisor acuña (o libera de la bóveda) exactamente lo que el usuario pagó, dentro del cupo.
+        Al redimir, el usuario consiente la quema (o devuelve ORIGEN a la bóveda) y el circulante baja lo mismo.
+        La ejecución la firma la cuenta de «Actuar como» (debe tener rol Emisor).</p>
+      <div class="formulario en-linea" id="form-op">
+        <label>Activo <select id="op-activo"></select></label>
+        <label>Usuario <select id="op-usuario"></select></label>
+        <label>Monto <input id="op-monto" type="text" inputmode="decimal" value="100"></label>
+        <div class="fila-botones">
+          <button id="op-pago">Simular pago de usuario</button>
+          <button id="op-redencion" class="sec">Simular redención</button>
+        </div>
+      </div>
+      <div id="op-resultado" class="nota mono"></div>
+    </section>
+
+    <!-- e) Historial -->
+    <section id="historial" class="tarjeta">
+      <div class="cabecera-lista">
+        <h2>Historial</h2>
+        <div class="chips" id="filtro-historial">
+          <button class="chip activo" data-f="todo">Todo</button>
+          <button class="chip" data-f="emision">Emisión</button>
+          <button class="chip" data-f="quema">Quema</button>
+          <button class="chip" data-f="cupo">Cupos</button>
+          <button class="chip" data-f="gobierno">Gobierno</button>
+        </div>
+      </div>
+      <div id="lista-historial" class="historial"></div>
+    </section>
+
+    <!-- f) Emergencia -->
+    <section id="emergencia" class="tarjeta emergencia">
+      <h2>Emergencia</h2>
+      <p class="nota">Reducir poder no necesita quórum: un solo firmante corta un cupo o pausa el sistema.
+        La pausa caduca sola; levantarla antes exige una orden UNPAUSE con quórum.</p>
+      <div class="dos-col">
+        <div class="formulario">
+          <h3>Revocar cupo</h3>
+          <label>Activo <select id="rev-activo"></select></label>
+          <label>Motivo <input id="rev-motivo" type="text" value="SOSPECHA"></label>
+          <button id="rev-boton" class="peligro">Revocar cupo</button>
+        </div>
+        <div class="formulario">
+          <h3>Pausa de emergencia</h3>
+          <label>Motivo <input id="pausa-motivo" type="text" value="INCIDENTE"></label>
+          <label>Duración
+            <select id="pausa-duracion">
+              <option value="3600">1 hora</option>
+              <option value="21600">6 horas</option>
+              <option value="86400">24 horas (máximo del fixture)</option>
+            </select>
+          </label>
+          <button id="pausa-boton" class="peligro">Pausa de emergencia</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="pie">
+    SFSP · Orden Global · panel de demostración. Producción: billeteras de hardware / multisig y decisiones de Junta
+    (D03/D04/D05/D07 + SFSP-410). Ver LEEME.md.
+  </footer>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <script src="vendor/ethers.umd.min.js"></script>
+  <script>
+    if (!window.ethers) {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"><\/script>');
+    }
+  </script>
+  <script src="panel.js"></script>
+</body>
+</html>

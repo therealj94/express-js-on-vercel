@@ -1,0 +1,6177 @@
+{
+  "mode": "prueba",
+  "aviso": "Configuración de DEMOSTRACIÓN. Nodo local Hardhat, cuentas sintéticas. No usar en la 5550.",
+  "rpc": "http://127.0.0.1:8545",
+  "chainId": 31337,
+  "deployBlock": 0,
+  "generatedAt": "2026-09-26T06:32:23.876Z",
+  "lastSetupBlock": 105,
+  "addresses": {
+    "governance": "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512",
+    "issuance": "0x0165878a594ca255338adfa4d48449f69242eb8f",
+    "registry": "0x5fbdb2315678afecb367f032d93f642f64180aa3",
+    "engine": "0xcf7ed3acca5a467e9e704c703e8d87f634fb0fc9",
+    "assetNew": "0xdc64a140aa3e981100a9beca4e685f962f0cf6c9",
+    "nativeVault": "0xfd471836031dc5108809d173a067e8486b9047a3"
+  },
+  "abis": {
+    "governance": [
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "board",
+            "type": "address"
+          },
+          {
+            "internalType": "address[]",
+            "name": "signers_",
+            "type": "address[]"
+          },
+          {
+            "internalType": "uint256",
+            "name": "threshold_",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "upgradeThreshold_",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint64",
+            "name": "timelockDelay_",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "maxPauseDuration_",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "signer",
+            "type": "address"
+          }
+        ],
+        "name": "AlreadyApprovedAuthorization",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "expected",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "got",
+            "type": "bytes32"
+          }
+        ],
+        "name": "AuthorizationActionMismatch",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "consumedAt",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "AuthorizationConsumed",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "approved",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "recomputed",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "AuthorizationDigestMismatch",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          }
+        ],
+        "name": "AuthorizationDuplicate",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint64",
+            "name": "expiry",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "timestamp",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "AuthorizationExpired",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "reason",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "AuthorizationMalformed",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint64",
+            "name": "notBefore",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "timestamp",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "AuthorizationNotYetValid",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "have",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "need",
+            "type": "uint256"
+          }
+        ],
+        "name": "AuthorizationQuorumNotReached",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          }
+        ],
+        "name": "AuthorizationSpent",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          }
+        ],
+        "name": "AuthorizationUnknown",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "threshold",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "signers",
+            "type": "uint256"
+          }
+        ],
+        "name": "InvalidQuorum",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "NotPaused",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "NotSigner",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint64",
+            "name": "expiresAt",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "maxAllowed",
+            "type": "uint64"
+          }
+        ],
+        "name": "PauseExpiryInvalid",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "expectedPauseId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "presentedNonce",
+            "type": "bytes32"
+          }
+        ],
+        "name": "PauseMismatch",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "PauseReasonRequired",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "proposer",
+            "type": "address"
+          }
+        ],
+        "name": "ProposerCannotApprove",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "RecoveryCaseIncomplete",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "readyAt",
+            "type": "uint64"
+          }
+        ],
+        "name": "TimelockPending",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "Unauthorized",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "UpgradeTargetRequired",
+        "type": "error"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "signer",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint32",
+            "name": "approvals",
+            "type": "uint32"
+          }
+        ],
+        "name": "AuthorizationApproved",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "executor",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint64",
+            "name": "consumedAt",
+            "type": "uint64"
+          }
+        ],
+        "name": "AuthorizationConsumed",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "action",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "proposer",
+            "type": "address"
+          }
+        ],
+        "name": "AuthorizationProposed",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "operationId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "actionKind",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "actor",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "detail",
+            "type": "bytes32"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint64",
+            "name": "effectiveAt",
+            "type": "uint64"
+          }
+        ],
+        "name": "GovernanceAction",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "caseId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "operationId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "evidenceRoot",
+            "type": "bytes32"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint64",
+            "name": "executedAt",
+            "type": "uint64"
+          }
+        ],
+        "name": "RecoveryExecuted",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "by",
+            "type": "address"
+          }
+        ],
+        "name": "RoleGranted",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "by",
+            "type": "address"
+          }
+        ],
+        "name": "RoleRevoked",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "authorizationId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint64",
+            "name": "expiry",
+            "type": "uint64"
+          }
+        ],
+        "name": "SupplyAuthorized",
+        "type": "event"
+      },
+      {
+        "inputs": [],
+        "name": "ATTESTOR",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "AUDITOR",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "DBNX_BOARD",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "ISSUER",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "SCOPE_QUORUM",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "SCOPE_UPGRADE",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "TECH_OPS",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          }
+        ],
+        "name": "approveAuthorization",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          }
+        ],
+        "name": "authorizationActionOf",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          }
+        ],
+        "name": "authorizationOf",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "bytes32",
+                "name": "action",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "address",
+                "name": "proposer",
+                "type": "address"
+              },
+              {
+                "internalType": "uint64",
+                "name": "proposedAt",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint32",
+                "name": "approvals",
+                "type": "uint32"
+              },
+              {
+                "internalType": "bool",
+                "name": "consumed",
+                "type": "bool"
+              },
+              {
+                "internalType": "uint32",
+                "name": "quorumAtProposal",
+                "type": "uint32"
+              }
+            ],
+            "internalType": "struct SFSPGovernanceController.ContentAuthorization",
+            "name": "",
+            "type": "tuple"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          }
+        ],
+        "name": "authorizationProposedAt",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          }
+        ],
+        "name": "consumeAuthorization",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "currentPauseId",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "reasonCode",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "duration",
+            "type": "uint64"
+          }
+        ],
+        "name": "emergencyPause",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "chainId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "verifyingContract",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "action",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "assetId",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "address",
+                "name": "origin",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "destination",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amountSecondary",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "nonce",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint64",
+                "name": "notBefore",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "expiry",
+                "type": "uint64"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "evidenceRoot",
+                "type": "bytes32"
+              }
+            ],
+            "internalType": "struct SFSPAuthorization.Payload",
+            "name": "p",
+            "type": "tuple"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "approvedDigest",
+            "type": "bytes32"
+          }
+        ],
+        "name": "executeRecovery",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "chainId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "verifyingContract",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "action",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "assetId",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "address",
+                "name": "origin",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "destination",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amountSecondary",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "nonce",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint64",
+                "name": "notBefore",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "expiry",
+                "type": "uint64"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "evidenceRoot",
+                "type": "bytes32"
+              }
+            ],
+            "internalType": "struct SFSPAuthorization.Payload",
+            "name": "p",
+            "type": "tuple"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "approvedDigest",
+            "type": "bytes32"
+          }
+        ],
+        "name": "executeUpgrade",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "grantRole",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "hasRole",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          }
+        ],
+        "name": "isAuthorizationApproved",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "isPaused",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "isSigner",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "chainId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "verifyingContract",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "action",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "assetId",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "address",
+                "name": "origin",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "destination",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amountSecondary",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "nonce",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint64",
+                "name": "notBefore",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "expiry",
+                "type": "uint64"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "evidenceRoot",
+                "type": "bytes32"
+              }
+            ],
+            "internalType": "struct SFSPAuthorization.Payload",
+            "name": "p",
+            "type": "tuple"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "approvedDigest",
+            "type": "bytes32"
+          }
+        ],
+        "name": "liftPause",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "maxPauseDuration",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "pauseReason",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "reasonCode",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "expiresAt",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "action",
+            "type": "bytes32"
+          }
+        ],
+        "name": "proposeAuthorization",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "quorumThreshold",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "authorizationId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint64",
+            "name": "expiry",
+            "type": "uint64"
+          }
+        ],
+        "name": "recordSupplyAuthorization",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "revokeRole",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "chainId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "verifyingContract",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "action",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "assetId",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "address",
+                "name": "origin",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "destination",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amountSecondary",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "nonce",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint64",
+                "name": "notBefore",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "expiry",
+                "type": "uint64"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "evidenceRoot",
+                "type": "bytes32"
+              }
+            ],
+            "internalType": "struct SFSPAuthorization.Payload",
+            "name": "p",
+            "type": "tuple"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "approvedDigest",
+            "type": "bytes32"
+          }
+        ],
+        "name": "setQuorum",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "signerCount",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "timelockDelay",
+        "outputs": [
+          {
+            "internalType": "uint64",
+            "name": "",
+            "type": "uint64"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "upgradeQuorumThreshold",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ],
+    "issuance": [
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "board",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "governance_",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "AssetContractUnknown",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "expected",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "got",
+            "type": "bytes32"
+          }
+        ],
+        "name": "AssetMismatch",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "expected",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "got",
+            "type": "bytes32"
+          }
+        ],
+        "name": "AuthorizationActionMismatch",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "authorizationId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "minted",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "requested",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "approved",
+            "type": "uint256"
+          }
+        ],
+        "name": "AuthorizationAmountExceeded",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "consumedAt",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "AuthorizationConsumed",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "approved",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "recomputed",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "AuthorizationDigestMismatch",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint64",
+            "name": "expiry",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint256",
+            "name": "nowTs",
+            "type": "uint256"
+          }
+        ],
+        "name": "AuthorizationExpired",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint64",
+            "name": "expiry",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "timestamp",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "AuthorizationExpired",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "reason",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "AuthorizationMalformed",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint64",
+            "name": "notBefore",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint256",
+            "name": "nowTs",
+            "type": "uint256"
+          }
+        ],
+        "name": "AuthorizationNotYetValid",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint64",
+            "name": "notBefore",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "timestamp",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "AuthorizationNotYetValid",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "BadSignature",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "validUntil",
+            "type": "uint64"
+          }
+        ],
+        "name": "BudgetExpired",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "reason",
+            "type": "bytes32"
+          }
+        ],
+        "name": "BudgetInvalid",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "BudgetNotSet",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "requested",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxPerOperation",
+            "type": "uint256"
+          }
+        ],
+        "name": "BudgetOperationTooLarge",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "used",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "requested",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "perPeriod",
+            "type": "uint256"
+          }
+        ],
+        "name": "BudgetPeriodExceeded",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "evidenceRoot",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "recomputed",
+            "type": "bytes32"
+          }
+        ],
+        "name": "BudgetTermsMismatch",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "readyAt",
+            "type": "uint64"
+          }
+        ],
+        "name": "BudgetWaitPending",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "issued",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "requested",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "cap",
+            "type": "uint256"
+          }
+        ],
+        "name": "CumulativeIssuanceCapExceeded",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "chainId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "verifyingContract",
+            "type": "address"
+          }
+        ],
+        "name": "DomainMismatch",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "InternalAccountUnflagNeedsBoard",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "LimitsNotFixed",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          }
+        ],
+        "name": "MintNotAuthorized",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "destination",
+            "type": "address"
+          }
+        ],
+        "name": "MintToInternalAccount",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "nonce",
+            "type": "bytes32"
+          }
+        ],
+        "name": "NonceAlreadyUsed",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "operationId",
+            "type": "bytes32"
+          }
+        ],
+        "name": "OperationReplay",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "outstanding",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "reserved",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "requested",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "limit",
+            "type": "uint256"
+          }
+        ],
+        "name": "OutstandingLimitExceeded",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "Paused",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "reason",
+            "type": "bytes32"
+          }
+        ],
+        "name": "PayloadDoesNotMatchEnvelope",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "PaymentReferenceRequired",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "have",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "need",
+            "type": "uint256"
+          }
+        ],
+        "name": "QuorumNotReached",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "Reentrancy",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "reserveId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "opened",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "presented",
+            "type": "bytes32"
+          }
+        ],
+        "name": "ReserveAssetMismatch",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "reserveId",
+            "type": "bytes32"
+          }
+        ],
+        "name": "ReserveUnknown",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "signer",
+            "type": "address"
+          }
+        ],
+        "name": "SignerNotAuthorized",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "SignersNotSorted",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "Unauthorized",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "actionId",
+            "type": "bytes32"
+          }
+        ],
+        "name": "WrongAction",
+        "type": "error"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "outstandingLimit",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "cumulativeIssuanceCap",
+            "type": "uint256"
+          }
+        ],
+        "name": "InstrumentLimitsSet",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "bool",
+            "name": "internalAccount",
+            "type": "bool"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "by",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "reasonCode",
+            "type": "bytes32"
+          }
+        ],
+        "name": "InternalAccountFlagged",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "reserveId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "reasonCode",
+            "type": "bytes32"
+          }
+        ],
+        "name": "IssuanceReserveClosed",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "reserveId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "IssuanceReserveOpened",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "by",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "reasonCode",
+            "type": "bytes32"
+          }
+        ],
+        "name": "MintBudgetRevoked",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "perPeriod",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint64",
+            "name": "period",
+            "type": "uint64"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "maxPerOperation",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint64",
+            "name": "validUntil",
+            "type": "uint64"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "termsDocRoot",
+            "type": "bytes32"
+          }
+        ],
+        "name": "MintBudgetSet",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "authorizationId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "destination",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "operationId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "evidenceRoot",
+            "type": "bytes32"
+          }
+        ],
+        "name": "MintExecuted",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "destination",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "paymentRef",
+            "type": "bytes32"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "usedInPeriod",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint64",
+            "name": "periodIndex",
+            "type": "uint64"
+          }
+        ],
+        "name": "MintOnDemand",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "by",
+            "type": "address"
+          }
+        ],
+        "name": "RoleGranted",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "by",
+            "type": "address"
+          }
+        ],
+        "name": "RoleRevoked",
+        "type": "event"
+      },
+      {
+        "inputs": [],
+        "name": "ACTION_MINT",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "ACTION_SET_MINT_BUDGET",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "ATTESTOR",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "AUDITOR",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "AUTHORIZATION_TYPEHASH",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "BUDGET_TERMS_TAG",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "DBNX_BOARD",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "ISSUER",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "TECH_OPS",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "components": [
+              {
+                "internalType": "bytes32",
+                "name": "schemaVersion",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "authorizationId",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "actionId",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint256",
+                "name": "chainId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "genesisHash",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "address",
+                "name": "verifyingContract",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "assetId",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "destination",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "policyVersion",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "evidenceRoot",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "nonce",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint64",
+                "name": "notBefore",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "expiry",
+                "type": "uint64"
+              }
+            ],
+            "internalType": "struct SFSPIssuanceController.SignedAuthorization",
+            "name": "a",
+            "type": "tuple"
+          }
+        ],
+        "name": "authorizationDigest",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          }
+        ],
+        "name": "budgetRemaining",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint64",
+            "name": "period",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "validUntil",
+            "type": "uint64"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "termsDocRoot",
+            "type": "bytes32"
+          }
+        ],
+        "name": "budgetTermsRoot",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "pure",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "reserveId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "reasonCode",
+            "type": "bytes32"
+          }
+        ],
+        "name": "closeIssuanceReserve",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          }
+        ],
+        "name": "cumulativeIssued",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "domainSeparator",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "governance",
+        "outputs": [
+          {
+            "internalType": "contract ISFSPGovernanceController",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "grantRole",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "hasRole",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "components": [
+              {
+                "internalType": "bytes32",
+                "name": "schemaVersion",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "authorizationId",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "actionId",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint256",
+                "name": "chainId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "genesisHash",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "address",
+                "name": "verifyingContract",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "assetId",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "destination",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "policyVersion",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "evidenceRoot",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "nonce",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint64",
+                "name": "notBefore",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "expiry",
+                "type": "uint64"
+              }
+            ],
+            "internalType": "struct SFSPIssuanceController.SignedAuthorization",
+            "name": "a",
+            "type": "tuple"
+          }
+        ],
+        "name": "hashAuthorization",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "pure",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "isInternalAccount",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "nonce",
+            "type": "bytes32"
+          }
+        ],
+        "name": "isNonceUsed",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          }
+        ],
+        "name": "limitsOf",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "bool",
+                "name": "configured",
+                "type": "bool"
+              },
+              {
+                "internalType": "uint256",
+                "name": "outstandingLimit",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "cumulativeCap",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct SFSPIssuanceController.InstrumentLimits",
+            "name": "",
+            "type": "tuple"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "components": [
+              {
+                "internalType": "bytes32",
+                "name": "schemaVersion",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "authorizationId",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "actionId",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint256",
+                "name": "chainId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "genesisHash",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "address",
+                "name": "verifyingContract",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "assetId",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "destination",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "policyVersion",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "evidenceRoot",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "nonce",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint64",
+                "name": "notBefore",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "expiry",
+                "type": "uint64"
+              }
+            ],
+            "internalType": "struct SFSPIssuanceController.SignedAuthorization",
+            "name": "a",
+            "type": "tuple"
+          },
+          {
+            "internalType": "bytes[]",
+            "name": "signatures",
+            "type": "bytes[]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "chainId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "verifyingContract",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "action",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "assetId",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "address",
+                "name": "origin",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "destination",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amountSecondary",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "nonce",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint64",
+                "name": "notBefore",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "expiry",
+                "type": "uint64"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "evidenceRoot",
+                "type": "bytes32"
+              }
+            ],
+            "internalType": "struct SFSPAuthorization.Payload",
+            "name": "p",
+            "type": "tuple"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "approvedDigest",
+            "type": "bytes32"
+          }
+        ],
+        "name": "mint",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          }
+        ],
+        "name": "mintBudgetOf",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "perPeriod",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint64",
+                "name": "period",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint256",
+                "name": "maxPerOperation",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint64",
+                "name": "validUntil",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "periodIndex",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint256",
+                "name": "usedInPeriod",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct SFSPIssuanceController.MintBudget",
+            "name": "",
+            "type": "tuple"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "destination",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "paymentRef",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "evidenceRoot",
+            "type": "bytes32"
+          }
+        ],
+        "name": "mintOnDemand",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "authorizationId",
+            "type": "bytes32"
+          }
+        ],
+        "name": "mintedUnderAuthorization",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "reserveId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "openIssuanceReserve",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          }
+        ],
+        "name": "outstandingOf",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "contractAddress",
+            "type": "address"
+          }
+        ],
+        "name": "registerAssetContract",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "reserveId",
+            "type": "bytes32"
+          }
+        ],
+        "name": "reserveOf",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "bytes32",
+                "name": "assetId",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct SFSPIssuanceController.IssuanceReserve",
+            "name": "",
+            "type": "tuple"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          }
+        ],
+        "name": "reservedIssuance",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "reasonCode",
+            "type": "bytes32"
+          }
+        ],
+        "name": "revokeMintBudget",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "revokeRole",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "outstandingLimit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "cumulativeCap",
+            "type": "uint256"
+          }
+        ],
+        "name": "setInstrumentLimits",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "internalAccount",
+            "type": "bool"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "reasonCode",
+            "type": "bytes32"
+          }
+        ],
+        "name": "setInternalAccount",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "chainId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "verifyingContract",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "action",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "assetId",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "address",
+                "name": "origin",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "destination",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amountSecondary",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "nonce",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint64",
+                "name": "notBefore",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "expiry",
+                "type": "uint64"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "evidenceRoot",
+                "type": "bytes32"
+              }
+            ],
+            "internalType": "struct SFSPAuthorization.Payload",
+            "name": "p",
+            "type": "tuple"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "approvedDigest",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "period",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "validUntil",
+            "type": "uint64"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "termsDocRoot",
+            "type": "bytes32"
+          }
+        ],
+        "name": "setMintBudget",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }
+    ],
+    "asset": [
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "board",
+            "type": "address"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "assetId_",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "registry_",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "engine_",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "identity_",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "governance_",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "erc20InteropEnabled_",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "AccountIsFrozen",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "have",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "need",
+            "type": "uint256"
+          }
+        ],
+        "name": "AllowanceExceeded",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "expected",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "got",
+            "type": "bytes32"
+          }
+        ],
+        "name": "AuthorizationActionMismatch",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "expected",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "got",
+            "type": "bytes32"
+          }
+        ],
+        "name": "AuthorizationAssetMismatch",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "consumedAt",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "AuthorizationConsumed",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "approved",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "recomputed",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "AuthorizationDigestMismatch",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint64",
+            "name": "expiry",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "timestamp",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "AuthorizationExpired",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "reason",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "AuthorizationMalformed",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint64",
+            "name": "notBefore",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "timestamp",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "AuthorizationNotYetValid",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "holder",
+            "type": "address"
+          }
+        ],
+        "name": "BurnNotAuthorized",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "capability",
+            "type": "bytes32"
+          }
+        ],
+        "name": "CapabilityNotDeclared",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "operationId",
+            "type": "bytes32"
+          }
+        ],
+        "name": "ForcedTransferNotAuthorized",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "have",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "need",
+            "type": "uint256"
+          }
+        ],
+        "name": "InsufficientBalance",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "caller",
+            "type": "address"
+          }
+        ],
+        "name": "NotIssuanceController",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "caller",
+            "type": "address"
+          }
+        ],
+        "name": "NotMigrationRegistry",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "caller",
+            "type": "address"
+          }
+        ],
+        "name": "NotSettlementEngine",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "ReasonRequired",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "Reentrancy",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "reasonCode",
+            "type": "bytes32"
+          }
+        ],
+        "name": "TransferRejected",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "Unauthorized",
+        "type": "error"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "bool",
+            "name": "frozen",
+            "type": "bool"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "reasonCode",
+            "type": "bytes32"
+          }
+        ],
+        "name": "AccountFrozen",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "spender",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          }
+        ],
+        "name": "Approval",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "holder",
+            "type": "address"
+          }
+        ],
+        "name": "BurnConsentGiven",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "reasonCode",
+            "type": "bytes32"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "operationId",
+            "type": "bytes32"
+          }
+        ],
+        "name": "BurnExecuted",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "operationId",
+            "type": "bytes32"
+          }
+        ],
+        "name": "ForcedTransferExecuted",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": false,
+            "internalType": "string",
+            "name": "profile",
+            "type": "string"
+          },
+          {
+            "indexed": false,
+            "internalType": "bool",
+            "name": "erc20Compatible",
+            "type": "bool"
+          }
+        ],
+        "name": "InteropAdapterDeclared",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "by",
+            "type": "address"
+          }
+        ],
+        "name": "RoleGranted",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "by",
+            "type": "address"
+          }
+        ],
+        "name": "RoleRevoked",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          }
+        ],
+        "name": "Transfer",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "route",
+            "type": "bytes32"
+          }
+        ],
+        "name": "UnitsTransferred",
+        "type": "event"
+      },
+      {
+        "inputs": [],
+        "name": "ATTESTOR",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "AUDITOR",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "DBNX_BOARD",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "INTEROP_PROFILE",
+        "outputs": [
+          {
+            "internalType": "string",
+            "name": "",
+            "type": "string"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "ISSUER",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "TECH_OPS",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "spender",
+            "type": "address"
+          }
+        ],
+        "name": "allowance",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "spender",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "approve",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          }
+        ],
+        "name": "approveBurnAuthorization",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "assetId",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "balanceOf",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "chainId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "verifyingContract",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "action",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "assetId",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "address",
+                "name": "origin",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "destination",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amountSecondary",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "nonce",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint64",
+                "name": "notBefore",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "expiry",
+                "type": "uint64"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "evidenceRoot",
+                "type": "bytes32"
+              }
+            ],
+            "internalType": "struct SFSPAuthorization.Payload",
+            "name": "p",
+            "type": "tuple"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "approvedDigest",
+            "type": "bytes32"
+          }
+        ],
+        "name": "burn",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          }
+        ],
+        "name": "burnConsentOf",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "migrationId",
+            "type": "bytes32"
+          }
+        ],
+        "name": "burnForMigration",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "checkTransfer",
+        "outputs": [
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "reasonCode",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "decimals",
+        "outputs": [
+          {
+            "internalType": "uint8",
+            "name": "",
+            "type": "uint8"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "engine",
+        "outputs": [
+          {
+            "internalType": "contract ISFSPEligibilityEngine",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "erc20InteropEnabled",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "chainId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "verifyingContract",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "action",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "assetId",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "address",
+                "name": "origin",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "destination",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amountSecondary",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "nonce",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint64",
+                "name": "notBefore",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "expiry",
+                "type": "uint64"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "evidenceRoot",
+                "type": "bytes32"
+              }
+            ],
+            "internalType": "struct SFSPAuthorization.Payload",
+            "name": "p",
+            "type": "tuple"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "approvedDigest",
+            "type": "bytes32"
+          }
+        ],
+        "name": "forcedTransfer",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "governance",
+        "outputs": [
+          {
+            "internalType": "contract ISFSPGovernanceController",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "grantRole",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "hasRole",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "identity",
+        "outputs": [
+          {
+            "internalType": "contract ISFSPIdentityAdapter",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "isFrozen",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "issuanceController",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "migrationRegistry",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "name": "mintForMigration",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "operationId",
+            "type": "bytes32"
+          }
+        ],
+        "name": "mintFromIssuance",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "registry",
+        "outputs": [
+          {
+            "internalType": "contract ISFSPAssetRegistry",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "revokeRole",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "frozen_",
+            "type": "bool"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "reasonCode",
+            "type": "bytes32"
+          }
+        ],
+        "name": "setFrozen",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "c",
+            "type": "address"
+          }
+        ],
+        "name": "setIssuanceController",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "c",
+            "type": "address"
+          }
+        ],
+        "name": "setMigrationRegistry",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "c",
+            "type": "address"
+          }
+        ],
+        "name": "setSettlementEngine",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "settlementEngine",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "operationId",
+            "type": "bytes32"
+          }
+        ],
+        "name": "settlementTransfer",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "totalSupply",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "transfer",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "transferFrom",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "transferUnits",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }
+    ],
+    "nativeVault": [
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "board",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "governance_",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "engine_",
+            "type": "address"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "assetId_",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "genesisSupply_",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "expected",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "got",
+            "type": "bytes32"
+          }
+        ],
+        "name": "AuthorizationActionMismatch",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "consumedAt",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "AuthorizationConsumed",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "approved",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "recomputed",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "AuthorizationDigestMismatch",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint64",
+            "name": "expiry",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "timestamp",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "AuthorizationExpired",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "reason",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "AuthorizationMalformed",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint64",
+            "name": "notBefore",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "timestamp",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "AuthorizationNotYetValid",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint64",
+            "name": "validUntil",
+            "type": "uint64"
+          }
+        ],
+        "name": "BudgetExpired",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "reason",
+            "type": "bytes32"
+          }
+        ],
+        "name": "BudgetInvalid",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          }
+        ],
+        "name": "BudgetNotSet",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "requested",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxPerOperation",
+            "type": "uint256"
+          }
+        ],
+        "name": "BudgetOperationTooLarge",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "used",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "requested",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "perPeriod",
+            "type": "uint256"
+          }
+        ],
+        "name": "BudgetPeriodExceeded",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "evidenceRoot",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "recomputed",
+            "type": "bytes32"
+          }
+        ],
+        "name": "BudgetTermsMismatch",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "readyAt",
+            "type": "uint64"
+          }
+        ],
+        "name": "BudgetWaitPending",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "balance",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "requested",
+            "type": "uint256"
+          }
+        ],
+        "name": "InsufficientVaultBalance",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "InternalAccountUnflagNeedsBoard",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "operationId",
+            "type": "bytes32"
+          }
+        ],
+        "name": "OperationReplay",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "Paused",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "Reentrancy",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          }
+        ],
+        "name": "ReleaseNotAuthorized",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint8",
+            "name": "code",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "reason",
+            "type": "bytes32"
+          }
+        ],
+        "name": "ReleaseRejected",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "destination",
+            "type": "address"
+          }
+        ],
+        "name": "ReleaseToInternalAccount",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "TooManyInternalAccounts",
+        "type": "error"
+      },
+      {
+        "inputs": [],
+        "name": "TransferFailed",
+        "type": "error"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "Unauthorized",
+        "type": "error"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "reasonCode",
+            "type": "bytes32"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "NativeAbsorbed",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "destination",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "operationId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "route",
+            "type": "bytes32"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "evidenceRoot",
+            "type": "bytes32"
+          }
+        ],
+        "name": "NativeReleased",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "by",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "reasonCode",
+            "type": "bytes32"
+          }
+        ],
+        "name": "ReleaseBudgetRevoked",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "assetId",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "digest",
+            "type": "bytes32"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "perPeriod",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint64",
+            "name": "period",
+            "type": "uint64"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "maxPerOperation",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint64",
+            "name": "validUntil",
+            "type": "uint64"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "termsDocRoot",
+            "type": "bytes32"
+          }
+        ],
+        "name": "ReleaseBudgetSet",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "by",
+            "type": "address"
+          }
+        ],
+        "name": "RoleGranted",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "by",
+            "type": "address"
+          }
+        ],
+        "name": "RoleRevoked",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "bool",
+            "name": "internalAccount",
+            "type": "bool"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "by",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "bytes32",
+            "name": "reasonCode",
+            "type": "bytes32"
+          }
+        ],
+        "name": "VaultInternalAccountFlagged",
+        "type": "event"
+      },
+      {
+        "inputs": [],
+        "name": "ACTION_RELEASE",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "ACTION_SET_RELEASE_BUDGET",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "ATTESTOR",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "AUDITOR",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "BUDGET_TERMS_TAG",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "DBNX_BOARD",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "ISSUER",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "MAX_INTERNAL_ACCOUNTS",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "TECH_OPS",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "reasonCode",
+            "type": "bytes32"
+          }
+        ],
+        "name": "absorb",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "assetId",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "budgetRemaining",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint64",
+            "name": "period",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "validUntil",
+            "type": "uint64"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "termsDocRoot",
+            "type": "bytes32"
+          }
+        ],
+        "name": "budgetTermsRoot",
+        "outputs": [
+          {
+            "internalType": "bytes32",
+            "name": "",
+            "type": "bytes32"
+          }
+        ],
+        "stateMutability": "pure",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "circulating",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "engine",
+        "outputs": [
+          {
+            "internalType": "contract ISFSPEligibilityEngine",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "genesisSupply",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "governance",
+        "outputs": [
+          {
+            "internalType": "contract ISFSPGovernanceController",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "grantRole",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "hasRole",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "internalAccounts",
+        "outputs": [
+          {
+            "internalType": "address[]",
+            "name": "",
+            "type": "address[]"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "internalOutsideVault",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "sum",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "isInternalAccount",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "operationId",
+            "type": "bytes32"
+          }
+        ],
+        "name": "isOperationUsed",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "chainId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "verifyingContract",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "action",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "assetId",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "address",
+                "name": "origin",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "destination",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amountSecondary",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "nonce",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint64",
+                "name": "notBefore",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "expiry",
+                "type": "uint64"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "evidenceRoot",
+                "type": "bytes32"
+              }
+            ],
+            "internalType": "struct SFSPAuthorization.Payload",
+            "name": "p",
+            "type": "tuple"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "approvedDigest",
+            "type": "bytes32"
+          }
+        ],
+        "name": "release",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "releaseBudget",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "perPeriod",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint64",
+                "name": "period",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint256",
+                "name": "maxPerOperation",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint64",
+                "name": "validUntil",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "periodIndex",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint256",
+                "name": "usedInPeriod",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct SFSPNativeVault.ReleaseBudget",
+            "name": "",
+            "type": "tuple"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "destination",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "paymentRef",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "evidenceRoot",
+            "type": "bytes32"
+          }
+        ],
+        "name": "releaseOnDemand",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "reasonCode",
+            "type": "bytes32"
+          }
+        ],
+        "name": "revokeReleaseBudget",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "bytes32",
+            "name": "role",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "revokeRole",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "internalAccount",
+            "type": "bool"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "reasonCode",
+            "type": "bytes32"
+          }
+        ],
+        "name": "setInternalAccount",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "chainId",
+                "type": "uint256"
+              },
+              {
+                "internalType": "address",
+                "name": "verifyingContract",
+                "type": "address"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "action",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "assetId",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "address",
+                "name": "origin",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "destination",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amountSecondary",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "nonce",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "uint64",
+                "name": "notBefore",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint64",
+                "name": "expiry",
+                "type": "uint64"
+              },
+              {
+                "internalType": "bytes32",
+                "name": "evidenceRoot",
+                "type": "bytes32"
+              }
+            ],
+            "internalType": "struct SFSPAuthorization.Payload",
+            "name": "p",
+            "type": "tuple"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "approvedDigest",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "period",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "validUntil",
+            "type": "uint64"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "termsDocRoot",
+            "type": "bytes32"
+          }
+        ],
+        "name": "setReleaseBudget",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "totalAbsorbed",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "totalReleased",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "vaultBalance",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "stateMutability": "payable",
+        "type": "receive"
+      }
+    ]
+  },
+  "accounts": [
+    {
+      "label": "Junta",
+      "role": "junta",
+      "address": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+    },
+    {
+      "label": "Firmante 1",
+      "role": "firmante",
+      "address": "0x23618e81e3f5cdf7f54c3d65f7fbc0abf5b21e8f"
+    },
+    {
+      "label": "Firmante 2",
+      "role": "firmante",
+      "address": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc"
+    },
+    {
+      "label": "Firmante 3",
+      "role": "firmante",
+      "address": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"
+    },
+    {
+      "label": "Firmante 4",
+      "role": "firmante",
+      "address": "0x90f79bf6eb2c4f870365e785982e1f101e93b906"
+    },
+    {
+      "label": "Emisor",
+      "role": "emisor",
+      "address": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+    },
+    {
+      "label": "Usuario Alice",
+      "role": "usuario",
+      "address": "0x9965507d1a55bcc2695c58ba16fb37d819b0a4dc"
+    },
+    {
+      "label": "Usuario Bob",
+      "role": "usuario",
+      "address": "0x976ea74026e726554db657fa54763abd0c3a0aa9"
+    },
+    {
+      "label": "Tesorería",
+      "role": "tesoreria",
+      "address": "0x15d34aaf54267db7d7c367839aaf71a00a2c6a65"
+    }
+  ],
+  "assets": [
+    {
+      "id": "0x534653503a5345433a495353313a533100000000000000000000000000000000",
+      "label": "AUKA (demo)",
+      "symbol": "AUKA",
+      "kind": "token",
+      "contract": "0xdc64a140aa3e981100a9beca4e685f962f0cf6c9",
+      "decimals": 6
+    },
+    {
+      "id": "0x534653503a4e41544956453a4f524947454e3a44454d4f000000000000000000",
+      "label": "ORIGEN (demo)",
+      "symbol": "ORIGEN",
+      "kind": "native",
+      "contract": "0xfd471836031dc5108809d173a067e8486b9047a3",
+      "decimals": 18
+    }
+  ],
+  "genesisSupply": "200000000000000000000000",
+  "governanceParams": {
+    "threshold": 2,
+    "upgradeThreshold": 3,
+    "timelockDelay": 3600,
+    "maxPause": 86400
+  }
+}
