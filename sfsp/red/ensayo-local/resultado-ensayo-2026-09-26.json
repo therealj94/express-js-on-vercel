@@ -7,6 +7,10 @@
       "ok": true
     },
     {
+      "nombre": "autoprueba OK al arrancar con la dirección correcta",
+      "ok": true
+    },
+    {
       "nombre": "T-150-02 heredado fuera del catálogo: el nodo lo rechaza",
       "ok": true,
       "detalle": "eth_sendRawTransaction: Sender account not authorized to send transactions"
@@ -33,14 +37,23 @@
       "ok": true
     },
     {
+      "nombre": "T-150-01 con alta también despliega un contrato grande (SFSPAssetRegistry, 22603 B de initcode)",
+      "ok": true
+    },
+    {
       "nombre": "T-150-04 transitorio rechazado desde el bloque de corte",
       "ok": true,
       "detalle": "eth_sendRawTransaction: Sender account not authorized to send transactions"
     },
     {
+      "nombre": "autoprueba: con una errata en la dirección del contrato y el filtro vigente, el nodo no arranca",
+      "ok": true,
+      "detalle": "código de salida 2"
+    },
+    {
       "nombre": "el observador CON filtro importa toda la historia admitida (antes y después de la activación)",
       "ok": true,
-      "detalle": "observador en 85, validador en 85"
+      "detalle": "observador en 84, validador en 84"
     },
     {
       "nombre": "reversión: con el filtro apagado el validador vuelve a admitir el heredado",
@@ -49,7 +62,7 @@
     {
       "nombre": "importación: el observador CON filtro rechaza el bloque con la transacción prohibida y se queda atrás",
       "ok": true,
-      "detalle": "bloque 86; observador en 85; validador en 94"
+      "detalle": "bloque 85; observador en 84; validador en 93"
     }
   ],
   "todoOk": true

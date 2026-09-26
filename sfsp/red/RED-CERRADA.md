@@ -6,7 +6,7 @@
 | Estado | **Construido y ensayado en local. Nada desplegado.** La 5550 y la 5534 no se tocaron. |
 | Red objetivo | 5550 · Besu **26.7.1** · QBFT · 7 validadores · API PERM apagada |
 | Piezas | `contracts/src/SFSPNetworkPermissions.sol` (la lista), `red/filtro-besu/` (el complemento), `red/ensayo-local/` (el ensayo) |
-| Pruebas | `contracts/test/26-red-cerrada.js` (17), ensayo con Besu real: 11/11 (`ensayo-local/resultado-ensayo-2026-09-26.json`) |
+| Pruebas | `contracts/test/26-red-cerrada.js` (17), complemento `filtro-besu` con `gradle test` (17), ensayo con Besu real: 14/14 (`ensayo-local/resultado-ensayo-2026-09-26.json`) |
 | Decisiones que bloquean el encendido | D07 (firmantes y espera), D26 (catálogo transitorio y cortes), D12 (5534), bloque de activación, lista inicial de desplegadores y de destinos de sistema. Todas `BLOCKED_DECISION`. |
 
 ---
@@ -151,7 +151,7 @@ Va igual en **los 7 validadores y en los nodos RPC**. Instalación y compilació
 `filtro-besu/README.md`.
 
 ```
-# <BESU_HOME>/plugins/sfsp-filtro-red-0.1.0.jar   (huella SHA-256 publicada, igual en todos)
+# <BESU_HOME>/plugins/sfsp-filtro-red-0.2.0.jar   (huella SHA-256 publicada, igual en todos)
 --plugin-sfsp-filtro-habilitado=true
 --plugin-sfsp-filtro-contrato=<SFSPNetworkPermissions en la 5550>        # BLOCKED_DECISION hasta desplegar
 --plugin-sfsp-filtro-bloque-activacion=<N>                               # BLOCKED_DECISION, idéntico en todos
@@ -170,6 +170,13 @@ plugin-sfsp-filtro-bloque-activacion=N
 
 No hace falta ninguna `--permissions-*`, y la API `PERM` puede seguir apagada:
 el complemento no la usa.
+
+**`--rpc-gas-cap`**: en su valor por omisión (100.000.000), más alto o en `0`. Besu
+rebaja a ese tope el gas de la consulta del complemento, y con un tope más bajo ese
+nodo decidiría distinto que los demás sobre las transacciones grandes (§9.3).
+
+**Dirección del contrato**: en minúsculas o en su forma EIP-55 exacta. Con mayúsculas y
+minúsculas que no pasan el checksum, el nodo no arranca.
 
 **Java**: Corretto 25, el que ya corre en los validadores.
 
@@ -228,9 +235,12 @@ QBFT necesita 5 para comprometer un bloque.
    sobre remitentes y destinos reales. Salida esperada: la del §2.
 4. **Instalar el jar en los 7, uno a uno**, con `bloque-activacion = cabeza + ~2.000`.
    Antes de la activación todo se admite, así que el reinicio escalonado no cambia
-   nada. Se comprueba en cada registro `contrato … en los bloques [N, sin fin)`.
+   nada. Se comprueba en cada registro `contrato … en los bloques [N, sin fin)` y
+   `autoprueba OK`. Un nodo arrancado con la dirección mal escrita tiene que dar
+   `AUTOPRUEBA FALLIDA`.
 5. **Tras la activación**, el mismo guion que el ensayo local (§6):
-   - T-150-01: desplegar sin alta falla; con alta, funciona.
+   - T-150-01: desplegar sin alta falla; con alta, funciona. También un contrato
+     grande (`SFSPRegulatedAsset`, `SFSPAssetRegistry`: 14,6 y 22,6 KB de initcode).
    - T-150-02: el heredado se rechaza con `Sender account not authorized…`.
    - T-150-03: se cambia el pasaporte para que no coincida y la admisión revierte.
    - T-150-04: el transitorio se corta en su bloque.
@@ -260,18 +270,25 @@ QBFT necesita 5 para comprometer un bloque.
   `SFSPGovernanceController`, `SFSPNetworkPermissions`, ERC-20 heredado de
   prueba).
 
-Resultado: **11/11**. El JSON está en `ensayo-local/resultado-ensayo-2026-09-26.json`.
+Resultado: **14/14**, con el jar 0.2.0. El JSON está en `ensayo-local/resultado-ensayo-2026-09-26.json`.
+La primera corrida (11/11, jar 0.1.0) no tenía los tres pasos marcados como nuevos. El
+mismo guion con el jar 0.1.0 da **11/14**: fallan justo esos tres (no hay autoprueba, el
+despliegue de `SFSPAssetRegistry` se rechaza con `Sender account not authorized to send
+transactions` y el nodo con la dirección mal escrita arranca).
 
 | Paso | Resultado |
 |---|---|
 | Filtro apagado: el heredado opera | OK |
+| **Nuevo** · Autoprueba al arrancar con la dirección correcta | `autoprueba OK` en el registro |
 | T-150-02: heredado fuera del catálogo | Rechazado por el pool: `Sender account not authorized to send transactions` |
 | T-150-05: ORIGEN nativo | Minado |
 | Conforme registrado | Minado |
 | T-150-04: transitorio antes del corte | Minado |
 | T-150-01: despliegue sin alta | Rechazado |
 | T-150-01: alta por orden multifirma (viaja por la red cerrada), después despliegue | Minado |
+| **Nuevo** · T-150-01: con alta, despliegue de `SFSPAssetRegistry` (22,6 KB de initcode) | Minado. Con la 0.1.0 se rechazaba (§9.3) |
 | T-150-04: transitorio desde el corte | Rechazado |
+| **Nuevo** · Autoprueba: con un dígito cambiado en la dirección y el filtro vigente | El nodo no arranca: `AUTOPRUEBA FALLIDA` |
 | Observador **con** filtro sincroniza toda la historia (antes y después de la activación) | OK |
 | Reversión: validador con el complemento apagado vuelve a admitir el heredado | Minado |
 | **Importación**: el observador **con** filtro rechaza ese bloque y se queda atrás | `Invalid block 86 … Sender … is not on the Account Allowlist` |
@@ -280,7 +297,7 @@ Para repetirlo, con los binarios fuera del repositorio:
 
 ```bash
 cd sfsp/contracts && npx hardhat compile
-BESU_HOME=<besu-26.7.1 con plugins/sfsp-filtro-red-0.1.0.jar> JAVA_HOME=<jdk-25> \
+BESU_HOME=<besu-26.7.1 con plugins/sfsp-filtro-red-0.2.0.jar> JAVA_HOME=<jdk-25> \
 ENSAYO_DIR=<carpeta fuera del repo> node sfsp/red/ensayo-local/ensayo-besu-local.mjs
 ```
 
@@ -328,6 +345,16 @@ No se probó en local lo siguiente, y se prueba en la 5534:
    a uno (por ejemplo, 48 h de bloques). Se instala en los RPC y en los 7
    validadores, **de uno en uno**, esperando en cada reinicio a que vuelva a tener
    peers. Con 6 de 7 arriba, el quórum se mantiene.
+   - **Autoprueba.** El complemento consulta `transactionAllowed(0x0, contrato, 0, 0, 0, "")`,
+     que tiene que dar `true` (la lista siempre se admite a sí misma). En cada reinicio
+     se exige `autoprueba OK` en el registro antes de pasar al siguiente nodo. Un
+     `AUTOPRUEBA FALLIDA` es una dirección mal escrita: se corrige en ese nodo.
+   - Desde 20.000 bloques antes de `N` (unas 55 h a 10 s) y hasta el fin, el
+     complemento repite la autoprueba cada 100 bloques y en `N`, y deja un `ERROR`
+     mientras falle. Se vigila en todos los nodos.
+   - Con el filtro ya vigente, un nodo cuya autoprueba falla **no arranca**: si
+     arrancara, lo rechazaría todo y se quedaría parado en el primer bloque con
+     transacciones.
 6. **En `N`**: seguimiento del registro de cada nodo, de la altura, de los cambios
    de ronda y de los rechazos del pool.
 
@@ -359,13 +386,30 @@ No se probó en local lo siguiente, y se prueba en la 5534:
    - Un error de configuración (contrato mal escrito, contrato sin código) hace que
      **se rechace todo**. Es cerrado ante la duda. La cadena sigue produciendo
      bloques vacíos, y se corrige con la reversión de nivel 2 o 3.
+   - **Mitigación**: la autoprueba (§7, paso 5) lo detecta desde el arranque de cada
+     nodo durante el despliegue escalonado, antes de `N`; con el filtro vigente, el
+     nodo con la errata no arranca.
    - Una **mezcla de nodos** con y sin filtro (§4) cuesta vivacidad o provoca un
      fork.
 3. **Gas y CPU.**
    - La consulta no cuesta gas al usuario.
-   - Cada nodo simula una llamada de 2.500 a 8.000 de gas por transacción nueva,
-     con un tope de 200.000.
-   - Una caché por (cabeza, transacción) evita repetirla dentro del mismo bloque.
+   - Cada nodo simula una llamada por transacción nueva. La ejecución de
+     `transactionAllowed` gasta de 2.500 a 8.000 de gas, pero la llamada lleva el
+     `payload` **entero** de la transacción en su calldata, y Besu exige que el gas
+     intrínseco de ese calldata quepa en el gas de la llamada.
+   - Por eso el gas de la consulta se calcula por tamaño: `21.000 + 64 × bytes del
+     calldata + 100.000`, con un mínimo de 200.000 y un máximo de 100.000.000. 64 por
+     byte cubre Shanghai (16, la 5550 hoy), Prague (40) y Amsterdam (64). Sólo
+     depende de la transacción, así que todos los nodos piden lo mismo.
+   - La versión 0.1.0 tenía un tope **fijo** de 200.000 y rechazaba toda transacción
+     de más de unos 11 KB aunque el contrato dijera que sí: los despliegues de
+     `SFSPRegulatedAsset` (la migración de v0.3 §14.3), de `SFSPAssetRegistry` y del
+     reemplazo de la lista (§9.7). Se corrigió **antes** de cualquier activación: con
+     la red cerrada ya encendida, cambiar el jar exigiría otra activación coordinada.
+   - **`--rpc-gas-cap`** no puede quedar por debajo de 100.000.000 en ningún nodo con
+     el complemento (§3): Besu rebaja el gas de la consulta a ese tope.
+   - Una caché por (padre del bloque pendiente, transacción) evita repetirla dentro
+     del mismo bloque.
    - Rechazar en el pool no le cuesta nada al atacante, como cualquier transacción
      inválida hoy. Se mantiene la limitación de tasa del RPC público.
 4. **Rodeo por un destino admitido.** El filtro mira el `to` de la transacción, no
@@ -378,13 +422,19 @@ No se probó en local lo siguiente, y se prueba en la 5534:
 5. **Determinismo.**
    - La consulta usa el estado de la cabeza y el número del bloque en curso (cabeza
      + 1): el mismo en quien propone y en quien importa.
+   - Los dos salen de **una sola** lectura (el bloque pendiente que construye Besu),
+     y la caché va atada al padre con el que se simuló. En la 0.1.0 la cabeza se leía
+     dos veces y la caché se vaciaba sin coordinar: un «no» de la cabeza anterior podía
+     quedar como respuesta de la nueva y dejar al nodo rechazando un bloque válido
+     hasta reiniciarlo.
    - Mismo jar, mismas banderas y misma versión de Besu en todos.
    - La API de complementos es `@Unstable` en parte (`TransactionSimulationService`,
      `BlockchainService`): **actualizar Besu obliga a recompilar y a volver a
      ensayar**.
 6. **Diferencia con la opción retirada.** Aquella dejaba pasar **todo** si el
    contrato no existía; ésta lo **rechaza**. Lo que hay que vigilar es que la
-   dirección del contrato esté bien escrita en los 9+ nodos.
+   dirección del contrato esté bien escrita en los 9+ nodos. Lo vigila la
+   autoprueba (§7, paso 5), y el checksum EIP-55 si la dirección lo lleva.
 7. **Reemplazar el contrato.** Es una nueva dirección, con una nueva activación
    coordinada y la ventana anterior cerrada con `bloque-fin`. Todo eso se documenta
    para resincronizaciones futuras.
@@ -404,7 +454,7 @@ No se probó en local lo siguiente, y se prueba en la 5534:
 | `contracts/src/pruebas/SFSPSondasDePrueba.sol` · `SFSPHeredadoDePrueba` | ERC-20 heredado de prueba (sólo pruebas y ensayo) |
 | `contracts/test/26-red-cerrada.js` | T-150-01 a T-150-07, codificación exacta de Besu, coste y superficie de escritura |
 | `spec/eventos.json` | `NetworkPermissionChanged` pasa a `implementadoEnContratos: true` (emisor `NetworkAdmission` → `SFSPNetworkPermissions`) |
-| `red/filtro-besu/` | Complemento Java (Gradle, JDK 25) y su README |
+| `red/filtro-besu/` | Complemento Java (Gradle, JDK 25), sus pruebas (`src/test`, `gradle test`) y su README |
 | `red/ensayo-local/ensayo-besu-local.mjs` | Ensayo con Besu real en 127.0.0.1 |
 | `red/ensayo-local/resultado-ensayo-2026-09-26.json` | Resultado del ensayo (direcciones de prueba públicas) |
 
