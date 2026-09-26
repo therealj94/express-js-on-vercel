@@ -34,7 +34,7 @@ Nada de lo que hay aquí firma ni envía transacciones. El cliente RPC
 | `TENEDORES` | Foto clasificada de tenedores de todos los activos (`tenedores-clasificados.json`). |
 | `CENSO_ONDK` | Censo completo de ONDK por árbol de almacenamiento (`censo-ondk.json`). |
 | `ACEPTACION` | Hoja de aceptación (`Padron-Suministro-5550.xlsx`): «Usuarios (se conservan)», «En revisión» (columna ¿Conservar? SÍ/NO), «Se elimina». |
-| `SALIDA` | Carpeta de salida de datos. |
+| `SALIDA` | Carpeta de salida de datos. **Fuera del repositorio**: todos los scripts se niegan a escribir dentro (comparan la ruta real, siguiendo enlaces). `PERMITIR_SALIDA_EN_REPO=1` lo fuerza; aun así, `sfsp/.gitignore` ignora esos nombres de archivo. |
 | `RPC` | Nodo de la 5550 (lectura). Detrás del proxy del entorno: `NODE_USE_ENV_PROXY=1`. |
 
 ## Censo de todos los tokens en la 5550 (26-sep-2026)
@@ -59,6 +59,20 @@ node censo-tokens-5550.mjs
 - **Comprobaciones por token**: `balanceOf == ranura` para cada tenedor, y
   conciliación contra `totalSupply()`. Si no cuadra, se hace un barrido de
   `balanceOf` sobre todas las candidatas.
+- **Un fallo del RPC nunca es un cero.** En las lecturas por lote, un elemento
+  con error que no sea una reversión (timeout, límite, sin respuesta) se
+  reintenta por separado. Si persiste:
+  - en el barrido de saldos o en el recorrido de bloques, el censo **se detiene**
+    y no escribe nada (antes, el titular salía con saldo 0 y su saldo acababa en
+    «residuo sin titular»);
+  - en el descubrimiento de tokens, el contrato se lista en `noLeidos` y queda
+    fuera del censo (`lote-migracion.mjs` lo bloquea: «no está en el censo»). Los
+    contratos que revierten o no devuelven datos se listan en `noErc20`.
+- **`INTERNAS` y `EN_REVISION`** son opcionales. Si la variable está definida, el
+  archivo tiene que existir y ser `{"0x…40 hex": "motivo"}`; si no, el censo se
+  detiene. Las claves se pasan a minúsculas, así que una dirección con checksum
+  clasifica igual. El censo imprime cuántas se cargaron y cuántas no tienen saldo
+  en ningún token.
 
 **Resultado en el bloque 273.831** (datos fuera del repositorio). Fuentes de
 direcciones:
@@ -130,8 +144,8 @@ nodo  = keccak256(abi.encodePacked(min(a,b), max(a,b)))                         
   puede fijar con `MIG_ID_<ACTIVO>`. **La raíz depende del `migrationId` y del
   bloque de corte.** Hasta que la Junta fije los dos (D09), cada raíz es una
   propuesta.
-- `S0` para `openMigration` = suma de `oldUnits` del árbol. La reserva no está
-  incluida.
+- `S0` para `openMigration` = suma de `oldUnits` del árbol (`S0` del padrón, en
+  unidades del contrato heredado). La reserva no está incluida.
 
 ## Las ranuras sin dirección: reserva de reclamo
 
@@ -247,8 +261,8 @@ beneficiario su saldo con `mintOnDemand`:
 
 | Campo | Valor |
 |---|---|
-| `amount` (por periodo) | `S0` del padrón (suma de `oldUnits` del árbol; la reserva por ranura NO entra) |
-| `amountSecondary` (máx. por operación) | el mayor `oldUnits` del padrón (ver «Riesgos», punto 3) |
+| `amount` (por periodo) | `S0_cupo` = Σ `floor(oldUnits·num/den)` de los beneficiarios, en unidades del activo nuevo. Con ratio 1/1 es el `S0` del padrón (Σ `oldUnits` del árbol). La reserva por ranura NO entra |
+| `amountSecondary` (máx. por operación) | el mayor monto, `floor(oldUnits·num/den)` (ver «Riesgos», punto 3) |
 | `period` | tan largo que toda la ventana cae en UN solo periodo: comprobar `floor(ahora/period) == floor(validUntil/period)` |
 | `validUntil` | fin de la ventana de migración (días, no meses) |
 | `termsDocRoot` | la **raíz Merkle del padrón** (`raizMerkle` de `padron-<ACTIVO>.json`) |
@@ -277,17 +291,17 @@ beneficiario su saldo con `mintOnDemand`:
 1. **El reparto individual no se comprueba en cadena.** El contrato limita el
    total (`S0`) y el máximo por operación, pero no verifica la prueba Merkle:
    la llave del emisor podría acuñar a una dirección elegible que no está en el
-   padrón, o repartir distinto, siempre dentro de `S0`. Queda **detectable**
+   padrón, o repartir distinto, siempre dentro de `S0_cupo`. Queda **detectable**
    (cada `MintOnDemand` es público y su `paymentRef` se recalcula), pero no
    **impedido**. Mitigaciones obligatorias: ventana corta, `maxPerOperation` =
-   mayor saldo del padrón, conciliación publicada (abajo) y revocar el cupo al
+   mayor monto del padrón, conciliación publicada (abajo) y revocar el cupo al
    terminar.
 2. **Ocupa el único cupo del activo.** `SFSPIssuanceController` guarda un cupo
    por `assetId`. Mientras dure la migración no puede haber cupo comercial para
    ese activo, y fijar el comercial después **reinicia** `usedInPeriod`. Orden:
    migración → `revokeMintBudget` → cupo comercial.
 3. **Un saldo = una operación.** Como `paymentRef` es único por dirección, un
-   saldo no se puede partir. `maxPerOperation` tiene que ser ≥ el mayor saldo;
+   saldo no se puede partir. `maxPerOperation` tiene que ser ≥ el mayor monto;
    si alguno es desproporcionado, ese va por orden `MINT` individual y se saca
    del cupo.
 4. **Consume el tope acumulado.** Lo migrado cuenta en `cumulativeCap` y en
@@ -320,10 +334,13 @@ beneficiario su saldo con `mintOnDemand`:
    `paymentRef` canónica. Un `OperationReplay` es «ya migrado», no un error.
 7. `revokeMintBudget(assetId, "MIGRACION_FIN")` en cuanto termine (o al vencer).
 8. Conciliación publicada: para cada evento `MintOnDemand` del activo en la
-   ventana, `(destino, monto)` tiene que ser una hoja del padrón con su prueba y
-   `paymentRef` tiene que recalcularse desde el destino; la suma tiene que ser
-   ≤ `S0`, y la diferencia = beneficiarios no elegibles aún. Cualquier evento
-   que no case es un incidente (pausa + revocación).
+   ventana, tiene que existir una hoja `(migrationId, destino, oldUnits)` del
+   padrón con prueba válida y `monto == floor(oldUnits·num/den)`. La hoja
+   compromete `oldUnits`, no el monto: con un ratio distinto de 1/1,
+   `(destino, monto)` no es una hoja. `paymentRef` tiene que recalcularse desde
+   el destino, la suma tiene que ser ≤ `S0_cupo`, y la diferencia = beneficiarios
+   no elegibles aún. Cualquier evento que no case es un incidente (pausa +
+   revocación).
 9. **Las 89 claves sin dirección (ranuras/huellas).** No entran en `S0`. Cuando
    alguien pruebe una clave (reglas de «Las ranuras sin dirección»), se paga
    en una ronda posterior con un cupo nuevo del tamaño de lo resuelto, con la
@@ -346,10 +363,11 @@ Todas se leen fuera del repositorio, salvo los ejemplos sintéticos.
 |---|---|
 | `CENSO` | `censo-tokens.json` de `censo-tokens-5550.mjs` (formato `sfsp-censo-tokens/v1`) |
 | `ACTIVOS` | `{ "<contrato heredado>": { "activo", "assetId", "ratio": { "num", "den" } } }`. Si falta el `assetId` (D08/D26) o el ratio (D09), ese activo sale `BLOCKED_DECISION` y no genera nada. |
-| `INTERNAS` | Opcional. `{dirección: motivo}`, cuentas internas (D25) además de las del censo |
+| `INTERNAS` | Opcional. `{dirección: motivo}`, cuentas internas (D25) además de las del censo. Si se define, el archivo tiene que existir y ser válido, o el proceso se detiene. |
+| `EN_REVISION` | Opcional, igual formato. Direcciones pendientes de decisión, además de las que el censo ya marca `EN-REVISION`. |
 | `EMISOR` | Dirección de `SFSPIssuanceController`. Sin ella, la orden sale `BLOCKED_DECISION` y las llamadas llevan un marcador en `to`. |
 | `VALIDO_HASTA`, `ORDEN_NO_ANTES`, `ORDEN_VENCE` | Unix. Fin de la ventana y vigencia de la orden. Sin ellas, la orden sale `BLOCKED_DECISION` (sin digest), pero las llamadas se generan igual, porque no dependen de la ventana. |
-| `BLOQUE_CORTE`, `MIG_ID_<ACTIVO>` | Opcionales. Bloque de corte y `migrationId` del padrón (D09). Por omisión, el bloque del censo y el id determinista de `lib/comun.mjs`. |
+| `BLOQUE_CORTE`, `MIG_ID_<ACTIVO>` | Opcionales. Bloque de corte y `migrationId` del padrón (D09). Los saldos son los del bloque del censo, así que `BLOQUE_CORTE`, si se da, **tiene que ser ese bloque**: si no, el proceso se detiene (corre el censo con `BLOQUE=<corte>`). Por omisión, el bloque del censo y el id determinista de `lib/comun.mjs`. El CLI pasa `MIG_ID_<ACTIVO>` a `generarLotes` como parámetro (`migrationIds`). |
 | `SALIDA` | Obligatoria y **fuera del repositorio**: el script se niega a escribir dentro. |
 
 ### Qué produce, por activo
@@ -362,7 +380,7 @@ Todo sale **sin firmar**.
 
   | Campo | Valor |
   |---|---|
-  | `amount` | `S0` = Σ `oldUnits·ratio` de los beneficiarios |
+  | `amount` | `S0_cupo` = Σ `floor(oldUnits·num/den)` de los beneficiarios (unidades del activo nuevo) |
   | `amountSecondary` | El mayor monto |
   | `termsDocRoot` | La raíz del padrón |
   | `period` | `validUntil + 1`. Así toda la ventana cae en el periodo 0: se cumple `floor(t/period) = 0` para todo `t < validUntil`. |
@@ -375,19 +393,36 @@ Todo sale **sin firmar**.
   `paymentRef = keccak256(utf8("MIGRACION|<assetId hex minúsculas>|<dirección minúsculas>"))`.
   La dirección se pasa **siempre** a minúsculas, aunque el censo traiga
   mayúsculas.
-- **Exclusiones, cada una con su motivo:**
+- **Exclusiones, cada una con su motivo.** Es una **lista blanca**: sólo recibe la
+  clase `USUARIO`. Se excluye:
   - `INTERNA-OrdenGlobal` y la lista `INTERNAS`;
   - `CONTRATO`;
-  - `EN-REVISION` (pendiente, no descartada);
-  - `SIN-RESOLVER`, el residuo sin titular por ranura;
+  - `EN-REVISION` y la lista `EN_REVISION` (pendiente, no descartada);
+  - `SIN-RESOLVER`, el saldo por ranura sin dirección (va a la reserva de reclamo);
+  - cualquier otra clase, o una fila sin clase («clase no admitida»);
   - saldo cero;
   - monto cero tras aplicar el ratio.
 
   El residuo del censo (`residuoSinTitular`) **nunca** entra en `S0`.
 - **Restos del ratio**: `oldUnits·num mod den` por titular, para anotarlos fuera
   de cadena (D09).
-- **Conciliación con el censo**: Σ saldos de los tenedores + residuo =
-  `totalSupply`. También Σ `oldUnits` del padrón y Σ excluido.
+- **Conciliación con el censo** (`conciliacionCenso`). `cuadra` es verdadero sólo
+  si **el residuo sin titular es 0**, no hay tenedores incoherentes
+  (`balanceOf ≠ ranura`) y Σ saldos de los tenedores + residuo = `totalSupply`.
+  Esta última identidad se cumple siempre en un censo de `censo-tokens-5550.mjs`
+  (el residuo se calcula como la diferencia): sólo detecta un archivo alterado, y
+  por eso se informa aparte (`sumaMasResiduoIgualTotal`). Si no cuadra, la orden
+  sale `BLOCKED_DECISION`, sin digest, con el motivo en `faltan` (SFSP-700 §0.5:
+  un titular perdido por una lectura fallida del censo acaba en el residuo). Las
+  llamadas se generan igual, como propuesta. Aceptar un residuo distinto de 0 en
+  un activo que no sea AUKA ni ONDK sería decisión de la Junta y no está
+  implementado. También se informan Σ `oldUnits` del padrón y Σ excluido.
+- **Un contrato heredado, un `assetId`, un nombre.** Si dos entradas de `ACTIVOS`
+  apuntan al mismo `assetId` (o el mismo contrato o el mismo nombre aparecen dos
+  veces), todas salen `BLOCKED_DECISION`: el cupo es uno por `assetId` y la
+  `paymentRef` no lleva el contrato de origen, así que el segundo saldo de un
+  mismo titular se perdería como «ya migrado». Fusionar contratos es decisión de
+  la Junta (v0.3 §14.4).
 - **Archivos** en `SALIDA`:
   - `lote-migracion.json` (todo);
   - `lote-migracion-<ACTIVO>.mintOnDemand.json`;
@@ -429,7 +464,7 @@ Salida del 26-sep-2026:
 
 | Activo | Resultado |
 |---|---|
-| SINTA | 3 titulares, S0 850,5, 5 excluidas, la orden `LISTA_PARA_PROPONER`, el censo cuadra |
+| SINTA | 3 titulares, S0 850,5, 5 excluidas, la orden `LISTA_PARA_PROPONER`, residuo sin titular 0, el censo cuadra |
 | SINTB | 2 titulares, ratio 1/1000 con un resto anotado |
 | SINTC | `BLOCKED_DECISION` (sin `assetId`) |
 
