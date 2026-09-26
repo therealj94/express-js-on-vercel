@@ -43,6 +43,6 @@ El estado de partida la hace necesaria:
 - Nuevo contrato `SFSPNativeVault`.
 - `SFSPGovernanceController` expone `authorizationActionOf` para que los ejecutores exijan la acción correcta.
 - Nueve eventos nuevos en `spec/eventos.json` (draft-0.5); el indexador se regenera.
-- SFSP-300 recupera su regla original (sin suministro por adelantado).
+- ~~SFSP-300 recupera su regla original (sin suministro por adelantado).~~ **Revertido en draft-0.5** por el borrador SFSP v0.3 §9.4: AUKA y AGKA pueden acuñarse por anticipado a tesorería y lo que exige metal es la colocación (SFSP-300 §0.2).
 - El ISSUER de servicio que ejecuta `mintOnDemand` no aprueba nada: su peor caso es agotar el cupo vigente hacia usuarios elegibles, y un solo firmante lo corta.
 - El aligerado de periodos (`block.timestamp / period`) permite consumir hasta dos cupos seguidos en el borde entre periodos. Se acepta y se documenta; si la Junta lo quiere más fino, se fija un periodo más corto con cupo proporcional.

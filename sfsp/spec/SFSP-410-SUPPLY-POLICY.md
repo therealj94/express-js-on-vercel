@@ -6,6 +6,7 @@
 - Código: `contracts/src/SFSPIssuanceController.sol` (cupo y cuentas internas), `contracts/src/SFSPNativeVault.sol` (bóveda de ORIGEN)
 - Pruebas: `contracts/test/16-politica-suministro.js` (21), `contracts/test/17-boveda-nativa.js` (10)
 - Panel: `panel-emision/` (modo prueba)
+- **Nota draft-0.5 (26-sep-2026):** el borrador SFSP v0.3 §9.4 **revierte §3.2** de esta política para AUKA y AGKA (ver §3.2 y la nota de reversión de `SFSP-300-COMMODITIES.md`). El v0.3 §4.3 trata además lo acuñado en billeteras internas como tesorería; cómo convive eso con R1 fuera de `COM` queda en D23. La migración por cupo del padrón se propone en ADR-016.
 
 ## 0. La regla
 
@@ -65,7 +66,9 @@ REDENCIÓN   → el emisor ejecuta burn(...)
             → se paga al usuario (USDT o metal) por el camino del producto
 ```
 
-### 3.2 Commodities (AUKA, AGKA) — vuelve la regla original de SFSP-300
+### 3.2 Commodities (AUKA, AGKA) — REVERTIDO por el v0.3
+
+> **Revertido (draft-0.5).** El borrador SFSP v0.3 §9.1 y §9.4 dice lo contrario de este apartado y manda: AUKA y AGKA **pueden acuñarse por anticipado y quedar en tesorería**; lo que exige onzas verificadas, asignadas y no comprometidas es la **colocación** (SFSP-300 §0.2). Para la clase `COM`, R1 no impide acuñar a la tesorería registrada; siguen rigiendo el cupo, la pausa y el consentimiento en la quema. El texto de abajo se conserva como histórico (C8 del plan v0.3).
 
 Se **anula el §0.2 del borrador v0.2** ("acuñar antes, colocar sólo con metal") y
 se restablece SFSP-300 §2.1 #6: **no hay un suministro acuñado por adelantado**.

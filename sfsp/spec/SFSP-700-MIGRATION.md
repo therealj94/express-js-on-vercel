@@ -3,59 +3,163 @@
 | Campo | Valor |
 |---|---|
 | Serie | SFSP-700 · Migration |
-| Estado | `draft-0.4` (alineada con el borrador SFSP v0.2) |
+| Estado | `draft-0.5` (alineada con el borrador SFSP v0.3 §14) |
 | Fuente de tipos | `CONTRATO-INTERNO.md` §1, §2.4, §3, §5, §6.3 |
 | Parte del plan maestro | P9a (registro sin movimiento), P9b (reemplazo técnico por activo), §6.3 |
-| Decisiones que la bloquean | **D09 (modo, ratio, gas, corte y claims por activo)**, D08 (derechos), D10 (custodia y recuperación), D03 (semántica monetaria si el activo es el nativo), D14 (continuidad de la 8532) |
+| Decisiones que la bloquean | **D26 (migración por cupo del padrón, ADR-016, y ratificación del catálogo de heredados)**, **D09 (ratio, corte y `migrationId` por activo)**, D08 (clase y serie de los tokens del ecosistema), D25 (cuentas internas), D10 (custodia y recuperación), D14 (continuidad de la 8532), conciliación de supply no ubicado (§0.5) |
 
 **Qué NO afirma este documento:** no afirma que ninguna migración esté aprobada, simulada ni ejecutada; no fija ratio, modo ni fecha de corte para ningún activo; no promete que ningún derecho pueda recuperarse si no existe una ruta técnica.
 
 ---
 
-## 0 · Alineación con el borrador SFSP v0.2 (23-sep-2026)
+## 0 · Alineación con el borrador SFSP v0.3 (26-sep-2026)
 
-> **Cómo leer esta sección.** El borrador SFSP v0.2 (`../fuente/`) es un borrador de trabajo: lo que sigue es **su posición**, llevada a esta serie. Hasta que la Junta lo firme, las decisiones afectadas siguen `PENDIENTE` en `../DECISIONES-SFSP.json` y todo lo que dependa de ellas devuelve `BLOCKED_DECISION`. Donde el v0.2 **cambia** una regla de más abajo, se dice aquí y la regla de abajo queda sustituida en cuanto se firme. La trazabilidad completa está en `../TRAZABILIDAD-SFSP-v0.2.md`.
+> **Cómo leer esta sección.** El borrador SFSP v0.3 sustituye al v0.2 y es la regla (`../PLAN-SFSP-v0.3-2026-09-26.md`). Es un documento interno y **no está en el repositorio**: aquí se cita por sección (`v0.3 §n`), no se copia. Para la especificación, el v0.3 manda: la regla de más abajo que contradiga esta sección queda sustituida. Para ejecutar en la 5550 sigue haciendo falta la decisión firmada: lo que dependa de una decisión `PENDIENTE` en `../DECISIONES-SFSP.json` devuelve `BLOCKED_DECISION`.
 
-### 0.1 La migración es dentro de la misma cadena
+### 0.1 La migración es dentro de la misma cadena (v0.3 §14.1)
 
-La migración de la 8532 a la 5550 **ya ocurrió**: el génesis de la 5550 (25-ago-2026) copió 172 contratos con su código y su almacenamiento, sin que ningún tenedor perdiera saldo. Por eso esta serie regula **el paso de los contratos heredados al régimen del protocolo dentro de la 5550**, sin cambio de red.
+La migración de la 8532 a la 5550 **ya ocurrió**: el génesis de la 5550 (25-ago-2026) copió 172 contratos con su código y su almacenamiento, sin que ningún tenedor perdiera saldo, y la comparación de estado entre las dos cadenas coincidió. El contrato de staking quedó fuera por innecesario bajo QBFT. Esta serie regula **el paso de los contratos heredados al régimen del protocolo dentro de la 5550**, sin cambio de red.
 
-### 0.2 Tres salidas por contrato (v0.2 §14.2)
+La 8532 se conserva en un respaldo cifrado del 10-ago-2026 y en los discos de los nodos; la reconstrucción del estado desde el respaldo se comprobó, la restauración completa de la historia de bloques no (v0.3 §14.1). El v0.3 la da por detenida; el repositorio conserva constancia de un nodo que seguía produciendo bloques con el RPC abierto (`infra/migracion-cadena/LA-8532-SIGUE-VIVA.md`). Se verifica y se aplica §8.1 y D14 antes de darla por histórica.
+
+### 0.2 Tres salidas por contrato (v0.3 §14.2)
+
+Los 172 heredados permanecen en el estado. **Todo heredado queda sin poder operar por el filtro de transacciones** (SFSP-150, v0.3 §2.1), salvo los que se registren expresamente.
 
 | Salida | Condición | Efecto |
 |---|---|---|
-| Registro transitorio | Activo del catálogo publicado por la Junta, con responsable | Opera mientras migra a un contrato conforme. Clase `LEGACY` |
-| Migración a contrato conforme | El activo debe cumplir una serie | Instantánea, bloqueo, acuñación equivalente y conciliación |
-| Inactivación | Contrato fuera del catálogo | Sigue en el estado **sin poder operar**, con constancia |
+| Registro transitorio | Activo del catálogo publicado por la Junta, con responsable identificado | Opera mientras se ejecuta su migración a un contrato conforme. Clase `LEGACY` |
+| Migración a contrato conforme | El activo debe cumplir una serie | Instantánea, bloqueo del heredado, acuñación equivalente **a la misma dirección** y conciliación (§0.3) |
+| Inactivación | Contrato fuera del catálogo | Sigue en el estado **sin poder operar**, con constancia de su tratamiento |
 
-### 0.3 El flujo, con el filtro de transacciones como bloqueo
+Los canónicos actuales son ERC-20 simples, con dueño único cuando tienen funciones privilegiadas y sin roles. No implementan elegibilidad, restricción de transferencia ni suspensión: por eso el registro transitorio es temporal.
 
-1. Desplegar el contrato conforme con su Asset Passport.
-2. Anunciar un **bloque de corte** reproducible.
-3. Instantánea de saldos con **raíz de Merkle** publicada en `SFSPMigrationRegistry`.
-4. **Bloquear el heredado con el filtro de transacciones** (SFSP-150) desde el bloque de corte. Esto **sustituye** la pausa o la quema que los contratos heredados no tienen. El modo es `FROZEN_SNAPSHOT`.
-5. Acuñar en el conforme los saldos equivalentes **en la misma dirección**. Al no cambiar de cadena, el reclamo por firma de `SURRENDER_ON_CLAIM` no hace falta.
-6. Conciliar instantánea contra acuñado y cerrar con historia consultable.
+### 0.3 Camino normativo: acuñación a la misma dirección por cupo del padrón (v0.3 §14.3, ADR-016)
+
+El v0.3 §14.3 dice que, al no haber cambio de cadena, **el reclamo por firma deja de ser necesario, porque la equivalencia se asigna a la misma dirección**. El mecanismo que hace eso con el código existente es el **cupo del padrón** (`../migracion-410/LEEME.md`, «Alternativa evaluada»; `../auditoria/REVISION-SFSP410-2026-09-26.md`, REV-410-17). Esta serie lo adopta como **camino normativo**, sujeto a D26 y a ADR-016 (`PROPUESTO`).
+
+Flujo por activo:
+
+| # | Paso | Mecanismo | Evento o evidencia |
+|---|---|---|---|
+| 1 | Desplegar el contrato conforme con su Asset Passport | SFSP-100 | `AssetRegistered` |
+| 2 | Anunciar un **bloque de corte** reproducible y fijar `migrationId` | Gobernanza (D09) | `GovernanceAction` |
+| 3 | **Padrón**: instantánea de saldos a ese bloque, raíz de Merkle y total `S0` publicados (sin publicar direcciones) | `migracion-410/construir-padron.mjs`, `verificar-padron.mjs` | Raíz y `S0` |
+| 4 | **Bloquear el heredado** con el filtro de transacciones desde el bloque de corte. Sustituye la pausa o la quema que los heredados no tienen | SFSP-150 | `NetworkPermissionChanged`, código `CORTE_MIGRACION` |
+| 5 | Topes del instrumento fijados contando `S0` | `setInstrumentLimits` (Junta) | `GovernanceAction` |
+| 6 | **Un** cupo por activo: `SET_MINT_BUDGET` con monto por periodo = `S0`, máximo por operación = mayor saldo del padrón, vigencia de días, `termsDocRoot` = raíz del padrón. Quórum, espera y consumo único | `setMintBudget` (SFSP-410 R5) | `MintBudgetSet` |
+| 7 | **Acuñar a cada tenedor su saldo equivalente en la misma dirección**: un `mintOnDemand` por hoja, con `paymentRef = keccak256("MIGRACION\|<assetId>\|<dirección>")` en hex y minúsculas, y `evidenceRoot` = raíz del padrón | `mintOnDemand` | `MintExecuted` + `MintOnDemand` |
+| 8 | Cerrar el cupo al terminar o al vencer | `revokeMintBudget(assetId, "MIGRACION_FIN")` | `MintBudgetRevoked` |
+| 9 | **Conciliación publicada**: cada `MintOnDemand` de la ventana casa con una hoja del padrón y su prueba; `paymentRef` se recalcula desde el destino; la suma es ≤ `S0` y la diferencia son los pendientes (§3). Un evento que no case es incidente: pausa y revocación | Indexador | `ConciliationRecorded` |
+| 10 | Cierre con historia consultable | — | — |
+
+Por qué este camino:
+
+1. Pasa por `_mintTo` y aplica **R1** (nunca a una cuenta interna), **R3** (elegibilidad), **R8** (topes) y **R9** (pausa). La ruta `SFSPMigrationRegistry` → `mintForMigration` no aplica R1 ni los topes (REV-410-12).
+2. `paymentRef` por (activo, dirección) es un **anulador en cadena**: la misma dirección no cobra dos veces el mismo activo, ni en reintentos ni en rondas posteriores.
+3. Los firmantes aprueban **ese** padrón y **ese** total, con espera. Una aprobación por activo en vez de una por persona.
+
+Lo que se pierde y cómo se mitiga (detalle en ADR-016 §4):
+
+| Riesgo | Mitigación obligatoria |
+|---|---|
+| El reparto individual **no se comprueba en cadena**: dentro de `S0`, la llave del emisor podría acuñar a una dirección elegible fuera del padrón | Ventana corta; máximo por operación = mayor saldo; conciliación publicada del paso 9; revocación al terminar. Queda **detectable**, no impedido |
+| Ocupa el único cupo del activo | Orden fijo: migración → `revokeMintBudget` → cupo comercial |
+| Un saldo = una operación | Un saldo desproporcionado va por orden `MINT` individual, fuera del cupo |
+| Consume el tope acumulado | Fijar los topes del instrumento contando `S0` (paso 5) |
+| No emite los eventos de migración de esta serie | El indexador reconoce la migración por `paymentRef` con prefijo `MIGRACION` (§0.6) |
+| Se evalúa la política `MINT`, no `MIGRATE_CLAIM` | La política `MINT` del activo nuevo tiene que admitir a los tenedores del padrón |
+
+**Registro por reclamo como excepción.** `SFSPMigrationRegistry` (reclamo firmado por el atestador, `MigrationClaimed`) queda como **opción para los casos que no pueden asignarse a la misma dirección**:
+
+1. Claves del padrón sin dirección (ranuras y huellas): no entran en `S0`; se pagan cuando alguien pruebe la clave.
+2. Direcciones que son contratos (escrows, puentes, pools) cuyo beneficiario económico es otro.
+3. Direcciones cuyo control se perdió y exigen recuperación (SFSP-130, `RECOVER`) hacia una dirección nueva.
+
+En esos casos rigen el modo `SURRENDER_ON_CLAIM` o la ronda posterior con cupo nuevo del tamaño de lo resuelto, con la **misma** `paymentRef` por (activo, dirección) para impedir el doble derecho entre saldo por dirección y saldo por ranura.
+
+**Encaje con los modos de §2.** La emisión por padrón es la **ejecución** de `FROZEN_SNAPSHOT`: congelación eficaz por el filtro (paso 4) antes de habilitar la acuñación, instantánea final (paso 3) y derechos calculados. No es un tercer modo.
+
+**Estados del reclamo** (v0.3 Apéndice A, «Reclamo de migración») en este camino:
+
+| Estado | Cuándo |
+|---|---|
+| No reclamado | La hoja está en el padrón y no se ha acuñado |
+| Verificado | El destino es elegible para `MINT` y no es cuenta interna |
+| Bloqueo confirmado | El filtro bloquea el heredado desde el bloque de corte |
+| Emitido | `MintOnDemand` con la `paymentRef` canónica |
+| Conciliado | La hoja figura en la conciliación publicada del paso 9 |
+| No reclamable | Cuenta interna, dirección excluida por expediente o clave sin dirección todavía no probada |
+
+**Inventario interno.** El padrón excluye las cuentas internas (R1). El inventario acuñado de AUKA y AGKA en billeteras internas (55.000.000 y 500.000.000) no se migra por este camino. Si el activo conforme necesita tesorería, se acuña a la tesorería registrada por orden de gobierno aparte (SFSP-300 §0.2) y con su propia aprobación. Es parte de D26.
 
 La equivalencia es **por contrato, no por símbolo**: hay varios contratos con el mismo símbolo y lógica distinta.
 
-### 0.4 Catálogo (v0.2 §14.4)
+### 0.4 Catálogo y clasificación (v0.3 §14.4)
 
-| Activo | Contrato canónico | Tratamiento |
+**Contratos canónicos:**
+
+| Activo | Contrato canónico | Tratamiento previsto |
 |---|---|---|
-| AUKA | `0x6facc8df79cedc6c5065442ce27e915aa3a26b9b` | Transitorio → conforme SFSP-300 |
-| AGKA | `0x961f798f998c7ff44d47d62c7fa1b572ef187a4b` | Transitorio → conforme SFSP-300 |
-| ONDK | `0xfb83eea4b384a4b18e5a1eba7a4bb4c0b7ca19c1` | Transitorio → conforme SFSP-200 |
-| HARV | `0x0fa04d11f28b28cbc9b98dd016f02023addb1923` | Publicado; clase y serie por definir (D08) |
-| IBS | por confirmar entre dos contratos con el mismo símbolo | Publicado; clase y serie por definir (D08) |
+| AUKA | `0x6facc8df79cedc6c5065442ce27e915aa3a26b9b` | Registro transitorio y migración a contrato conforme SFSP-300 |
+| AGKA | `0x961f798f998c7ff44d47d62c7fa1b572ef187a4b` | Registro transitorio y migración a contrato conforme SFSP-300 |
+| ONDK | `0xfb83eea4b384a4b18e5a1eba7a4bb4c0b7ca19c1` | Registro transitorio y migración a contrato conforme SFSP-200 |
+| HARV | `0x0fa04d11f28b28cbc9b98dd016f02023addb1923` | Publicado por decisión de Junta; clase y serie por definir (D08) |
+| IBS | Por confirmar entre dos contratos con el mismo símbolo | Publicado por decisión de Junta; clase y serie por definir (D08) |
+| MONARKA | `0x18b6680cff71c11067bec312fc48786be2e54ead` | Canónico identificado; clase y serie por definir (D08) |
+| REAL STATE | `0x1ac12ebd7739003059d1e9ea2a4863c92d1505dd` | Canónico identificado; clase y serie por definir (D08) |
 
-Propuestos para inactivación: SILVER KAPITAL, los cuatro WORIGEN, el envoltorio WETH y los doce pools V3, los catorce HARVI duplicados, los dos AUBEX y el resto sin propósito acreditado. MONARKA: por definir. El nombre de marca sale del Asset Passport, no de la función `name()` del contrato.
+ORIGEN es la moneda nativa y no depende de un contrato. **El nombre de marca sale del Asset Passport, no de la función `name()` del contrato**: así se resuelve que el canónico de AGKA devuelva un nombre distinto de Silver Kapital.
 
-### 0.5 Condiciones previas que bloquean
+**Contratos con tratamiento pendiente de decisión** (ratificación de la Junta, v0.3 §18; D26):
 
-1. **Conciliar los 9.823,01 AUKA y 792,5 ONDK sin ubicar** con el respaldo del reinicio del 25 de agosto (su lectura exige credenciales rotadas). **Ninguna migración de AUKA ni de ONDK se ejecuta antes.**
-2. El trato de los adquirentes tempranos de ONDK se decide antes de migrar ONDK.
-3. **La 8532 no está del todo detenida**: consta que un nodo seguía produciendo bloques con el RPC abierto (`infra/migracion-cadena/LA-8532-SIGUE-VIVA.md`). Se aplica §8.1 y D14 antes de dar la red por histórica.
+| Contrato | Situación | Propuesta |
+|---|---|---|
+| SILVER KAPITAL, `0x37bcb1c800220e414ed09e044becd3bf9d06ea67` | Contrato inicial de AGKA, reemplazado por el canónico; un tenedor interno, sin movimientos | Inactivación |
+| Cuatro contratos WORIGEN | Tres muestran un saldo de 55.000.000 a favor de la cuenta desplegadora, con suministro total cero y sin ORIGEN que lo respalde | Inactivación antes de cualquier migración |
+| Envoltorio WETH y doce pools V3 | Envoltorio vaciado el 25-ago; los pools declaran liquidez sin contrapartida real | Inactivación (SFSP-500 §0.1, regla 3) |
+| Catorce contratos HARVI duplicados | Suministros desproporcionados, un tenedor cada uno, fuera del catálogo | Inactivación |
+| MONARKA, `0x632b7f72a86b39d919fafd5c6d86663caebb49eb` | Duplicado del canónico, con 10²⁶ unidades en la cuenta desplegadora | Inactivación |
+| REAL STATE, `0x3607163401bc4f9135986c0d3138bff1ebd0cb96` | Duplicado del canónico, con un billón de unidades y funciones de acuñación y quema | Inactivación |
+| AGROTECH, ARTIFICIAL INTELLIGENCE, SOLAR, AMOR GLOBAL, POLITICAL y ATHLETIC | Desplegados con MONARKA y REAL STATE con el mismo código; supply fijo, sin funciones privilegiadas, casi todo en una billetera interna, fuera de todo listado | Clase y serie por definir (D08). El símbolo SOL coincide con el de Solana y se revisa |
+| AUBEX, `0xf1498640b27a66c0dc505093d70911c060e04fb0` | Heredado, no ofrecido en productos, visible como no listado; la app móvil le asigna un precio fijo. Transferencia de 5.000 unidades del 17-sep aprobada por la Junta, pendiente de acta; falta confirmar si el destino es interno | Inactivación hasta autorización de DBNX y retiro del precio fijo |
+| AUBEX, `0xb58382be75879732f4abe96100f1b7faa6b4ce63` | Heredado, un tenedor, fuera de productos | Inactivación |
+| Resto de los 172 | Factorías, routers, contratos mínimos y duplicados de prueba (Coffee, TokenA, TokenB, Token 1, SushiBar, entre otros) | Inactivación salvo que un responsable acredite propósito vigente |
+
+### 0.5 Supply no ubicado y adquirentes tempranos (v0.3 §14.5, corregido)
+
+| Activo | v0.3 §14.5 | Medido en la 5550, bloque 273.508 | Diferencia |
+|---|---|---|---|
+| AUKA | 9.823,01 | **9.823,01** | Coincide |
+| ONDK | 792,5 | **804,5** | 12 ONDK: la única clave de **permiso** del contrato, que se contó como saldo |
+
+Método: `../migracion-410/censo-tokens-5550.mjs` (saldos de la 5550 a la fecha; de la 8532 solo se usan las direcciones como diccionario). La corrección figura como C1 del plan v0.3 y se lleva al siguiente borrador rector.
+
+1. Hipótesis: saldos creados en la cadena intermedia del 15 al 25 de agosto. La fuente para cerrarla es el respaldo del reinicio del 25 de agosto, cuya lectura exige **rotar antes las credenciales** (fase 0, punto 0.9). **No se buscan saldos en la 8532.**
+2. **Ninguna migración a contrato conforme de AUKA ni de ONDK se ejecuta antes de cerrar esta conciliación.** Un padrón de AUKA u ONDK con esos residuos sin resolver no se aprueba.
+3. El tratamiento de los adquirentes tempranos de ONDK se decide con el panorama completo, incluida esta conciliación, y **antes** de migrar ONDK.
+
+### 0.6 Diferencia con el código actual
+
+| Pieza | Estado |
+|---|---|
+| `SFSPIssuanceController` con `setMintBudget`, `mintOnDemand`, `revokeMintBudget` | Existe, con pruebas (SFSP-410) |
+| Constructor y verificador del padrón | Existen (`migracion-410/`) |
+| `SFSPMigrationRegistry` (reclamo firmado) | Existe; queda para las excepciones de §0.3 |
+| Filtro de transacciones (bloqueo del heredado) | **No existe** (SFSP-150, fase 2 punto 7) |
+| Reconocimiento de la migración por `paymentRef` en el indexador y conciliación publicada | **No existe** (fase 2 punto 8) |
+
+### 0.7 Pruebas de aceptación nuevas
+
+1. **T-700-21**: Un `mintOnDemand` a una dirección que no está en el padrón, dentro de `S0`, aparece como incidente en la conciliación publicada.
+2. **T-700-22**: Una segunda acuñación del mismo activo a la misma dirección con la `paymentRef` canónica revierte con `OperationReplay`, también en una ronda posterior.
+3. **T-700-23**: Una hoja del padrón que es cuenta interna revierte con `MintToInternalAccount`.
+4. **T-700-24**: La suma de lo acuñado en la ventana es ≤ `S0`, y la diferencia coincide con los beneficiarios no elegibles aún más las claves sin dirección.
+5. **T-700-25**: Mientras la conciliación de 804,5 ONDK y 9.823,01 AUKA siga abierta, el cupo de migración de ONDK o AUKA no se puede aprobar.
+6. **T-700-26**: Un contrato fuera del catálogo no puede operar con el filtro de transacciones activo, y su constancia de inactivación es consultable.
+7. **T-700-27**: No se puede fijar el cupo comercial de un activo mientras el cupo de migración siga vigente sin `revokeMintBudget`.
+8. **T-700-28**: La dirección y el `assetId` en mayúsculas y en minúsculas producen la misma `paymentRef` (se normalizan antes de calcularla).
+9. **T-700-29**: Una clave sin dirección no entra en `S0`; su pago posterior por reclamo o por ronda nueva no permite cobrar dos veces a una dirección que ya cobró.
 
 ---
 
@@ -72,7 +176,7 @@ La migración de cuenta (P9a) se completa **antes** de cualquier sustitución de
 
 ## 2 · Los dos modos
 
-**Se usa exactamente uno de estos dos modos por activo.** No hay un tercero y no se mezclan.
+**Se usa exactamente uno de estos dos modos por activo.** No hay un tercero y no se mezclan. **draft-0.5:** el camino normativo (§0.3) ejecuta `FROZEN_SNAPSHOT` con emisión por cupo del padrón; `SURRENDER_ON_CLAIM` queda para las excepciones de §0.3.
 
 ### 2.1 `FROZEN_SNAPSHOT`
 
@@ -196,7 +300,7 @@ Controles:
 
 ### 5.1 Firma de claim
 
-La autorización de un claim incluye, además de los campos de `SignedAuthorization` (§2.4):
+Solo aplica al registro por reclamo (excepciones de §0.3). En el camino normativo no hay firma de claim: el anulador es la `paymentRef`. La autorización de un claim incluye, además de los campos de `SignedAuthorization` (§2.4):
 
 | Campo | Regla |
 |---|---|
@@ -296,16 +400,16 @@ Una red declarada congelada exige revisar si existen derechos, usuarios externos
 
 | Parámetro | Valor | Decisión |
 |---|---|---|
-| Modo por activo (`FROZEN_SNAPSHOT` o `SURRENDER_ON_CLAIM`) | `null` | D09 |
+| Modo por activo (`FROZEN_SNAPSHOT` o `SURRENDER_ON_CLAIM`) | `FROZEN_SNAPSHOT` con emisión por cupo del padrón (§0.3); `SURRENDER_ON_CLAIM` para las excepciones | D26 + ADR-016 |
 | Ratio por activo | `null` | D09 |
 | Fecha de corte | `null` | D09 |
-| Quién paga el gas del claim | `null` | D09 / D02 |
+| Quién paga el gas del claim | En el camino normativo, el emisor; en las excepciones, `null` | D09 / D02 |
 | Política de claims y su mantenimiento | `null` | D09 |
 | Derechos del instrumento nuevo | `null` | D08 |
 | Tratamiento jurídico de `E` | `null` | D08 / D09 |
 | Continuidad de la red histórica | `null` | D14 |
 
-Mientras D09 esté pendiente, **cada P9b está bloqueada** y toda ruta de claim devuelve `BLOCKED_DECISION`.
+Mientras D09 y D26 estén pendientes, **cada P9b está bloqueada** y toda ruta de migración, por cupo o por reclamo, devuelve `BLOCKED_DECISION`.
 
 ---
 
