@@ -1,32 +1,45 @@
 # SFSP-200 · Securities
 
 > **Enmienda SFSP-410 (propuesta, 26-sep-2026, pendiente D23):** el 49 % que retiene el emisor en la colocación 51/49 es **supply autorizado, no acuñado**: se acuña al colocarse, al inversor, y nunca hacia el emisor ni hacia una cuenta interna (R1). Con emisión y quema continuas, el tope que gobierna el día a día es el de stock; el acumulado queda como techo de vida del instrumento (D24). Ver `spec/SFSP-410-SUPPLY-POLICY.md`.
+>
+> **Nota draft-0.5:** el v0.3 §4.3 describe lo acuñado como unidades en billeteras internas, tratadas como tesorería. Para securities esa lectura choca con R1 de SFSP-410. Hasta D23 rige esta enmienda; ver §0.3, regla 4.
 
 | Campo | Valor |
 |---|---|
 | Serie | SFSP-200 · Securities |
-| Estado | `draft-0.4` (alineada con el borrador SFSP v0.2) |
+| Estado | `draft-0.5` (alineada con el borrador SFSP v0.3 §5 y §8) |
 | Fuente de tipos | `CONTRATO-INTERNO.md` §1, §2.3, §2.4, §3 |
 | Parte del plan maestro | P7c (DBNX), P4 emisión de securities, P3 entregables 3 y 5 |
-| Decisiones que la bloquean | D08 (clasificación, derechos y elegibilidad por activo y país), D13 (autorizaciones RFSA/RFCA), D07 (quórums de emisión), D04 (metodología de valoración cuando haya reservas involucradas) |
+| Decisiones que la bloquean | D08 (clasificación, derechos y elegibilidad por activo y país), D13 (autorizaciones RFSA/RFCA), D07 (quórums de emisión y firmantes de DBNX), umbrales de los segmentos y parámetros de deslindes (v0.3 §18), D23 (acuñación de la porción no colocada) |
 
 **Qué NO afirma este documento:** no afirma que exista ninguna autorización jurídica para ofrecer, emitir o negociar ningún instrumento, ni que ninguna plantilla de derechos haya sido aprobada; no clasifica ningún activo existente.
 
 ---
 
-## 0 · Alineación con el borrador SFSP v0.2 (23-sep-2026)
+## 0 · Alineación con el borrador SFSP v0.3 (26-sep-2026)
 
-> **Cómo leer esta sección.** El borrador SFSP v0.2 (`../fuente/`) es un borrador de trabajo: lo que sigue es **su posición**, llevada a esta serie. Hasta que la Junta lo firme, las decisiones afectadas siguen `PENDIENTE` en `../DECISIONES-SFSP.json` y todo lo que dependa de ellas devuelve `BLOCKED_DECISION`. Donde el v0.2 **cambia** una regla de más abajo, se dice aquí y la regla de abajo queda sustituida en cuanto se firme. La trazabilidad completa está en `../TRAZABILIDAD-SFSP-v0.2.md`.
+> **Cómo leer esta sección.** El borrador SFSP v0.3 sustituye al v0.2 y es la regla (`../PLAN-SFSP-v0.3-2026-09-26.md`). Es un documento interno y **no está en el repositorio**: aquí se cita por sección (`v0.3 §n`), no se copia. Para la especificación, el v0.3 manda: la regla de más abajo que contradiga esta sección queda sustituida. Para ejecutar en la 5550 sigue haciendo falta la decisión firmada: lo que dependa de una decisión `PENDIENTE` en `../DECISIONES-SFSP.json` devuelve `BLOCKED_DECISION`.
 
-### 0.1 Modelo de supply (v0.2 §8.1)
+### 0.1 Roles: DBNX admite y supervisa; no valúa (v0.3 §5, §5.1)
+
+| Actor | Hace | No hace |
+|---|---|---|
+| DBNX | Admite y clasifica emisores, verifica el expediente contra requisitos publicados, autoriza supply, exige reporte, supervisa y suspende | **No valúa**, no certifica estados financieros, no emite ni acuña, no administra el negocio del emisor |
+| Orden Global | Verifica **la forma** del documento de aprobación (§0.5) y ejecuta la acuñación autorizada | No crea supply sin autorización de DBNX, no valúa |
+| Valuador independiente | Emite el dictamen de valuación, **contratado por el solicitante** | No participa en el emisor, no cobra en función del resultado |
+| Auditor del emisor | Opina sobre los estados financieros | No responde por la gestión del emisor |
+
+1. DBNX se documenta como **operador y entidad de autorregulación** del Mercado de Valores Inclusivo. «Regulador» se reserva para RFSA. La jurisdicción y el reglamento de DBNX quedan por definir (v0.3 §18).
+2. Lo que DBNX hace después de la admisión se llama **supervisión**, no auditoría: la auditoría certifica información y DBNX no certifica la información del emisor.
+3. La escala R1–R5 es una **clasificación interna de admisión** divulgada con lenguaje de advertencia, no una calificación de riesgo pública (§6).
+
+### 0.2 Modelo de supply (v0.3 §8.1)
 
 ```
 supplyAutorizado = floor(capitalAutorizadoACaptar / precioVigente)
 ```
 
-La valuación admisible de DBNX fija el **precio** por token, no la cantidad.
-
-Toda ampliación declara cuál de estas dos operaciones es, y **presenta su prueba de neutralidad**:
+La valuación independiente, verificada por DBNX, fija el **precio** por token, no la cantidad. Toda ampliación declara cuál de estas dos operaciones es y **presenta su prueba de neutralidad**:
 
 | Operación | Mecánica | Efecto sobre el tenedor | Evento |
 |---|---|---|---|
@@ -35,13 +48,24 @@ Toda ampliación declara cuál de estas dos operaciones es, y **presenta su prue
 
 Una ampliación sin declaración, o una colocación por debajo del precio vigente sin la declaración de dilución, se **rechaza**.
 
-### 0.2 Colocación 51/49 (v0.2 §8.2)
+### 0.3 Colocación: hasta el 51 % y un mínimo por segmento (v0.3 §8.2, §8.4)
 
-Se coloca el 51 % al público con calendario de liberación progresiva y el emisor retiene el 49 %. DBNX autoriza en cada periodo el porcentaje en circulación. Pendiente: vesting, aceleración y trato de la porción retenida ante cambio de control.
+| Regla | Valor |
+|---|---|
+| Colocación al público | **Máximo 51 %** del supply autorizado. Es un tope: cada emisor elige cuánto coloca por debajo y conserva el resto |
+| Mínimo de colocación, Mercado Principal | `null`, `BLOCKED_DECISION` (umbrales de los segmentos, v0.3 §18) |
+| Mínimo de colocación, Mercado de Crecimiento | `null`, `BLOCKED_DECISION` (umbrales de los segmentos, v0.3 §18) |
+| Porcentaje en circulación por periodo | Lo autoriza DBNX en cada periodo, con calendario de liberación progresiva |
+| Vesting, aceleración y porción retenida ante cambio de control | Pendiente (v0.3 §8.2) |
 
-### 0.3 Expediente de admisión en ocho bloques (v0.2 §8.3)
+1. El mínimo existe porque un token con muy poca cantidad en circulación es fácil de manipular y difícil de supervisar. Mientras sea `null`, **ninguna admisión se resuelve favorablemente**: la capacidad que depende de él devuelve `BLOCKED_DECISION`.
+2. Una colocación que lleve lo colocado por encima del 51 % del supply autorizado se rechaza con `DENY_LIMIT`.
+3. El 51 % sustituye al «51/49» del v0.2: el 49 % ya no es una porción fija retenida sino lo que el emisor decide no colocar.
+4. Si la porción no colocada se acuña o queda como supply autorizado sin acuñar es un punto abierto entre el v0.3 §4.3 (lo acuñado queda en billeteras internas, tratado como tesorería) y la enmienda SFSP-410 de la cabecera (no se acuña hacia cuentas internas). Hasta que se decida (D23), rige la enmienda SFSP-410 para esta serie y **las dos cifras se publican** en el pasaporte: supply autorizado, emitido y en circulación (v0.3 §4.2).
 
-Bloques 0 a 7: apertura, identidad y control, activos y titularidad, valuación, instrumento, riesgo, divulgación continua, responsabilidades y deslindes. La máquina de estados del caso es la del Apéndice A del v0.2 (`ESTADOS-Y-EVENTOS.md`).
+### 0.4 Expediente de admisión en ocho bloques; el Bloque 7 es condición de admisión (v0.3 §8.3)
+
+Bloques 0 a 7: apertura, identidad y control, activos y titularidad, estados financieros y valuación, instrumento, riesgo, divulgación continua, **responsabilidades y deslindes**. La máquina de estados del caso es la del v0.3 Apéndice A (`ESTADOS-Y-EVENTOS.md`).
 
 **Valor admisible de cada activo de la canasta:**
 
@@ -60,21 +84,79 @@ ValorCanasta  = Σ V_admisible_i        (no es la suma de los avalúos)
 | Contingente | Mínimo o nulo |
 | No perfeccionada | Nulo |
 
-Reglas nuevas:
+Reglas del expediente:
 
 1. La concentración se mide **por activo y por familia**. Los activos en trámite y contingentes tienen tope de concentración.
 2. **Prohibición de circularidad:** los activos digitales del propio ecosistema **computan cero** en una canasta.
 3. Créditos de carbono: reconocimiento bajo o reservados hasta tener política propia.
-4. Si el emisor pertenece al ecosistema, el **valuador es externo** e independiente, y DBNX solo verifica el cumplimiento formal.
-5. Un activo que no encaja en ninguna familia se admite si responde las cuatro preguntas (existe, es del solicitante, se puede transferir, cuánto vale), y DBNX registra la familia nueva.
+4. **La valuación la elabora siempre un valuador independiente contratado por el solicitante**, para todo emisor (no solo los del ecosistema). DBNX verifica que el dictamen cumpla los requisitos publicados de metodología, vigencia e independencia. Independencia: sin participación en el emisor, sin servicios de estructuración prestados y sin honorarios contingentes al resultado.
+5. Estados financieros auditados según el segmento: firma acreditada para el Mercado de Crecimiento, firma de categoría AA para el Mercado Principal (qué firmas califican: pendiente, v0.3 §18).
+6. Un activo que no encaja en ninguna familia se admite si responde las cuatro preguntas (existe, es del solicitante, se puede transferir, cuánto vale), y DBNX registra la familia nueva.
+7. La solicitud la firma quien acredite facultades, con **declaración de veracidad y completitud** que responsabiliza personalmente al firmante (Bloque 0).
 
-### 0.4 Segmentos (v0.2 §8.4)
+#### 0.4.1 Bloque 7 · Responsabilidades y deslindes
+
+**Es condición de admisión.** Un caso no pasa a `resuelto favorablemente` ni a `resuelto con condiciones` sin los instrumentos firmados de §0.4.1.g registrados por hash y versión. Mientras falten, la admisión devuelve `BLOCKED_DECISION`.
+
+**a. Cada dato tiene un autor que responde por él, y ningún eslabón responde por el trabajo de otro.**
+
+| Actor | Responde por | No responde por |
+|---|---|---|
+| Emisor | La veracidad de lo que presenta, la gestión del negocio y del capital captado, la divulgación continua | No puede trasladar a otro la responsabilidad por lo que declara |
+| Auditor | Su opinión sobre los estados financieros | La gestión del emisor |
+| Valuador | Su dictamen, la metodología y su independencia | El precio de mercado posterior |
+| Custodio y fiduciario | Existencia, segregación e inmovilización de lo que guarda, y sus atestaciones | El valor del activo |
+| DBNX | La verificación del expediente contra sus requisitos publicados y la supervisión conforme a su proceso | La valuación, los estados financieros, la veracidad del emisor y el resultado de la inversión |
+| Orden Global | La acuñación exacta de lo que autoriza el documento de aprobación y el funcionamiento de la red | El contenido de la aprobación y el activo |
+| Au Corp. | La ejecución de órdenes, la custodia de clientes y los rieles de moneda fiduciaria | El valor de los activos negociados y la liquidez del mercado |
+
+**b. Niveles de responsabilidad.**
+
+| Nivel | Alcance | Tratamiento |
+|---|---|---|
+| Fuera de la función | Lo que el actor no se obligó a hacer | Sin responsabilidad |
+| Error operativo | Negligencia ordinaria en la propia función | Daño directo de la operación afectada, sin daños indirectos ni lucro cesante, con **tope total por incidente** para cada entidad (`null`, `BLOCKED_DECISION`) |
+| Dolo, culpa grave y obligaciones legales | Fraude, descuido grave, prevención de lavado, segregación de activos | Responsabilidad plena, **declarada expresamente** |
+
+Los deslindes se redactan para sostenerse frente al estándar de protección al consumidor más estricto razonable de la región, no solo frente al marco de Próspera. Con clientes institucionales el tope puede pactarse aparte. **Pendiente de verificación legal** la oponibilidad frente a minoristas (v0.3 §8.3, §19).
+
+**c. Ventanilla única de reclamos.** DBNX la opera **desde el lanzamiento**. El adquirente reclama en un solo lugar y DBNX lo dirige a la entidad responsable según la tabla (a). Plazo de respuesta: `null`, `BLOCKED_DECISION`. Vencido el plazo, el adquirente queda libre de ir a arbitraje o a tribunales: el reclamo previo es un paso del proceso, no una renuncia a la vía judicial cuando la ley del adquirente la garantiza.
+
+**d. Fondo de protección.** Cubre **errores operativos de los operadores** cuando la entidad responsable no paga, hasta un límite por persona. No cubre pérdidas de inversión ni el fraude de un emisor. Se alimenta con una fracción de las comisiones **desde el lanzamiento**, paga reclamos a partir de una segunda fase, y lo administra alguien independiente de las entidades que cubre. Mientras tanto, cada entidad cubre el nivel de error operativo con un seguro de responsabilidad. Fracción de comisiones y límite por persona: `null`, `BLOCKED_DECISION`.
+
+**e. Rendición de cuentas.** El solicitante reporta la aplicación de los fondos contra el destino declarado, con periodicidad definida y explicación de las desviaciones. DBNX puede pedir más información, ordenar auditoría con cargo al solicitante ante indicios de desviación y aplicar la escala de estados hasta la suspensión. Esa facultad se ejerce sobre la información y el estado del listado, no sobre las decisiones de negocio.
+
+**f. Declaración del adquirente.** Antes de adquirir, el adquirente reconoce que la admisión no es garantía ni recomendación, que la clasificación de riesgo no asegura resultado, que la gestión corresponde al emisor y que puede perder su inversión. **Se registra en cadena con la versión del documento aceptado** (`AcquirerDeclarationRecorded`: `documentHash`, `documentVersion`). Una adquisición sin declaración vigente para la versión en curso de los términos se rechaza. La fricción es proporcional al riesgo (§0.6).
+
+**g. Instrumentos firmados.** Acuerdo de admisión (DBNX–solicitante), términos de servicio de infraestructura (Orden Global–emisor) y términos del adquirente. El protocolo registra hashes y versiones aceptadas; la fuerza legal viene de los documentos.
+
+**h. Declaración falsa.** Acreditada la declaración falsa u omisión material, DBNX revoca la admisión (código `DECLARACION_FALSA`), publica la causa, y el solicitante responde frente a los adquirentes. DBNX puede rechazar dictámenes posteriores del profesional o la firma responsable, con fundamento registrado.
+
+**i. Atestaciones y dictámenes.** Cada uno identifica firmante y fecha y tiene vigencia declarada. La atestación vencida degrada sola el reconocimiento del activo. Auditor, valuador, custodio y fiduciario quedan identificados en el Asset Passport; esos campos **no se omiten por razones comerciales**.
+
+### 0.5 Verificación previa a la acuñación (v0.3 §5, §8.3 Bloque 7)
+
+Antes de acuñar, Orden Global verifica **la forma** del documento de aprobación de DBNX, **no el fondo**:
+
+| # | Comprobación | Si falla |
+|---|---|---|
+| 1 | **Completo**: el documento referenciado por hash en la autorización existe y tiene todos los campos exigidos (activo, cantidad, destino o regla de destino, vigencia, firmantes) | Rechazo, `VERIFICACION_PREVIA_FALLIDA` |
+| 2 | **Firmado** por los firmantes de DBNX facultados para esa acción (quórum D07) | Rechazo, `DENY_AUTHORIZATION` |
+| 3 | **Vigente** en el momento de acuñar, y no consumido | Rechazo, `DENY_AUTHORIZATION` |
+| 4 | **Cantidad exacta**: lo que se acuña coincide con lo autorizado | Rechazo, `VERIFICACION_PREVIA_FALLIDA` |
+
+Reglas:
+
+1. **La regla aplica también cuando Orden Global es el solicitante**: pasa por DBNX en las mismas condiciones que cualquier emisor. No hay ruta de acuñación propia exenta.
+2. La verificación de forma **no traslada** a Orden Global la responsabilidad por el contenido de la aprobación (Bloque 7, tabla a).
+3. «Cantidad exacta» sustituye, para la acuñación, a la regla de §3.1 que admitía acuñar por debajo del monto autorizado en varias veces. Una autorización que prevea tramos declara la cantidad exacta de cada tramo, y cada acuñación ejecuta un tramo completo.
+4. Se implementa sobre la autorización ligada al contenido (ADR-013, SFSP-800 §12): el digest aprobado compromete el hash del documento de aprobación. Un rechazo por forma no emite evento de supply; queda en el registro operativo.
+
+### 0.6 Segmentos y acceso del adquirente (v0.3 §8.4, §8.5)
 
 `PRINCIPAL` y `CRECIMIENTO`; `INSTITUCIONAL` queda reservado sin activar. El segmento (madurez del emisor) y el nivel de riesgo (riesgo del instrumento) son **variables distintas y se publican las dos**. Se asciende y se desciende de segmento.
 
-### 0.5 Límite de exposición en el Mercado de Crecimiento (v0.2 §8.5)
-
-Se controla por **límite de exposición**, no por perfil de inversionista.
+En el Mercado de Crecimiento el acceso se controla por **límite de exposición**, no por perfil de inversionista:
 
 1. Por **Genesis ID**, no por dirección.
 2. Sobre la **exposición agregada al segmento**, no por activo.
@@ -82,11 +164,33 @@ Se controla por **límite de exposición**, no por perfil de inversionista.
 4. Como porcentaje del ingreso o patrimonio **autodeclarado**, con piso y techo, sin comprobación documental.
 5. Expresado en la **unidad de cuenta del protocolo**, no en moneda local.
 
-Lo acompañan la **fricción proporcional al riesgo** (a más riesgo, reconocimiento más explícito) y el registro versionado del reconocimiento (`AcquirerDeclarationRecorded`, `ExposureLimitRecorded`). Porcentaje, piso y techo: `null`.
+Lo acompañan la **fricción proporcional al riesgo** y el registro versionado del reconocimiento (`AcquirerDeclarationRecorded`, `ExposureLimitRecorded`). Porcentaje, piso y techo: `null`.
 
-### 0.6 Plantillas (v0.2 §8.6)
+**Este acceso abierto aplica solo a los activos cuya colocación admite oferta al público.** Para los colocados bajo la oferta exenta rige el alcance de SFSP-120 §0.5 (v0.3 §8.5). Pendiente de verificación legal: si la jurisdicción de DBNX impone restricciones por perfil, conviven con el límite de exposición.
 
-| v0.2 | `dbnx-api/src/plantillas.ts` |
+### 0.7 Tokenización de acciones (v0.3 §8.9)
+
+Cuando el instrumento representa acciones del emisor, **las acciones tokenizadas no pueden duplicarse fuera del sistema**, ni con títulos físicos por la misma participación ni con acciones nuevas de la misma clase.
+
+**Modelo de representación.** El token puede ser la acción misma, si la ley aplicable reconoce el registro en cadena como libro legal de accionistas, o representar una acción que un **fiduciario conserva inmovilizada**. Mientras la ley aplicable no reconozca el registro en cadena, **el protocolo adopta el segundo modelo**. El pasaporte declara el modelo y el fiduciario.
+
+**Condiciones de admisión.** El expediente incluye, todos obligatorios:
+
+| # | Documento |
+|---|---|
+| 1 | Acuerdo de la asamblea de accionistas que aprueba la tokenización |
+| 2 | Reforma de estatutos: las acciones de esa clase circulan **únicamente** como tokens |
+| 3 | Anotación correspondiente en el libro de registro de acciones |
+| 4 | Contrato de inmovilización con el fiduciario, que conserva los títulos físicos cuando existan, con anotación de su representación en tokens |
+| 5 | Compromiso del emisor de no emitir acciones de esa clase fuera del protocolo sin autorización de DBNX |
+
+Falta uno y el caso no se resuelve favorablemente.
+
+**Certificación periódica.** El fiduciario certifica que **las acciones inmovilizadas coinciden con los tokens en circulación**. La certificación es una atestación con firmante, fecha y vigencia; se registra en el Asset Passport (`PassportUpdated`). Si vence o falta, se activa la escala de estados de divulgación: el reporte del emisor pasa a `vencido` y luego a `en advertencia` (código `ATESTACION_VENCIDA`). Periodicidad: `null`, `BLOCKED_DECISION`.
+
+### 0.8 Plantillas (v0.3 §8.6)
+
+| v0.3 | `dbnx-api/src/plantillas.ts` |
 |---|---|
 | Patrimonial (canasta) | **No existe**: hay que añadirla |
 | Capital | `EQ` |
@@ -95,11 +199,15 @@ Lo acompañan la **fricción proporcional al riesgo** (a más riesgo, reconocimi
 | Regalía | `ROY` |
 | Interés inmobiliario | `RE` |
 
-### 0.7 Motor de pagos y acciones corporativas (v0.2 §8.7 y §8.8)
+### 0.9 Motor de pagos y acciones corporativas (v0.3 §8.7, §8.8)
 
 **No existen.** Mientras no existan, la admisión de `DEBT` y `REV` devuelve `BLOCKED_DECISION`.
 
-### 0.8 Pruebas de aceptación nuevas
+### 0.10 Diferencia con el código actual
+
+Existen emisión (`SFSPIssuanceController`), activo regulado y `dbnx-api` (casos, plantillas, riesgo). **No existen**: la verificación previa por hash del documento de aprobación, el tope del 51 % y el mínimo por segmento, el límite de exposición, la declaración de ampliación y del adquirente en contrato, el Bloque 7 en la máquina del caso ni la tokenización de acciones. Es el punto 3 de la fase 2 del plan v0.3.
+
+### 0.11 Pruebas de aceptación nuevas
 
 1. **T-200-20**: Una ampliación sin `SupplyExpansionDeclared` se rechaza.
 2. **T-200-21**: Una `DIVISION` multiplica todas las tenencias en la misma proporción y deja igual el valor agregado a precio ajustado.
@@ -108,6 +216,15 @@ Lo acompañan la **fricción proporcional al riesgo** (a más riesgo, reconocimi
 5. **T-200-24**: Un token del propio ecosistema dentro de una canasta computa cero.
 6. **T-200-25**: Una atestación en trámite vencida baja el factor sin acción humana.
 7. **T-200-26**: La admisión de `DEBT` o `REV` sin motor de pagos devuelve `BLOCKED_DECISION`.
+8. **T-200-27**: Un caso sin los instrumentos del Bloque 7 registrados no pasa a `resuelto favorablemente` ni a `resuelto con condiciones`.
+9. **T-200-28**: Una acuñación con documento de aprobación incompleto, sin las firmas de DBNX, vencido o con cantidad distinta de la autorizada se rechaza.
+10. **T-200-29**: La misma acuñación pedida por Orden Global como solicitante sigue exactamente la ruta de T-200-28; no existe ruta propia.
+11. **T-200-30**: Una colocación que lleva lo colocado por encima del 51 % del supply autorizado se rechaza con `DENY_LIMIT`.
+12. **T-200-31**: Con el mínimo de colocación del segmento en `null`, la admisión devuelve `BLOCKED_DECISION`.
+13. **T-200-32**: Una adquisición sin `AcquirerDeclarationRecorded` para la versión vigente de los términos se rechaza; una declaración de una versión anterior no sirve.
+14. **T-200-33**: Un dictamen de valuación de un valuador con participación en el emisor, con servicios de estructuración o con honorarios contingentes se rechaza, y DBNX no figura nunca como valuador en el pasaporte.
+15. **T-200-34**: La admisión de acciones tokenizadas sin alguno de los cinco documentos de §0.7 se rechaza.
+16. **T-200-35**: Una certificación del fiduciario vencida pasa el reporte del emisor a `vencido` sin acción humana.
 
 ---
 
@@ -186,7 +303,7 @@ Reglas invariables:
 
 | Límite | Regla |
 |---|---|
-| Por autorización | La cantidad acuñada **acumulada** no puede superar el monto aprobado de esa autorización. |
+| Por autorización | La cantidad acuñada **acumulada** no puede superar el monto aprobado de esa autorización. **draft-0.5:** cada acuñación ejecuta la cantidad exacta del documento o del tramo (§0.5). |
 | Por instrumento | `outstanding` más las reservas de emisión concurrentes no pueden superar el límite aprobado. |
 | Tesorería | El inventario de tesorería ya acuñado **cuenta dentro** del `outstanding`. |
 | Quema | Quemar **no** renueva automáticamente una autorización. |

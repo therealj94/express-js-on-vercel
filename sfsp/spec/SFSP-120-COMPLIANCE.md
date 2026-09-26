@@ -3,62 +3,109 @@
 | Campo | Valor |
 |---|---|
 | Serie | SFSP-120 · Compliance |
-| Estado | `draft-0.4` (alineada con el borrador SFSP v0.2) |
+| Estado | `draft-0.5` (alineada con el borrador SFSP v0.3 §7) |
 | Fuente de tipos | `CONTRATO-INTERNO.md` §2.3, §3, §4 |
 | Parte del plan maestro | P3 entregable 6, P6 paso 4, P7c |
-| Decisiones que la bloquean | D08 (clasificación, derechos y elegibilidad por activo y país), D13 (jurisdicción y permisos), D07 (quórums para acciones críticas), D03 (semántica monetaria) |
+| Decisiones que la bloquean | D08 (clasificación, derechos y elegibilidad por activo y país), D13 (jurisdicción, permisos y criterios de inversionista acreditado y sofisticado), D07 (quórums para acciones críticas), primera ola de países (v0.3 §18) |
 
 **Qué NO afirma este documento:** no afirma que exista ninguna política aprobada para ninguna clase de activo, ni que ningún contrato imponga hoy las restricciones que el registro declara; describe el motor de evaluación y sus obligaciones, no un conjunto de reglas vigentes.
 
 ---
 
-## 0 · Alineación con el borrador SFSP v0.2 (23-sep-2026)
+## 0 · Alineación con el borrador SFSP v0.3 (26-sep-2026)
 
-> **Cómo leer esta sección.** El borrador SFSP v0.2 (`../fuente/`) es un borrador de trabajo: lo que sigue es **su posición**, llevada a esta serie. Hasta que la Junta lo firme, las decisiones afectadas siguen `PENDIENTE` en `../DECISIONES-SFSP.json` y todo lo que dependa de ellas devuelve `BLOCKED_DECISION`. Donde el v0.2 **cambia** una regla de más abajo, se dice aquí y la regla de abajo queda sustituida en cuanto se firme. La trazabilidad completa está en `../TRAZABILIDAD-SFSP-v0.2.md`.
+> **Cómo leer esta sección.** El borrador SFSP v0.3 sustituye al v0.2 y es la regla (`../PLAN-SFSP-v0.3-2026-09-26.md`). Es un documento interno y **no está en el repositorio**: aquí se cita por sección (`v0.3 §n`), no se copia. Para la especificación, el v0.3 manda: la regla de más abajo que contradiga esta sección queda sustituida. Para ejecutar en la 5550 sigue haciendo falta la decisión firmada: lo que dependa de una decisión `PENDIENTE` en `../DECISIONES-SFSP.json` devuelve `BLOCKED_DECISION`.
 
-### 0.1 Acceso abierto por defecto (v0.2 §7)
+### 0.1 Acceso abierto por defecto (v0.3 §7)
 
-Cualquier persona, desde cualquier país, puede crear un Genesis ID, mantener activos, recibir, transferir, operar en el mercado secundario y redimir. **El control por jurisdicción se aplica en solo dos puntos:** la **suscripción en oferta primaria** y la **promoción dirigida**.
+Cualquier persona, desde cualquier país, puede crear un Genesis ID, mantener activos, recibir transferencias, operar en el mercado secundario y redimir, sin restricción por residencia. **El control por jurisdicción se aplica en solo dos puntos:** la **suscripción en oferta primaria** y la **promoción dirigida**.
 
 ### 0.2 La matriz de países
 
-DBNX mantiene una matriz versionada con cuatro estados:
+DBNX mantiene una matriz versionada con cuatro estados (v0.3 §7 y Apéndice A, «País en la matriz»):
 
-| Estado | `SUBSCRIBE` (primaria) | `HOLD` · `RECEIVE` · `TRANSFER` · `TRADE` · `REDEEM` |
-|---|---|---|
-| `PERMITIDO` | `ALLOW` | `ALLOW` |
-| `PERMITIDO_CON_CONDICIONES` | según la regla del instrumento | según la regla del instrumento |
-| **`SOLO_ENTRANTE`** (por defecto) | **`DENY`** | `ALLOW` |
-| `BLOQUEADO` | `DENY` | `DENY` (la transferencia se rechaza) |
+| Estado | Significado | `SUBSCRIBE` (primaria) | `HOLD` · `RECEIVE` · `TRANSFER` · `TRADE` · `REDEEM` |
+|---|---|---|---|
+| `PERMITIDO` | Hay base legal para ofrecer al público o un régimen de oferta privada aplicable | `ALLOW`, sujeto al alcance de §0.5 | `ALLOW` |
+| `PERMITIDO_CON_CONDICIONES` | Solo ciertos instrumentos, montos o perfiles | según la regla del instrumento | según la regla del instrumento |
+| **`SOLO_ENTRANTE`** (por defecto) | Puede recibir, mantener, transferir y redimir; no puede suscribir en primaria | **`DENY`** | `ALLOW` |
+| `BLOQUEADO` | Sanción internacional o prohibición expresa de la autoridad competente | `DENY` | `DENY` (la transferencia se rechaza) |
 
-**Cómo encaja con el cierre por defecto de §3.** No hay contradicción: el motor sigue cerrado si falta política. La matriz **es** una política versionada. Sin matriz aprobada, toda acción que la consulte devuelve `BLOCKED_DECISION`, como hoy. Con matriz aprobada, **un país no evaluado se resuelve como `SOLO_ENTRANTE`**, no como bloqueado.
+**Cómo encaja con el cierre por defecto de §3.** No hay contradicción: el motor sigue cerrado si falta política. La matriz **es** una política versionada. Sin matriz aprobada, toda acción que la consulte devuelve `BLOCKED_DECISION`. Con matriz aprobada, **un país no evaluado se resuelve como `SOLO_ENTRANTE`**, nunca como bloqueado.
+
+### 0.3 `SUBSCRIBE` es una acción distinta de `TRANSFER` y `RECEIVE`
+
+`SUBSCRIBE` es la adquisición en **oferta primaria**: unidades que pasan del emisor, o de su tesorería, a un tercero. En el vocabulario del v0.3 §4.3 es **colocar**. `TRANSFER` y `RECEIVE` son el **circular**: transferencias entre terceros en el mercado secundario.
+
+| Acción | Quién la origina | Qué evalúa el motor | Lo limita la matriz de países | Lo limita el alcance de la oferta exenta |
+|---|---|---|---|---|
+| `SUBSCRIBE` | Emisor o tesorería → adquirente | Elegibilidad del adquirente, país, alcance de la base de colocación (§0.5), límite de exposición (§0.7) | Sí | Sí |
+| `TRANSFER` | Tenedor → tenedor | Estado del activo, elegibilidad del emisor de la orden, país solo si `BLOQUEADO` | Solo `BLOQUEADO` | No |
+| `RECEIVE` | Destino de un `TRANSFER` | Elegibilidad del receptor, país solo si `BLOQUEADO` | Solo `BLOQUEADO` | No |
+| `ISSUE` | Emisor | Autorización de emisión (lado del emisor) | No | No |
+| `RELEASE` | Tesorería | Capacidad de colocación (SFSP-300 §0.2 para `COM`) | No | No |
 
 Reglas:
 
-1. `BLOQUEADO` procede **solo** por sanción internacional o por orden formal de la autoridad del país. El cambio lleva código de motivo `SANCION_INTERNACIONAL` u `ORDEN_AUTORIDAD` y la referencia documental. **No hay bloqueo por precaución.**
-2. Todo cambio de estado de un país es acción de gobernanza (SFSP-800) y emite `CountryStatusChanged`.
-3. La apertura de la suscripción es progresiva: un país pasa a `PERMITIDO` cuando existe asesoría local que lo respalde.
-4. **Acción nueva `SUBSCRIBE`**: la suscripción del adquirente en oferta primaria. Es distinta de `ISSUE` (la emisión del lado del emisor) y se añade a la matriz de §3 como obligatoria para `SEC`.
+1. **Una salida del emisor o de su tesorería hacia un tercero nunca se evalúa solo como `TRANSFER`/`RECEIVE`.** El ejecutor evalúa `SUBSCRIBE` sobre el adquirente. Si no lo hiciera, un residente de un país `SOLO_ENTRANTE` podría suscribir recibiendo «una transferencia» desde la tesorería.
+2. La tesorería se identifica por las cuentas internas registradas (SFSP-410 §1). Un envío desde una cuenta interna a una cuenta que no lo es es una colocación.
+3. Para `COM`, una colocación exige a la vez `RELEASE` (capacidad en onzas, SFSP-300 §0.2) y `SUBSCRIBE` (elegibilidad del adquirente).
+4. `SUBSCRIBE` se añade a la matriz de §3 como obligatoria para `SEC`, `COM`, `MON` y `UTIL`. Para `LEGACY` es `n/a`: un activo heredado no se coloca.
 
-### 0.3 Regla de promoción
+### 0.4 `BLOQUEADO` solo por sanción u orden formal
 
-No se hacen campañas segmentadas por país, contenido dirigido a un mercado ni acuerdos con socios locales en países que no estén en `PERMITIDO`. Una plataforma abierta en español no es promoción dirigida; **una campaña pagada apuntada a una ciudad o a un país sí lo es.** Esta regla no se puede imponer por contrato: es un control de operación y de mercadeo (SFSP-900) y se audita.
+1. `BLOQUEADO` procede **solo** por sanción internacional o por orden formal de la autoridad del país (v0.3 §7). El cambio lleva código de motivo `SANCION_INTERNACIONAL` u `ORDEN_AUTORIDAD` y la referencia documental. **No hay bloqueo por precaución.**
+2. Cuando llega la orden, se acata y queda registrada con su fundamento (`evidenceHash` de `CountryStatusChanged`).
+3. Todo cambio de estado de un país es acción de gobernanza (SFSP-800) y emite `CountryStatusChanged`.
+4. La apertura de la suscripción es progresiva: un país pasa a `PERMITIDO` cuando existe asesoría local que lo respalde, con código `APERTURA_PAIS`. La primera ola de países es una decisión abierta (v0.3 §18).
 
-### 0.4 El límite de exposición entra como insumo
+### 0.5 Interacción con el alcance de la oferta exenta (v0.3 §7, SFSP-140 §4)
 
-El motor recibe, para `SUBSCRIBE` y `TRADE` en el Mercado de Crecimiento, la **exposición agregada por Genesis ID** (SFSP-200 §0). Sin ese dato, la acción es `UNKNOWN_SOURCE`; nunca se supone cero.
+La matriz de países opera **junto con** el alcance de la autorización de colocación. Cada activo declara en su pasaporte la base de su colocación (`MOD_COLOCACION_PRIVADA` u `MOD_OFERTA_PUBLICA`, SFSP-140 §3.2).
 
-### 0.5 Diferencia con el código actual
+Orden de evaluación de `SUBSCRIBE`:
 
-`SFSPEligibilityEngine.sol` implementa una **lista blanca de jurisdicciones por activo** (`setJurisdictionAllowed`). Faltan: los cuatro estados, el estado por defecto `SOLO_ENTRANTE`, la acción `SUBSCRIBE` y el evento `CountryStatusChanged`. Es trabajo de la fase 3.
+| Paso | Comprobación | Si falla |
+|---|---|---|
+| 1 | La licencia o autorización de la base de colocación está `VIGENTE` (SFSP-140) | `DENY`, `LICENCIA_NO_OTORGADA` |
+| 2 | Si la base es la oferta exenta: el sujeto tiene una atestación vigente `RESIDENTE_PROSPERA`, `ACREDITADO` o `SOFISTICADO` | `DENY`, `FUERA_DE_ALCANCE_OFERTA_EXENTA`; `BLOCKED_DECISION` si el criterio aplicable es `null` |
+| 3 | Estado del país del sujeto en la matriz permite `SUBSCRIBE` | `DENY`, `DENY_JURISDICTION` |
+| 4 | Límite de exposición, cuando aplique (§0.7) | `DENY`, `DENY_LIMIT`; `UNKNOWN_SOURCE` si falta el dato |
 
-### 0.6 Pruebas de aceptación nuevas
+Reglas:
+
+1. Los pasos 2 y 3 se combinan por **conjunción**. Mientras la colocación se sustente en la oferta exenta, la suscripción primaria se limita a los inversionistas que la notificación admite **con independencia del estado del país**: un país `PERMITIDO` no amplía el alcance, y un inversionista admitido no suscribe desde un país `SOLO_ENTRANTE` o `BLOQUEADO`.
+2. La apertura de la suscripción primaria al público general depende de la Investment Company License (`LIC_OG_ICL`). Hasta entonces el paso 2 aplica a todo activo colocado por Orden Global.
+3. **La puerta única** (v0.3 §7, SFSP-500 §0.4): la compra de ORIGEN en Ordenex con moneda fiduciaria, cuando la contraparte es la tesorería, es una `SUBSCRIBE` sobre `MON` y queda limitada por este alcance. La compra a otro tenedor en el libro es `TRADE` y no lo está.
+4. El alcance limita la suscripción, no la tenencia: quien ya tiene un activo lo conserva, lo transfiere y lo redime aunque no esté dentro del alcance.
+
+### 0.6 Regla de promoción (v0.3 §7.1)
+
+1. No se hacen campañas segmentadas por país, contenido dirigido a un mercado específico ni acuerdos con socios comerciales locales en países que no estén `PERMITIDO` para suscripción.
+2. Una plataforma abierta con contenido en español accesible desde toda la región no es promoción dirigida. **Una campaña pagada apuntada a una ciudad o a un país sí lo es**, y convierte el acceso espontáneo en oferta dirigida.
+3. Los activos colocados bajo la oferta exenta (ORIGEN, AUKA, AGKA, ONDK) **no admiten promoción general** en ningún país, tampoco en los `PERMITIDO` (SFSP-140 §4).
+4. Esta regla no se puede imponer por contrato: es un control de operación y de mercadeo (SFSP-900) y se audita. Cada campaña pagada registra su segmentación geográfica para poder auditarla.
+
+### 0.7 El límite de exposición entra como insumo
+
+El motor recibe, para `SUBSCRIBE` y `TRADE` en el Mercado de Crecimiento, la **exposición agregada por Genesis ID** (SFSP-200 §0.5). Sin ese dato, la acción es `UNKNOWN_SOURCE`; nunca se supone cero. El acceso abierto por límite de exposición aplica solo a los activos cuya colocación admite oferta al público (v0.3 §8.5); para los colocados bajo la oferta exenta manda §0.5.
+
+### 0.8 Diferencia con el código actual
+
+`SFSPEligibilityEngine.sol` implementa una **lista blanca de jurisdicciones por activo** (`setJurisdictionAllowed`) que bloquea por defecto. Faltan: los cuatro estados, el estado por defecto `SOLO_ENTRANTE`, la acción `SUBSCRIBE`, la base de colocación en el pasaporte, las atestaciones de alcance de la oferta exenta y el evento `CountryStatusChanged`. Es el punto 2 de la fase 2 del plan v0.3.
+
+### 0.9 Pruebas de aceptación nuevas
 
 1. **T-120-20**: Sin matriz aprobada, `SUBSCRIBE` y `TRANSFER` devuelven `BLOCKED_DECISION`.
 2. **T-120-21**: Con matriz aprobada, un país no evaluado se resuelve `SOLO_ENTRANTE`: `RECEIVE`, `TRANSFER`, `TRADE` y `REDEEM` pasan; `SUBSCRIBE` devuelve `DENY`.
 3. **T-120-22**: Pasar un país a `BLOQUEADO` sin código `SANCION_INTERNACIONAL` u `ORDEN_AUTORIDAD` se rechaza.
 4. **T-120-23**: Un cambio de estado de país sin autorización de gobernanza se rechaza y no emite evento.
 5. **T-120-24**: En el Mercado de Crecimiento, sin exposición agregada disponible, la acción es `UNKNOWN_SOURCE`, no `ALLOW`.
+6. **T-120-25**: Un envío desde una cuenta interna de tesorería a un tercero evaluado solo como `TRANSFER` se rechaza en el ejecutor: exige `SUBSCRIBE`.
+7. **T-120-26**: Sobre un activo colocado bajo la oferta exenta, un sujeto sin atestación de alcance en un país `PERMITIDO` recibe `DENY` con `FUERA_DE_ALCANCE_OFERTA_EXENTA`.
+8. **T-120-27**: Un sujeto con atestación `ACREDITADO` vigente en un país `SOLO_ENTRANTE` recibe `DENY` en `SUBSCRIBE`: las dos condiciones se exigen a la vez.
+9. **T-120-28**: Con el criterio de `SOFISTICADO` en `null`, una `SUBSCRIBE` que dependa de él devuelve `BLOCKED_DECISION`, no `ALLOW`.
+10. **T-120-29**: Un tenedor fuera del alcance de la oferta exenta puede `RECEIVE`, `TRANSFER`, `TRADE` y `REDEEM` el mismo activo en un país `SOLO_ENTRANTE`.
 
 ---
 
@@ -128,6 +175,7 @@ Acciones mínimas que toda clase debe cubrir con una política por acción:
 | Acción | Descripción |
 |---|---|
 | `ISSUE` | Emisión contra autorización. |
+| `SUBSCRIBE` | Suscripción del adquirente en oferta primaria (colocación). Ver §0.3. |
 | `HOLD` | Admisibilidad de tenencia por el sujeto. |
 | `TRANSFER` | Transferencia entre cuentas. |
 | `RECEIVE` | Recepción por el destinatario. |
@@ -141,13 +189,13 @@ Acciones mínimas que toda clase debe cubrir con una política por acción:
 
 Matriz de cobertura obligatoria por clase de `assetId`:
 
-| Clase | `ISSUE` | `HOLD` | `TRANSFER` | `RECEIVE` | `TRADE` | `SETTLE` | `REDEEM` | `BURN` | `MIGRATE_CLAIM` | `RECOVER` | `RELEASE` |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| `SEC` | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | n/a |
-| `COM` | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | n/a |
-| `MON` | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria |
-| `UTIL` | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | n/a |
-| `LEGACY` | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | n/a |
+| Clase | `ISSUE` | `SUBSCRIBE` | `HOLD` | `TRANSFER` | `RECEIVE` | `TRADE` | `SETTLE` | `REDEEM` | `BURN` | `MIGRATE_CLAIM` | `RECOVER` | `RELEASE` |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `SEC` | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | n/a |
+| `COM` | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria (SFSP-300 §0.2) |
+| `MON` | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria |
+| `UTIL` | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | n/a |
+| `LEGACY` | obligatoria | n/a | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | obligatoria | n/a |
 
 «obligatoria» significa que debe existir una política identificada y versionada. Si no existe, la acción devuelve `BLOCKED_DECISION`, no `ALLOW`.
 
