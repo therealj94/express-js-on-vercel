@@ -6,6 +6,7 @@ import { hashPassword, signResetToken, signToken, verifyPassword, verifyResetTok
 import { requireAuth } from '../middleware/auth.js'
 import { h } from '../lib/ruta.js'
 import { llamarGenesis, identidadPorEmail } from '../lib/genesis.js'
+import { normalizarDireccion } from '../lib/genesisPuente.js'
 
 export const authRouter = Router()
 
@@ -71,13 +72,6 @@ authRouter.post('/sso', h(async (req, res) => {
     user.gid = gid
   }
 
-  // Ata la cuenta al GID también del lado de Genesis ID, para que desde
-  // MyTokenPay se pueda saltar a otras apps del ecosistema sin repetir nada.
-  await llamarGenesis('/api/v1/vinculos', {
-    method: 'POST',
-    body: JSON.stringify({ identidadId: identidad.id, cuenta: user.id }),
-  })
-
   // La dirección de cobro que Genesis ID ya conoce de esta identidad (la que
   // Veta Wallet registró al vincular). Si existe, la app conecta la billetera
   // sola: entrar con tu identidad Y tener que teclear tu propia dirección es
@@ -87,6 +81,22 @@ authRouter.post('/sso', h(async (req, res) => {
     apps.find((a) => a.app === 'veta-wallet' && a.direccion)?.direccion ??
     apps.find((a) => a.direccion)?.direccion ??
     null
+
+  // Ata la cuenta al GID también del lado de Genesis ID, para que desde
+  // MyTokenPay se pueda saltar a otras apps del ecosistema sin repetir nada.
+  //
+  // Con el correo —Genesis lo exige para atar; antes no se mandaba y este
+  // vínculo fallaba siempre, en silencio— y CON la dirección de billetera, que
+  // desde el SFSP v0.3 §11 es obligatoria en todo vínculo. Es la de la propia
+  // identidad según Genesis; si no tiene ninguna todavía, no se ata aquí: lo
+  // hará `/genesis/vincular` cuando la persona conecte su billetera.
+  const billetera = normalizarDireccion(direccion)
+  if (billetera) {
+    await llamarGenesis('/api/v1/vinculos', {
+      method: 'POST',
+      body: JSON.stringify({ identidadId: identidad.id, cuenta: user.id, email, direccion: billetera }),
+    })
+  }
 
   res.json({
     token: signToken(user.id),

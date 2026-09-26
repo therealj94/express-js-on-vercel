@@ -19,6 +19,28 @@ const { Usuario } = require('../models');
 const genesis = require('../lib/genesis');
 const terminos = require('../lib/terminos');
 const bloqueo = require('../lib/bloqueo');
+const { getAddress } = require('ethers');
+
+/**
+ * La direccion de billetera con su suma de control EIP-55, o null si no es
+ * valida: 0x + 40 hexadecimales, en minusculas, en mayusculas o con la suma de
+ * control correcta (una mezcla que no cuadra es un caracter cambiado), y nunca
+ * la direccion cero. Es la misma vara que el puente y que Genesis ID.
+ */
+function direccionValida(valor) {
+  if (typeof valor !== 'string') return null;
+  const d = valor.trim();
+  if (!/^0x[0-9a-fA-F]{40}$/.test(d) || /^0x0{40}$/i.test(d)) return null;
+  const cuerpo = d.slice(2);
+  const unaCaja = cuerpo === cuerpo.toLowerCase() || cuerpo === cuerpo.toUpperCase();
+  try {
+    // getAddress ya rechaza la mezcla con la suma mal; en una sola caja no la
+    // mira, asi que se le pasa en minusculas.
+    return getAddress(unaCaja ? '0x' + cuerpo.toLowerCase() : d);
+  } catch {
+    return null;
+  }
+}
 
 // La misma respuesta opaca que middleware/sesion.js: a un token invalido no se
 // le explica QUE le fallo.
@@ -89,23 +111,39 @@ async function sso(req, res) {
   }
 
   // 3. La direccion custodiada del usuario en Veta Wallet, de perfil.apps[].
-  // Puede faltar (un vinculo viejo sin direccion): eso no cierra la puerta —
-  // la direccion se enseña y se consulta, pero no hace falta para entrar; lo
-  // que si exige direccion (retiros, fiat) tiene sus propias guardas.
+  //
+  // OBLIGATORIA (SFSP v0.3 §8.5 y §11). Antes un vinculo viejo sin direccion
+  // dejaba entrar igual, y era justo el hueco: el limite de exposicion se suma
+  // por Genesis ID con las direcciones de sus vinculos, y quien entra aqui sin
+  // la suya opera con una billetera que ese limite no ve. Ahora no se abre
+  // sesion sin ella; el remedio es de un toque —abrir Veta Wallet, que vuelve
+  // a vincular y desde el v0.3 manda la direccion siempre— y se le dice asi.
+  // Los codigos son los mismos que usan Genesis ID y el puente.
   const vinculo = Array.isArray(perfil.apps)
     ? perfil.apps.find((a) => a && a.app === 'veta-wallet' && a.direccion)
     : null;
-  const direccionWallet = vinculo ? String(vinculo.direccion) : null;
+  if (!vinculo) {
+    return res.status(403).json({
+      error: 'Tu Genesis ID no tiene una billetera Veta Wallet vinculada. Abre Veta Wallet para vincularla y vuelve a entrar.',
+      codigo: 'VINCULO_SIN_DIRECCION',
+    });
+  }
+  const direccionWallet = direccionValida(vinculo.direccion);
+  if (!direccionWallet) {
+    console.error(`[auth] el vinculo de veta-wallet del gid ${acceso.gid} trae una direccion invalida`);
+    return res.status(403).json({
+      error: 'La billetera vinculada a tu Genesis ID no es valida. Abre Veta Wallet para vincularla de nuevo.',
+      codigo: 'VINCULO_DIRECCION_INVALIDA',
+    });
+  }
 
   // 4. Upsert por gid. Lo que Genesis afirma HOY pisa lo guardado — es la
-  // fuente de la identidad, no un formulario del usuario — con dos cuidados:
+  // fuente de la identidad, no un formulario del usuario — con un cuidado:
   // un nombre ausente no borra el que ya sabiamos (el perfil trae null si la
-  // identidad dejo de estar verificada) y una direccion ausente tampoco — la
-  // custodiada de la wallet no cambia, y borrarla por un vinculo a medias
-  // dejaria al usuario sin poder verla.
-  const cambios = { verificada: perfil.verificada === true };
+  // identidad dejo de estar verificada). La direccion ya no puede faltar:
+  // sin ella no se llega aqui (paso 3).
+  const cambios = { verificada: perfil.verificada === true, direccionWallet };
   if (typeof perfil.nombre === 'string' && perfil.nombre.trim()) cambios.nombre = perfil.nombre.trim();
-  if (direccionWallet) cambios.direccionWallet = direccionWallet;
 
   let usuario = null;
   try {
