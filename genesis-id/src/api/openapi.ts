@@ -254,11 +254,14 @@ const TEXTOS: Record<string, Texto> = {
     cuerpo: {
       gid: s('string'), cuenta: s('string', 'El identificador de esa persona dentro de su aplicación'),
       email: s('string', 'El correo que su aplicación ya autenticó'),
-      direccion: s('string', 'Dirección on-chain, si la tiene'),
+      direccion: s('string', 'Dirección de billetera de esa cuenta: 0x y 40 hexadecimales (minúsculas, mayúsculas o EIP-55). Obligatoria: el límite de exposición se suma por GID con estas direcciones'),
     },
-    obligatorios: ['gid', 'cuenta', 'email'],
+    obligatorios: ['gid', 'cuenta', 'email', 'direccion'],
     devuelve: '`{ ok: true }`',
-    errores: { '403': 'El correo no es el de esa identidad' },
+    errores: {
+      '403': 'El correo no es el de esa identidad',
+      '422': '`VINCULO_SIN_DIRECCION` o `VINCULO_DIRECCION_INVALIDA`',
+    },
   },
   'GET /api/v1/gid/:gid': {
     resumen: '¿Este GID está verificado?',

@@ -64,6 +64,18 @@ const esperaInicialMs = () => {
 const apagado = () =>
   /^(no|0|false)$/i.test(String(process.env.GENESIS_LISTAS_AUTO || ''))
 
+/**
+ * ¿Pasa el temporizador a VENCIDA las verificadas con el documento caducado?
+ *
+ * APAGADO por defecto, y es a propósito: encenderlo cambia el estado de
+ * identidades que ya existen, y eso no puede pasar por el mero hecho de
+ * desplegar. Antes se mira cuántas serían con
+ * `npx tsx src/migraciones/v03-estados-y-vinculos.ts` (no cambia nada) y
+ * después se enciende con GENESIS_VENCER_AUTO=si.
+ */
+export const vencerEncendido = () =>
+  /^(si|sí|1|true)$/i.test(String(process.env.GENESIS_VENCER_AUTO || ''))
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Lo que se puede mirar desde fuera
 // ─────────────────────────────────────────────────────────────────────────────
@@ -190,9 +202,11 @@ export interface Piezas {
   bajar: typeof importarDeOfac
   /** Vuelve a tamizar a todo el padrón. */
   retamizar: (actor: string) => { revisadas: number; conCoincidencias: number }
+  /** Vence las verificadas con documento caducado. Solo si GENESIS_VENCER_AUTO. */
+  vencer?: (actor: string) => { revisadas: number; vencidas: number }
 }
 
-const REALES: Piezas = { bajar: importarDeOfac, retamizar: ids.retamizarTodas }
+const REALES: Piezas = { bajar: importarDeOfac, retamizar: ids.retamizarTodas, vencer: ids.vencerCaducadas }
 
 export async function unaVuelta(actor = ACTOR, piezas: Piezas = REALES): Promise<{
   ok: boolean
@@ -213,9 +227,17 @@ export async function unaVuelta(actor = ACTOR, piezas: Piezas = REALES): Promise
 
     const r = await piezas.bajar()
     const t = piezas.retamizar(actor)
+    // El vencimiento va en la misma vuelta diaria, pero no la puede tumbar: si
+    // falla, las listas ya están al día y eso es lo que más importa.
+    let vencidas: number | undefined
+    if (piezas.vencer && vencerEncendido()) {
+      try { vencidas = piezas.vencer(actor).vencidas } catch (e: any) {
+        console.error('[genesis-id] no se pudieron vencer los documentos caducados:', e?.message)
+      }
+    }
 
     ultimaCorrida = new Date().toISOString()
-    ultimoResultado = { ...r, ...t }
+    ultimoResultado = { ...r, ...t, ...(vencidas !== undefined ? { vencidas } : {}) }
     ultimoError = null
     fallosSeguidos = 0
 

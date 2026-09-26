@@ -17,15 +17,27 @@ import type { Alerta, Movimiento } from './aml/monitoreo.js'
  * que lo ponga automáticamente, y eso es a propósito: la versión anterior de
  * este motor emitía identidades verificadas con una simple llamada HTTP sin
  * autenticar, que es exactamente lo que este estado impide ahora.
+ *
+ * Hacia fuera se publican los seis del Apéndice A del SFSP v0.3 —pendiente,
+ * en revisión, verificada, rechazada, vencida, suspendida—: los cuatro pasos
+ * del trámite (iniciada, datos, documento, biometria) salen todos como
+ * «pendiente». El mapa está en `motor/estados.ts` (`ESTADO_PUBLICADO`).
+ *
+ * `vencida`: estaba verificada y el documento con que se verificó caducó
+ * (`motor/identidades.ts` → `vencer`). No es un castigo como `suspendida`: la
+ * persona vuelve por el camino normal —documento vigente, rostro, revisión
+ * humana— y `aprobar()` sigue siendo la única puerta a `verificada`. El GID se
+ * conserva, igual que al suspender.
  */
 export type EstadoIdentidad =
-  | 'iniciada'        // existe el correo, no hay nada más
-  | 'datos'           // declaró nombre y fecha de nacimiento
-  | 'documento'       // subió el documento y pasó (o no) las comprobaciones
-  | 'biometria'       // subió el selfie
+  | 'iniciada'        // existe el correo, no hay nada más          → pendiente
+  | 'datos'           // declaró nombre y fecha de nacimiento       → pendiente
+  | 'documento'       // subió el documento y pasó (o no) las comprobaciones → pendiente
+  | 'biometria'       // subió el selfie                            → pendiente
   | 'en-revision'     // esperando decisión humana
   | 'verificada'      // aprobada por un operador
   | 'rechazada'
+  | 'vencida'         // estaba verificada y el documento caducó
   | 'suspendida'      // estaba verificada y se le retiró
 
 /**
@@ -150,7 +162,19 @@ export interface VinculoApp {
   app: string
   /** Identificador de la cuenta dentro de esa app. */
   cuenta: string
-  /** Dirección on-chain, cuando la app la tiene. */
+  /**
+   * Dirección de billetera de esa cuenta, en minúsculas.
+   *
+   * OBLIGATORIA en todo vínculo nuevo desde el SFSP v0.3 (§8.5, §11): el límite
+   * de exposición se suma por GID con estas direcciones, y un vínculo sin ella
+   * es una billetera que el límite no ve. `POST /api/v1/vinculos` rechaza el
+   * vínculo sin dirección válida (src/lib/direccion.ts).
+   *
+   * `null` —o ausente— solo en vínculos creados ANTES de esa regla: no se
+   * inventa una dirección para ellos ni se borran. Se cuentan con
+   * `scripts/revisar-v03-identidades.ts` y se completan cuando la app vuelve a
+   * vincular.
+   */
   direccion?: string | null
   vinculadaEn: string
   ultimoAcceso: string | null

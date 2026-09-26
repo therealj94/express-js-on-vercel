@@ -355,7 +355,8 @@ describe('Inicio de sesión único', () => {
     const vinculo = await pedir('/api/v1/vinculos', {
       method: 'POST', headers: conClave(),
       body: JSON.stringify({
-        identidadId: identidad.id, cuenta: 'usuario-1', direccion: '0xabc',
+        identidadId: identidad.id, cuenta: 'usuario-1',
+        direccion: '0x52908400098527886E0F7030069857D2E4169EE7',
         email: 'persona@prueba.local',
       }),
     })

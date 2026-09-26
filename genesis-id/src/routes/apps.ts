@@ -9,11 +9,13 @@ import { Router } from 'express'
 import { exigeApp, limite, pesada } from '../middleware/proteger.js'
 import * as ids from '../motor/identidades.js'
 import { bloqueada, RESPUESTA as BLOQUEADA } from '../motor/bloqueo.js'
+import { estadoPublicado } from '../motor/estados.js'
 import * as biz from '../motor/negocios.js'
 import { registrarMovimientos } from '../aml/casos.js'
 import { tamizarDireccion } from '../aml/tamiz.js'
 import { firmarToken, verificarToken } from '../lib/cripto.js'
 import { gidValido, normalizarGid } from '../lib/uid.js'
+import { normalizarDireccion, CODIGOS_VINCULO } from '../lib/direccion.js'
 import { registrar } from '../audit/bitacora.js'
 import { emitirReto, comprobarReto } from '../kyc/vivacidad.js'
 import { guardarRostroCotejo } from '../kyc/fotosDocumento.js'
@@ -408,7 +410,15 @@ appsRouter.get('/identidades/por-gid/:gid', limite(120), exigeApp('gid.perfil'),
    —bajando el slug vivo de cada app de Heroku— que ninguna otra app del
    ecosistema llama a /vinculos. GENESIS_VINCULO_EXIGE_EMAIL=false queda como
    válvula de emergencia por si un integrador viejo aparece; abrirla vuelve a
-   la etapa 1 (pasa, pero queda anotado en la bitácora). */
+   la etapa 1 (pasa, pero queda anotado en la bitácora).
+
+   Y LA DIRECCIÓN DE BILLETERA ES OBLIGATORIA (SFSP v0.3 §8.5 y §11). El límite
+   de exposición se suma por GID con las direcciones de sus vínculos; un
+   vínculo sin dirección es una billetera que el límite no ve. Esta vez no hay
+   válvula: no hay integrador viejo que dependa de vincular sin dirección, y
+   los vínculos que ya existen sin ella no se tocan (ver
+   scripts/revisar-v03-identidades.ts). Se comprueba al final, después del
+   bloqueo y del correo, para que esas respuestas no cambien. */
 appsRouter.post('/vinculos', limite(60), exigeApp('vinculo.crear'), async (req, res) => {
   const { identidadId, cuenta, direccion, email } = req.body ?? {}
   if (!identidadId || !cuenta) {
@@ -436,9 +446,23 @@ appsRouter.post('/vinculos', limite(60), exigeApp('vinculo.crear'), async (req, 
     registrar(`app:${req.app_ecosistema!.clave}`, 'vinculo.sinCorreo', objetivo.id, { cuenta: String(cuenta) })
   }
 
+  if (direccion === undefined || direccion === null || direccion === '') {
+    return res.status(422).json({
+      error: 'Hace falta la dirección de la billetera para atar la cuenta',
+      codigo: CODIGOS_VINCULO.SIN_DIRECCION,
+    })
+  }
+  const billetera = normalizarDireccion(direccion)
+  if (!billetera) {
+    return res.status(422).json({
+      error: 'La dirección de la billetera no es válida (0x y 40 caracteres hexadecimales)',
+      codigo: CODIGOS_VINCULO.DIRECCION_INVALIDA,
+    })
+  }
+
   const identidad = ids.vincular(
     String(identidadId), req.app_ecosistema!.clave, String(cuenta),
-    direccion ? String(direccion) : null, `app:${req.app_ecosistema!.clave}`)
+    billetera, `app:${req.app_ecosistema!.clave}`)
   if (!identidad) return res.status(404).json({ error: 'Identidad no encontrada' })
   res.json({ ok: true, vinculos: identidad.vinculos.map((v) => ({ app: v.app, cuenta: v.cuenta })) })
 })
@@ -471,7 +495,10 @@ appsRouter.get('/gid/:gid', limite(300), exigeApp('gid.verificar'), async (req, 
     const bloq = bloqueada(identidad)
     return res.json(puedeVerPerfil
       ? { tipo: 'personal', ...ids.perfilPublico(identidad) }
-      : { tipo: 'personal', gid, verificada: identidad.estado === 'verificada' && !bloq, bloqueada: bloq })
+      : {
+          tipo: 'personal', gid, verificada: identidad.estado === 'verificada' && !bloq, bloqueada: bloq,
+          estadoPublicado: estadoPublicado(identidad.estado),
+        })
   }
   res.json({ tipo: 'negocio', ...biz.perfilNegocio(negocio!) })
 })
