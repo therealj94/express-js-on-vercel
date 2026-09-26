@@ -60,3 +60,20 @@ contract SFSPForzadorDeEfectivo {
         selfdestruct(destino);
     }
 }
+
+/// @notice ERC-20 mínimo como los 172 heredados del génesis: su `transfer` no
+///         consulta al protocolo. SFSP-150 / test 26 lo usan como destino que la
+///         red cerrada debe rechazar (T-150-02) o admitir hasta su corte (T-150-04).
+contract SFSPHeredadoDePrueba {
+    mapping(address => uint256) public balanceOf;
+
+    constructor(address titular, uint256 monto) {
+        balanceOf[titular] = monto;
+    }
+
+    function transfer(address to, uint256 amount) external returns (bool) {
+        balanceOf[msg.sender] -= amount;
+        balanceOf[to] += amount;
+        return true;
+    }
+}

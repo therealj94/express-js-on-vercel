@@ -39,6 +39,8 @@ const CONTRATO = {
   // SFSP v0.3 fase 2 · registro de licencias y motor de elegibilidad.
   LicenseRegistry: "SFSPLicenseRegistry",
   EligibilityEngine: "SFSPEligibilityEngine",
+  // SFSP-150 · red cerrada.
+  NetworkAdmission: "SFSPNetworkPermissions",
 };
 
 describe("H15 · el ABI compilado coincide con spec/eventos.json", function () {

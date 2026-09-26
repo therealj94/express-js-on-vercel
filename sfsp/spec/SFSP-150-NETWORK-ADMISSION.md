@@ -48,6 +48,13 @@ La lista de destinos admitidos **se deriva del registro de activos** (SFSP-100).
 
 ## 4 · Mecanismo: pendiente de confirmar
 
+> **Confirmado el 26-sep-2026 (falta el ADR):** Besu 26.7.1 ya no tiene permisos
+> por contrato, porque se retiraron en 25.6.0. El filtro es un complemento
+> (`PermissioningService` / `TransactionPermissioningProvider`). Rige en el pool,
+> en la producción y en la importación de bloques. Consulta
+> `SFSPNetworkPermissions.transactionAllowed(...)`, la misma interfaz de la opción
+> retirada. Detalle, fuentes, ensayo y plan: `../red/RED-CERRADA.md`.
+
 Antes de escribir código, el equipo técnico confirma qué soporta la versión de Besu en operación: el **sistema de permisos del cliente** (por cuenta y, si lo admite, por destino) o un **complemento de validación de transacciones**. La elección se registra en un ADR. Hasta entonces, esta serie describe **qué** debe cumplirse, no **cómo**.
 
 ---

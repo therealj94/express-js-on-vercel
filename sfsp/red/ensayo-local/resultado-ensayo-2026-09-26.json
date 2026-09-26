@@ -1,0 +1,56 @@
+{
+  "red": "local 127.0.0.1:18545, chainId 1337, QBFT 1 validador",
+  "besu": "besu/v26.7.1/linux-x86_64/openjdk-java-25",
+  "pasos": [
+    {
+      "nombre": "fase A (filtro apagado): el heredado todavía opera",
+      "ok": true
+    },
+    {
+      "nombre": "T-150-02 heredado fuera del catálogo: el nodo lo rechaza",
+      "ok": true,
+      "detalle": "eth_sendRawTransaction: Sender account not authorized to send transactions"
+    },
+    {
+      "nombre": "T-150-05 ORIGEN nativo entre cuentas sigue funcionando",
+      "ok": true
+    },
+    {
+      "nombre": "conforme registrado opera",
+      "ok": true
+    },
+    {
+      "nombre": "T-150-04 transitorio opera antes del corte",
+      "ok": true
+    },
+    {
+      "nombre": "T-150-01 cuenta fuera de la lista no despliega",
+      "ok": true,
+      "detalle": "eth_sendRawTransaction: Sender account not authorized to send transactions"
+    },
+    {
+      "nombre": "T-150-01 con alta de gobierno sí despliega",
+      "ok": true
+    },
+    {
+      "nombre": "T-150-04 transitorio rechazado desde el bloque de corte",
+      "ok": true,
+      "detalle": "eth_sendRawTransaction: Sender account not authorized to send transactions"
+    },
+    {
+      "nombre": "el observador CON filtro importa toda la historia admitida (antes y después de la activación)",
+      "ok": true,
+      "detalle": "observador en 85, validador en 85"
+    },
+    {
+      "nombre": "reversión: con el filtro apagado el validador vuelve a admitir el heredado",
+      "ok": true
+    },
+    {
+      "nombre": "importación: el observador CON filtro rechaza el bloque con la transacción prohibida y se queda atrás",
+      "ok": true,
+      "detalle": "bloque 86; observador en 85; validador en 94"
+    }
+  ],
+  "todoOk": true
+}

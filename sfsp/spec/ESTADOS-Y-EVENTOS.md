@@ -90,7 +90,7 @@ El v0.3 (como el v0.2) da al activo **un único estado en línea**. El repositor
 | 23 | Licencia modificada | `LicenseStatusChanged` | ✅ LicenseRegistry |
 | 24 | Módulo habilitado o bloqueado | `ModuleAvailabilityChanged` | ✅ LicenseRegistry |
 | 25 | País modificado | `CountryStatusChanged` | ✅ EligibilityEngine |
-| 26 | Permiso de red modificado | `NetworkPermissionChanged` | sin contrato |
+| 26 | Permiso de red modificado | `NetworkPermissionChanged` | ✅ NetworkAdmission (`SFSPNetworkPermissions`) |
 | 27 | Acción de gobernanza | `GovernanceAction` | ✅ GovernanceController |
 | 28 | Conciliación registrada | `ConciliationRecorded` | sin contrato |
 
@@ -106,7 +106,7 @@ Eventos de `eventos.json` que no vienen del Apéndice B:
 | v0.3 fase 2 · licencias y elegibilidad | `LicenseRegistered`, `PlacementBasisSet`, `ExposureParamsSet`, `DbnxApprovalRecorded`, `DbnxApprovalRevoked` | ✅ `SFSPLicenseRegistry`, `SFSPEligibilityEngine`, `SFSPIssuanceController` |
 | v0.3 fase 2 · oráculo, reservas y tesorería | `OracleParametersSet`, `OracleParametersCleared`, `OraclePricePublished`, `CommodityAssetConfigured`, `CustodianRegistered`, `LicenseGateSet`, `ConcentrationLimitsSet`, `RedemptionChannelSet`, `MetalLotRegistered`, `MetalLotStateChanged`, `LotAuditVerified`, `UnitsPlaced`, `OrigenSettlementFunded`, `DeskParametersSet`, `DeskParametersCleared`, `MarketSpreadObserved`, `DeskFunded`, `DeskTradeExecuted` | ✅ `SFSPOracleRegistry`, `SFSPReserveEngine`, `SFSPTreasuryDesk` |
 
-Total en `eventos.json` (draft-0.6): **67 eventos**, 60 con contrato y 7 sin contrato. La prueba H15 de `contracts/` (`test/11-eventos-contra-spec.js`) exige la firma exacta de cada uno que tenga contrato, y la exigirá del resto en cuanto se escriba.
+Total en `eventos.json` (draft-0.6): **67 eventos**, 61 con contrato y 6 sin contrato. La prueba H15 de `contracts/` (`test/11-eventos-contra-spec.js`) exige la firma exacta de cada uno que tenga contrato, y la exigirá del resto en cuanto se escriba.
 
 ---
 

@@ -51,7 +51,7 @@ const DEL_FASE2 = ['OracleParametersSet', 'OracleParametersCleared', 'OraclePric
 // SFSP v0.3 fase 2 (puntos 1-3) · eventos nuevos, todos con contrato.
 const DEL_V03 = ['LicenseRegistered', 'PlacementBasisSet', 'ExposureParamsSet', 'DbnxApprovalRecorded', 'DbnxApprovalRevoked'];
 // Del v0.2, los que la fase 2 del v0.3 ya emite desde un contrato.
-const V02_CON_CONTRATO = ['PassportUpdated', 'ExposureLimitRecorded', 'AcquirerDeclarationRecorded', 'LicenseStatusChanged', 'ModuleAvailabilityChanged', 'CountryStatusChanged', 'CoveragePublished'];
+const V02_CON_CONTRATO = ['PassportUpdated', 'ExposureLimitRecorded', 'AcquirerDeclarationRecorded', 'LicenseStatusChanged', 'ModuleAvailabilityChanged', 'CountryStatusChanged', 'CoveragePublished', 'NetworkPermissionChanged'];
 
 test('los quince eventos del §3, los catorce del v0.2, los seis de SFSP-160, los nueve de SFSP-410 y los cinco del v0.3 estan en la fuente unica, con su emisor', () => {
   const nombres = espec.eventos.map((e) => e.nombre);
