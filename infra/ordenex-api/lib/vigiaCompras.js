@@ -156,13 +156,12 @@ function pagador() {
 
 /** El precio del gramín, medido: gramo de oro entre 55. Sin precio no se
  *  refresca el contrato — se deja con el que tenía, y si caduca deja de vender
- *  solo. Nunca se inventa uno para que la venta siga abierta. */
+ *  solo. Nunca se inventa uno para que la venta siga abierta.
+ *  Sale del oráculo único (lib/oraculo.js): el mismo gramin que /mercados y
+ *  que la wallet, no una lectura propia de CoinGecko. */
 async function precioOrigen() {
-  const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd');
-  if (!r.ok) throw new Error(`CoinGecko ${r.status}`);
-  const onza = Number((await r.json())?.['pax-gold']?.usd);
-  if (!(onza > 0)) throw new Error('el oro no vino en la respuesta');
-  const gramin = onza / 31.1035 / 55;
+  const gramin = await require('./oraculo').precioOrigenUsd();
+  if (!(gramin > 0)) throw new Error('el oráculo no tiene precio fresco del oro');
   return ethers.parseUnits(gramin.toFixed(18), 18);
 }
 

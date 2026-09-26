@@ -115,6 +115,11 @@ await decimales.verificar({ proveedorDe: cadenaFingida(), plazoMs: 3000 });
 const ORO = 4493.00;
 const ORIGEN_USD = ORO / 31.1035 / 55;
 const PRECIO_WEI = (BigInt(Math.round(ORIGEN_USD * 1e6)) * (10n ** 12n)).toString();
+// Y ese es el que contesta la referencia, igual que en probar-venta: sin esto
+// la prueba leía el oro EN VIVO y sus cuentas de inventario («39 ORIGEN y una
+// orden de 38») dependían de a cuánto estuviera la onza ese día.
+const referencia = (await import('../lib/referencia.js')).default;
+referencia.referenciaDe = async () => ({ origenUsd: ORIGEN_USD, usd: ORO });
 
 let n = 0;
 async function persona({ conWallet = true, conTerminos = true } = {}) {
