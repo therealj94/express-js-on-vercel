@@ -28,7 +28,8 @@ import { Icon } from '../../icons';
 import { useLang } from '../../i18n';
 import { qtyFmt, money } from '../../data';
 import { parseAddress, listContacts, nameFor } from '../../addressBook';
-import { useCambio, aLempiras, precioOrigenDe, lempirasFmt } from '../cambio';
+import { useCambio, aLempiras, lempirasFmt } from '../cambio';
+import { usePrecioOrigen } from '../precioVivo';
 import { deUri, abrir } from '../rutas';
 
 const TXT = {
@@ -144,7 +145,8 @@ export default function PagarPay({ nav }) {
     [account?.balances],
   );
   const saldo = Number(origen?.qty) || 0;
-  const precio = useMemo(() => precioOrigenDe(account), [account]);
+  // Vigente (menos de 10 min) y releído cada minuto mientras se mira (C5).
+  const { precio } = usePrecioOrigen(account);
 
   // El cliente que paga también piensa en lempiras: ver "≈ L 1,234.56" al
   // lado del saldo es lo que le dice si le alcanza para la cena, sin tener

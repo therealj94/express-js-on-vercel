@@ -330,15 +330,42 @@ export function pieCambio(lang = 'es') {
 
 // ── atajo para las pantallas ──────────────────────────────────────────────
 
+/* LA EDAD MAXIMA DEL PRECIO: 10 minutos, la del oraculo unico (plan SFSP
+ * v0.3, C5, tarea 0.5). La cuenta vive en el telefono: sin mirar la edad, un
+ * comercio que abria Cobrar sin pasar por Inicio convertia lempiras con el oro
+ * de hace horas o dias, sin guion ni aviso. */
+export const PRECIO_EDAD_MAX_MS = 10 * 60_000;
+
+const vigente = (usd, en, ahora) => {
+  const p = precioSano(usd);
+  const t = Number(en);
+  return p != null && Number.isFinite(t) && t > 0 && ahora - t < PRECIO_EDAD_MAX_MS ? p : null;
+};
+
 /**
- * El precio del ORIGEN tal como ya lo trae la cuenta. Existe para que las
- * cuatro pantallas de MyTokenPay lo lean IGUAL: si cada una repite el find y
- * una se olvida del `> 0`, esa pantalla convierte con un precio 0 y enseña
- * cifras absurdas. Devuelve null cuando el feed no trajo precio.
+ * El precio del ORIGEN tal como ya lo trae la cuenta, si tiene menos de 10
+ * minutos. Existe para que las cuatro pantallas de MyTokenPay lo lean IGUAL:
+ * si cada una repite el find y una se olvida del `> 0`, esa pantalla convierte
+ * con un precio 0 y enseña cifras absurdas. Devuelve null cuando el feed no
+ * trajo precio, cuando es viejo, o cuando no se sabe de cuándo es (una cuenta
+ * guardada antes de que el precio llevara su hora, `priceAt`).
  */
-export function precioOrigenDe(account) {
+export function precioOrigenDe(account, ahora = Date.now()) {
   const b = (account?.balances || []).find((x) => String(x?.symbol || '').toUpperCase() === 'ORIGEN');
-  return precioSano(b?.priceUsd);
+  return vigente(b?.priceUsd, b?.priceAt, ahora);
+}
+
+/**
+ * El precio vigente mas fresco entre el de la cuenta y una lectura en vivo
+ * (`{ usd, en }`, la de og/precioVivo.js), o null si ninguno sirve.
+ */
+export function precioOrigenVigente(account, vivo, ahora = Date.now()) {
+  const b = (account?.balances || []).find((x) => String(x?.symbol || '').toUpperCase() === 'ORIGEN');
+  const deCuenta = vigente(b?.priceUsd, b?.priceAt, ahora);
+  const enVivo = vigente(vivo?.usd, vivo?.en, ahora);
+  if (deCuenta == null) return enVivo;
+  if (enVivo == null) return deCuenta;
+  return Number(vivo.en) >= Number(b.priceAt) ? enVivo : deCuenta;
 }
 
 /**
