@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto'
 import type { Company, PublicUser, User } from '../types.js'
 import { buildSeedCompanies } from '../data/seed.js'
 import { coleccion } from './almacen.js'
+import { hashPassword, verifyPassword } from './auth.js'
 
 const usuarios = coleccion<User>('usuarios')
 const comercios = coleccion<Company>('comercios')
@@ -33,15 +34,26 @@ export const db = {
    * aquí, desde variables de entorno del servidor. Si algún día se necesitan
    * más administradores, los crea uno que ya lo sea — nunca el formulario de
    * alta público.
+   *
+   * LA CONTRASEÑA DEL ADMINISTRADOR ES `ADMIN_PASSWORD`, también cuando la
+   * cuenta ya existe. Antes solo se usaba al crearla: con la base en Mongo,
+   * cambiar la variable en Heroku no cambiaba nada y la contraseña publicada
+   * seguía abriendo el panel. Ahora, si la guardada no es la de la variable, se
+   * reescribe al arrancar; eso cambia la huella de la contraseña y deja sin
+   * valor todas las sesiones del administrador firmadas antes (ver
+   * `sesionVigente` en lib/auth.ts). Si la variable no cambió, no se toca nada.
    */
-  async asegurarAdministrador(email: string, passwordHash: string): Promise<User> {
+  async asegurarAdministrador(email: string, password: string): Promise<User> {
     const existente = await db.findUserByEmail(email)
     if (existente) {
       existente.role = 'admin'
+      if (!verifyPassword(password, existente.passwordHash)) existente.passwordHash = hashPassword(password)
       await usuarios.guardar(existente)
       return existente
     }
-    const user = await db.createUser({ email, passwordHash, fullName: 'Administración Orden Global' })
+    const user = await db.createUser({
+      email, passwordHash: hashPassword(password), fullName: 'Administración Orden Global',
+    })
     user.role = 'admin'
     await usuarios.guardar(user)
     return user

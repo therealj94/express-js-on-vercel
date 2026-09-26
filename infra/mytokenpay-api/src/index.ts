@@ -16,7 +16,6 @@ import { premiosRouter } from './routes/premios.js'
 import { actividadRouter } from './routes/actividad.js'
 import { db } from './lib/db.js'
 import { conectarAlmacen, modoAlmacen } from './lib/almacen.js'
-import { hashPassword } from './lib/auth.js'
 import telemetria from './lib/telemetria.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -32,8 +31,9 @@ async function inicializar() {
   await db.sembrarComercios()
   // El administrador se siembra al arrancar, si el entorno lo define. Es la única
   // vía para tener rol de administrador: nunca se concede desde el alta pública.
+  // Y es la vía para ROTAR su contraseña: se cambia ADMIN_PASSWORD y se reinicia.
   if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
-    await db.asegurarAdministrador(process.env.ADMIN_EMAIL, hashPassword(process.env.ADMIN_PASSWORD))
+    await db.asegurarAdministrador(process.env.ADMIN_EMAIL, process.env.ADMIN_PASSWORD)
   }
   console.log(`MyTokenPay API · almacén: ${modo}`)
 }

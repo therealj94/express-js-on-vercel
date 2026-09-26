@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { randomBytes } from 'crypto'
 import { db, toPublicUser } from '../lib/db.js'
 import { perfilApp } from '../lib/perfil.js'
-import { hashPassword, signResetToken, signToken, verifyPassword, verifyResetToken } from '../lib/auth.js'
+import { hashPassword, huellaClave, signResetToken, signToken, verifyPassword, verifyResetToken } from '../lib/auth.js'
 import { requireAuth } from '../middleware/auth.js'
 import { h } from '../lib/ruta.js'
 import { llamarGenesis, identidadPorEmail } from '../lib/genesis.js'
@@ -99,7 +99,11 @@ authRouter.post('/sso', h(async (req, res) => {
   }
 
   res.json({
-    token: signToken(user.id),
+    // La sesión lleva el GID con que se abrió: es lo que le permite, y solo a
+    // ella, pedir pases del ecosistema y atar la cuenta en Genesis (ver
+    // routes/genesis.ts). Una sesión de correo y contraseña no lo lleva, porque
+    // el alta no comprueba que el correo sea de quien lo escribe.
+    token: signToken(user.id, { passwordHash: user.passwordHash, gid }),
     user: await perfilApp(user),
     genesis: { gid, nombre: perfil?.nombre ?? identidad.nombreLegal ?? null, verificada: true, direccion },
   })
@@ -126,7 +130,7 @@ authRouter.post('/signup', h(async (req, res) => {
   }
 
   const user = await db.createUser({ email, fullName, passwordHash: hashPassword(password) })
-  const token = signToken(user.id)
+  const token = signToken(user.id, { passwordHash: user.passwordHash })
   res.status(201).json({ token, user: await perfilApp(user) })
 }))
 
@@ -143,7 +147,7 @@ authRouter.post('/login', h(async (req, res) => {
     return
   }
 
-  const token = signToken(user.id)
+  const token = signToken(user.id, { passwordHash: user.passwordHash })
   res.json({ token, user: await perfilApp(user) })
 }))
 
@@ -166,11 +170,27 @@ authRouter.delete('/me', requireAuth, h(async (req, res) => {
   res.status(204).end()
 }))
 
-// No real email delivery exists in this demo backend. In production this endpoint
-// would send a reset link by email and always respond generically to avoid leaking
-// whether an account exists. Here it responds generically too, but also returns the
-// token directly so the mobile app can complete the reset flow end to end without a
-// mail provider.
+/**
+ * ¿Se entrega el código de reseteo en la propia respuesta?
+ *
+ * No hay envío de correo en este backend, así que la app móvil completa el
+ * «olvidé mi contraseña» con el código que viene aquí (`demoResetToken`). Eso
+ * quiere decir que cualquiera que sepa un correo puede cambiar su contraseña.
+ *
+ *   · Al ADMINISTRADOR nunca: su contraseña se rota con ADMIN_PASSWORD (ver
+ *     db.asegurarAdministrador) y su cuenta aprueba comercios y marca retiros
+ *     como pagados. Se le contesta lo mismo que a un correo que no existe.
+ *   · Al resto, por ahora SÍ, para no dejar sin reseteo a la app publicada.
+ *     MTP_OCULTAR_TOKEN_RESETEO=si lo apaga para todos (la app entonces solo
+ *     dice «revisá tu correo»). Apagarlo de verdad necesita un canal que
+ *     pruebe el correo (SES, como Veta): es decisión de José, no de este código.
+ */
+function entregaCodigoReseteo(role: string): boolean {
+  if (role === 'admin') return false
+  const ocultar = String(process.env.MTP_OCULTAR_TOKEN_RESETEO || '').trim().toLowerCase()
+  return !['1', 'si', 'sí', 'true'].includes(ocultar)
+}
+
 authRouter.post('/forgot-password', h(async (req, res) => {
   const { email } = req.body as { email?: string }
   if (!email) {
@@ -182,12 +202,14 @@ authRouter.post('/forgot-password', h(async (req, res) => {
   const genericResponse = {
     message: 'Si el correo está registrado, recibirás instrucciones para restablecer tu contraseña.',
   }
-  if (!user) {
+  if (!user || !entregaCodigoReseteo(user.role)) {
     res.json(genericResponse)
     return
   }
 
-  const resetToken = signResetToken(user.id)
+  // El código lleva la huella de la contraseña actual: sirve una sola vez, y
+  // deja de servir si la contraseña cambia por cualquier otra vía.
+  const resetToken = signResetToken(user.id, user.passwordHash)
   res.json({ ...genericResponse, demoResetToken: resetToken })
 }))
 
@@ -202,12 +224,18 @@ authRouter.post('/reset-password', h(async (req, res) => {
     return
   }
 
-  const userId = verifyResetToken(token)
-  if (!userId || !(await db.findUserById(userId))) {
+  const reseteo = verifyResetToken(token)
+  const user = reseteo ? await db.findUserById(reseteo.sub) : undefined
+  // El administrador no se resetea por aquí (ver `entregaCodigoReseteo`), ni
+  // con un código firmado antes de este cambio. Un código sin huella es de
+  // antes del despliegue: vale sus quince minutos, como valía.
+  const vale = Boolean(user) && user!.role !== 'admin' &&
+    (reseteo!.pv === undefined || reseteo!.pv === huellaClave(user!.passwordHash))
+  if (!vale) {
     res.status(400).json({ error: 'El enlace de restablecimiento no es válido o ha expirado' })
     return
   }
 
-  await db.updateUserPassword(userId, hashPassword(newPassword))
+  await db.updateUserPassword(user!.id, hashPassword(newPassword))
   res.json({ message: 'Contraseña actualizada correctamente' })
 }))

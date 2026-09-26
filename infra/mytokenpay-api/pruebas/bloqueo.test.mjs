@@ -217,7 +217,7 @@ describe('Está cableado donde tiene que estar', () => {
     assert.match(src, /puedeOperar\(usuario\)/, 'requireAuth lo consulta')
     // Después de validar el token —no se le pregunta a Genesis por una sesión
     // inválida— y antes de dejar entrar.
-    const iToken = src.indexOf('verifyToken(token)')
+    const iToken = src.indexOf('leerSesion(token)')
     const iBloq = src.indexOf('puedeOperar(usuario)')
     assert.ok(iToken > 0 && iBloq > iToken, 'después de validar el token')
     // Y también en attachUser: si no, una persona bloqueada seguiría siendo

@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express'
-import { verifyToken } from '../lib/auth.js'
+import { leerSesion, sesionVigente } from '../lib/auth.js'
 import { db } from '../lib/db.js'
 import { puedeOperar } from '../lib/bloqueo.js'
 
@@ -8,6 +8,11 @@ declare global {
   namespace Express {
     interface Request {
       userId?: string
+      /**
+       * El GID con que se abrió la sesión, si se abrió con un pase de Genesis
+       * ID (`/api/auth/sso`). `null` en una sesión de correo y contraseña.
+       */
+      sesionGid?: string | null
     }
   }
 }
@@ -24,14 +29,19 @@ declare global {
  * Va DESPUÉS de validar el token —no se le pregunta a Genesis por una sesión
  * que ya es inválida— y ANTES de dejar entrar. Ver lib/bloqueo.js para qué
  * pasa cuando Genesis no contesta.
+ *
+ * Validar el token es también comprobar que sigue vigente (`sesionVigente`):
+ * una sesión firmada con una contraseña que ya cambió no entra, y un token de
+ * reseteo no es una sesión.
  */
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
   try {
     const header = req.headers.authorization
     const token = header?.startsWith('Bearer ') ? header.slice(7) : undefined
-    const userId = token ? verifyToken(token) : null
+    const sesion = token ? leerSesion(token) : null
+    const userId = sesion?.sub ?? null
     const usuario = userId ? await db.findUserById(userId) : undefined
-    if (!userId || !usuario) {
+    if (!sesion || !userId || !usuario || !sesionVigente(sesion, usuario)) {
       res.status(401).json({ error: 'No autorizado' })
       return
     }
@@ -41,6 +51,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       return
     }
     req.userId = userId
+    req.sesionGid = sesion.gid ?? null
     next()
   } catch (err) {
     next(err)
@@ -60,10 +71,12 @@ export async function attachUser(req: Request, _res: Response, next: NextFunctio
   try {
     const header = req.headers.authorization
     const token = header?.startsWith('Bearer ') ? header.slice(7) : undefined
-    const userId = token ? verifyToken(token) : null
+    const sesion = token ? leerSesion(token) : null
+    const userId = sesion?.sub ?? null
     const usuario = userId ? await db.findUserById(userId) : undefined
-    if (userId && usuario && (await puedeOperar(usuario)).puede) {
+    if (sesion && userId && usuario && sesionVigente(sesion, usuario) && (await puedeOperar(usuario)).puede) {
       req.userId = userId
+      req.sesionGid = sesion.gid ?? null
     }
     next()
   } catch (err) {

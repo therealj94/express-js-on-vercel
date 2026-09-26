@@ -24,7 +24,8 @@ const exigirSesion = (req, res, siguiente) => {
 
 const app = express()
 app.use(express.json({ limit: '5mb' }))
-app.use('/genesis', routerGenesis({ exigirSesion }))
+// El usuario de mentira tiene el correo comprobado (como una sesión de Veta).
+app.use('/genesis', routerGenesis({ exigirSesion, correoVerificado: () => true }))
 const servidor = app.listen(0, '127.0.0.1')
 await new Promise((r) => servidor.once('listening', r))
 const BASE = `http://127.0.0.1:${servidor.address().port}`

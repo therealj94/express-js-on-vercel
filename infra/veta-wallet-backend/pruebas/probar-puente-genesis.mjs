@@ -17,9 +17,11 @@
  *      retirada de genesis-proxy solo reexporta, sin lógica propia.
  *   2. El comportamiento, contra un Genesis ID DE MENTIRA levantado aquí mismo
  *      en 127.0.0.1: sin sesión no pasa; sin dirección válida no hay vínculo
- *      (y Genesis ni se entera); la dirección de la sesión manda sobre la del
+ *      (y Genesis ni se entera); la dirección sale SOLO de la sesión, nunca del
  *      cuerpo; la cuenta y el correo salen de la sesión; la clave de API no
- *      vuelve nunca al cliente.
+ *      vuelve nunca al cliente; y sin correo comprobado (`correoVerificado`)
+ *      no se ata nada, no se piden pases de SSO y no se escribe sobre una
+ *      identidad ya verificada.
  *
  * Ninguna red de verdad, ninguna clave de verdad.
  */
@@ -66,7 +68,7 @@ test('la ruta de MyTokenPay es un adaptador, no otro puente', () => {
 // ── 2. El comportamiento, contra un Genesis de mentira ─────────────────────
 
 const puente = await import('../lib/genesisPuente.js');
-const { routerGenesis, normalizarDireccion, CODIGOS_VINCULO } = puente;
+const { routerGenesis, normalizarDireccion, CODIGOS_VINCULO, CODIGOS_CORREO } = puente;
 
 const CLAVE = 'gid_test_solo_para_esta_prueba';
 const recibido = [];
@@ -82,6 +84,9 @@ genesis.get('/api/v1/gid/:gid', (_req, res) => res.json({
   apps: [{ app: 'mytokenpay', direccion: null }, { app: 'veta-wallet', direccion: '0x1111111111111111111111111111111111111111' }],
 }));
 genesis.post('/api/v1/identidades/:id/foto', (_req, res) => res.json({ ok: true }));
+genesis.post('/api/v1/identidades/:id/datos', (_req, res) => res.json({ identidad: { id: 'idn-1' } }));
+genesis.post('/api/v1/sso/token', (req, res) => res.json({ token: 'pase-de-mentira', eco: req.body }));
+genesis.post('/api/v1/movimientos', (_req, res) => res.json({ ok: true }));
 // `/documento-fotos` y `/documento/leer` NO existen: un Genesis anterior.
 const srvGenesis = genesis.listen(0, '127.0.0.1');
 await new Promise((r) => srvGenesis.once('listening', r));
@@ -94,9 +99,14 @@ const exigirSesion = (req, res, next) => {
   req.usuario = JSON.parse(req.get('x-usuario'));
   next();
 };
+// El correo de la sesión de mentira está comprobado salvo que el usuario diga
+// `correoOk: false`: así cada prueba elige.
+const correoVerificado = (req) => req.usuario.correoOk !== false;
 const app = express();
 app.use(express.json());
-app.use('/genesis', routerGenesis({ exigirSesion }));
+app.use('/genesis', routerGenesis({ exigirSesion, correoVerificado }));
+// Un montaje que NO dice nada del correo: tiene que tratarlo como no comprobado.
+app.use('/sin-correo/genesis', routerGenesis({ exigirSesion }));
 const srvApp = app.listen(0, '127.0.0.1');
 await new Promise((r) => srvApp.once('listening', r));
 const BASE = `http://127.0.0.1:${srvApp.address().port}/genesis`;
@@ -174,11 +184,102 @@ test('con la dirección de la sesión: vincula en minúsculas; cuenta y correo s
   assert.ok(!r.texto.includes(CLAVE), 'la clave de API volvió al cliente');
 });
 
-test('sin dirección en la sesión (MyTokenPay) la toma del cuerpo, normalizada', async () => {
+test('sin dirección en la sesión, la del cuerpo NO se usa: 422 VINCULO_DIRECCION_SIN_PRUEBA', async () => {
+  // Antes el puente la tomaba del cuerpo (era la vía de MyTokenPay) y cualquiera
+  // ataba a su GID la billetera de otro, que Genesis publicaba como «verificada».
+  const antes = vinculosRecibidos().length;
   const w = Wallet.createRandom().address;
   const r = await pedir('/vincular', { cuerpo: { direccion: '0x' + w.slice(2).toUpperCase() } });
+  assert.equal(r.estado, 422);
+  assert.equal(r.cuerpo.codigo, CODIGOS_VINCULO.DIRECCION_SIN_PRUEBA);
+  assert.equal(r.cuerpo.codigo, 'VINCULO_DIRECCION_SIN_PRUEBA');
+  assert.equal(vinculosRecibidos().length, antes, 'Genesis ni se enteró');
+});
+
+// ── Correo sin comprobar (el caso de MyTokenPay) ───────────────────────────
+
+const SIN_CORREO = { ...VETA, correoOk: false };
+const pedidos = (ruta) => recibido.filter((x) => x.ruta === ruta).length;
+
+test('sin correo comprobado no se ata la cuenta, aunque la dirección venga de la sesión', async () => {
+  const antes = vinculosRecibidos().length;
+  const r = await pedir('/vincular', { usuario: { ...SIN_CORREO, address: Wallet.createRandom().address }, cuerpo: {} });
+  assert.equal(r.estado, 403);
+  assert.equal(r.cuerpo.codigo, CODIGOS_CORREO.NO_VERIFICADO);
+  assert.equal(vinculosRecibidos().length, antes, 'Genesis ni se enteró');
+});
+
+test('sin correo comprobado no se pide un pase de SSO a nombre del GID de ese correo', async () => {
+  const antes = pedidos('/api/v1/sso/token');
+  const r = await pedir('/sso/token', { usuario: SIN_CORREO, cuerpo: {} });
+  assert.equal(r.estado, 403);
+  assert.equal(r.cuerpo.codigo, 'CORREO_NO_VERIFICADO');
+  assert.ok(!r.texto.includes('pase-de-mentira'));
+  assert.equal(pedidos('/api/v1/sso/token'), antes);
+});
+
+test('con correo comprobado el pase sí se pide, con el GID y la cuenta de la sesión', async () => {
+  const r = await pedir('/sso/token', { cuerpo: { gid: 'OTRO', cuenta: 'la-de-otro' } });
   assert.equal(r.estado, 200);
-  assert.equal(vinculosRecibidos().at(-1).cuerpo.direccion, w.toLowerCase());
+  assert.deepEqual(r.cuerpo.eco, { gid: 'GID-PRUEBA', cuenta: 'cuenta-42' });
+});
+
+test('sin correo comprobado no se escribe sobre una identidad ya verificada (foto, datos, trámite)', async () => {
+  // La identidad de mentira está verificada: es la de otra persona con ese correo.
+  const antes = recibido.filter((x) => x.metodo === 'POST' && x.ruta.startsWith('/api/v1/identidades/')).length;
+  for (const [ruta, cuerpo] of [
+    ['/foto', { foto: 'x' }], ['/datos', { nombreCompleto: 'X' }], ['/documento', { mrz: 'x' }],
+    ['/documento-fotos', { anverso: 'a', reverso: 'b' }], ['/documento/leer', { imagen: 'x' }],
+    ['/vivacidad', {}], ['/biometria', { selfie: 'x' }],
+  ]) {
+    const r = await pedir(ruta, { usuario: SIN_CORREO, cuerpo });
+    assert.equal(r.estado, 403, ruta);
+    assert.equal(r.cuerpo.codigo, 'CORREO_NO_VERIFICADO', ruta);
+  }
+  assert.equal(recibido.filter((x) => x.metodo === 'POST' && x.ruta.startsWith('/api/v1/identidades/')).length, antes);
+  // Con el correo comprobado, la misma foto sí pasa.
+  assert.equal((await pedir('/foto', { cuerpo: { foto: 'x' } })).estado, 200);
+});
+
+test('sin correo comprobado no se cargan movimientos al GID de ese correo (y no se dice)', async () => {
+  const antes = pedidos('/api/v1/movimientos');
+  const r = await pedir('/movimientos', { usuario: SIN_CORREO, cuerpo: { movimientos: [{ monto: 1 }] } });
+  assert.equal(r.estado, 200);
+  assert.equal(r.cuerpo.ok, true);
+  assert.equal(pedidos('/api/v1/movimientos'), antes);
+  assert.equal((await pedir('/movimientos', { cuerpo: { movimientos: [] } })).cuerpo.ok, true);
+  assert.equal(pedidos('/api/v1/movimientos'), antes + 1);
+});
+
+test('si la cuenta sabe su GID y el correo lleva a otro: 403 SESION_GID_AJENO', async () => {
+  const otro = { ...VETA, gid: 'GID-DE-OTRA-CUENTA' };
+  const s = await pedir('/sso/token', { usuario: otro, cuerpo: {} });
+  assert.equal(s.estado, 403);
+  assert.equal(s.cuerpo.codigo, CODIGOS_CORREO.GID_AJENO);
+  const v = await pedir('/vincular', { usuario: { ...otro, address: Wallet.createRandom().address }, cuerpo: {} });
+  assert.equal(v.estado, 403);
+  assert.equal(v.cuerpo.codigo, 'SESION_GID_AJENO');
+  // Con el GID correcto, pasa.
+  assert.equal((await pedir('/sso/token', { usuario: { ...VETA, gid: 'GID-PRUEBA' }, cuerpo: {} })).estado, 200);
+});
+
+test('un montaje que no declara `correoVerificado` lo da por NO comprobado', async () => {
+  const r = await fetch(BASE.replace('/genesis', '/sin-correo/genesis') + '/sso/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-usuario': JSON.stringify(VETA) },
+    body: '{}',
+  });
+  assert.equal(r.status, 403);
+  assert.equal((await r.json()).codigo, 'CORREO_NO_VERIFICADO');
+  assert.throws(() => routerGenesis({ exigirSesion, correoVerificado: true }), /correoVerificado/);
+});
+
+test('Veta monta el puente declarando `correoVerificado` (detrás de su bandera)', () => {
+  const txt = readFileSync(path.join(RAIZ, 'app.js'), 'utf8');
+  assert.match(txt, /routerGenesis\(\{[\s\S]*?correoVerificado:/);
+  assert.match(txt, /GENESIS_PUENTE_EXIGE_CORREO_CONFIRMADO/);
+  const sesion = readFileSync(path.join(RAIZ, 'middleware', 'sesionGenesis.js'), 'utf8');
+  assert.match(sesion, /correoConfirmado: usuario\.isVerified === true/);
 });
 
 test('normalizarDireccion coincide con ethers en 200 direcciones al azar', () => {

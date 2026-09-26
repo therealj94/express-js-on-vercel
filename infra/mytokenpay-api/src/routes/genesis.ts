@@ -15,6 +15,16 @@
 // Cada ruta exige la sesión propia de MyTokenPay y actúa SOLO sobre la
 // identidad del usuario autenticado: el correo sale de la sesión, jamás del
 // cuerpo de la petición. Ninguna ruta aprueba nada.
+//
+// EL CORREO DE MYTOKENPAY NO ESTÁ COMPROBADO. `/api/auth/signup` acepta el que
+// le escriban, así que «el correo de la sesión» no prueba que quien la usa sea
+// la dueña de la identidad de Genesis con ese correo. Dicho al puente con
+// `correoVerificado`: solo lo está en una sesión abierta con un pase de Genesis
+// ID (`/api/auth/sso`, que firma el GID dentro del token) y cuyo GID es el de la
+// cuenta. Con cualquier otra sesión el puente sigue sirviendo para HACER el
+// trámite, pero no ata la cuenta, no pide pases de SSO y no toca una identidad
+// ya verificada. Cuando MyTokenPay verifique el correo en el alta, este es el
+// único sitio que hay que cambiar.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { NextFunction, Request, Response } from 'express'
@@ -50,8 +60,10 @@ async function cargarUsuario(req: Request, res: Response, next: NextFunction) {
 /**
  * La sesión de MyTokenPay, en la forma que pide el puente: un solo middleware.
  *
- * MyTokenPay no guarda dirección de billetera en la sesión, así que el puente
- * la toma del cuerpo de `/vincular` —y sin ella no vincula (SFSP v0.3 §11)—.
+ * MyTokenPay no guarda dirección de billetera en la sesión, así que su
+ * `/genesis/vincular` no ata nada (422): una dirección del cuerpo no prueba que
+ * sea de quien la manda. La cuenta se ata en `/api/auth/sso`, con la dirección
+ * que Genesis ya conoce de la identidad (SFSP v0.3 §11).
  */
 function exigirSesion(req: Request, res: Response, next: NextFunction) {
   void requireAuth(req, res, (err?: unknown) => {
@@ -63,4 +75,15 @@ function exigirSesion(req: Request, res: Response, next: NextFunction) {
   })
 }
 
-export const genesisRouter = routerGenesis({ exigirSesion })
+/**
+ * ¿El correo de ESTA sesión está comprobado? Solo si se abrió con un pase de
+ * Genesis ID para el GID de la cuenta (ver arriba). Una sesión de contraseña
+ * —aunque la cuenta tenga GID— no: quien se dio de alta con un correo ajeno
+ * antes de que la dueña entrara por SSO conoce esa contraseña.
+ */
+function correoVerificado(req: Request): boolean {
+  const gid = req.usuario?.gid
+  return Boolean(gid && req.sesionGid && req.sesionGid === gid)
+}
+
+export const genesisRouter = routerGenesis({ exigirSesion, correoVerificado })
