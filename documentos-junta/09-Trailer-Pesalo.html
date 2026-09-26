@@ -763,9 +763,11 @@ no una generación nueva. Es el principio del que cuelgan todos los demás.</p>
 <h3>11.2 · Referencias normalizadas, una por cara</h3>
 <p>A un modelo de video no se le describe un logotipo ni una persona: se le entrega. Para la producción anterior
 se prepararon once referencias de 1440×1440 con el mismo encuadre, fondo y luz. Para esta pieza hay que preparar
-<strong>una referencia por personaje</strong> —la vendedora, el minero, la abuela y la nieta, el muchacho— y
-adjuntarla en <i>todas</i> las tomas donde esa persona aparece. Sin eso, la misma señora cambia de cara entre
-plano y plano y el comercial se cae.</p>
+<strong>una referencia por persona: trece</strong> —la vendedora, el repartidor, la estudiante, la enfermera,
+el barbero, la costurera, el minero, la operadora de bóveda, la ingeniera de red, el operador de cumplimiento,
+el del mostrador, la teleoperadora y la freelance— y adjuntarla en <i>todas</i> las tomas donde esa persona
+aparece. Sin eso, la misma señora cambia de cara entre plano y plano y la pieza se cae. Y son cuatro vendedoras
+distintas, una por máster: cuatro juegos de referencia, no uno.</p>
 
 <h3>11.3 · Un solo archivo con todos los números</h3>
 <p>Tiempos, textos, colores y marcas de audio viven en <code>src/guion.ts</code>. Ningún otro archivo lleva un
@@ -779,7 +781,7 @@ mano, el papel que se arruga y se queda arrugado. Una toma físicamente imposibl
 todo lo demás, por bonita que se vea. En esta pieza la regla es doble, porque <strong>el peso es el argumento</strong>.</p>
 
 <h3>11.5 · Zonas seguras en vertical</h3>
-<p>El formato principal es 1080×1920. Las plataformas tapan el 25 % inferior con la descripción y el borde
+<p>El máster es 9:16 —1080×1920 por la vía generada, 4K por la vía rodada—. Las plataformas tapan el 25 % inferior con la descripción y el borde
 derecho con sus botones: los rótulos van al 62 % de altura y nada importante toca los bordes.</p>
 
 <table>
@@ -787,9 +789,9 @@ derecho con sus botones: los rótulos van al 62 % de altura y nada importante to
   <tbody>
     <tr><td>Referencias</td><td>Seedream (imagen)</td><td>Una imagen por personaje y por logotipo, 1440×1440, encuadre idéntico</td></tr>
     <tr><td>Tomas</td><td>Seedance (video) con las referencias adjuntas</td><td>Los planos crudos, sin texto ni marca</td></tr>
-    <tr><td>Voz</td><td>ElevenLabs, voz masculina latinoamericana</td><td>La narración en español, con las pausas marcadas</td></tr>
+    <tr><td>Voz</td><td>Sonido directo en el lugar de trabajo</td><td>Las treinta y una tomas habladas. <b>No hay narración</b>: la voz sintética solo se usa para maquetar el montaje antes de rodar</td></tr>
     <tr><td>Sonido</td><td>Síntesis propia en numpy</td><td>Los golpes, el silencio y la nota grave del cierre</td></tr>
-    <tr><td>Montaje</td><td>Remotion 4 · React · 1080×1920 a 24 fps</td><td>Rótulos, monograma, avisos, mezcla y render</td></tr>
+    <tr><td>Montaje</td><td>Remotion 4 · React · 9:16 a 24 fps</td><td>Rótulos, monograma, avisos, mezcla y render</td></tr>
     <tr><td>Render</td><td>Remotion Lambda</td><td>Menos de cinco centavos por render, sin servidor encendido</td></tr>
   </tbody>
 </table>
