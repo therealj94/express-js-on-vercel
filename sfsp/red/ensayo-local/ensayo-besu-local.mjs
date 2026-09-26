@@ -216,6 +216,7 @@ async function main() {
   // Fase B · filtro encendido desde un bloque de activación.
   arrancar(["--plugin-sfsp-filtro-habilitado=true", `--plugin-sfsp-filtro-contrato=${np.address}`, `--plugin-sfsp-filtro-bloque-activacion=${activacion}`]);
   await listo();
+  paso("autoprueba OK al arrancar con la dirección correcta", /SFSP filtro de red: autoprueba OK/.test(proceso.log.join("")));
   while ((await bloque()) + 1 < activacion) await dormir(500);
   const transfer = (to) => "0xa9059cbb" + defaultAbiCoder.encode(["address", "uint256"], [to, 1]).slice(2);
 
@@ -235,9 +236,29 @@ async function main() {
   await ordenRed(gov, np, [{ kind: b32("DEPLOYER"), subject: desplegador.dir, granted: true, reasonCode: b32("ENSAYO_D07") }], TIMELOCK);
   r = await intentar(desplegador, { data: dataDespliegue, gas: 3_000_000 });
   paso("T-150-01 con alta de gobierno sí despliega", r.ok, r.error);
+  // Un despliegue GRANDE tras la activación. La consulta simulada lleva el initcode entero
+  // en su calldata; con el tope fijo de 200.000 de gas de la versión 0.1.0, todo lo que
+  // pasaba de ~11 KB se rechazaba aunque el contrato dijera que sí (RED-CERRADA §9.3).
+  const artGrande = art("SFSPAssetRegistry");
+  const dataGrande = artGrande.bytecode + new Interface(artGrande.abi).encodeDeploy([desplegador.dir]).slice(2);
+  r = await intentar(desplegador, { data: dataGrande, gas: 12_000_000 });
+  paso(`T-150-01 con alta también despliega un contrato grande (SFSPAssetRegistry, ${(dataGrande.length - 2) / 2} B de initcode)`, r.ok, r.error);
   while ((await bloque()) + 1 < corte) await dormir(500);
   r = await intentar(usuario, { to: transitorio.address, data: transfer(junta.dir), gas: 100000 });
   paso("T-150-04 transitorio rechazado desde el bloque de corte", !r.ok, r.error);
+  await parar();
+
+  // Fase B' · autoprueba. Con la dirección del contrato mal escrita (un dígito cambiado) y
+  // el filtro ya vigente, el nodo se niega a arrancar: si arrancara, rechazaría todas las
+  // transacciones y se quedaría parado en el primer bloque que las trajera.
+  const bajo = np.address.toLowerCase();
+  const errata = bajo.slice(0, -1) + (bajo.endsWith("0") ? "1" : "0");
+  const conErrata = arrancar(["--plugin-sfsp-filtro-habilitado=true", `--plugin-sfsp-filtro-contrato=${errata}`, `--plugin-sfsp-filtro-bloque-activacion=${activacion}`]);
+  for (let i = 0; i < 240 && conErrata.exitCode === null; i++) await dormir(500);
+  const salida = conErrata.exitCode;
+  const logErrata = conErrata.log.join("");
+  paso("autoprueba: con una errata en la dirección del contrato y el filtro vigente, el nodo no arranca",
+    salida !== null && salida !== 0 && /AUTOPRUEBA FALLIDA/.test(logErrata), `código de salida ${salida}`);
   await parar();
 
   // Fase C · reversión e importación. El validador arranca con el complemento
