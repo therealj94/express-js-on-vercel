@@ -122,7 +122,11 @@ const TEXTOS: Record<string, Texto> = {
     },
     obligatorios: ['mrz'],
     devuelve: '`{ identidad, documento: { aceptable, anverso, problemas[] } }`',
-    errores: { '400': 'Falta la MRZ', '404': 'Identidad no encontrada' },
+    errores: {
+      '400': 'Falta la MRZ', '404': 'Identidad no encontrada',
+      '409': '`IDENTIDAD_YA_VERIFICADA`: una verificada no cambia sus datos subiendo otro documento '
+        + '(o `IDENTIDAD_CERRADA` si el servidor exige reinicio para suspendidas y rechazadas)',
+    },
   },
   'POST /api/v1/identidades/:id/documento-fotos': {
     resumen: 'Adjuntar el documento como dos fotos',
@@ -143,7 +147,10 @@ const TEXTOS: Record<string, Texto> = {
     },
     obligatorios: ['anverso', 'reverso'],
     devuelve: '`{ identidad, documento: { via: "fotos", aceptable, pendienteDeLectura, problemas, lectura, datos } }`',
-    errores: { '400': 'Falta alguna cara, o no es una imagen', '413': 'Alguna cara pesa de más' },
+    errores: {
+      '400': 'Falta alguna cara, o no es una imagen', '413': 'Alguna cara pesa de más',
+      '409': '`IDENTIDAD_YA_VERIFICADA` o `IDENTIDAD_CERRADA`, como en `/documento`: no se guarda nada',
+    },
   },
   'POST /api/v1/identidades/:id/documento/leer': {
     resumen: 'Leer la zona mecánica del reverso desde una foto, sin adjuntar nada',
@@ -260,6 +267,7 @@ const TEXTOS: Record<string, Texto> = {
     devuelve: '`{ ok: true }`',
     errores: {
       '403': 'El correo no es el de esa identidad',
+      '409': '`VINCULO_DIRECCION_AJENA`: esa dirección ya está atada a otra identidad',
       '422': '`VINCULO_SIN_DIRECCION` o `VINCULO_DIRECCION_INVALIDA`',
     },
   },

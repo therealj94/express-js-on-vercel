@@ -228,15 +228,68 @@ export async function guardarFotoCredencial(idn: string, base64: string, origen:
 // Documento
 // ─────────────────────────────────────────────────────────────────────────────
 
+export const CODIGOS_DOCUMENTO = {
+  YA_VERIFICADA: 'IDENTIDAD_YA_VERIFICADA',
+  CERRADA: 'IDENTIDAD_CERRADA',
+} as const
+
+/**
+ * ¿Exige un reinicio del operador aportar documento a una suspendida o a una
+ * rechazada? APAGADO por defecto: la billetera web ofrece «Volver a intentarlo»
+ * sobre una rechazada y manda el documento sin reinicio, y eso no puede
+ * dejar de funcionar por el mero hecho de desplegar. Encendido
+ * (GENESIS_DOCUMENTO_EXIGE_REINICIO=si), esos dos estados vuelven solo por
+ * `reiniciar()`, como ya dice el panel.
+ */
+const documentoExigeReinicio = () =>
+  /^(si|sí|1|true)$/i.test(String(process.env.GENESIS_DOCUMENTO_EXIGE_REINICIO || ''))
+
+/**
+ * ¿Puede esta identidad recibir un documento ahora? `null` si sí.
+ *
+ * UNA VERIFICADA NO. Subir un documento reescribe nombre legal, fecha de
+ * nacimiento, nacionalidad, número y vencimiento con lo que diga la MRZ —que
+ * es texto con dígitos de control, cualquiera la fabrica— y el estado no se
+ * movía: una persona verificada cambiaba así el nombre de su GID, o alargaba
+ * la vigencia de su documento, sin que nadie lo revisara. `verificada` tiene
+ * una sola puerta, `aprobar()`, y sus datos también. Si el documento cambió de
+ * verdad, se suspende y se reinicia la verificación.
+ *
+ * El registro cámara-primero reenvía la MRZ ANTES de la aprobación (en
+ * `documento` o `biometria`), así que no pasa por aquí. `vencida` tampoco: es
+ * justo el camino para volver con un documento vigente.
+ */
+export function documentoCerrado(identidad: Identidad): { codigo: string; motivo: string } | null {
+  if (identidad.estado === 'verificada') {
+    return {
+      codigo: CODIGOS_DOCUMENTO.YA_VERIFICADA,
+      motivo: 'La identidad ya está verificada: sus datos no cambian subiendo otro documento. ' +
+        'Si el documento cambió, hay que pedir que se rehaga la verificación.',
+    }
+  }
+  if ((identidad.estado === 'suspendida' || identidad.estado === 'rechazada') && documentoExigeReinicio()) {
+    return {
+      codigo: CODIGOS_DOCUMENTO.CERRADA,
+      motivo: 'Esta verificación está cerrada: para aportar otro documento, un operador tiene que reiniciarla.',
+    }
+  }
+  return null
+}
+
 /**
  * Recibe la MRZ del documento, la comprueba, tamiza contra sanciones con el
  * nombre REAL del documento (no con el declarado) y recalcula el riesgo.
+ *
+ * Si `documentoCerrado(identidad)` dice que no, NO toca nada y la devuelve tal
+ * cual —como `declararDatos` con una verificada—; la ruta lo mira antes y
+ * contesta 409.
  */
 export function adjuntarDocumento(
   idn: string, mrz: string, origen: string, textoAnverso?: string | null,
 ): Identidad | null {
   const identidad = porId(idn)
   if (!identidad) return null
+  if (documentoCerrado(identidad)) return identidad
 
   const revision = revisarDocumento(mrz, {
     nombreCompleto: identidad.nombreDeclarado,
@@ -288,9 +341,9 @@ export function adjuntarDocumento(
   // Una identidad VENCIDA que trae documento nuevo vuelve a empezar por aquí:
   // es el camino normal de re-verificación, que termina otra vez en revisión
   // humana y en `aprobar()`.
-  if (identidad.estado === 'iniciada' || identidad.estado === 'datos' || identidad.estado === 'vencida') {
-    identidad.estado = 'documento'
-  }
+  const reverificacion = identidad.estado === 'vencida'
+  if (reverificacion) volverAEmpezarVencida(identidad)
+  else if (identidad.estado === 'iniciada' || identidad.estado === 'datos') identidad.estado = 'documento'
   recalcularRiesgo(identidad)
   identidad.actualizadaEn = ahora()
   store.guardar()
@@ -299,8 +352,21 @@ export function adjuntarDocumento(
     aceptable: revision.aceptable,
     hallazgos: revision.hallazgos.filter((h) => h.gravedad !== 'ok').map((h) => h.clave),
     coincidenciasTamiz: identidad.tamiz?.coincidencias.length ?? 0,
+    ...(reverificacion ? { reverificacion: true } : {}),
   })
   return identidad
+}
+
+/**
+ * Una VENCIDA que trae documento nuevo vuelve al trámite: «documento vigente,
+ * rostro, revisión humana». El rostro también: el cotejo que tenía se hizo
+ * contra el documento ANTERIOR, y conservarlo dejaba `hecho.rostro` en verdadero
+ * y el siguiente paso en «En revisión» sin prueba de vida nueva. Se suelta solo
+ * el veredicto del expediente; las imágenes archivadas no se tocan aquí.
+ */
+function volverAEmpezarVencida(identidad: Identidad): void {
+  identidad.biometria = null
+  identidad.estado = 'documento'
 }
 
 export interface ResultadoFotos {
@@ -325,6 +391,8 @@ export interface ResultadoFotos {
    * expediente sigue esperando a que un operador lo lea.
    */
   mrzLeida?: boolean
+  /** Viene cuando la identidad no admite documento ahora (`documentoCerrado`): la ruta da 409. */
+  codigo?: string
 }
 
 /**
@@ -372,6 +440,9 @@ export async function adjuntarDocumentoPorFotos(
 ): Promise<ResultadoFotos> {
   const identidad = porId(idn)
   if (!identidad) return { ok: false, motivo: 'Identidad no encontrada' }
+  // Antes de guardar las fotos: a una identidad cerrada no se le guarda nada.
+  const cerrado = documentoCerrado(identidad)
+  if (cerrado) return { ok: false, identidad, motivo: cerrado.motivo, codigo: cerrado.codigo }
 
   try {
     await guardarFotos(identidad.id, { anverso, reverso })
@@ -503,9 +574,9 @@ export async function adjuntarDocumentoPorFotos(
   // confirmarlos vuelve a mandar la misma MRZ para que el cotejo del nombre se
   // haga con lo que declaró. Ese reenvío no puede borrar el rostro.
   // Una VENCIDA con documento nuevo vuelve a empezar aquí (ver adjuntarDocumento).
-  if (identidad.estado === 'iniciada' || identidad.estado === 'datos' || identidad.estado === 'vencida') {
-    identidad.estado = 'documento'
-  }
+  const reverificacion = identidad.estado === 'vencida'
+  if (reverificacion) volverAEmpezarVencida(identidad)
+  else if (identidad.estado === 'iniciada' || identidad.estado === 'datos') identidad.estado = 'documento'
   recalcularRiesgo(identidad)
   identidad.actualizadaEn = ahora()
   store.guardar()
@@ -513,6 +584,7 @@ export async function adjuntarDocumentoPorFotos(
   registrar(origen, 'identidad.documentoPorFotos', identidad.id, {
     coincidenciasTamiz: identidad.tamiz?.coincidencias.length ?? 0,
     mrzLeida,
+    ...(reverificacion ? { reverificacion: true } : {}),
     aceptable: mrzLeida ? identidad.documento.aceptable : null,
     // Qué alcanzó a leer la máquina, para poder auditar después si el aviso
     // inmediato a la persona funcionó o estorbó.
@@ -693,6 +765,19 @@ export function resolverBiometriaManual(
 // Riesgo
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * ¿Ya venció el documento que hay AHORA en el expediente?
+ *
+ * `vencimientoDocumento` solo se escribe cuando se lee una MRZ. Si después
+ * entraron unas fotos que la máquina no leyó, esa fecha es la del documento
+ * ANTERIOR: el actual no tiene fecha conocida —la mira el operador en las
+ * fotos— y aquí no se afirma que esté vencido.
+ */
+function documentoActualVencido(identidad: Identidad): boolean {
+  if (identidad.documento?.via === 'fotos' && !identidad.documento.datos) return false
+  return documentoVencido(identidad)
+}
+
 export function recalcularRiesgo(identidad: Identidad): Identidad {
   identidad.riesgo = evaluarRiesgo({
     documento: identidad.documento,
@@ -701,6 +786,9 @@ export function recalcularRiesgo(identidad: Identidad): Identidad {
     pais: identidad.nacionalidad || identidad.paisResidencia,
     pep: identidad.pep,
     volumenEsperadoUsd: identidad.volumenEsperadoUsd,
+    // En vivo: los hallazgos del documento se guardaron al revisarlo, cuando
+    // quizá aún era vigente.
+    documentoVencidoEl: documentoActualVencido(identidad) ? identidad.vencimientoDocumento : null,
     faltanDatos: [
       !identidad.telefono && 'telefono',
       !identidad.direccion && 'direccion',
@@ -802,8 +890,20 @@ export async function aprobar(
   }
   /* Una identidad VENCIDA no se re-aprueba con el mismo documento caducado: eso
      sería deshacer el vencimiento con un clic. Tiene que traer uno vigente —que
-     la devuelve al trámite normal (`adjuntarDocumento`)—, o seguir vencida. */
-  if (identidad.estado === 'vencida' && documentoVencido(identidad)) {
+     la devuelve al trámite normal (`adjuntarDocumento`)—, o seguir vencida.
+
+     Y no depende del estado en que esté AHORA: mirando solo `vencida`, bastaba
+     con suspenderla o rechazarla antes (dos clics del panel) para que el mismo
+     documento caducado se aprobara. Vale para toda identidad que ya estuvo
+     verificada (tiene GID); una nueva cuyo documento caducó mientras esperaba
+     lleva un bloqueo en vivo (`recalcularRiesgo`), que se ve y se anula con
+     justificación como cualquier otro. Fuera de `vencida` se mira el documento
+     ACTUAL (`documentoActualVencido`): unas fotos nuevas sin leer no heredan la
+     fecha del documento anterior. */
+  const caducadoEnFirme = identidad.estado === 'vencida'
+    ? documentoVencido(identidad)
+    : Boolean(identidad.gid) && documentoActualVencido(identidad)
+  if (caducadoEnFirme) {
     return {
       ok: false,
       motivo: 'El documento de esta identidad está vencido: hace falta uno vigente antes de volver a aprobarla',
@@ -1020,6 +1120,21 @@ export function vincular(
   const existente = identidad.vinculos.find((v) => v.app === app && v.cuenta === cuenta)
   if (existente) {
     existente.ultimoAcceso = ahora()
+    /* Cambiar la dirección NO es silencioso: el límite de exposición se suma
+       por GID con estas direcciones, y reemplazarla sin rastro era la forma de
+       sacar una billetera de la cuenta. Queda en la bitácora con el antes y el
+       después, y la anterior se guarda en el vínculo. La misma dirección
+       escrita con otra caja no es un cambio: solo se normaliza. */
+    const antes = existente.direccion ?? null
+    if ((antes ?? '').toLowerCase() !== direccion) {
+      if (antes) {
+        existente.direccionesAnteriores = [
+          ...(existente.direccionesAnteriores ?? []),
+          { direccion: antes.toLowerCase(), hasta: ahora() },
+        ]
+      }
+      registrar(origen, 'identidad.vinculoDireccion', identidad.id, { app, cuenta, antes, despues: direccion })
+    }
     existente.direccion = direccion
   } else {
     const vinculo: VinculoApp = {
@@ -1037,6 +1152,41 @@ export const porDireccion = (direccion: string): Identidad | undefined => {
   const d = String(direccion || '').toLowerCase()
   return store.todo().identidades.find((i) =>
     i.vinculos.some((v) => (v.direccion || '').toLowerCase() === d))
+}
+
+/**
+ * ¿Hay OTRA identidad con esta dirección en sus vínculos? La devuelve, o null.
+ *
+ * Con esto `POST /vinculos` impide atar a un GID la billetera de otra persona:
+ * `porDireccion` devuelve la primera identidad que la tenga, así que quien
+ * tuviera la identidad más vieja se quedaba con la dirección ajena en
+ * `GET /direccion/:dir`. Si la propia identidad YA la tenía —datos de antes de
+ * esta regla, compartidos con otra—, no se le cierra: no se crea un choque
+ * nuevo, y los viejos se revisan aparte.
+ */
+export function otraIdentidadConDireccion(direccion: string, idn: string): Identidad | null {
+  const d = String(direccion || '').toLowerCase()
+  const tiene = (i: Identidad) => i.vinculos.some((v) => (v.direccion || '').toLowerCase() === d)
+  const propia = porId(idn)
+  if (propia && tiene(propia)) return null
+  return store.todo().identidades.find((i) => i.id !== idn && tiene(i)) ?? null
+}
+
+/**
+ * Todas las direcciones de billetera de una identidad: las actuales de sus
+ * vínculos y las que tuvieron antes, en minúsculas y sin repetir.
+ *
+ * Es la lista que tiene que sumar el límite de exposición por GID (SFSP v0.3
+ * §8.5): una dirección reemplazada sigue contando, porque re-vincular no puede
+ * ser la forma de esconder lo que tiene.
+ */
+export function direccionesDe(identidad: Identidad): string[] {
+  const todas = new Set<string>()
+  for (const v of identidad.vinculos ?? []) {
+    if (v.direccion) todas.add(v.direccion.toLowerCase())
+    for (const a of v.direccionesAnteriores ?? []) todas.add(a.direccion.toLowerCase())
+  }
+  return [...todas]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

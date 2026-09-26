@@ -18,6 +18,8 @@ import { keccak_256 } from '@noble/hashes/sha3'
 export const CODIGOS_VINCULO = {
   SIN_DIRECCION: 'VINCULO_SIN_DIRECCION',
   DIRECCION_INVALIDA: 'VINCULO_DIRECCION_INVALIDA',
+  // Solo lo da Genesis ID: el puente no sabe de quién es cada dirección.
+  DIRECCION_AJENA: 'VINCULO_DIRECCION_AJENA',
 } as const
 
 /** La dirección en minúsculas, o `null` si no es una dirección válida. */

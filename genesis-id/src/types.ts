@@ -172,10 +172,21 @@ export interface VinculoApp {
    *
    * `null` —o ausente— solo en vínculos creados ANTES de esa regla: no se
    * inventa una dirección para ellos ni se borran. Se cuentan con
-   * `scripts/revisar-v03-identidades.ts` y se completan cuando la app vuelve a
+   * `src/migraciones/v03-estados-y-vinculos.ts` y se completan cuando la app vuelve a
    * vincular.
+   *
+   * Una dirección no se ata a dos identidades: `POST /api/v1/vinculos` da 409
+   * `VINCULO_DIRECCION_AJENA` si ya la tiene otra.
    */
   direccion?: string | null
+  /**
+   * Las que tuvo antes este vínculo, en minúsculas, con la fecha en que se
+   * reemplazaron. Cambiar la dirección deja rastro en la bitácora
+   * (`identidad.vinculoDireccion`) y la anterior se conserva aquí: el límite de
+   * exposición por GID tiene que seguir sumándola —ver `direccionesDe()`—, o
+   * bastaría con re-vincular para esconder lo que tiene.
+   */
+  direccionesAnteriores?: { direccion: string; hasta: string }[]
   vinculadaEn: string
   ultimoAcceso: string | null
 }
