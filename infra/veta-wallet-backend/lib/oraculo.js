@@ -35,7 +35,9 @@
 // responde sólo gasta sus cuatro segundos de espera.
 //
 // Si la principal trae una pata y no la otra (oro sí, plata no), la que falta
-// se pide al respaldo.
+// se pide al respaldo. Y si tampoco el respaldo la trae, se conserva la de la
+// lectura anterior (ver «cada pata con su hora», abajo): una lectura a medias
+// no borra la pata buena que ya había.
 //
 // ══════════════════════════════════════════════════════════════════════════
 // LA REGLA DEL TIEMPO
@@ -48,6 +50,16 @@
 //                  10 minutos. Más vieja que eso NO se sirve: se contesta null
 //                  y la pantalla enseña un guion. Jamás un número viejo
 //                  presentado como vigente, jamás un número inventado.
+//   cada pata con su hora
+//                  el oro y la plata se guardan por separado, cada uno con la
+//                  hora de la lectura que lo trajo (`enOro`, `enPlata`) y su
+//                  fuente, y cada uno caduca a los 10 min de SU lectura. Una
+//                  lectura que trae sólo la plata renueva la plata y deja el
+//                  oro de antes, con su hora, en vez de tirarlo: si no, una
+//                  caída a medias dejaba al servicio peor que una total (sin
+//                  oro 30 s aunque hubiera uno de hace segundos). `en` es la
+//                  hora de la pata MÁS VIEJA que se sirve: el rótulo nunca
+//                  presenta como más fresco lo que no lo es.
 //
 // Nada de aquí lanza: sin dato, null. Quien necesita el precio para mover
 // dinero decide qué hacer con el null (bloquear la operación), nunca rellenarlo.
@@ -134,7 +146,9 @@ function crearOraculo(opciones = {}) {
   const edadMaximaMs = opciones.edadMaximaMs ?? EDAD_MAXIMA_MS;
   const historialMax = opciones.historialMax ?? HISTORIAL_MAX;
 
-  let cache = null; // { oro, plata, fuente, en }
+  // Cada pata por separado: { valor, fuente, en } | null. Ver «cada pata con
+  // su hora» en la cabecera.
+  let patas = { oro: null, plata: null };
   let intentoEn = null; // cuándo se preguntó por última vez a los feeds
   let vuelo = null;
   const registro = [];
@@ -143,6 +157,8 @@ function crearOraculo(opciones = {}) {
   async function traer() {
     let oro = null;
     let plata = null;
+    let fuenteOro = null;
+    let fuentePlata = null;
     const usadas = [];
     for (const f of fuentes) {
       let l = null;
@@ -153,22 +169,52 @@ function crearOraculo(opciones = {}) {
       }
       const o = oro == null ? positivo(l?.oro) : null;
       const p = plata == null ? positivo(l?.plata) : null;
-      if (o != null) oro = o;
-      if (p != null) plata = p;
+      if (o != null) { oro = o; fuenteOro = f.nombre; }
+      if (p != null) { plata = p; fuentePlata = f.nombre; }
       if (o != null || p != null) usadas.push(f.nombre);
       if (oro != null && plata != null) break;
     }
     if (oro == null && plata == null) return null;
-    return { oro, plata, fuente: usadas.join('+'), en: ahora() };
+    return { oro, plata, fuente: usadas.join('+'), en: ahora(), fuenteOro, fuentePlata };
   }
 
+  // Una lectura renueva SÓLO las patas que trae; la otra se queda como estaba.
+  function apuntar(lectura) {
+    if (lectura.oro != null) patas.oro = { valor: lectura.oro, fuente: lectura.fuenteOro, en: lectura.en };
+    if (lectura.plata != null) patas.plata = { valor: lectura.plata, fuente: lectura.fuentePlata, en: lectura.en };
+  }
+
+  // Lo que se puede servir ahora: cada pata mientras tenga menos de 10 min.
   function vigente() {
-    return cache && ahora() - cache.en < edadMaximaMs ? cache : null;
+    const t = ahora();
+    const sirve = (p) => (p && t - p.en < edadMaximaMs ? p : null);
+    const oro = sirve(patas.oro);
+    const plata = sirve(patas.plata);
+    if (!oro && !plata) return null;
+    const servidas = [oro, plata].filter(Boolean);
+    return {
+      oro: oro ? oro.valor : null,
+      plata: plata ? plata.valor : null,
+      // Las fuentes de las patas servidas, en el orden de las fuentes.
+      fuente: fuentes
+        .map((f) => f.nombre)
+        .filter((n) => servidas.some((p) => p.fuente === n))
+        .join('+'),
+      // La hora de la pata MÁS VIEJA que se sirve.
+      en: Math.min(...servidas.map((p) => p.en)),
+      enOro: oro ? oro.en : null,
+      enPlata: plata ? plata.en : null,
+    };
   }
 
   /**
-   * Los metales en USD por onza troy: { oro, plata, fuente, en } — cada pata
-   * puede venir null si no llegó. null cuando no hay lectura de menos de
+   * Los metales en USD por onza troy:
+   *
+   *   { oro, plata, fuente, en, enOro, enPlata }
+   *
+   * Cada pata puede venir null si no hay una de menos de 10 minutos; `enOro` y
+   * `enPlata` son la hora de la lectura que trajo cada una, y `en` la de la
+   * más vieja de las dos. null cuando no hay ninguna pata de menos de
    * 10 minutos. Un solo vuelo a la vez: veinte peticiones con la caché vencida
    * esperan UNA llamada al proveedor. No lanza nunca.
    */
@@ -183,8 +229,9 @@ function crearOraculo(opciones = {}) {
         .then((lectura) => {
           intentoEn = ahora();
           if (lectura) {
-            cache = lectura;
-            registro.push(lectura);
+            apuntar(lectura);
+            // Al historial va la lectura tal como llegó, sin rellenar.
+            registro.push({ oro: lectura.oro, plata: lectura.plata, fuente: lectura.fuente, en: lectura.en });
             if (registro.length > historialMax) registro.splice(0, registro.length - historialMax);
           }
           return lectura;
@@ -195,19 +242,21 @@ function crearOraculo(opciones = {}) {
     }
     await vuelo;
     const v = vigente();
-    if (!v) cache = null;
+    if (!v) patas = { oro: null, plata: null };
     return v;
   }
 
   /**
    * La cotización de la casa, toda en USD:
    *
-   *   { origenUsd, aukaUsd, agkaUsd, oroOnzaUsd, plataOnzaUsd, fuente, en } | null
+   *   { origenUsd, aukaUsd, agkaUsd, oroOnzaUsd, plataOnzaUsd,
+   *     fuente, en, enOro, enPlata } | null
    *
    *  - origenUsd  el gramin: gramo de oro / 55.
    *  - aukaUsd    la onza de oro fino (= 1.710,69 gramin).
    *  - agkaUsd    la onza de plata fina.
-   * Una pata sin dato es null; si no hay ninguna, null entero.
+   * Una pata sin dato es null; si no hay ninguna, null entero. Las horas,
+   * como en metales().
    */
   async function cotizacion() {
     const m = await metales();
@@ -220,6 +269,8 @@ function crearOraculo(opciones = {}) {
       plataOnzaUsd: m.plata,
       fuente: m.fuente,
       en: m.en,
+      enOro: m.enOro,
+      enPlata: m.enPlata,
     };
   }
 
@@ -236,7 +287,7 @@ function crearOraculo(opciones = {}) {
 
   /** Sólo pruebas: olvidar caché e historial. */
   function _reiniciar() {
-    cache = null;
+    patas = { oro: null, plata: null };
     intentoEn = null;
     vuelo = null;
     registro.length = 0;
