@@ -16,6 +16,8 @@ try { ({ chromium } = await import('playwright')) } catch { ({ chromium } = awai
 
 const AQUI = dirname(fileURLToPath(import.meta.url))
 const FORMATO = process.argv[2] === '9x16' ? '9x16' : '16x9'
+const SOLO_AUDIO = process.argv.includes('--solo-audio')
+const V_MAX = '7M'
 const iFotos = process.argv.indexOf('--fotos')
 const FOTOS = iFotos > 0 ? process.argv[iFotos + 1].split(',').map(Number) : null
 const [W, H] = FORMATO === '9x16' ? [1080, 1920] : [1920, 1080]
@@ -66,9 +68,9 @@ if (FOTOS) {
 // 3. video mudo: cada captura va directo a ffmpeg por una tubería
 await mkdir(SALIDA, { recursive: true })
 const mudo = join(CUADROS, `mudo-${FORMATO}.mp4`)
-const enc = spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', '-',
+const enc = SOLO_AUDIO ? null : spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', '-',
   '-c:v', 'libx264', '-preset', 'slow', '-crf', '17', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', mudo], { stdio: ['pipe', 'inherit', 'inherit'] })
-const total = Math.round(DUR * FPS)
+const total = SOLO_AUDIO ? 0 : Math.round(DUR * FPS)
 const inicio = Date.now()
 for (let i = 0; i < total; i++) {
   await pg.evaluate(t => window.cuadro(t), i / FPS)
@@ -76,8 +78,7 @@ for (let i = 0; i < total; i++) {
   if (!enc.stdin.write(buf)) await new Promise(ok => enc.stdin.once('drain', ok))
   if (i % 150 === 0) console.log(`cuadro ${i}/${total} · ${((Date.now() - inicio) / 1000).toFixed(0)} s`)
 }
-enc.stdin.end()
-await new Promise(ok => enc.on('close', ok))
+if (enc) { enc.stdin.end(); await new Promise(ok => enc.on('close', ok)) }
 await nav.close(); sv.close()
 
 // 4. audio. Los tiempos están en el reloj del corte maestro; el vertical salta
@@ -102,18 +103,18 @@ const sfx = efectos.map(([n, t, gan], i) => { g += `[${n}${usados[n]++}]adelay=$
 const fin = DUR
 if (!v) {
   g += `[0]atrim=start=${MUSICA},asetpts=PTS-STARTPTS[m0];`
-  g += `[1]aformat=channel_layouts=stereo,adelay=${VOZ * 1000}:all=1,asplit=2[voz][lado];`
+  g += `[1]aformat=channel_layouts=stereo,adelay=${VOZ * 1000}:all=1,apad,asplit=2[voz][lado];`
 } else {
   g += `[0]asplit=2[ma][mb];[ma]atrim=start=${MUSICA}:end=${MUSICA + SALTO},asetpts=PTS-STARTPTS[m1];`
   g += `[mb]atrim=start=${MUSICA + SALTO + DESPLAZA},asetpts=PTS-STARTPTS[m2];[m1][m2]acrossfade=d=0.12[m0];`
   g += `[1]aformat=channel_layouts=stereo,asplit=2[va][vb];[va]atrim=end=25.3,adelay=${VOZ * 1000}:all=1[v1];`
   g += `[vb]atrim=start=33.55,asetpts=PTS-STARTPTS,adelay=${Math.round((33.55 + VOZ - DESPLAZA) * 1000)}:all=1[v2];`
-  g += `[v1][v2]amix=inputs=2:normalize=0,asplit=2[voz][lado];`
+  g += `[v1][v2]amix=inputs=2:normalize=0,apad,asplit=2[voz][lado];`
 }
 g += `[m0]volume=0.62,afade=t=out:st=${(fin - 2.7).toFixed(2)}:d=2.6[m];`
 g += `[m][lado]sidechaincompress=threshold=0.035:ratio=5:attack=20:release=450[mdu];`
 g += `[mdu][voz]${sfx.join('')}amix=inputs=${2 + sfx.length}:normalize=0,atrim=end=${fin},loudnorm=I=-14:TP=-1.5:LRA=11[aud]`
 
 const final = join(SALIDA, `mytokenpay-trailer-${FORMATO}.mp4`)
-ff([...entradas, '-i', mudo, '-filter_complex', g, '-map', '5:v', '-map', '[aud]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-shortest', '-movflags', '+faststart', final])
+ff([...entradas, '-i', mudo, '-filter_complex', g, '-map', '5:v', '-map', '[aud]', '-c:v', 'libx264', '-preset', 'slow', '-crf', '20', '-maxrate', V_MAX, '-bufsize', '24M', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-t', String(DUR), '-movflags', '+faststart', final])
 console.log('listo:', final)
