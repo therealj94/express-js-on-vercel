@@ -92,6 +92,16 @@ barrido); con el interruptor encendido simplemente deja de entregar ORIGEN.
    estar dada de alta en `SFSPIdentityAdapter`. Sin esto, todas las entregas
    quedan en revisión.
 6. `GET /admin/sfsp410` con todo en verde y cupo > 0.
+7. **SFSP v0.3 · vender o emitir a un usuario es colocar** (correcciones de
+   conformidad, 26-sep). `releaseOnDemand` con un cupo `SET_RELEASE_BUDGET` y
+   `mintOnDemand` (`emitirToken`) evalúan además `SUBSCRIBE` sobre el comprador:
+   país abierto con su residencia acreditada, base de colocación, licencia y
+   alcance de la oferta exenta. Cada cupo de emisión exige además su documento de
+   aprobación DBNX. Sin las decisiones de la Junta
+   (`sfsp/deploy/sfsp410/DIA-D.md`, compuerta 2b) revierten con
+   `SubscriptionRejected` o `BudgetDbnxExhausted`: este adaptador no los reconoce
+   por nombre y deja la orden en `en-revision`, sin reintento. Con el interruptor
+   apagado, que es como está hoy, no cambia nada. Las firmas no cambian.
 
 ## Encender / apagar
 

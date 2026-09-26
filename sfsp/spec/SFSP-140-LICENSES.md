@@ -174,13 +174,21 @@ Reglas:
 | `ModuleAvailabilityChanged` | Un módulo cambia de valor en la taxonomía de §6.1 por dependencia de licencia |
 | `GovernanceAction` | La habilitación de un módulo (regla 3 de §6) |
 
-Sus campos están en `eventos.json`. Desde draft-0.6 los emite `contracts/src/SFSPLicenseRegistry.sol` (`implementadoEnContratos: true`), junto con `LicenseRegistered` para el alta en `EN_TRAMITE`. Pruebas de aceptación T-140-01 a T-140-06: `contracts/test/20-registro-licencias.js` (T-140-01 se cubre como `isModuleAvailable == false`; el código de motivo `LICENCIA_NO_OTORGADA` lo pone el módulo consumidor, que todavía no está cableado).
+Sus campos están en `eventos.json`. Desde draft-0.6 los emite `contracts/src/SFSPLicenseRegistry.sol` (`implementadoEnContratos: true`), junto con `LicenseRegistered` para el alta en `EN_TRAMITE`. El vencimiento por plazo se registra con el código del catálogo `VENCIMIENTO_PLAZO`. Pruebas de aceptación T-140-01 a T-140-06: `contracts/test/20-registro-licencias.js`. El código de motivo `LICENCIA_NO_OTORGADA` lo pone el módulo consumidor (motor de elegibilidad, motor de reservas y tesorería cotizadora, §8).
 
 ---
 
 ## 8 · Diferencia con el código actual
 
-No existe `SFSPLicenseRegistry`. Ningún módulo consulta hoy una licencia, el motor de elegibilidad no conoce la oferta exenta, y las aplicaciones usan etiquetas de disponibilidad propias (C7 del plan v0.3). Todo es fase 2.
+**Estado del código (26-sep-2026, sin desplegar).** `SFSPLicenseRegistry` existe e implementa `ILicenseGate`: `isModuleEnabled` (el módulo está disponible porque todas sus licencias están vigentes) y `moduleHasLicenseNumber` (el número es el de una licencia vigente de la que depende el módulo). Lo consultan:
+
+| Módulo consumidor | Qué exige | Si falta |
+|---|---|---|
+| `SFSPEligibilityEngine` | La licencia o autorización que sustenta la base de colocación del activo, para `SUBSCRIBE` | `DENY_AUTHORIZATION` con `LICENCIA_NO_OTORGADA` |
+| `SFSPReserveEngine` | `MOD_CUSTODIA_CLIENTES` para abrir un canal físico, más una orden de gobierno `OPEN_PHYSICAL_CHANNEL` con `LICENCIA_OTORGADA` y el número de la licencia (§6 regla 3) | Rechazo; el canal sigue cerrado |
+| `SFSPTreasuryDesk` | Los módulos que la Junta declare por lado (`setRequiredModules`) | Sin declarar, `BLOCKED_DECISION` (`LICENSE_MODULES_UNSET`); con uno no habilitado, `LICENCIA_NO_OTORGADA` |
+
+Faltan: la vista pública en las aplicaciones, que siguen con etiquetas de disponibilidad propias (C7 del plan v0.3), y el registro real con los datos de las licencias, que es decisión de la Junta.
 
 ---
 

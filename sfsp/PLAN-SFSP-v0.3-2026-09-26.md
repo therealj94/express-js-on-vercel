@@ -15,10 +15,10 @@ Todo lo marcado «existe» se comprobó hoy. Las pruebas se corrieron hoy. El pl
 
 | | Estado hoy |
 |---|---|
-| **Pruebas** | Contratos **254/254**, SDK **186/186**, indexador **67/67**, todas en verde. Las pruebas de contratos 13 y 15 necesitan el SDK compilado (`cd sdk && npm run build`). |
+| **Pruebas** | Al abrir el plan: contratos **254/254**, SDK **186/186**, indexador **67/67**. **Tras la fase 2 y las correcciones de conformidad (26-sep): contratos 445/445**, indexador **67/67**, SDK **186/186**, todas en verde. Las pruebas de contratos 13 y 15 necesitan el SDK compilado (`cd sdk && npm run build`). |
 | **Desplegado** | **Ningún contrato SFSP en ninguna red.** La 5550 corre con los 172 contratos heredados. |
-| **Especificación** | Va alineada con el v0.2 y **no todavía con el v0.3**. Faltan: licencias por titular y operador, oferta exenta, tokenización de acciones, verificación previa a la acuñación, mercado híbrido, deslindes y la migración a la misma dirección en código. |
-| **Código del protocolo** | Existen: registro de activos, gobierno, identidad, elegibilidad, emisión, activo regulado, liquidación, comisiones, migración, DID y bóveda nativa. **No existen**: registro de licencias, matriz de países, límite de exposición, motor de commodities y reservas, oráculo, tesorería cotizadora, motor de pagos, acciones corporativas ni filtro de red. |
+| **Especificación** | Al abrir el plan iba alineada con el v0.2. **Hoy:** `spec/` en `draft-0.5`, alineada con el v0.3 (fase 1); `eventos.json` en `draft-0.7`, con 71 eventos (65 con contrato). Cada serie dice en «Diferencia con el código actual» lo que ya está en contratos y lo que falta. |
+| **Código del protocolo** | Existían: registro de activos, gobierno, identidad, elegibilidad, emisión, activo regulado, liquidación, comisiones, migración, DID y bóveda nativa. **Hoy existen además, sin desplegar y apagados (fase 2):** registro de licencias, matriz de países con `SUBSCRIBE` en todas las rutas que colocan, resultado de exposición por dirección, verificación DBNX en las dos rutas de acuñación, oráculo, reservas y commodities, tesorería cotizadora y el contrato del filtro de red. **No existen**: motor de pagos, acciones corporativas, reconocimiento de la migración y conciliación publicada en el indexador. |
 | **Red 5550** | Besu 26.7.1, **7 validadores** en una sola cuenta de nube, gas de 93 gwei con tarifa base 0. **La API de permisos está apagada**: no hay red cerrada. **`admin_nodeInfo` está expuesto en el RPC público**. |
 | **Condiciones de arranque (§16)** | **Siguen abiertas.** La credencial en texto plano sigue en el árbol. Los puentes Genesis↔Veta ya no son 2, sino **3**. No hay constancia de la copia fría de las llaves. |
 | **Decisiones** | D00–D27 figuran como PENDIENTE en `DECISIONES-SFSP.json`. El v0.3 da por **tomadas en sustancia** D01 (precio en gramin) y D02 (comisión de 0,01 USD); falta el acta. |
@@ -167,7 +167,9 @@ Se hace por `deploy/sfsp410/DIA-D.md`, compuerta por compuerta, con los pasos de
 | Migración por cupo del padrón (el v0.3 §14.3 la resuelve en sustancia) | D26 + ADR | Migración de ONDK, AUKA y AGKA |
 | Clase y serie de HARV, IBS, MONARKA, REAL STATE y los seis tokens del despliegue conjunto; contrato canónico de IBS | D08 | C7, migración |
 | Ratificar el tratamiento de los heredados (§14.4) | D26 | Filtro de red |
-| Adquirentes tempranos de ONDK | — | Migración de ONDK |
+| Adquirentes tempranos de ONDK y tratamiento de los saldos ya ubicados de la cadena intermedia (804,5 ONDK en 2 direcciones, 9.823,01 AUKA en 3; SFSP-700 §0.5) | D26 (acta de conciliación) | Migración de ONDK y AUKA |
+| Primera ola de países, base de colocación de cada activo, criterio de acreditado y sofisticado, cuenta DBNX | D13 y v0.3 §18 | Toda venta o emisión a un usuario (`SUBSCRIBE`) |
+| Calificar como distribución o como venta el lote de 1 ORIGEN a los tenedores de ONDK | D25 | Lote de ORIGEN |
 | Parámetros de tesorería, segmentos, límite de exposición y deslindes | D03/D04 | Fase 4 |
 | Base legal de la venta de ORIGEN al público | — | Puerta de entrada abierta al público |
 

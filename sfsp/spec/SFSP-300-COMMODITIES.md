@@ -55,9 +55,11 @@ FineOunces_assigned_not_delivered  >=  Units_placed_in_oz + PendingDeliveryOblig
 5. La prueba de reservas y el ratio de cobertura se publican **contra lo colocado**, que es lo que el respaldo protege.
 6. La función de acuñación de los contratos actuales de AUKA y AGKA está bajo un dueño único. Su tratamiento se define en el protocolo de billeteras (v0.3 §9.4) y en la migración a contrato conforme (SFSP-700).
 
-**Relación con SFSP-410.** R1 de SFSP-410 («ninguna emisión tiene como destino una cuenta interna») **no rige para la clase `COM`** en lo que respecta a la tesorería registrada: el v0.3 permite acuñar a tesorería. Siguen rigiendo para `COM` el cupo (R5–R8), la pausa (R9) y el consentimiento en la quema (R10). El ajuste del código (`MintToInternalAccount` en `SFSPIssuanceController`) es trabajo de la fase 2 y queda sujeto a D23.
+**Relación con SFSP-410.** R1 de SFSP-410 («ninguna emisión tiene como destino una cuenta interna») **no rige para la clase `COM`** en lo que respecta a la tesorería registrada: el v0.3 permite acuñar a tesorería. Siguen rigiendo para `COM` el cupo (R5–R8), la pausa (R9) y el consentimiento en la quema (R10). El ajuste del código (`MintToInternalAccount` en `SFSPIssuanceController`) queda sujeto a D23 y **no está hecho**: hoy la acuñación `COM` a una cuenta interna sigue revirtiendo, que es la opción cerrada.
 
-**Estado actual** (v0.3 §9.4): acuñados 55.000.000 AUKA y 500.000.000 AGKA en los contratos canónicos, en billeteras internas, sin colocación a terceros y sin metal custodiado. La conciliación de 9.823,01 AUKA sin ubicar sigue abierta (SFSP-700 §0.5).
+**Colocación `COM` solo por el motor de reservas.** Un activo marcado `COM` en el controlador de emisión (`setCommodityAsset`, evento `CommodityAssetFlagged`) no se acuña a un tercero ni por `mint` ni por `mintOnDemand` (`CommodityPlacementViaReserveEngine`, T-300-30): colocar exige capacidad en onzas, y eso lo comprueba `SFSPReserveEngine.place` junto con `RELEASE` y `SUBSCRIBE` (SFSP-120 §0.3 regla 3). El despliegue de SFSP-410 marca AUKA y AGKA como `COM`, y `lote-migracion.mjs` no arma cupo para un activo `COM`.
+
+**Estado actual** (v0.3 §9.4): acuñados 55.000.000 AUKA y 500.000.000 AGKA en los contratos canónicos, en billeteras internas, sin colocación a terceros y sin metal custodiado. Los 9.823,01 AUKA sin ubicar ya están ubicados (3 direcciones, bloque 273.831); su **tratamiento** es decisión de la Junta y hasta el acta no se migra AUKA (SFSP-700 §0.5).
 
 ### 0.3 Custodia (v0.3 §9.2)
 
@@ -106,15 +108,18 @@ Esto **sustituye** el `null` de «mínimo de redención física» en §5 por los
 - atestaciones que vencen solas;
 - capacidad de colocación y cobertura contra lo colocado;
 - no doble cómputo por certificado;
-- límite de concentración por custodio (`BLOCKED_DECISION` hasta que la Junta lo fije);
-- redención con quema anterior o simultánea a la entrega.
+- límite de concentración por custodio (`BLOCKED_DECISION` hasta que la Junta lo fije). El de la custodia interna puede quedar en `null`: sus lotes no se asignan ni suman capacidad y los de custodios independientes sí (T-300-27);
+- colocación con `RELEASE` **y** `SUBSCRIBE` sobre el adquirente (SFSP-120 §0.3 regla 3);
+- cobertura contra lo que está **fuera** de la billetera de tesorería, leyendo su saldo real: una salida directa desde la tesorería a un tercero sin `place` cuenta como colocado, hace caer el invariante y detiene la colocación;
+- redención con quema anterior o simultánea a la entrega, con código de motivo en cada transición (`RedemptionUpdated`).
 
-La liquidación en ORIGEN pasa por `SFSPOracleRegistry`: AUKA por denominación y AGKA por el ratio oro/plata. Los canales físicos quedan cerrados sin licencia Clase G (interfaz `ILicenseGate`). Pruebas: `contracts/test/24-reservas-commodities.js`.
+La liquidación en ORIGEN pasa por `SFSPOracleRegistry`: AUKA por denominación y AGKA por el ratio oro/plata. Los canales físicos consultan el módulo `MOD_CUSTODIA_CLIENTES` en `SFSPLicenseRegistry` (interfaz `ILicenseGate`) y se abren solo por orden de gobierno `OPEN_PHYSICAL_CHANNEL` con `LICENCIA_OTORGADA` y el número de una licencia vigente de ese módulo; cerrar es de la Junta (T-300-28). Pruebas: `contracts/test/24-reservas-commodities.js`.
 
-El motor aplica el v0.3: acuña a tesorería sin metal y coloca solo con capacidad. Es lo mismo que dice esta serie desde el draft-0.5, donde la enmienda SFSP-410 quedó revertida para commodities. `SFSPIssuanceController` todavía aplica R1 a `COM`, y hay que alinearlo.
+El motor aplica el v0.3: acuña a tesorería sin metal y coloca solo con capacidad. Es lo mismo que dice esta serie desde el draft-0.5, donde la enmienda SFSP-410 quedó revertida para commodities.
 
 Pendientes:
-- el token de AUKA/AGKA aún no implementa `ISFSPCommodityToken`;
+- **T-300-20 como prevención**: hoy la salida directa desde la tesorería se **detecta** (la cobertura cae y la colocación se detiene) pero no se **impide**, porque el token de AUKA/AGKA aún no implementa `ISFSPCommodityToken` ni consulta el motor al transferir;
+- **R1 para `COM` en la tesorería (T-300-26)**: sujeto a D23; mientras tanto el controlador de emisión sigue rechazando la acuñación a una cuenta interna;
 - **por decidir:** el contrato usa 1 AUKA = 1.710,6925 ORIGEN (31,1035 g × 55) y el v0.3 fija 1.710,69.
 
 ### 0.6 Pruebas de aceptación nuevas

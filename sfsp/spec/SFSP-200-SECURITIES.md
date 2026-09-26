@@ -151,6 +151,7 @@ Reglas:
 2. La verificación de forma **no traslada** a Orden Global la responsabilidad por el contenido de la aprobación (Bloque 7, tabla a).
 3. «Cantidad exacta» sustituye, para la acuñación, a la regla de §3.1 que admitía acuñar por debajo del monto autorizado en varias veces. Una autorización que prevea tramos declara la cantidad exacta de cada tramo, y cada acuñación ejecuta un tramo completo.
 4. Se implementa sobre la autorización ligada al contenido (ADR-013, SFSP-800 §12): el digest aprobado compromete el hash del documento de aprobación. Un rechazo por forma no emite evento de supply; queda en el registro operativo.
+5. **Las dos rutas de acuñación verifican la forma.** La orden individual (`mint`) comprueba activo, cantidad exacta, destino exacto, vigencia y consumo único. El cupo (`setMintBudget`) exige que su `termsDocRoot` sea el hash de un documento registrado del mismo activo, vigente, sin usar, con cantidad total ≥ monto por periodo y con vigencia que cubre la del cupo; lo que el cupo crea en toda su vida no pasa de esa cantidad. El destino de un cupo es una **regla**: «adquirente elegible» (colocación, con `SUBSCRIBE`) o, en un documento de **migración**, la raíz del padrón (ADR-016).
 
 ### 0.6 Segmentos y acceso del adquirente (v0.3 §8.4, §8.5)
 
@@ -205,7 +206,7 @@ Falta uno y el caso no se resuelve favorablemente.
 
 ### 0.10 Diferencia con el código actual
 
-Existen emisión (`SFSPIssuanceController`), activo regulado y `dbnx-api` (casos, plantillas, riesgo). **No existen**: la verificación previa por hash del documento de aprobación, el tope del 51 % y el mínimo por segmento, el límite de exposición, la declaración de ampliación y del adquirente en contrato, el Bloque 7 en la máquina del caso ni la tokenización de acciones. Es el punto 3 de la fase 2 del plan v0.3.
+Existen emisión (`SFSPIssuanceController`), activo regulado y `dbnx-api` (casos, plantillas, riesgo). **Existe también (26-sep, sin desplegar)** la verificación previa de forma de §0.5 en `mint` y en `setMintBudget`, con el documento DBNX registrado por un rol propio (`DBNX`, separado del emisor) con destino o regla de destino y clase migración; el resultado del límite de exposición por dirección y activo (SFSP-120 §0.7) y la declaración del adquirente con versión y hash (`AcquirerDeclarationRecorded`). La firma de cada documento por el quórum de DBNX (fila 2) queda fuera de la cadena: la cadena ve la cuenta DBNX que lo registra. **No existen**: el tope del 51 % y el mínimo por segmento, la declaración de ampliación en contrato, el Bloque 7 en la máquina del caso ni la tokenización de acciones. Es el punto 3 de la fase 2 del plan v0.3.
 
 ### 0.11 Pruebas de aceptación nuevas
 

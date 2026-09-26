@@ -76,7 +76,7 @@ direcciones:
 | ONDK | 136 tenedores. Los 804,5 que faltaban (800 + 4,5) eran saldos creados en la cadena intermedia del 15 al 25-ago |
 | AUKA | 37 tenedores. Los 9.823,01 que faltaban (9.821 + 2 + 0,01) tienen el mismo origen |
 
-Con esto se cierra la conciliación de SFSP-700 §0.5 y del v0.3 §14.5.
+Con esto se cierra la **ubicación** de SFSP-700 §0.5 y del v0.3 §14.5. El **tratamiento** de esos saldos (y de los adquirentes tempranos de ONDK) lo decide la Junta con acta; hasta entonces `lote-migracion.mjs` deja AUKA y ONDK en `BLOCKED_DECISION` (falta `actaConciliacion`).
 
 La clase de cada titular sale de `INTERNAS` y `EN_REVISION`. La lista de internas
 actual es la de ONDK (D25). En los demás tokens, las tenedoras grandes de la

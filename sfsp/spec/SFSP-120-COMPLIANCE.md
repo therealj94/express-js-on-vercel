@@ -88,11 +88,18 @@ Reglas:
 
 ### 0.7 El límite de exposición entra como insumo
 
-El motor recibe, para `SUBSCRIBE` y `TRADE` en el Mercado de Crecimiento, la **exposición agregada por Genesis ID** (SFSP-200 §0.5). Sin ese dato, la acción es `UNKNOWN_SOURCE`; nunca se supone cero. El acceso abierto por límite de exposición aplica solo a los activos cuya colocación admite oferta al público (v0.3 §8.5); para los colocados bajo la oferta exenta manda §0.5.
+El motor recibe, para `SUBSCRIBE` y `TRADE` en el Mercado de Crecimiento, la **exposición agregada por Genesis ID** (SFSP-200 §0.5). Sin ese dato, la acción es `UNKNOWN_SOURCE`; nunca se supone cero. El agregado lo calcula Genesis ID **fuera de la cadena** (SFSP-110 §0): en la cadena entra solo el resultado para una dirección y un activo (`recordExposureClearance`: unidades máximas, vigencia acotada, versión y hash del documento), sin ingresos, compromisos de identidad ni acumulados. El acceso abierto por límite de exposición aplica solo a los activos cuya colocación admite oferta al público (v0.3 §8.5); para los colocados bajo la oferta exenta manda §0.5.
 
 ### 0.8 Diferencia con el código actual
 
-`SFSPEligibilityEngine.sol` implementa una **lista blanca de jurisdicciones por activo** (`setJurisdictionAllowed`) que bloquea por defecto. Faltan: los cuatro estados, el estado por defecto `SOLO_ENTRANTE`, la acción `SUBSCRIBE`, la base de colocación en el pasaporte, las atestaciones de alcance de la oferta exenta y el evento `CountryStatusChanged`. Es el punto 2 de la fase 2 del plan v0.3.
+**Estado del código (26-sep-2026, sin desplegar).** `SFSPEligibilityEngine.sol` implementa los cuatro estados de país con `SOLO_ENTRANTE` por defecto y `CountryStatusChanged`, la acción `SUBSCRIBE`, la base de colocación por activo y la conjunción con el alcance de la oferta exenta. Tras las correcciones de conformidad:
+
+1. **`SUBSCRIBE` se aplica en el ejecutor** (regla 1 de §0.3): `enforceSubscription`, con el rol `SUBSCRIPTION_EXECUTOR`, revierte (`SubscriptionRejected`) si no da `ALLOW`. La llaman en la misma transacción que coloca `SFSPIssuanceController.mint` y `mintOnDemand` (salvo un documento DBNX de migración, ADR-016), `SFSPNativeVault.releaseOnDemand` con un cupo de **venta** (puerta única, §0.5 regla 3; un cupo de distribución que no es venta lleva su propia etiqueta de gobierno, `SET_DISTRIBUTION_BUDGET`), `SFSPReserveEngine.place` (regla 3: `RELEASE` y además `SUBSCRIBE`) y `SFSPTreasuryDesk.sell`.
+2. **El país no lo declara quien llama**: el motor busca la residencia acreditada del sujeto entre los países abiertos (`openCountries`). Sin residencia en un país `PERMITIDO`, `SUBSCRIBE` da `DENY_JURISDICTION` (`COUNTRY_INBOUND_ONLY`); si solo encaja en uno `PERMITIDO_CON_CONDICIONES`, `BLOCKED_DECISION` (`COUNTRY_CONDITIONS_UNSET`).
+3. **D13**: `ACREDITADO` y `SOFISTICADO` solo cuentan cuando su criterio se fijó por orden de gobierno (`setInvestorCriteria`, evento `InvestorCriteriaSet`). Con el criterio en `null`, la `SUBSCRIBE` que depende de él da `BLOCKED_DECISION` (`INVESTOR_CRITERIA_UNSET`, T-120-28). Próspera no depende de D13.
+4. La lista blanca anterior por activo (`setJurisdictionAllowed`) sigue para las demás acciones.
+
+Pruebas: `contracts/test/21-paises-suscripcion-exposicion.js`. Ninguna de estas rutas está encendida en la 5550: sin primera ola de países, base de colocación, registro de licencias y criterio D13, `SUBSCRIBE` responde `BLOCKED_DECISION` o `DENY`, que es lo correcto.
 
 ### 0.9 Pruebas de aceptación nuevas
 

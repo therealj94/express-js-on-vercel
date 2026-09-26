@@ -4,9 +4,10 @@
 - Fecha: 2026-09-26 (UTC)
 - Enmienda a: SFSP-200, SFSP-300, SFSP-400, SFSP-800 · ADR-015
 - Código: `contracts/src/SFSPIssuanceController.sol` (cupo y cuentas internas), `contracts/src/SFSPNativeVault.sol` (bóveda de ORIGEN)
-- Pruebas: `contracts/test/16-politica-suministro.js` (21), `contracts/test/17-boveda-nativa.js` (10)
+- Pruebas: `contracts/test/16-politica-suministro.js` (30), `contracts/test/17-boveda-nativa.js` (15)
 - Panel: `panel-emision/` (modo prueba)
 - **Nota draft-0.5 (26-sep-2026):** el borrador SFSP v0.3 §9.4 **revierte §3.2** de esta política para AUKA y AGKA (ver §3.2 y la nota de reversión de `SFSP-300-COMMODITIES.md`). El v0.3 §4.3 trata además lo acuñado en billeteras internas como tesorería; cómo convive eso con R1 fuera de `COM` queda en D23. La migración por cupo del padrón se propone en ADR-016.
+- **Nota de conformidad v0.3 (26-sep-2026, sin desplegar):** R13 a R16 de §2. Emitir o vender a un usuario es **colocar**: se evalúa `SUBSCRIBE` (SFSP-120 §0.8). Todo cupo de emisión necesita el documento de aprobación DBNX (v0.3 §5, SFSP-200 §0.5). Un activo `COM` no se coloca desde aquí (SFSP-300 §0.2). Las firmas de `mintOnDemand` y `releaseOnDemand` no cambian.
 
 ## 0. La regla
 
@@ -46,6 +47,10 @@ existir, y con ella el inventario que había que vigilar.
 | R10 | La quema de lo que un usuario devuelve exige su consentimiento sobre el digest exacto (activo, titular, monto, motivo) o una orden de gobierno. | `SFSPRegulatedAsset.burn` (ya existente, H02) |
 | R11 | La bóveda no tiene retiro de administrador, dueño ni actualización. | `SFSPNativeVault` (prueba estructural en `17-boveda-nativa.js`) |
 | R12 | Ningún valor económico (cupos, topes, periodos, quórums) está escrito en el código. Sin valor fijado, la capacidad devuelve `BLOCKED_DECISION`. | todos los contratos (I-59) |
+| R13 | Emitir a un usuario (`mint`, `mintOnDemand`) o venderle ORIGEN con un cupo de venta es colocar: además de R3 se evalúa `SUBSCRIBE` en la misma transacción. Quedan fuera la migración con documento DBNX de migración (continuidad de tenencia) y un cupo de distribución que no es venta, que lleva su propia etiqueta de gobierno. | `SFSPIssuanceController._enforceSubscription`, `SFSPNativeVault._pay` |
+| R14 | Un cupo de emisión exige el documento de aprobación DBNX cuyo hash es su `termsDocRoot`; el cupo no crea en toda su vida más de lo aprobado. El documento lo registra el rol `DBNX`, que no puede ser el emisor. | `setMintBudget`, `mintOnDemand` (`BudgetDbnxExhausted`) |
+| R15 | Un cupo vigente no se sustituye: hay que revocarlo antes (T-700-27). | `setMintBudget` (`BudgetInForce`) |
+| R16 | Un activo marcado `COM` no se acuña a un tercero desde el controlador de emisión: se coloca por el motor de reservas, con capacidad en onzas. | `_mintTo` (`CommodityPlacementViaReserveEngine`) |
 
 ## 3. Tokens SFSP (AUKA, AGKA, ONDK y los que vengan)
 
@@ -118,7 +123,10 @@ génesis y no es un envoltorio ERC-20 (rechazado en ADR-006). Se comunica como
 | Fijar cupo de emisión | `SET_MINT_BUDGET` | Tecnología (AU-RA FP) | Firmantes de la Junta/DBNX, quórum D07 | timelock | TECH_OPS / Junta |
 | Emitir fuera de cupo | `MINT` | Tecnología | quórum D07 | — | ISSUER |
 | Quemar por gobierno | `BURN` | Tecnología | quórum D07 | — | ISSUER |
-| Fijar cupo de liberación nativa | `SET_RELEASE_BUDGET` | Tecnología | quórum D07 | timelock | TECH_OPS / Junta |
+| Registrar el documento de aprobación de un cupo o de una emisión | — (rol `DBNX`) | DBNX | quórum de DBNX, fuera de la cadena | — | cuenta DBNX |
+| Fijar cupo de liberación nativa (venta, con `SUBSCRIBE`) | `SET_RELEASE_BUDGET` | Tecnología | quórum D07 | timelock | TECH_OPS / Junta |
+| Fijar cupo de distribución nativa (no es venta) | `SET_DISTRIBUTION_BUDGET` | Tecnología | quórum D07 | timelock | TECH_OPS / Junta |
+| Marcar o desmarcar un activo `COM` | — | TECH_OPS o Junta marcan; solo la Junta desmarca | — | — | — |
 | Liberar de la bóveda fuera de cupo | `RELEASE_NATIVE` | Tecnología | quórum D07 | — | ISSUER |
 | Cortar un cupo | — | cualquier firmante, TECH_OPS o Junta, solo | — | — | quien lo corta |
 | Marcar cuenta interna | — | TECH_OPS o Junta | — | — | — |

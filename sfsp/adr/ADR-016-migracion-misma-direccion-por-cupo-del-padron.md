@@ -24,14 +24,15 @@ Además, la revisión adversaria encontró que la ruta del registro acuña direc
    | Máximo por operación | El mayor saldo del padrón |
    | Periodo | Tan largo que toda la ventana cae en un solo periodo |
    | Vigencia | Fin de la ventana de migración (días, no meses) |
-   | `termsDocRoot` | Raíz de Merkle del padrón |
+   | `termsDocRoot` | Hash del documento de aprobación **DBNX de migración** del padrón (v0.3 §5): cantidad = `S0`, destino = raíz de Merkle del padrón. `setMintBudget` lo exige registrado, del mismo activo, vigente y sin usar |
    | `paymentRef` por tenedor | `keccak256("MIGRACION\|<assetId>\|<dirección>")`, con `assetId` y dirección en hex y minúsculas |
    | `evidenceRoot` | La misma raíz del padrón |
 
 2. **El heredado se bloquea con el filtro de transacciones** desde el bloque de corte (SFSP-150). La emisión por padrón es la ejecución del modo `FROZEN_SNAPSHOT`: congelación eficaz antes de acuñar e instantánea final.
 3. **Cierre obligatorio:** `revokeMintBudget(assetId, "MIGRACION_FIN")` al terminar o al vencer, y **conciliación publicada**: cada `MintOnDemand` de la ventana casa con una hoja del padrón y su prueba, `paymentRef` se recalcula desde el destino, la suma es ≤ `S0`. Un evento que no case es incidente (pausa y revocación).
 4. **El registro por reclamo queda como excepción**, para lo que no puede asignarse a la misma dirección: claves sin dirección, direcciones que son contratos con otro beneficiario, y direcciones cuyo control se perdió (SFSP-700 §0.3).
-5. **Precondiciones por activo:** conciliación del supply no ubicado cerrada para AUKA (9.823,01) y ONDK (804,5) (SFSP-700 §0.5); topes del instrumento fijados contando `S0`; cada beneficiario cruzado contra las cuentas internas y contra la política `MINT` del activo nuevo.
+5. **Precondiciones por activo:** para AUKA (9.823,01) y ONDK (804,5), la ubicación del supply está cerrada y falta el **acta de la Junta sobre su tratamiento** (SFSP-700 §0.5); sin ella el lote de migración sale `BLOCKED_DECISION`. Además: documento DBNX de migración registrado; topes del instrumento fijados contando `S0`; cada beneficiario cruzado contra las cuentas internas y contra la política `MINT` del activo nuevo.
+6. **Cantidad exacta.** El saldo equivalente de cada hoja es `oldUnits · ratio` (D09), con la regla de restos de SFSP-700 §4: nunca se trunca un derecho en silencio. El cupo total no pasa de `S0`, y el contrato no deja que el cupo cree en toda su vida más de lo aprobado por DBNX.
 
 ## 3. Alternativas consideradas y su coste
 
@@ -46,10 +47,10 @@ Además, la revisión adversaria encontró que la ruta del registro acuña direc
 
 A favor:
 
-- Aplica R1 (cuentas internas), R3 (elegibilidad), R8 (topes) y R9 (pausa), porque pasa por `_mintTo`.
+- Aplica R1 (cuentas internas), R3 (elegibilidad `MINT`), R8 (topes) y R9 (pausa), porque pasa por `_mintTo`. No evalúa `SUBSCRIBE` porque el documento DBNX es de migración (continuidad de tenencia); un cupo comercial sí lo evalúa.
 - `paymentRef` por (activo, dirección) es un anulador en cadena: impide el doble cobro en reintentos, en rondas posteriores y entre saldo por dirección y saldo por ranura.
 - Los firmantes aprueban **ese** padrón y **ese** total, con espera. Una aprobación por activo.
-- No necesita código nuevo en los contratos: `setMintBudget`, `mintOnDemand` y `revokeMintBudget` ya existen y tienen pruebas.
+- Necesita poco código nuevo: `setMintBudget`, `mintOnDemand` y `revokeMintBudget` ya existían. Se añadieron (correcciones de conformidad del v0.3, 26-sep) la verificación del documento DBNX en `setMintBudget`, la clase **migración** y el destino en `DbnxApproval`, el rechazo de un cupo que sustituye a otro vigente (`BudgetInForce`, T-700-27) y `publishLegacyCut` para publicar el corte. Faltan el reconocimiento de la migración y `ConciliationRecorded` en el indexador (T-700-21, fase 2 punto 8).
 
 En contra, con su mitigación:
 
@@ -65,5 +66,5 @@ En contra, con su mitigación:
 
 1. Firma de D26 por la Junta, con ratificación del catálogo de heredados (SFSP-700 §0.4).
 2. Filtro de transacciones probado en la 5534 con los siete validadores (SFSP-150).
-3. Conciliación de AUKA y ONDK cerrada (SFSP-700 §0.5).
+3. Acta de la Junta sobre el tratamiento de los saldos ya ubicados de AUKA y ONDK (SFSP-700 §0.5).
 4. Reconocimiento de la migración y conciliación publicada en el indexador, con pruebas T-700-21 a T-700-29.
