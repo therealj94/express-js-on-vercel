@@ -84,6 +84,16 @@ el usuario administrador, y desde Veta tocá «Abrir MyTokenPay con mi Genesis
 ID». La actualización de Veta Wallet llega sola por el aire (reabrí la app dos
 veces).
 
+**Sesión con contraseña ≠ identidad (26-sep-2026).** MyTokenPay no verifica el
+correo al registrarse, así que una cuenta con contraseña no prueba ser la dueña
+de la identidad de ese correo. El puente `/genesis/*` solo toca una identidad
+que ya tiene GID si la sesión nació de un pase (`/api/auth/sso`, que firma el GID
+en el token); con contraseña se ve solo el estado del trámite. Un trámite a
+medias (sin GID) se sigue llevando igual. Atar la cuenta a Genesis ID
+(`/genesis/vincular` y el vínculo de `/api/auth/sso`) va **apagado** salvo
+`MTP_VINCULO_GENESIS=1`, y `/genesis/vincular` solo acepta la dirección que
+Genesis ya conoce de Veta Wallet para esa identidad.
+
 ## Base de datos: hecho ✅
 
 El backend ya **no guarda en memoria**. Persiste en **MongoDB** (el mismo clúster

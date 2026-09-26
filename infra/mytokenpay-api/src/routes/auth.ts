@@ -5,7 +5,7 @@ import { perfilApp } from '../lib/perfil.js'
 import { hashPassword, signResetToken, signToken, verifyPassword, verifyResetToken } from '../lib/auth.js'
 import { requireAuth } from '../middleware/auth.js'
 import { h } from '../lib/ruta.js'
-import { llamarGenesis, identidadPorEmail } from '../lib/genesis.js'
+import { llamarGenesis, identidadPorEmail, vinculoGenesisActivo } from '../lib/genesis.js'
 import { normalizarDireccion } from '../lib/genesisPuente.js'
 
 export const authRouter = Router()
@@ -87,10 +87,16 @@ authRouter.post('/sso', h(async (req, res) => {
   //
   // Con el correo —Genesis lo exige para atar; antes no se mandaba y este
   // vínculo fallaba siempre, en silencio— y CON la dirección de billetera, que
-  // desde el SFSP v0.3 §11 es obligatoria en todo vínculo. Es la de la propia
-  // identidad según Genesis; si no tiene ninguna todavía, no se ata aquí: lo
-  // hará `/genesis/vincular` cuando la persona conecte su billetera.
-  const billetera = normalizarDireccion(direccion)
+  // desde el SFSP v0.3 §11 es obligatoria en todo vínculo. Es la que custodia
+  // Veta para esta identidad según Genesis (no la de otro vínculo, que pudo
+  // teclearla alguien); si no tiene ninguna todavía, no se ata aquí.
+  //
+  // APAGADO salvo MTP_VINCULO_GENESIS=1 (ver lib/genesis.ts): la cuenta que se
+  // acaba de adoptar por correo puede tener una contraseña que puso otra
+  // persona, y aquí no hay forma de revocar sus sesiones.
+  const billetera = vinculoGenesisActivo()
+    ? normalizarDireccion(apps.find((a) => a.app === 'veta-wallet' && a.direccion)?.direccion)
+    : null
   if (billetera) {
     await llamarGenesis('/api/v1/vinculos', {
       method: 'POST',
@@ -99,7 +105,9 @@ authRouter.post('/sso', h(async (req, res) => {
   }
 
   res.json({
-    token: signToken(user.id),
+    // Esta sesión SÍ lleva el GID: nace de un pase que Genesis firmó. Es lo
+    // único que deja usar el puente /genesis/* sobre esa identidad.
+    token: signToken(user.id, { gid }),
     user: await perfilApp(user),
     genesis: { gid, nombre: perfil?.nombre ?? identidad.nombreLegal ?? null, verificada: true, direccion },
   })
