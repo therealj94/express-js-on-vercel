@@ -30,6 +30,7 @@ import { CompanyMap } from '../../src/components/CompanyMap'
 import { Card } from '../../src/components/ui/Card'
 import { Skeleton } from '../../src/components/ui/Skeleton'
 import { getCatalog, toOrigen, fmtOrigen, fmtUsd } from '../../src/lib/commerce'
+import { useOrigenUsd } from '../../src/store/precio'
 import { useCartStore, cartCount, cartTotalUsd } from '../../src/store/cart'
 import { fonts, radius, shadow } from '../../src/lib/theme'
 import { useTheme, type ThemeColors } from '../../src/hooks/useTheme'
@@ -54,6 +55,8 @@ export default function CompanyDetail() {
   const setCartCompany = useCartStore((s) => s.setCompany)
   const addToCart = useCartStore((s) => s.add)
   const removeFromCart = useCartStore((s) => s.remove)
+  // Precios del menú en USD; en ORIGEN sólo con precio fresco del oro («—» sin él).
+  const origenUsd = useOrigenUsd()
 
   useEffect(() => {
     load()
@@ -177,7 +180,7 @@ export default function CompanyDetail() {
                             <Text style={styles.catName} numberOfLines={1}>{item.name}</Text>
                             <Text style={styles.catDetail} numberOfLines={1}>{item.detail}</Text>
                             <Text style={styles.catPrice}>
-                              {fmtOrigen(toOrigen(item.priceUsd))} ORIGEN
+                              {fmtOrigen(toOrigen(item.priceUsd, origenUsd))} ORIGEN
                               <Text style={styles.catUsd}>  ≈ {fmtUsd(item.priceUsd)}</Text>
                             </Text>
                           </View>
@@ -266,7 +269,7 @@ export default function CompanyDetail() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.cartBarTitle}>Ver factura y cobrar</Text>
                 <Text style={styles.cartBarSub}>
-                  {fmtOrigen(toOrigen(cartTotalUsd(cartLines)))} ORIGEN · ≈ {fmtUsd(cartTotalUsd(cartLines))}
+                  {fmtOrigen(toOrigen(cartTotalUsd(cartLines), origenUsd))} ORIGEN · ≈ {fmtUsd(cartTotalUsd(cartLines))}
                 </Text>
               </View>
               <ArrowRight size={18} color={colors.bg} />

@@ -163,14 +163,12 @@ const CADENA = (() => {
     },
   };
 
-  // Precios de referencia de los tokens de sector, que no cotizan en ningun
-  // mercado publico. No tienen variacion 24 h que reportar: se manda null en
-  // vez de un 0 %, que se leeria como "hoy no se movio" cuando en realidad
-  // nunca se mueve.
-  const FIJOS = {
-    AGRO: 13.13, AIT: 5.32, SOL: 0.75, REST: 8.57, LOVE: 0.1,
-    POLITICAL: 0.33, ASL: 2.328, AUBEX: 10, HARV: 0.75, IBS: 1.2,
-  };
+  // Los tokens de sector (AUBEX, HARV, IBS, REST, SOL, AGRO, AIT, ASL, LOVE,
+  // POLITICAL…) NO tienen precio: se declaran «sin referencia» (SFSP v0.3
+  // §10.5; plan v0.3 C4, fase 0.4) y viajan con precio null, que la pantalla
+  // pinta con guion. Aqui hubo una tabla FIJOS (AUBEX a 10 USD, entre otros):
+  // numeros que nadie cotizaba y que entraban al patrimonio como mercado.
+  // ONDK conserva su precio declarado por acta (ver `declONDK` mas abajo).
 
   // ── RPC ───────────────────────────────────────────────────────────────────
 
@@ -475,7 +473,6 @@ const CADENA = (() => {
       const decl = t.s === 'ONDK' ? declONDK : null;
       if (precio == null && decl) precio = decl.precio;
       if (precio == null && t.s === 'ONDK' && precioOndk > 0) precio = precioOndk;
-      if (precio == null && FIJOS[t.s] != null) precio = FIJOS[t.s];
       /* El `Number.isFinite(...) ? ... : 0` que habia aca era el segundo cero
          de consuelo, y tapaba al primero: aunque la lectura hubiera fallado,
          la fila salia con un 0 bien formado. Ahora la lectura viaja entera. */
@@ -501,7 +498,7 @@ const CADENA = (() => {
            en veinticuatro horas, se movio el dia que la Junta firmo— y pintar
            un 0,00 % ahi seria decir que un mercado lo dejo quieto. */
         declarado: decl,
-        chg: decl || FIJOS[t.s] != null ? null : (chg[t.s] ?? null),
+        chg: decl ? null : (chg[t.s] ?? null),
       };
     });
   }

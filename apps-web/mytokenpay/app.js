@@ -13,7 +13,16 @@ const MTP = (() => {
   'use strict';
 
   const API = null;                     // sin backend publicado todavía
-  const ORIGEN_USD = 2.35;              // 1 ORIGEN = 1/55 de gramo de oro
+  /* EL PRECIO DE ORIGEN: 1 ORIGEN = 1 gramin = gramo de oro / 55, leído del
+     oro en vivo (CoinGecko pax-gold; respaldo gold-api XAU), con las reglas
+     del oráculo único de la casa (plan SFSP v0.3, C5): caché de 30 s y edad
+     máxima de 10 min. Sin dato fresco, guion. Aquí hubo un 2,35 USD fijo que
+     se enseñaba como si fuera el precio del día. Los cobros van en ORIGEN, no
+     en dólares: sin precio sólo desaparece el equivalente, no se bloquea nada. */
+  const ONZA_EN_GRAMOS = 31.1035;
+  const PRECIO_FRESCO_MS = 30_000;
+  const PRECIO_EDAD_MAX_MS = 10 * 60_000;
+  let precio = { usd: null, en: 0, pedido: 0 };
   const LLAVE = 'mtp.estado';
   const VETA_WEB = 'https://www.vetawallet.com';
   // A donde se manda a alguien que quiere verificarse.
@@ -64,6 +73,33 @@ const MTP = (() => {
   const nfU = new Intl.NumberFormat('es-HN', { style: 'currency', currency: 'USD' });
   const oro = n => nfO.format(Number(n) || 0);
   const usd = n => nfU.format(Number(n) || 0);
+
+  // El precio de 1 ORIGEN en USD si es de menos de 10 minutos; si no, null.
+  const origenUsd = () =>
+    precio.usd > 0 && Date.now() - precio.en < PRECIO_EDAD_MAX_MS ? precio.usd : null;
+  // Un monto en ORIGEN, en dólares — o guion sin precio fresco.
+  const enUsd = n => { const p = origenUsd(); return p != null ? usd(n * p) : '—'; };
+
+  async function leerPrecio() {
+    if (Date.now() - precio.pedido < PRECIO_FRESCO_MS) return;
+    precio.pedido = Date.now();
+    const plazo = () => (typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined);
+    let onza = null;
+    try {
+      const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd', { signal: plazo() });
+      if (r.ok) onza = Number((await r.json())?.['pax-gold']?.usd);
+    } catch {}
+    if (!(onza > 0)) {
+      try {
+        const r = await fetch('https://api.gold-api.com/price/XAU', { signal: plazo() });
+        if (r.ok) onza = Number((await r.json())?.price);
+      } catch {}
+    }
+    if (onza > 0) precio = { ...precio, usd: onza / ONZA_EN_GRAMOS / 55, en: Date.now() };
+    // Se repinta con lo que haya, también para que un precio caducado pase a guion.
+    const app = $('#app');
+    if (app && !app.classList.contains('oculto') && ['inicio', 'cobro'].includes(vistaActual)) vista(vistaActual);
+  }
   const cuando = iso => {
     const t = new Date(iso); if (isNaN(t)) return '';
     const m = Math.round((Date.now() - t) / 60000);
@@ -277,7 +313,7 @@ const MTP = (() => {
     <div class="saldo">
       <div class="saldo-lbl">${t(E.billetera ? 'sal.conectada' : 'sal.demo')}</div>
       <div class="saldo-cifra">${oro(E.saldo)}<span>ORIGEN</span></div>
-      <div class="saldo-fiat">${esc(usd(E.saldo * ORIGEN_USD))} · 1 ORIGEN = ${esc(usd(ORIGEN_USD))}</div>
+      <div class="saldo-fiat">${esc(enUsd(E.saldo))} · 1 ORIGEN = ${esc(enUsd(1))}</div>
       <div style="margin-top:18px;display:flex;gap:9px;flex-wrap:wrap">
         <button class="btn btn-neon btn-sm" onclick="MTP.vista('pagar')">${t('sal.pagar')}</button>
         ${E.billetera ? '' : `<button class="btn btn-linea btn-sm" onclick="MTP.vista('billetera')">${t('sal.conectar')}</button>`}
@@ -399,7 +435,7 @@ const MTP = (() => {
       <div class="sub">${t('cob.tenes')} ${oro(E.saldo)} ${t('cob.disp')}</div></div>
     <div class="bloque">
       <div class="monto-grande">${cobro.monto || '0'}<span>ORIGEN</span></div>
-      <div style="text-align:center;color:var(--niebla);margin-top:6px">${esc(usd(monto * ORIGEN_USD))}</div>
+      <div style="text-align:center;color:var(--niebla);margin-top:6px">${esc(enUsd(monto))}</div>
       <div class="tecla">
         ${['1','2','3','4','5','6','7','8','9','.','0','←'].map(t =>
           `<button onclick="MTP.tecla('${t}')">${t}</button>`).join('')}
@@ -581,6 +617,9 @@ const MTP = (() => {
     if (g) E = { ...E, ...g };
     if (E.sesion || E.invitado) { ir('app'); vista(E.sesion ? 'inicio' : 'explorar'); }
     else ir('bienvenida');
+    // El precio se lee al abrir y cada minuto mientras la pestaña se vea.
+    leerPrecio();
+    setInterval(() => { if (!document.hidden) leerPrecio(); }, 60_000);
   }
   document.addEventListener('DOMContentLoaded', arrancar);
 

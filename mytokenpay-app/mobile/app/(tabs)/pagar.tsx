@@ -25,7 +25,9 @@ import { GradientButton } from '../../src/components/ui/GradientButton'
 import { api } from '../../src/lib/api'
 import type { Company } from '../../src/lib/types'
 import { useAuthStore } from '../../src/store/auth'
-import { useWalletStore, isPayError, ORIGEN_USD, type PaymentTx } from '../../src/store/wallet'
+import { useWalletStore, isPayError, type PaymentTx } from '../../src/store/wallet'
+import { useOrigenUsd } from '../../src/store/precio'
+import { toUsd } from '../../src/lib/commerce'
 import { useNotificationsStore } from '../../src/store/notifications'
 import { fonts, radius, shadow } from '../../src/lib/theme'
 import { useTheme, type ThemeColors } from '../../src/hooks/useTheme'
@@ -38,7 +40,9 @@ type Mode = 'menu' | 'scan' | 'amount' | 'success'
 function fmtOrigen(n: number): string {
   return n.toLocaleString('es-HN', { maximumFractionDigits: 4 })
 }
-function fmtUsd(n: number): string {
+// null = sin precio fresco del oro: se pinta «—», nunca un número inventado.
+function fmtUsd(n: number | null): string {
+  if (n == null || !Number.isFinite(n)) return '—'
   return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
@@ -51,6 +55,8 @@ export default function Pagar() {
   const balance = useWalletStore((s) => s.origenBalance)
   const payments = useWalletStore((s) => s.payments)
   const pay = useWalletStore((s) => s.pay)
+  // El pago va en ORIGEN; el precio sólo da el equivalente en USD («—» sin él).
+  const origenUsd = useOrigenUsd()
   const pushNotif = useNotificationsStore((s) => s.push)
 
   const [mode, setMode] = useState<Mode>('menu')
@@ -104,6 +110,7 @@ export default function Pagar() {
       amountOrigen: amountNum,
       method,
       note: note.trim() || null,
+      origenUsd,
     })
     if (isPayError(res)) {
       setError(res.error)
@@ -158,7 +165,7 @@ export default function Pagar() {
               <Wallet size={11} color={colors.bg} />
               <Text style={styles.balChipText}>{wallet ? 'Veta Wallet conectada' : 'Saldo demo'}</Text>
             </View>
-            <Text style={styles.balUsd}>≈ {fmtUsd(balance * ORIGEN_USD)}</Text>
+            <Text style={styles.balUsd}>≈ {fmtUsd(toUsd(balance, origenUsd))}</Text>
           </View>
           <Text style={styles.balNumber}>{fmtOrigen(balance)}</Text>
           <Text style={styles.balLabel}>ORIGEN disponibles para pagar</Text>
@@ -281,7 +288,7 @@ export default function Pagar() {
               placeholder="0.00"
               keyboardType="decimal-pad"
             />
-            <Text style={styles.usdPreview}>≈ {fmtUsd(amountNum * ORIGEN_USD)} USD · saldo: {fmtOrigen(balance)} ORIGEN</Text>
+            <Text style={styles.usdPreview}>≈ {fmtUsd(toUsd(amountNum, origenUsd))} USD · saldo: {fmtOrigen(balance)} ORIGEN</Text>
           </View>
 
           <View style={{ marginTop: 8 }}>

@@ -10,15 +10,16 @@ export interface VetaWallet {
   connectedAt: string
 }
 
-// Precio simulado: 1 ORIGEN = 1/55 de gramo de oro ($129.26/g jul 2026)
-export const ORIGEN_USD = 2.35
+// El precio de ORIGEN ya no vive aquí: hubo un ORIGEN_USD = 2,35 fijo. Ahora
+// sale del oro en vivo (src/store/precio.ts) y, sin dato fresco, es null.
 
 export interface PaymentTx {
   id: string
   merchant: string
   merchantId: string | null
   amountOrigen: number
-  amountUsd: number
+  /** Equivalente en USD al precio del momento; null si no había precio. */
+  amountUsd: number | null
   method: 'qr' | 'transfer'
   note: string | null
   createdAt: string
@@ -38,6 +39,8 @@ interface WalletState {
     amountOrigen: number
     method: 'qr' | 'transfer'
     note?: string | null
+    /** Precio de 1 ORIGEN en USD ahora mismo, si lo hay (sólo para el recibo). */
+    origenUsd?: number | null
   }) => PaymentTx | { error: string }
 }
 
@@ -55,7 +58,7 @@ export const useWalletStore = create<WalletState>()(
 
       disconnect: () => set({ wallet: null }),
 
-      pay: ({ merchant, merchantId = null, amountOrigen, method, note = null }) => {
+      pay: ({ merchant, merchantId = null, amountOrigen, method, note = null, origenUsd = null }) => {
         const balance = get().origenBalance
         if (amountOrigen <= 0) return { error: 'Ingresa un monto válido.' }
         if (amountOrigen > balance) return { error: 'Saldo ORIGEN insuficiente en tu Veta Wallet.' }
@@ -64,7 +67,9 @@ export const useWalletStore = create<WalletState>()(
           merchant,
           merchantId,
           amountOrigen: Math.round(amountOrigen * 10000) / 10000,
-          amountUsd: Math.round(amountOrigen * ORIGEN_USD * 100) / 100,
+          // El pago va en ORIGEN y no depende del precio; el equivalente en
+          // USD es sólo informativo y, sin precio fresco, queda en null («—»).
+          amountUsd: origenUsd != null && origenUsd > 0 ? Math.round(amountOrigen * origenUsd * 100) / 100 : null,
           method,
           note,
           createdAt: new Date().toISOString(),

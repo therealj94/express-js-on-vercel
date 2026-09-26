@@ -21,11 +21,12 @@ import { GradientButton } from '../src/components/ui/GradientButton'
 import { Card } from '../src/components/ui/Card'
 import { QrBadge } from '../src/components/QrBadge'
 import { useCartStore, cartTotalUsd } from '../src/store/cart'
-import { useWalletStore, isPayError, ORIGEN_USD } from '../src/store/wallet'
+import { useWalletStore, isPayError } from '../src/store/wallet'
+import { useOrigenUsd, SIN_PRECIO } from '../src/store/precio'
 import { useBusinessStore } from '../src/store/business'
 import { useAuthStore } from '../src/store/auth'
 import { useNotificationsStore } from '../src/store/notifications'
-import { toOrigen, fmtOrigen, fmtUsd } from '../src/lib/commerce'
+import { toOrigen, toUsd, fmtOrigen, fmtUsd } from '../src/lib/commerce'
 import { fonts, radius, shadow } from '../src/lib/theme'
 import { useTheme, type ThemeColors } from '../src/hooks/useTheme'
 
@@ -61,19 +62,34 @@ export default function Cobro() {
   const [manualAmounts, setManualAmounts] = useState<string[]>(['', '', '', ''])
   const [splitPeople, setSplitPeople] = useState<SplitPerson[] | null>(null)
 
+  /* El menú está en USD y se cobra en ORIGEN: la conversión NECESITA el precio
+     del oro de ahora. Sin precio fresco no se inventa uno (antes: 2,35 fijo):
+     los montos se pintan «—» y cobrar se bloquea con SIN_PRECIO. */
+  const origenUsd = useOrigenUsd()
+  const sinPrecio = origenUsd == null
   const subtotalUsd = cartTotalUsd(cart.lines)
-  const subtotalOr = toOrigen(subtotalUsd)
+  const subtotalOr = toOrigen(subtotalUsd, origenUsd) ?? 0
   const tipOr = Math.round(subtotalOr * tipPct) / 100
   const totalOr = Math.round((subtotalOr + tipOr) * 100) / 100
-  const totalUsd = totalOr * ORIGEN_USD
+  const totalUsd = toUsd(totalOr, origenUsd)
+  // Lo que se enseña: «—» sin precio, nunca un 0 que parezca un total.
+  const verOr = (n: number) => fmtOrigen(sinPrecio ? null : n)
 
   const saleItems = useMemo(
-    () => cart.lines.map((l) => ({ name: l.item.name, qty: l.qty, priceOrigen: toOrigen(l.item.priceUsd) })),
-    [cart.lines],
+    () => cart.lines.map((l) => ({ name: l.item.name, qty: l.qty, priceOrigen: toOrigen(l.item.priceUsd, origenUsd) ?? 0 })),
+    [cart.lines, origenUsd],
   )
+
+  // Todo lo que cobra pasa por aquí primero.
+  function hayPrecio(): boolean {
+    if (!sinPrecio && totalOr > 0) return true
+    setError(SIN_PRECIO)
+    return false
+  }
 
   function finishSale(method: 'wallet' | 'qr' | 'split', payer: string) {
     if (!cart.companyId) return
+    if (!hayPrecio()) return
     business.recordSale({
       companyId: cart.companyId,
       invoiceId,
@@ -86,19 +102,21 @@ export default function Cobro() {
     pushNotif({
       kind: 'wallet',
       title: 'Cobro acreditado',
-      body: `${cart.companyName} recibió ${fmtOrigen(totalOr)} ORIGEN (factura ${invoiceId}). Ya está en su Veta Wallet.`,
+      body: `${cart.companyName} recibió ${verOr(totalOr)} ORIGEN (factura ${invoiceId}). Ya está en su Veta Wallet.`,
     })
     setSuccessInfo({ method: method === 'wallet' ? 'Veta Wallet' : method === 'qr' ? 'Código QR' : 'Cuenta dividida', total: totalOr })
     setStage('success')
   }
 
   function payWithWallet() {
+    if (!hayPrecio()) return
     const res = wallet.pay({
       merchant: cart.companyName,
       merchantId: cart.companyId,
       amountOrigen: totalOr,
       method: 'qr',
       note: `Factura ${invoiceId}`,
+      origenUsd,
     })
     if (isPayError(res)) {
       setError(res.error)
@@ -122,6 +140,7 @@ export default function Cobro() {
   }
 
   function generateSplit() {
+    if (!hayPrecio()) return
     if (!manualMode) {
       setSplitPeople(buildEqualSplit(friends))
       setError(null)
@@ -134,7 +153,7 @@ export default function Cobro() {
       return
     }
     if (Math.abs(sum - totalOr) > 0.01) {
-      setError(`La suma (${fmtOrigen(sum)}) debe ser igual al total (${fmtOrigen(totalOr)} ORIGEN).`)
+      setError(`La suma (${fmtOrigen(sum)}) debe ser igual al total (${verOr(totalOr)} ORIGEN).`)
       return
     }
     setError(null)
@@ -201,16 +220,16 @@ export default function Cobro() {
                       </AnimatedPressable>
                     </View>
                     <Text style={styles.lineName} numberOfLines={1}>{l.item.name}</Text>
-                    <Text style={styles.lineAmt}>{fmtOrigen(toOrigen(l.item.priceUsd) * l.qty)}</Text>
+                    <Text style={styles.lineAmt}>{fmtOrigen(sinPrecio ? null : (toOrigen(l.item.priceUsd, origenUsd) ?? 0) * l.qty)}</Text>
                   </View>
                 ))}
                 <View style={styles.divider} />
-                <Row k="Subtotal" v={`${fmtOrigen(subtotalOr)} ORIGEN`} colors={colors} />
-                <Row k={`Propina (${tipPct}%)`} v={`${fmtOrigen(tipOr)} ORIGEN`} colors={colors} />
+                <Row k="Subtotal" v={`${verOr(subtotalOr)} ORIGEN`} colors={colors} />
+                <Row k={`Propina (${tipPct}%)`} v={`${verOr(tipOr)} ORIGEN`} colors={colors} />
                 <View style={styles.totalRow}>
                   <Text style={styles.totalK}>Total</Text>
                   <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={styles.totalV}>{fmtOrigen(totalOr)} ORIGEN</Text>
+                    <Text style={styles.totalV}>{verOr(totalOr)} ORIGEN</Text>
                     <Text style={styles.totalUsd}>≈ {fmtUsd(totalUsd)}</Text>
                   </View>
                 </View>
@@ -227,10 +246,10 @@ export default function Cobro() {
                 </View>
               </View>
 
-              {error && <ErrorBox msg={error} colors={colors} />}
+              {(error || sinPrecio) && <ErrorBox msg={error ?? SIN_PRECIO} colors={colors} />}
 
               <GradientButton
-                label={`Pagar con Veta Wallet · ${fmtOrigen(totalOr)} ORIGEN`}
+                label={`Pagar con Veta Wallet · ${verOr(totalOr)} ORIGEN`}
                 onPress={payWithWallet}
                 icon={<Wallet size={16} color={colors.bg} />}
               />
@@ -239,12 +258,12 @@ export default function Cobro() {
               </Text>
 
               <View style={styles.altRow}>
-                <AnimatedPressable onPress={() => setStage('qr')} scaleTo={0.96} style={styles.altBtn}>
+                <AnimatedPressable onPress={() => { if (hayPrecio()) setStage('qr') }} scaleTo={0.96} style={styles.altBtn}>
                   <QrCode size={18} color={colors.cyan} />
                   <Text style={styles.altTitle}>QR de cobro</Text>
                   <Text style={styles.altHint}>Escanéalo con MyTokenPay o Veta Wallet</Text>
                 </AnimatedPressable>
-                <AnimatedPressable onPress={() => { setSplitPeople(null); setStage('split') }} scaleTo={0.96} style={styles.altBtn}>
+                <AnimatedPressable onPress={() => { if (!hayPrecio()) return; setSplitPeople(null); setStage('split') }} scaleTo={0.96} style={styles.altBtn}>
                   <Users size={18} color={colors.violet} />
                   <Text style={styles.altTitle}>Dividir cuenta</Text>
                   <Text style={styles.altHint}>Hasta {MAX_FRIENDS} personas, un QR cada una</Text>
@@ -256,7 +275,7 @@ export default function Cobro() {
           {/* ================= QR ÚNICO ================= */}
           {stage === 'qr' && (
             <View style={{ alignItems: 'center', gap: 14 }}>
-              <Text style={styles.qrAmount}>{fmtOrigen(totalOr)} ORIGEN</Text>
+              <Text style={styles.qrAmount}>{verOr(totalOr)} ORIGEN</Text>
               <Text style={styles.qrUsd}>≈ {fmtUsd(totalUsd)} · Factura {invoiceId}</Text>
               <View style={styles.qrCard}>
                 <QrBadge payload={qrPayload} size={230} />
@@ -282,7 +301,7 @@ export default function Cobro() {
           {stage === 'split' && !splitPeople && (
             <>
               <Card style={{ gap: 14 }}>
-                <Text style={styles.splitTitle}>¿Entre cuántos dividen {fmtOrigen(totalOr)} ORIGEN?</Text>
+                <Text style={styles.splitTitle}>¿Entre cuántos dividen {verOr(totalOr)} ORIGEN?</Text>
                 <View style={styles.friendRow}>
                   {[2, 3, 4].map((n) => (
                     <AnimatedPressable key={n} onPress={() => setFriends(n)} scaleTo={0.92} style={[styles.friendChip, friends === n && styles.friendChipOn]}>
@@ -322,7 +341,7 @@ export default function Cobro() {
                         <Text style={styles.manualUnit}>ORIGEN</Text>
                       </View>
                     ))}
-                    <Text style={styles.manualHint}>La suma debe dar exactamente {fmtOrigen(totalOr)} ORIGEN.</Text>
+                    <Text style={styles.manualHint}>La suma debe dar exactamente {verOr(totalOr)} ORIGEN.</Text>
                   </View>
                 ) : (
                   <Text style={styles.equalPreview}>
@@ -350,7 +369,7 @@ export default function Cobro() {
                   <View style={{ flex: 1, gap: 4 }}>
                     <Text style={styles.personLabel}>{p.label}</Text>
                     <Text style={styles.personAmt}>{fmtOrigen(p.amount)} ORIGEN</Text>
-                    <Text style={styles.personUsd}>≈ {fmtUsd(p.amount * ORIGEN_USD)}</Text>
+                    <Text style={styles.personUsd}>≈ {fmtUsd(toUsd(p.amount, origenUsd))}</Text>
                     {p.paid ? (
                       <View style={styles.paidPill}>
                         <CheckCircle2 size={13} color={colors.ok} />

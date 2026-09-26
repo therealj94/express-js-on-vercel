@@ -1,4 +1,4 @@
-import axios from "axios";
+import { precioOrigenUsd } from "./oraculo";
 
 // ============================================================
 // Precio de ORIGEN en USD.
@@ -10,6 +10,11 @@ import axios from "axios";
 //
 //     ORIGEN = (onza de oro / 31,1035) / 55
 //
+// El número sale del ORÁCULO ÚNICO (lib/oraculo.js, SFSP v0.3 §10.5): el
+// mismo archivo, byte a byte, que usa Ordenex. Caché de 30 s y edad máxima de
+// 10 min; más viejo que eso no hay precio. Aquí ya no se lee ningún feed por
+// cuenta propia.
+//
 // Los 0,01 USD NO son el precio: son la COMISIÓN por transacción (ver
 // lib/comision.js). La decisión del 12-ago que fijaba el precio en 0,01 USD
 // confundía las dos cosas y queda sustituida.
@@ -18,49 +23,26 @@ import axios from "axios";
 // OG_ORIGEN_USD. Sin fuente de precio no se inventa uno: PRECIO_NO_DISPONIBLE.
 // ============================================================
 
-const ONZA_EN_GRAMOS = 31.1035;
-const GRAMOS_POR_ORIGEN = 55;
-
-
-function porOnza(precioOnza) {
-  return precioOnza / ONZA_EN_GRAMOS / GRAMOS_POR_ORIGEN;
+function sinPrecio(mensaje = "PRECIO_NO_DISPONIBLE") {
+  const e = new Error(mensaje);
+  e.code = "PRECIO_NO_DISPONIBLE";
+  return e;
 }
 
 function precioFijado() {
   const v = parseFloat(process.env.OG_ORIGEN_USD);
   if (!isNaN(v) && v > 0) return v;
-  const e = new Error("PRECIO_FIJO_SIN_VALOR");
-  e.code = "PRECIO_NO_DISPONIBLE";
-  throw e;
+  throw sinPrecio("PRECIO_FIJO_SIN_VALOR");
 }
 
 async function precioPorOro() {
-  // CoinGecko primero: Binance devuelve 451 desde las IP de EE.UU., que es
-  // donde vive este servidor.
-  try {
-    const res = await axios.get(
-      "https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd",
-      { timeout: 4000 }
-    );
-    const oz = res.data?.["pax-gold"]?.usd;
-    if (oz && !isNaN(oz) && oz > 0) return porOnza(oz);
-  } catch { /* siguiente fuente */ }
-
-  try {
-    const res = await axios.get(
-      "https://api.binance.com/api/v3/ticker/price?symbol=PAXGUSDT",
-      { timeout: 4000 }
-    );
-    const oz = parseFloat(res.data?.price);
-    if (!isNaN(oz) && oz > 0) return porOnza(oz);
-  } catch { /* respaldo */ }
-
-  // Sin fuentes no se inventa un precio: devolver uno equivocado en un camino
-  // de dinero es peor que fallar. Antes se caia a "una onza a 2000", que con
-  // el oro a 4.400 acreditaba al usuario la mitad de lo que le tocaba.
-  const e = new Error("PRECIO_NO_DISPONIBLE");
-  e.code = "PRECIO_NO_DISPONIBLE";
-  throw e;
+  // Sin dato fresco el oráculo contesta null, y aquí no se inventa un precio:
+  // devolver uno equivocado en un camino de dinero es peor que fallar. Antes
+  // se caía a "una onza a 2000", que con el oro a 4.400 acreditaba al usuario
+  // la mitad de lo que le tocaba.
+  const p = await precioOrigenUsd();
+  if (p > 0) return p;
+  throw sinPrecio();
 }
 
 export async function getOrigenPriceUsd() {

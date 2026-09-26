@@ -1825,13 +1825,35 @@ const VETA = (() => {
      cuota de rate limit para nadie. Al volver se refresca de inmediato, que es
      justo cuando importa. */
   const PRECIO_CADA_MS = 40_000;
+  /* EDAD MAXIMA DEL PRECIO: 10 minutos, la misma del oraculo de los backends
+     (lib/oraculo.js; plan SFSP v0.3, C5). Si el feed deja de contestar, el
+     ultimo precio se sigue enseñando hasta entonces; mas viejo que eso se
+     borra y se pinta guion. Antes se quedaba en pantalla para siempre, y un
+     oro de hace horas es un numero inventado con otra fecha. */
+  const PRECIO_EDAD_MAX_MS = 10 * 60_000;
+  let preciosEn = 0;
   let relojPrecios = null;
+
+  function caducarPrecios() {
+    if (!cartera || !preciosEn || Date.now() - preciosEn < PRECIO_EDAD_MAX_MS) return;
+    let cambio = false;
+    for (const m of cartera) {
+      // Lo declarado por acta no viene del feed: no caduca con el.
+      if (m.declarado || !['ORIGEN', 'AUKA', 'AGKA'].includes(m.s)) continue;
+      if (m.precio != null || m.chg != null) { m.precio = null; m.chg = null; cambio = true; }
+    }
+    if (cambio && !$('#app').classList.contains('oculto')
+        && ['billetera', 'token', 'cambiar'].includes(vistaActual)) {
+      vista(vistaActual, vistaDato);
+    }
+  }
 
   async function refrescarPrecios() {
     if (!cartera || !cartera.length) return;
     let p, chg;
-    try { ({ p, chg } = await CADENA.precios()); } catch { return; }
-    if (!p) return;
+    try { ({ p, chg } = await CADENA.precios()); } catch { return caducarPrecios(); }
+    if (!p || !(p.AUKA > 0 || p.AGKA > 0)) return caducarPrecios();
+    preciosEn = Date.now();
     // La onza del sorteo viaja gratis en este mismo ciclo: si el reloj de
     // precios ya la trajo, no hay que esperar al refresco lento del sorteo.
     if (p.AUKA > 0) sorteoOro = p.AUKA;
@@ -1886,6 +1908,7 @@ const VETA = (() => {
 
     try {
       cartera = await CADENA.portafolio(sesion.direccion, null);
+      preciosEn = Date.now();
       /* `portafolio()` NO lanza cuando falla un saldo suelto, a proposito: si
          lanzara, tres tokens caidos se llevarian por delante las doce lecturas
          buenas. Devuelve cada fila con `leido`, y es aca donde se decide si eso
