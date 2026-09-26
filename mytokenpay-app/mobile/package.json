@@ -8,6 +8,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
+    "test": "node --test \"pruebas/*.test.mjs\"",
     "eas-build-pre-install": "node scripts/barrera-mock.js"
   },
   "dependencies": {

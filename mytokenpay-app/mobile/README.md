@@ -13,13 +13,19 @@ Centroamérica, login/registro) viven en memoria dentro de la propia app, en
 un negocio y navegar el directorio completo sin backend real — los datos se reinician cada vez
 que recargas la app (no hay persistencia entre sesiones).
 
-Cuando tengas el backend real corriendo (ver abajo) y quieras que la app le hable a ese servidor:
-abre `mobile/src/lib/api.ts` y cambia
-```ts
-export const USE_MOCK_API = true
-```
-a `false`, guarda, y reinicia con `npx expo start -c`. El resto de la app no cambia — `mockApi.ts`
-y el backend real exponen exactamente la misma interfaz.
+Cuando tengas el backend real corriendo (ver abajo) y quieras que la app le hable a ese servidor,
+arranca con `EXPO_PUBLIC_USE_MOCK_API=0` (en `mobile/.env` o en la línea de comandos) y reinicia
+con `npx expo start -c`. El resto de la app no cambia — `mockApi.ts` y el backend real exponen
+exactamente la misma interfaz. Esa bandera solo cubre sesión, comercios y premios: la billetera,
+las ventas, los retiros y los catálogos siguen siendo locales.
+
+### Compilar para tienda
+
+`eas build --profile production` pasa antes por `scripts/barrera-mock.js`, que detiene la
+compilación mientras falte cualquiera de estas cosas: datos simulados apagados,
+`EXPO_PUBLIC_API_URL` pública en `https`, el libro local retirado (billetera, ventas, retiros,
+catálogos y «Simular pago») y `MTP_C6_ACTA` con la referencia del acta que cierra C6. El plan
+SFSP v0.3 deja la app sin publicar hasta la fase 4. `npm test` prueba la barrera.
 
 ## Requisitos (solo si vas a usar el backend real)
 

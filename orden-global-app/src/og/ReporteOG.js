@@ -20,6 +20,7 @@ const TXT = {
     titulo: 'Reporte', sub: 'Tu billetera, contada claro',
     saldo: 'SALDO', movs: 'ÚLTIMOS 5 MOVIMIENTOS', gid: 'GENESIS ID',
     total: 'Valor total estimado', sinPrecio: 'Algún precio no está disponible: el total no lo incluye.',
+    sinRef: 'Los activos «sin referencia» no tienen precio de mercado: el total no los incluye.',
     sinSaldo: 'Sin saldos todavía. Cuando recibas tokens, aparecen aquí.',
     sinMovs: 'Sin movimientos todavía.',
     entro: 'Recibido', salio: 'Enviado',
@@ -42,6 +43,7 @@ const TXT = {
     titulo: 'Report', sub: 'Your wallet, told straight',
     saldo: 'BALANCE', movs: 'LAST 5 MOVEMENTS', gid: 'GENESIS ID',
     total: 'Estimated total value', sinPrecio: 'Some price is unavailable: the total does not include it.',
+    sinRef: 'Assets with «no price reference» have no market price: the total does not include them.',
     sinSaldo: 'No balances yet. When you receive tokens, they show up here.',
     sinMovs: 'No movements yet.',
     entro: 'Received', salio: 'Sent',
@@ -86,7 +88,9 @@ export default function ReporteOG({ nav }) {
   const tokens = tokensFromBalances(account?.balances || []);
   const conSaldo = tokens.filter((x) => x.qty > 0);
   const total = tokens.reduce((a, x) => a + (x.hasPrice ? x.qty * x.price : 0), 0);
-  const faltaPrecio = tokens.some((x) => x.qty > 0 && !x.hasPrice);
+  // Un precio que no llegó no es lo mismo que un activo sin referencia.
+  const faltaPrecio = tokens.some((x) => x.qty > 0 && !x.hasPrice && !x.sinReferencia);
+  const sinRef = tokens.some((x) => x.qty > 0 && x.sinReferencia);
   const movs = [...(account?.transfers || [])]
     .sort((a, b) => (Number(b.timeStamp) || 0) - (Number(a.timeStamp) || 0))
     .slice(0, 5);
@@ -133,6 +137,7 @@ export default function ReporteOG({ nav }) {
           <Text style={st.totalLbl}>{t.total}</Text>
           <Text style={st.total}>{total > 0 ? money(total) : '—'}</Text>
           {faltaPrecio && <Text style={st.nota}>{t.sinPrecio}</Text>}
+          {sinRef && <Text style={st.nota}>{t.sinRef}</Text>}
           {conSaldo.length === 0 ? (
             <Text style={st.vacio}>{t.sinSaldo}</Text>
           ) : conSaldo.map((x) => (

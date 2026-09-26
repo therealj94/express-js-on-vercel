@@ -30,6 +30,56 @@ export function toUsd(amountOrigen: number, origenUsd: number | null): number | 
   return amountOrigen * origenUsd
 }
 
+// ---------- la factura cotizada ----------
+//
+// El menú está en USD y se cobra en ORIGEN. Mientras se arma la factura, el
+// monto en ORIGEN sigue al precio del momento; al salir de ella (QR, dividir o
+// pagar) se FIJA con esta cotización y ya no se vuelve a mirar el precio: el QR
+// que ve el cliente, las partes de una cuenta dividida y la venta registrada
+// salen del mismo número. Es lo que ya hace el cobro de Orden Global.
+
+export interface Cotizacion {
+  /** Precio de 1 ORIGEN en USD con el que se cotizó. */
+  origenUsd: number
+  subtotalOr: number
+  tipOr: number
+  totalOr: number
+  items: { name: string; qty: number; priceOrigen: number }[]
+}
+
+/** Cotiza una factura al precio dado; null sin precio. */
+export function cotizar(
+  lines: { item: { name: string; priceUsd: number }; qty: number }[],
+  tipPct: number,
+  origenUsd: number | null,
+): Cotizacion | null {
+  if (!hayPrecio(origenUsd)) return null
+  const subtotalUsd = lines.reduce((a, l) => a + l.item.priceUsd * l.qty, 0)
+  const subtotalOr = toOrigen(subtotalUsd, origenUsd) ?? 0
+  const tipOr = Math.round(subtotalOr * tipPct) / 100
+  const totalOr = Math.round((subtotalOr + tipOr) * 100) / 100
+  const items = lines.map((l) => ({ name: l.item.name, qty: l.qty, priceOrigen: toOrigen(l.item.priceUsd, origenUsd) ?? 0 }))
+  return { origenUsd, subtotalOr, tipOr, totalOr, items }
+}
+
+/** Reparte un total en n partes iguales, en centésimas; la última se lleva el redondeo. */
+export function repartirIgual(totalOr: number, n: number): number[] {
+  const base = Math.floor((totalOr / n) * 100) / 100
+  const partes: number[] = []
+  let acc = 0
+  for (let i = 0; i < n; i++) {
+    const parte = i === n - 1 ? Math.round((totalOr - acc) * 100) / 100 : base
+    acc += parte
+    partes.push(parte)
+  }
+  return partes
+}
+
+/** Lo que suman las partes, en centésimas: es lo que de verdad se cobró. */
+export function sumaPartes(partes: number[]): number {
+  return Math.round(partes.reduce((a, b) => a + b, 0) * 100) / 100
+}
+
 export function fmtOrigen(n: number | null): string {
   if (n == null || !Number.isFinite(n)) return '—'
   return n.toLocaleString('es-HN', { maximumFractionDigits: 2 })

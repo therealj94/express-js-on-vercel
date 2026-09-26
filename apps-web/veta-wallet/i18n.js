@@ -380,7 +380,7 @@ es: {
   'ini.activos': 'Tus activos', 'ini.verAct': 'Ver actividad',
   'ini.ocultar': 'Ocultar los montos', 'ini.mostrar': 'Mostrar los montos',
   'ini.errSaldos': 'No pudimos leer tus saldos.',
-  'ini.sinPrecio': 'Los activos marcados con — no tienen precio de mercado ahora mismo. Su cantidad es real; su valor no se puede calcular todavía.',
+  'ini.sinPrecio': 'Los activos marcados con — no suman al total: o son «sin referencia» (no tienen precio de mercado) o su precio no llegó todavía. Su cantidad es real.',
   'ini.cargando': 'Leyendo la cadena…',
   // ficha de un token
   'vls.ampliar': 'Ver en grande', 'vls.gestos': 'Pellizcá o usá la rueda para acercar; arrastrá para ver el pasado.',
@@ -1487,7 +1487,7 @@ en: {
   'ini.activos': 'Your assets', 'ini.verAct': 'See activity',
   'ini.ocultar': 'Hide the amounts', 'ini.mostrar': 'Show the amounts',
   'ini.errSaldos': "We couldn't read your balances.",
-  'ini.sinPrecio': 'Assets marked with — have no market price right now. The amount you hold is real; its value cannot be worked out yet.',
+  'ini.sinPrecio': 'Assets marked with — are not included in the total: either they have «no price reference» (no market price) or their price has not arrived yet. The amount you hold is real.',
   'ini.cargando': 'Reading the chain…',
   'vls.ampliar': 'View large', 'vls.gestos': 'Pinch or use the wheel to zoom; drag to see the past.',
   'grf.t': 'Price', 'grf.carg': 'Fetching the price history…',

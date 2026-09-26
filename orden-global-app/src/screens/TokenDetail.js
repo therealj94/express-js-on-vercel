@@ -68,7 +68,7 @@ export default function TokenDetail({ nav, params }) {
           </View>
           <Text style={styles.usd}>≈ {t.hasPrice ? money(t.qty * t.price) : '—'} USD</Text>
           <View style={styles.priceRow}>
-            <Text style={styles.priceTxt}>{tr('tok.price')}: {t.hasPrice ? money(t.price) : '—'}</Text>
+            <Text style={styles.priceTxt}>{tr('tok.price')}: {t.hasPrice ? money(t.price) : t.sinReferencia ? tr('tok.sinRef') : '—'}</Text>
             {t.hasPrice && t.chg != null && (
               <Text style={[styles.chg, { color: up ? C.up : C.down }]}>{up ? '+' : ''}{t.chg.toFixed(2)}% 24h</Text>
             )}

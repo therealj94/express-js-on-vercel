@@ -875,6 +875,10 @@ export async function apiPortfolio() {
   }
 
   const { prices, changes } = await livePrices().catch(() => ({ prices: {}, changes: {} }));
+  // La hora de la lectura viaja con cada precio (`priceAt`): la cuenta se
+  // guarda en el teléfono y, sin ella, un precio de hace días se leía igual
+  // que uno de ahora. Quien convierte dinero con él (Pay) mira su edad.
+  const preciosEn = Date.now();
 
   const balances = await Promise.all(ONCHAIN_TOKENS.map(async (t) => {
     let qty = 0;
@@ -886,7 +890,8 @@ export async function apiPortfolio() {
       }
     } catch (e) {}
     let priceUsd = prices[t.symbol];
-    if (priceUsd == null && t.symbol === 'ONDK' && ondkPrice) priceUsd = ondkPrice;
+    let priceAt = priceUsd != null ? preciosEn : null;
+    if (priceUsd == null && t.symbol === 'ONDK' && ondkPrice) { priceUsd = ondkPrice; priceAt = ONDK_CACHE.at || preciosEn; }
     // Sin precio real (y los tokens «sin referencia» nunca lo tienen): se
     // envía null y la UI lo pinta como "—". Nunca un valor cocinado — el
     // usuario podría tomar decisiones a partir de él.
@@ -894,6 +899,7 @@ export async function apiPortfolio() {
       symbol: t.symbol,
       qty: Number.isFinite(qty) ? qty : 0,
       priceUsd: priceUsd != null && priceUsd > 0 ? priceUsd : null,
+      priceAt: priceUsd != null && priceUsd > 0 ? priceAt : null,
       changePct: changes[t.symbol] ?? null,
       contract: t.contract || null,
     };

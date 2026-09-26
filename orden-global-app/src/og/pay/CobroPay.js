@@ -45,9 +45,10 @@ import { useLang } from '../../i18n';
 import { money, normalizeAmtInput, parseAmt } from '../../data';
 import { aUri } from '../rutas';
 import {
-  useCambio, aOrigen, aLempiras, precioOrigenDe,
+  useCambio, aOrigen, aLempiras,
   origenTexto, origenFmt, lempirasFmt, aPaso, PASO,
 } from '../cambio';
+import { usePrecioOrigen } from '../precioVivo';
 
 const TXT = {
   es: {
@@ -221,6 +222,13 @@ export default function CobroPay({ nav, params }) {
   // dejaría de corresponder al papel que el comercio tiene en la mano.
   const [referencia] = useState(() => 'INV-' + Date.now().toString(36).toUpperCase().slice(-6));
 
+  // Al salir de la factura (QR o dividir) el cobro queda FIJO: el ORIGEN y el
+  // precio con el que se cotizó. El precio se relee cada minuto; sin esto, el
+  // QR de un cobro en lempiras cambiaría mientras el cliente lo escanea.
+  // Volver a la factura vuelve a cotizar.
+  const [fijo, setFijo] = useState(null);   // { subtotal, precio } | null
+  const volverAFactura = () => { setEtapa('factura'); setReparto(null); setError(null); setFijo(null); };
+
   // El QR y el reparto son etapas DENTRO de esta pantalla, no rutas: sin esto
   // el botón físico de Android se llevaría al comercio fuera de la caja de un
   // salto, en vez de devolverlo a su factura. Se registra solo cuando hay algo
@@ -228,27 +236,33 @@ export default function CobroPay({ nav, params }) {
   useEffect(() => {
     if (Platform.OS !== 'android' || etapa === 'factura') return undefined;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      setEtapa('factura'); setReparto(null); setError(null);
+      volverAFactura();
       return true;
     });
     return () => sub.remove();
   }, [etapa]);
 
   // El precio sale del portafolio real de la cuenta (el mismo priceUsd que
-  // alimenta el saldo). Si el feed no lo trae, NO se enseña un equivalente
-  // inventado — mejor sin dólares que con un número congelado (misma regla
-  // que el resto de la billetera).
-  const precio = useMemo(() => precioOrigenDe(account), [account]);
+  // alimenta el saldo), o de la relectura de cada minuto si es más fresca, y
+  // solo si tiene menos de 10 minutos (C5). Si no, NO se enseña un
+  // equivalente inventado — mejor sin dólares que con un número congelado
+  // (misma regla que el resto de la billetera).
+  const { precio: precioVivo, leyendo: leyendoPrecio } = usePrecioOrigen(account);
+  const precio = fijo ? fijo.precio : precioVivo;
   const cambio = useCambio(lang);
 
-  // Solo se puede teclear en lempiras si los DOS tramos del puente están:
-  // el cambio del día y el precio del ORIGEN. Falta uno y el campo vuelve
-  // solo a ORIGEN, que siempre se puede cobrar.
+  // Solo se puede convertir desde lempiras si los DOS tramos del puente
+  // están: el cambio del día y el precio del ORIGEN. Falta uno y el campo
+  // vuelve solo a ORIGEN, que siempre se puede cobrar — pero solo si está
+  // VACÍO: lo ya tecleado en lempiras no se relee como ORIGEN en silencio (un
+  // precio que caduca a media escritura lo haría). Con algo escrito se queda
+  // en lempiras, sin convertir y con el aviso; al borrarlo pasa a ORIGEN. Y
+  // no se decide nada mientras llega la primera lectura del precio.
   const puedeHnl = cambio.listo && precio != null;
   useEffect(() => {
-    if (!puedeHnl && moneda === 'HNL') setMoneda('ORIGEN');
-  }, [puedeHnl, moneda]);
-  const enHnl = moneda === 'HNL' && puedeHnl;
+    if (!puedeHnl && !leyendoPrecio && moneda === 'HNL' && !monto) setMoneda('ORIGEN');
+  }, [puedeHnl, leyendoPrecio, moneda, monto]);
+  const enHnl = moneda === 'HNL';
 
   // ── el número de verdad ────────────────────────────────────────────────
   // Se teclee en lo que se teclee, el subtotal se fija EN ORIGEN y ya
@@ -257,7 +271,7 @@ export default function CobroPay({ nav, params }) {
   // de este mismo número, así el papel del comercio y lo que firma el
   // cliente no se pueden separar aunque el cambio se mueva a media venta.
   const tecleado = parseAmt(monto);
-  const subtotal = aPaso(enHnl ? (aOrigen(tecleado, precio) ?? 0) : tecleado);
+  const subtotal = fijo ? fijo.subtotal : aPaso(enHnl ? (aOrigen(tecleado, precio) ?? 0) : tecleado);
   const propinaOr = aPaso((subtotal * propina) / 100);
   const total = aPaso(subtotal + propinaOr);
 
@@ -358,6 +372,7 @@ export default function CobroPay({ nav, params }) {
     if (total <= 0) { setError(t.errMonto); toast(t.errMonto); return; }
     setError(null); hap();
     setReparto(null);
+    setFijo({ subtotal, precio });
     // el QR único que se va a enseñar queda apuntado en el registro local
     if (etapaNueva === 'qr') {
       apuntarFactura({ ref: referencia, monto: enTexto(total), concepto: concepto.trim(), cuando: Date.now() });
@@ -366,7 +381,7 @@ export default function CobroPay({ nav, params }) {
   }
 
   const titulo = etapa === 'qr' ? t.tituloQr : etapa === 'dividir' ? t.tituloDiv : t.titulo;
-  const atras = etapa === 'factura' ? nav.back : () => { setEtapa('factura'); setReparto(null); setError(null); };
+  const atras = etapa === 'factura' ? nav.back : volverAFactura;
 
   return (
     // La cabecera lleva la referencia del cobro: tiene que quedarse a la
@@ -384,8 +399,9 @@ export default function CobroPay({ nav, params }) {
                 <Text style={st.eti}>{enHnl ? t.montoL : t.monto}</Text>
                 {/* El botón de moneda solo aparece cuando hay con qué
                     convertir: ofrecer "lempiras" y que al tocarlo no pase
-                    nada sería peor que no ofrecerlo. */}
-                {puedeHnl ? (
+                    nada sería peor que no ofrecerlo. Sí se ofrece volver a
+                    ORIGEN a quien se quedó en lempiras sin precio. */}
+                {puedeHnl || enHnl ? (
                   <Pressable
                     onPress={() => { hap(); setMoneda(enHnl ? 'ORIGEN' : 'HNL'); setMonto(''); setError(null); }}
                     accessibilityRole="button" style={st.swap}>
@@ -411,7 +427,7 @@ export default function CobroPay({ nav, params }) {
               {subtotal > 0 ? <Text style={st.equiv}>{equivalencia(subtotal)}</Text> : null}
               <Text style={st.bajoCampo}>{enHnl ? t.cobrasEnL : t.cobrasEnO}</Text>
               {/* Sin cambio del día no se ofrece lempiras y se DICE por qué. */}
-              {!puedeHnl ? (
+              {!puedeHnl && !leyendoPrecio ? (
                 <Text style={st.avisoTenue}>{precio == null ? t.sinPrecio : t.sinCambio}</Text>
               ) : null}
             </Entrada>
@@ -487,7 +503,7 @@ export default function CobroPay({ nav, params }) {
               <Icon name="pulse" size={15} color={C.gold} />
               <Text style={st.enlaceTxt}>{t.verCobros}</Text>
             </Pressable>
-            <Pressable onPress={() => { hap(); setEtapa('factura'); }} style={st.enlace}>
+            <Pressable onPress={() => { hap(); volverAFactura(); }} style={st.enlace}>
               <Icon name="chevron-back" size={15} color={C.txt2} />
               <Text style={[st.enlaceTxt, { color: C.txt2 }]}>{t.volverFactura}</Text>
             </Pressable>

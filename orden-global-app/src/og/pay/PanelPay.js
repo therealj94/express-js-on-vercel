@@ -24,7 +24,8 @@ import { apiPortfolio } from '../../api';
 import { upsertApiAccount } from '../../accounts';
 import { listContacts, nameFor } from '../../addressBook';
 import { avisosDe, leerVisto, noLeidos } from './avisos';
-import { useCambio, aLempiras, precioOrigenDe, lempirasFmt } from '../cambio';
+import { useCambio, aLempiras, lempirasFmt } from '../cambio';
+import { usePrecioOrigen } from '../precioVivo';
 
 const TXT = {
   es: {
@@ -167,14 +168,16 @@ export default function PanelPay({ nav }) {
     [account?.balances],
   );
   const saldo = origenTok ? origenTok.qty : 0;
-  const saldoUsd = origenTok && origenTok.hasPrice ? origenTok.qty * origenTok.price : null;
 
   // El comercio lleva su caja en lempiras: "cobré 3,200 hoy" es la frase que
   // usa, no "cobré 126 ORIGEN". Se enseñan las dos, con el ORIGEN de titular
   // (es lo que de verdad tiene en la cadena) y la lempira debajo. El precio
   // se lee con el mismo ayudante que las otras tres pantallas de MyTokenPay
   // para que las cuatro conviertan con el MISMO número.
-  const precio = useMemo(() => precioOrigenDe(account), [account]);
+  // Vigente (menos de 10 min) y releído cada minuto mientras se mira (C5).
+  const { precio } = usePrecioOrigen(account);
+  // El equivalente del saldo, con ese mismo precio vigente.
+  const saldoUsd = precio != null ? saldo * precio : null;
   const cambio = useCambio(lang);
   const enLps = (o) => {
     const l = aLempiras(o, precio);

@@ -50,7 +50,8 @@ import { apiPortfolio } from '../../api';
 import { upsertApiAccount } from '../../accounts';
 import { listContacts, nameFor } from '../../addressBook';
 import { leerFicha, PAISES, RUBROS } from './MiNegocio';
-import { useCambio, precioOrigenDe, tasaPorUsd } from '../cambio';
+import { useCambio, tasaPorUsd } from '../cambio';
+import { usePrecioOrigen } from '../precioVivo';
 
 const TXT = {
   es: {
@@ -294,7 +295,8 @@ export default function NegocioPanel({ nav }) {
   // Mismo ayudante que las otras pantallas de MyTokenPay: las cuatro tienen
   // que convertir con el MISMO precio o el comercio ve cifras que no cuadran
   // entre sí. (Se conserva `origen` para el saldo, que sale de tokensFromBalances.)
-  const precio = useMemo(() => precioOrigenDe(account), [account]);
+  // Vigente (menos de 10 min) y releído cada minuto mientras se mira (C5).
+  const { precio } = usePrecioOrigen(account);
   const cambio = useCambio(lang);
 
   const transfers = account?.transfers;

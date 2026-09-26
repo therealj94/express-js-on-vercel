@@ -23,6 +23,9 @@ const MTP = (() => {
   const PRECIO_FRESCO_MS = 30_000;
   const PRECIO_EDAD_MAX_MS = 10 * 60_000;
   let precio = { usd: null, en: 0, pedido: 0 };
+  // El precio con el que se pintó la vista que se ve: si una lectura trae el
+  // mismo (o sigue sin haber), no hay nada que repintar.
+  let precioPintado = null;
   const LLAVE = 'mtp.estado';
   const VETA_WEB = 'https://www.vetawallet.com';
   // A donde se manda a alguien que quiere verificarse.
@@ -96,9 +99,14 @@ const MTP = (() => {
       } catch {}
     }
     if (onza > 0) precio = { ...precio, usd: onza / ONZA_EN_GRAMOS / 55, en: Date.now() };
-    // Se repinta con lo que haya, también para que un precio caducado pase a guion.
+    /* Se repinta SOLO si cambió lo que se ve: otro precio, o uno que caducó y
+       pasa a guion. Y sin volver arriba: antes, cada minuto la página saltaba
+       sola al principio, y quien enseñaba el QR de cobro bajo el teclado lo
+       perdía de la pantalla mientras el otro lo escaneaba. */
     const app = $('#app');
-    if (app && !app.classList.contains('oculto') && ['inicio', 'cobro'].includes(vistaActual)) vista(vistaActual);
+    if (!app || app.classList.contains('oculto') || !['inicio', 'cobro'].includes(vistaActual)) return;
+    if (origenUsd() === precioPintado) return;
+    vista(vistaActual, undefined, { quieta: true });
   }
   const cuando = iso => {
     const t = new Date(iso); if (isNaN(t)) return '';
@@ -260,7 +268,10 @@ const MTP = (() => {
 
   // ── vistas ────────────────────────────────────────────────────────────────
 
-  function vista(cual, arg) {
+  // `quieta`: repintar la MISMA vista sin mover la página (precio nuevo, una
+  // tecla). Navegar a otra vista sí empieza arriba.
+  function vista(cual, arg, { quieta = false } = {}) {
+    const y = window.scrollY;
     vistaActual = cual;
     if (cual === 'comercio') verComercio = arg;
     document.querySelectorAll('.tabs button[data-vista]').forEach(b => {
@@ -280,7 +291,8 @@ const MTP = (() => {
       ? `<span class="chapa ${E.identidad === 'verificada' ? 'ch-ok' : 'ch-rev'}">${t(E.identidad === 'verificada' ? 'x.verificado' : 'x.sinVerificar')}</span>`
       : `<button class="btn btn-neon btn-sm" onclick="MTP.ir('acceso','crear')">${t('x.crearCuenta')}</button>`);
     if (cual === 'cobro') pintarQr();
-    window.scrollTo(0, 0);
+    precioPintado = origenUsd();
+    window.scrollTo(0, quieta ? y : 0);
   }
 
   const verificados = () => COMERCIOS.filter(c => c.estado === 'verified').length;
@@ -459,7 +471,7 @@ const MTP = (() => {
       if (p[1]?.length >= 2) return;
       cobro.monto = (cobro.monto === '0' ? '' : cobro.monto) + t;
     }
-    vista('cobro');
+    vista('cobro', undefined, { quieta: true });
   }
 
   function pintarQr() {

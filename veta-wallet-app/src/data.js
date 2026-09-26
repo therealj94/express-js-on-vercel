@@ -146,6 +146,13 @@ export const COIN_INFO = {
 // en la forma que renderiza la UI. Muestra TODOS los tokens, incluso en 0.
 // Un precio ausente (feed caído) llega como null y la UI lo pinta como "—";
 // nunca se sustituye por un valor congelado.
+/* LOS UNICOS ACTIVOS CON REFERENCIA DE PRECIO (SFSP v0.3 §10.5): ORIGEN y
+ * AUKA siguen el oro, AGKA la plata, y ONDK tiene su precio declarado por acta.
+ * Los demas se declaran «sin referencia»: no es que el feed se haya caido, es
+ * que no tienen precio y no lo van a tener. Pintarlos igual que un feed caido
+ * («Reintenta en unos segundos») era prometer algo que no iba a pasar. */
+export const CON_REFERENCIA = ['ORIGEN', 'AUKA', 'AGKA', 'ONDK'];
+
 export function tokensFromBalances(balances) {
   /* SE LISTA LO PUBLICADO, Y ADEMAS LO QUE UNO TENGA.
    *
@@ -166,6 +173,8 @@ export function tokensFromBalances(balances) {
       qty: Number(b.qty) || 0,
       price: price != null ? price : 0,
       hasPrice: price != null,
+      // Sin precio y sin que se espere uno: no es un feed caido.
+      sinReferencia: price == null && !CON_REFERENCIA.includes(sym),
       chg: b.changePct != null ? Number(b.changePct) : null,
       contract: b.contract || null,
       // Viaja con la fila para que la pantalla pueda ponerle el sello sin
@@ -211,6 +220,12 @@ export function parseAmt(s) {
 }
 
 export const money = (v) => '$' + Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Lo que valen `qty` unidades de un token en USD, o null si no tiene precio.
+// Nunca `qty * 0`: un «$0.00» se lee como «no vale nada», y es justo el cero
+// de consuelo que Inicio y la ficha ya evitan con su «—».
+export const usdDe = (t, qty) => (t && t.hasPrice ? Number(qty) * t.price : null);
+// Un monto en USD, o «—» si no lo hay.
+export const moneyO = (v) => (v == null || !Number.isFinite(v) ? '—' : money(v));
 export const qtyFmt = (q) => {
   const n = Number(q) || 0;
   if (n === 0) return '0';

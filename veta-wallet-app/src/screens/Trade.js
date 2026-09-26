@@ -7,7 +7,7 @@ import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import { C } from '../theme';
 import { Header, TokenIcon, Button3D, Card, useToast, useAccount, hap } from '../ui';
-import { money, qtyFmt, qtyExacto, tokensFromBalances, parseAmt, normalizeAmtInput } from '../data';
+import { money, moneyO, usdDe, qtyFmt, qtyExacto, tokensFromBalances, parseAmt, normalizeAmtInput } from '../data';
 import { apiSend, apiSendToken, apiPortfolio, estimateNetworkFee, NETWORK_FEE_ORIGEN, CHAIN_ID } from '../api';
 import { updateAccount } from '../accounts';
 import { listContacts, touchContact, addContact, parseAddress } from '../addressBook';
@@ -49,7 +49,7 @@ function TokenPicker({ visible, tokens, onClose, onPick }) {
                   <Text style={styles.pickName}>{t.n}</Text>
                   <Text style={styles.pickSub}>{qtyFmt(t.qty)} {t.s}</Text>
                 </View>
-                <Text style={{ color: C.gold, fontWeight: '600' }}>{money(t.qty * t.price)}</Text>
+                <Text style={{ color: C.gold, fontWeight: '600' }}>{moneyO(usdDe(t, t.qty))}</Text>
               </Pressable>
             ))}
           </ScrollView>
@@ -129,7 +129,9 @@ export function Send({ nav, params }) {
   }, [isNative]);
 
   const amount = parseAmt(amt);
-  const usd = amount * (tok.price || 0);
+  // null sin precio (los tokens «sin referencia» nunca lo tienen): se pinta
+  // «—», nunca «$0.00», y menos en la ficha que se revisa antes de firmar.
+  const usd = usdDe(tok, amount);
   // La comisión SIEMPRE se paga en ORIGEN, también al mover un token. Así que
   // hay dos saldos que comprobar y no uno: que alcance el token que se envía,
   // y que quede ORIGEN para pagar el viaje.
@@ -306,7 +308,7 @@ export function Send({ nav, params }) {
 
         <View style={styles.bigInput}>
           <TextInput value={amt} onChangeText={(v) => setAmt(normalizeAmtInput(v))} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#3a5c58" style={styles.amtIn} />
-          <Text style={styles.cur}>≈ {money(usd)} USD</Text>
+          <Text style={styles.cur}>≈ {moneyO(usd)} USD</Text>
         </View>
 
         {/* Viene de Remesas, donde el monto se escribió en dólares. Se muestra
@@ -540,7 +542,7 @@ function ReviewSheet({ data, token, onCancel, onConfirm }) {
           <View style={styles.revMonto}>
             <TokenIcon t={token} size={44} />
             <Text style={styles.revAmt}>{qtyExacto(data.amount)} {data.symbol}</Text>
-            <Text style={styles.revUsd}>≈ {money(data.usd)} USD</Text>
+            <Text style={styles.revUsd}>≈ {moneyO(data.usd)} USD</Text>
           </View>
 
           <View style={styles.revRows}>
@@ -1234,8 +1236,8 @@ export function Swap({ nav }) {
         <SwapBox label={t('swap.toLbl')} balance={qtyFmt(to.qty)} token={to} value={out ? out.toFixed(4) : ''} readOnly onPickToken={() => setPick(true)} />
         <Card style={{ padding: 14, marginTop: 16 }}>
           <Row k={t('swap.rate')} v={rate ? `1 ${origen.s} = ${rate.toFixed(4)} ${to.s}` : '—'} />
-          <Row k={`${t('swap.price')} ${origen.s}`} v={money(origen.price)} />
-          <Row k={`${t('swap.price')} ${to.s}`} v={money(to.price)} />
+          <Row k={`${t('swap.price')} ${origen.s}`} v={moneyO(usdDe(origen, 1))} />
+          <Row k={`${t('swap.price')} ${to.s}`} v={moneyO(usdDe(to, 1))} />
         </Card>
         <View style={styles.notice}>
           <Icon name="information-circle" size={18} color={C.gold} />

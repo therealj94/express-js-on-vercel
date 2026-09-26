@@ -8,9 +8,13 @@ export { getToken, setToken } from './token'
 export { ApiError } from './apiError'
 
 // Datos simulados SOLO en desarrollo. Se apagan con EXPO_PUBLIC_USE_MOCK_API=0
-// (el perfil «production» de eas.json lo fija así, y `scripts/barrera-mock.js`
-// hace fallar cualquier compilación de producción que los lleve encendidos:
-// una app de tienda con saldos inventados es peor que no tener app).
+// (el perfil «production» de eas.json lo fija así). Esta bandera cubre la
+// sesión, los comercios y los premios, y NADA MÁS: la billetera, las ventas,
+// los retiros y los catálogos siguen siendo locales con ella apagada. Por eso
+// `scripts/barrera-mock.js` no deja compilar para tienda mientras quede ese
+// libro local, falte una EXPO_PUBLIC_API_URL en https o no haya acta que
+// cierre C6 (plan v0.3: la app no se publica hasta la fase 4). Una app de
+// tienda con saldos inventados es peor que no tener app.
 export const USE_MOCK_API = process.env.EXPO_PUBLIC_USE_MOCK_API !== '0'
 
 function resolveApiUrl(): string {

@@ -238,17 +238,6 @@ const CADENA = (() => {
   // ── precios ───────────────────────────────────────────────────────────────
 
   async function metales() {
-    try {
-      const r = await fetch(`${COINGECKO}/simple/price?ids=pax-gold,kinesis-silver&vs_currencies=usd&include_24hr_change=true`);
-      const d = await r.json();
-      const oro = Number(d?.['pax-gold']?.usd);
-      const plata = Number(d?.['kinesis-silver']?.usd);
-      if (oro > 0) return {
-        oro, plata: plata > 0 ? plata : null,
-        oroChg: Number(d?.['pax-gold']?.usd_24h_change) || null,
-        plataChg: Number(d?.['kinesis-silver']?.usd_24h_change) || null,
-      };
-    } catch {}
     // Respaldo sin clave. Solo trae el precio, no la variacion.
     const uno = async sim => {
       try {
@@ -257,6 +246,23 @@ const CADENA = (() => {
         return p > 0 ? p : null;
       } catch { return null; }
     };
+    try {
+      const r = await fetch(`${COINGECKO}/simple/price?ids=pax-gold,kinesis-silver&vs_currencies=usd&include_24hr_change=true`);
+      const d = await r.json();
+      const oro = Number(d?.['pax-gold']?.usd);
+      const plata = Number(d?.['kinesis-silver']?.usd);
+      if (oro > 0) {
+        // Cada pata tiene su respaldo (SFSP v0.3 §10.5: «la plata sigue el
+        // mismo esquema»): si CoinGecko trae el oro sin la plata, la plata se
+        // pide a gold-api, como hace lib/oraculo.js en los backends.
+        if (plata > 0) return {
+          oro, plata,
+          oroChg: Number(d?.['pax-gold']?.usd_24h_change) || null,
+          plataChg: Number(d?.['kinesis-silver']?.usd_24h_change) || null,
+        };
+        return { oro, plata: await uno('XAG'), oroChg: Number(d?.['pax-gold']?.usd_24h_change) || null, plataChg: null };
+      }
+    } catch {}
     const [oro, plata] = await Promise.all([uno('XAU'), uno('XAG')]);
     return { oro, plata, oroChg: null, plataChg: null };
   }
