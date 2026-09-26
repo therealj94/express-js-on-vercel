@@ -46,8 +46,8 @@
 
 <p>El fundador pidió una revisión de <strong>todo el sistema de Orden Global con el SFSP</strong> y de
 <strong>cómo va a quedar</strong>. Eso es lo que hay aquí, y se hizo de una manera concreta: ocho auditores
-independientes leyeron el código de cada pieza —no los README, el código— y un noveno verificó cada
-afirmación buscando lo contrario: datos de demostración presentados como reales, integraciones enunciadas
+independientes leyeron el código de cada pieza —no los README, el código— y ocho verificadores trataron de
+refutar cada hallazgo buscando lo contrario: datos de demostración presentados como reales, integraciones enunciadas
 que no existen, promesas sin respaldo. Después se consolidó.</p>
 
 <div class="nota">
@@ -85,7 +85,7 @@ red propia —Hyperledger Besu, consenso QBFT, siete validadores, bloques de uno
 se llama <strong>ORIGEN</strong> y vale <strong>un cincuentaicincoavo de gramo de oro</strong>. No es un token
 invitado en la red de otro: es la moneda nativa de una red que la empresa opera, y por eso mover ORIGEN no
 cuesta comisión de red. Sobre la misma cadena viven AUKA (una onza troy de oro), AGKA (una onza de plata) y
-ONDK, que es gobierno de la empresa, no dinero.</p>
+ONDK, que es el título de gobierno de la empresa —todavía sin votación en la cadena (6.17)—, no dinero.</p>
 
 <p>Con el registro resuelto falta lo difícil: que una persona de carne y hueso pueda usarlo. Ahí entran
 <strong>Genesis ID</strong>, que verifica a la persona una sola vez y la deja verificada en todas las apps;
@@ -227,7 +227,7 @@ Cada capa solo puede prometer lo que la de abajo sostiene.</p>
     <g>
       <rect x="60" y="86" width="780" height="46" rx="5" fill="#2B8489"/>
       <text x="76" y="106" fill="#C9A961" font-size="9" letter-spacing="1.2">CAPA 6 · GOBIERNO Y ASISTENCIA</text>
-      <text x="76" y="123" fill="#F4EFE4" font-size="11.5">ONDK gobierna la empresa; ULTRON y AU-RA explican el sistema a la junta y a la gente.</text>
+      <text x="76" y="123" fill="#F4EFE4" font-size="11.5">ONDK: título de gobierno, sin votación en la cadena aún. ULTRON y AU-RA explican el sistema.</text>
       <text x="826" y="116" text-anchor="end" fill="#74E6C8" font-size="9">ONDK · ULTRON</text>
     </g>
     <!-- lo social y lo productivo, a los lados -->
@@ -275,8 +275,8 @@ para quien quiera hacer de esto un oficio. Todo eso está escrito, probado y con
 <h3>3.2 · La verificación ya es la de Genesis ID, no una imitación</h3>
 
 <p>Esta es la diferencia más importante del ciclo y la más fácil de pasar por alto. OrdenExchange no verifica a
-nadie: <strong>le pregunta a Genesis ID</strong>, con su propia llave de aplicación, igual que Veta Wallet y
-MyTokenPay. La persona hace tres pasos —sus datos y su perfil de cumplimiento, la lectura del documento, el
+nadie: <strong>le pregunta a Genesis ID</strong>, con su propia llave de aplicación, igual que Veta Wallet.
+MyTokenPay lo intenta, pero llama a dos métodos que no existen (6.9). La persona hace tres pasos —sus datos y su perfil de cumplimiento, la lectura del documento, el
 rostro— y lo que la app muestra es siempre lo que Genesis ID contestó, reflejado en la cuenta en el mismo
 momento.</p>
 
@@ -327,7 +327,7 @@ horizontal en teléfono y un nombre de anunciante que se cortaba a una sola letr
   casa de cambio y <strong>28</strong> de integración real entre las dos —una Genesis ID levantada de verdad, no
   simulada—. <strong>227 de 227 pasaron</strong> y la verificación de tipos de ambos servicios está limpia.
   Además se comprobó contra los servicios vivos: la <strong>cadena 5550 contesta</strong> y va por el bloque
-  268 613, con AUKA en 55 000 000 y ONDK en 555 000 000 exactos; <strong>Genesis ID en producción responde</strong>
+  268 613, con AUKA en 55 000 000 y ONDK en 555 000 000 exactos —AGKA no se leyó contra la cadena: su cifra sale del mapa del ecosistema—; <strong>Genesis ID en producción responde</strong>
   con las listas de sanciones cargadas —19 391 fichas, un día de antigüedad—, biometría automática encendida y
   sesión única configurada; y <strong>las doce llamadas que la casa de cambio le hace a Genesis ID existen las
   doce</strong> en la interfaz pública que ese servicio publica hoy. Eso es lo que se puede afirmar del código y
@@ -348,7 +348,7 @@ JavaScript—, sin datos, sin hojas de estilo y sin lo que instala la máquina.<
       <td><b>Cadena 5550</b></td>
       <td>La red: Besu, QBFT, siete validadores, bloques de ~10 s, comisión cero.</td>
       <td>—</td>
-      <td class="bien">Viva. Contestó 5550 y el bloque 268 613. AUKA y ONDK dan su emisión exacta.</td>
+      <td class="bien">Viva. Contestó 5550 y el bloque 268 613. AUKA y ONDK dan su emisión exacta; AGKA no se leyó.</td>
     </tr>
     <tr>
       <td><b>Genesis ID</b></td>
@@ -372,7 +372,7 @@ JavaScript—, sin datos, sin hojas de estilo y sin lo que instala la máquina.<
       <td><b>MyTokenPay</b> (app y web)</td>
       <td>Directorio de comercios afiliados y pantallas de cobro con código QR.</td>
       <td>88 archivos · 12 711 líneas</td>
-      <td class="riesgo">El directorio y las cuentas son reales; <b>el cobro está simulado</b>: no toca la cadena ni un banco (6.10).</td>
+      <td class="riesgo">Todo es de demostración: la app corre con la interfaz simulada encendida y el servicio guarda en memoria. <b>El cobro está simulado</b>: no toca la cadena ni un banco (6.8 y 6.10).</td>
     </tr>
     <tr>
       <td><b>Genesis ID</b> (app)</td>
@@ -390,7 +390,7 @@ JavaScript—, sin datos, sin hojas de estilo y sin lo que instala la máquina.<
       <td><b>Infraestructura</b></td>
       <td>Puente de identidad para las apps, idempotencia, migración de claves, telemetría.</td>
       <td>20 archivos · 2 495 líneas</td>
-      <td>En uso por las apps.</td>
+      <td>En uso por las apps, salvo el puente de identidad: hoy no lo importa ninguna (6.9).</td>
     </tr>
     <tr>
       <td><b>OrdenScan</b></td>
@@ -445,9 +445,11 @@ JavaScript—, sin datos, sin hojas de estilo y sin lo que instala la máquina.<
 
 <div class="nota riesgo">
   <b class="t">La lectura incómoda de esta tabla</b>
-  Hay más sistema escrito que sistema encendido. De doce piezas, <strong>una sola está en servicio público hoy
-  —Genesis ID—</strong>, y corre una versión que no es la de esta rama. La casa de cambio, que es la puerta de
-  entrada del público, está escrita y probada pero su dirección contesta 404. Las tres aplicaciones móviles
+  Hay más sistema escrito que sistema encendido. De las aplicaciones de cara al público de esta tabla,
+  <strong>una sola está en servicio y versionada a medias —Genesis ID—</strong>, y corre una versión que no es la de
+  esta rama. Encendidas hay además la cadena, la tarjeta y la rampa por otra cadena, las dos últimas sin acta.
+  La casa de cambio del repositorio está escrita y probada pero no desplegada; la que está viva no está en ningún
+  repositorio. Las tres aplicaciones móviles
   están terminadas y ninguna está en una tienda. Eso no es un problema de programación: es una lista de cosas
   por encender, y está en la sección 8 con fecha.
 </div>
@@ -475,18 +477,20 @@ dónde se atora. Este es el recorrido completo, tal como está escrito hoy.</p>
   </tbody>
 </table>
 
-<p>Doce pasos. Diez están escritos y probados de punta a punta. Dos no: el <strong>paso 10</strong>, porque
-las pantallas de cobro de MyTokenPay todavía no mueven dinero de verdad, y el <strong>paso 12</strong>, porque
-la rampa grande de AuCorp no tiene servicio. No son detalles: el paso 10 es lo que hace que el ORIGEN sirva para
-comprar, y el paso 12 es la diferencia entre un mercado entre personas y un sistema financiero. Los dos están en
+<p>Doce pasos. Nueve están escritos y probados de punta a punta. Tres no: el <strong>paso 3</strong>, porque el
+puente de sesión única existe pero hoy no lo importa ninguna aplicación; el <strong>paso 10</strong>, porque las
+pantallas de cobro de MyTokenPay todavía no mueven dinero de verdad; y el <strong>paso 12</strong>, porque la rampa
+grande de AuCorp no tiene servicio. No son detalles: el paso 10 es lo que hace que el ORIGEN sirva para
+comprar, y el paso 12 es la diferencia entre un mercado entre personas y un sistema financiero. Los tres están en
 la sección siguiente, con los demás huecos y sin adornos.</p>
 
 <h2 class="salto">6 · Los huecos, por gravedad</h2>
 
 <p>Esta sección creció. La revisión empezó como un inventario de lo que falta y terminó encontrando cosas que
 no son huecos sino problemas: afirmaciones publicadas que el código contradice y datos de personas expuestos.
-Van en orden de gravedad, no de comodidad. Los cuatro primeros hay que resolverlos <strong>antes</strong> de
-publicar una campaña, y dos de ellos antes de que pase otra semana.</p>
+Van en orden de gravedad, no de comodidad. Los cuatro primeros hay que resolverlos <strong>esta semana</strong>,
+antes de publicar una campaña, y dos de ellos —la ruta del directorio y las direcciones de los nodos— hoy
+mismo.</p>
 
 <h3>6.1 · La billetera custodia tiene llave maestra, y lo publicado dice que no</h3>
 
@@ -509,8 +513,10 @@ Política de privacidad, sección 3:
 
 <div class="nota riesgo">
   <b class="t">Por qué esto es lo primero de la lista</b>
-  No es un hueco: es una diferencia entre lo que el producto hace y lo que el producto declara por escrito ante
-  sus usuarios. Quien lee esos términos entiende que ni la empresa puede tocar sus fondos, y sí puede. Hay que
+  No es un hueco: es una diferencia entre lo que el producto hace y lo que declara por escrito. Los dos textos
+  dicen bien que la billetera es custodia; lo que no es verdad es la frase que viene después —que el descifrado
+  ocurre con la contraseña de la persona—, y quien la lee entiende que sin esa contraseña la empresa no puede
+  tocar sus fondos. Sí puede. Hay que
   hacer las dos cosas, en este orden: <strong>corregir el texto para que diga la verdad</strong> —es una
   billetera custodia con llave de operador, y eso se puede decir sin vergüenza si se dice— y
   <strong>revisar el esquema de cifrado</strong>, que además deriva la clave con un método antiguo y de una
@@ -518,7 +524,7 @@ Política de privacidad, sección 3:
   dueño.
 </div>
 
-<h3>6.2 · El directorio de comercios publica documentos de identidad sin pedir nada</h3>
+<h3>6.2 · El directorio de comercios devolvería documentos de identidad sin pedir nada</h3>
 
 <p>En el servicio de MyTokenPay, las rutas que listan comercios y devuelven el detalle de uno
 —<code>GET /api/companies</code> y <code>GET /api/companies/:id</code>— <strong>no exigen sesión</strong>: la
@@ -526,26 +532,30 @@ autenticación está puesta en las rutas de escritura y en la del propio comerci
 que devuelven no está recortado: sale el objeto completo del comercio, con su bloque de verificación, que incluye
 los <strong>documentos de identidad subidos para el KYB</strong>, el identificador tributario y el dueño.</p>
 
-<p>Es el hallazgo más fácil de arreglar de todo el documento —recortar la respuesta y exigir sesión en el
-detalle— y el más caro de dejar así, porque son datos de personas y de empresas que confiaron.</p>
+<p>Hoy no hay ningún documento de nadie ahí dentro: el servicio guarda todo en memoria y los comercios de
+ejemplo no traen documentos. Pero la puerta está abierta, y el primer comercio real que suba su verificación
+la atravesaría. Es el hallazgo más fácil de arreglar de todo el documento —recortar la respuesta y exigir sesión
+en el detalle— y hay que hacerlo <strong>antes</strong> de que entre el primer dato de verdad.</p>
 
 <h3>6.3 · La infraestructura se publica sola</h3>
 
-<p>Dos exposiciones distintas, las dos innecesarias. La primera: el archivo de datos que alimenta el mapa del
+<p>Tres exposiciones distintas, las tres innecesarias. La primera: el archivo de datos que alimenta el mapa del
 ecosistema se sirve <strong>público y sin autenticación</strong> desde el servicio de Genesis ID, y contiene las
 direcciones de red de <strong>seis de los siete nodos</strong> de la cadena y su región. La segunda: el archivo
 de configuración de ejemplo de ULTRON, versionado en el repositorio, trae las direcciones de las máquinas de
 apoyo escritas en claro y, además, <strong>la verificación de certificados desactivada</strong> como valor de
-ejemplo.</p>
+ejemplo. La tercera, y la más completa: el documento de los nodos, versionado en el repositorio, trae la tabla
+de los seis nodos con su región y su dirección pública.</p>
 
-<p>Ninguna de las dos entrega una contraseña. Las dos entregan el mapa: a quién atacar y por dónde. El mapa del
+<p>Ninguna de las tres entrega una contraseña. Las tres entregan el mapa: a quién atacar y por dónde. El mapa del
 ecosistema es una pieza excelente para explicar el sistema; lo que no puede hacer es llevar las direcciones de
 los nodos dentro.</p>
 
 <h3>6.4 · Los documentos legales publicados describen otro producto</h3>
 
 <p>La política de privacidad de la billetera dice que quien recibe el documento de identidad y la selfie es un
-proveedor llamado <strong>Veriff</strong>. Ese proveedor <strong>no aparece en una sola línea de código</strong>.
+proveedor llamado <strong>Veriff</strong>. Ese proveedor <strong>no está integrado en ninguna parte</strong>: no hay llamada suya, ni credencial,
+ni receptor de avisos; solo aparece escrito en el generador del dossier técnico de la billetera.
 Quien de verdad recibe el documento, la lectura de la banda, el rostro, el correo y el nombre es
 <strong>Genesis ID</strong>, que <strong>no está listado en la política</strong>. Es exactamente al revés de
 como está escrito.</p>
@@ -556,8 +566,8 @@ comunica lo contrario de lo que pretende.</p>
 
 <h3>6.5 · La emisión ya está completa y el respaldo no está probado</h3>
 
-<p>Los tokens existen y su emisión se puede leer en la cadena ahora mismo: AUKA 55 000 000, AGKA 500 000 000,
-ONDK 555 000 000, exactos. Eso es lo bueno. Lo incómodo es lo que significa si se toma la definición al pie de
+<p>Los tokens existen y su emisión se lee en la cadena: AUKA 55 000 000 y ONDK 555 000 000, exactos y
+comprobados hoy. AGKA, 500 000 000 según el mapa del ecosistema, no se leyó contra la cadena. Eso es lo bueno. Lo incómodo es lo que significa si se toma la definición al pie de
 la letra: <strong>una AUKA es una onza troy de oro</strong>, así que cincuenta y cinco millones de AUKA son
 <strong>más de mil setecientas toneladas</strong> de oro. La emisión está hecha de antemano y en el código no
 hay <strong>ninguna prueba de reservas</strong>: ni atestación, ni ensayador, ni inventario, ni informe, ni un
@@ -577,26 +587,28 @@ número de concesión. Tampoco hay un mecanismo que emita contra metal: los toke
 
 <ul>
   <li><strong>Genesis ID.</strong> Lo que corre en producción tiene más del doble de archivos que lo que hay en
-  esta rama: están de más el segundo factor de los operadores, la cadena de auditoría y su anclaje, la interfaz
-  pública, el correo, la credencial, el expediente y el almacén de movimientos. <strong>Desplegar esta rama sería
+  esta rama. La bitácora encadenada con su anclaje, los expedientes y el almacén de movimientos sí están aquí;
+  lo que falta de verdad es, como mínimo, <strong>el segundo factor de los operadores y el correo saliente</strong>. <strong>Desplegar esta rama sería
   una regresión de seguridad.</strong></li>
   <li><strong>La casa de cambio.</strong> Hay una casa de cambio <strong>viva</strong>, con su propio servicio, que
   <strong>no está en ninguno de los dos repositorios</strong>. La que sí está —con 76 pruebas, custodia con
   invariantes y 457 bancos— no está desplegada. Están compitiendo la que nadie puede auditar y la que nadie puede
   usar.</li>
   <li><strong>El sitio público.</strong> Lo que se sirve no es lo que está versionado.</li>
-  <li><strong>La cadena.</strong> El génesis, la configuración del consenso, las llaves de los siete validadores y
-  el inventario de las máquinas <strong>no están en control de versiones</strong>. Perder la cuenta de nube es
-  perder la cadena.</li>
+  <li><strong>La cadena.</strong> El génesis y la configuración del consenso <strong>no están en control de
+  versiones</strong>: solo está el script que los produce. Las llaves de los validadores tampoco, y ahí no deben
+  estar nunca; lo que falta es un respaldo cifrado fuera de la nube. Perder la cuenta de nube hoy es perder la
+  cadena. El inventario de las máquinas sí está versionado —y ese es el problema de 6.3—.</li>
   <li><strong>Los documentos de junta.</strong> Ver 6.7.</li>
 </ul>
 
 <h3>6.7 · Los propios documentos de junta describen la cadena vieja</h3>
 
-<p>De los nueve documentos de junta, <strong>seis hablan de la cadena 8532</strong> y solo dos de la 5550. El
+<p>De los siete documentos de junta anteriores a este, <strong>seis hablan de la cadena 8532</strong>; solo el
+07 nombra la 5550. El
 documento 02, que es el técnico, declara el identificador viejo bajo el título «cómo se comprobó». La cadena
 8532 está congelada desde la migración. Es decir: la carpeta que la junta usa para entender el sistema describe
-un sistema que ya no existe. Este documento y el 9 son los primeros de la serie que hablan de la cadena real.</p>
+un sistema que ya no existe. Este documento es el primero de la serie que describe la cadena real por completo; el 9 no nombra ninguna.</p>
 
 <h3>6.8 · Datos de demostración presentados como reales</h3>
 
@@ -715,8 +727,9 @@ horas.</p>
     <div class="cab">Lo que hay que arreglar antes de crecer</div>
     <ul>
       <li>La billetera tiene llave maestra y los términos publicados dicen que no.</li>
-      <li>Un servicio publica documentos de identidad sin pedir sesión.</li>
-      <li>La infraestructura se publica sola en dos sitios distintos.</li>
+      <li>Un servicio devolvería documentos de identidad sin pedir sesión.</li>
+      <li>La infraestructura se publica sola en tres sitios distintos.</li>
+      <li>Los textos legales nombran a un proveedor que no está integrado y se publican mal formados.</li>
       <li>La emisión está completa y el respaldo no está probado con una atestación mostrable.</li>
       <li>El repositorio no representa el sistema: producción, sitio, cadena y actas van cada uno por su lado.</li>
       <li>Ninguna aplicación completa hoy una verificación de punta a punta.</li>
@@ -733,7 +746,7 @@ unas semanas de distancia, no a un año.</p>
 <div class="nota">
   <b class="t">Las decisiones que solo la junta puede tomar</b>
   <strong>(1)</strong> Corregir los términos y la política de la billetera para que digan lo que el producto hace,
-  y ordenar la revisión del esquema de cifrado. <strong>(2)</strong> Cerrar hoy mismo la ruta que publica
+  y ordenar la revisión del esquema de cifrado. <strong>(2)</strong> Cerrar hoy mismo la ruta que devolvería
   documentos de identidad y quitar las direcciones de los nodos del archivo público. <strong>(3)</strong> Decidir
   cuál casa de cambio es la buena: la que está viva y no está versionada, o la que está probada y no está
   desplegada. <strong>(4)</strong> Encargar una atestación del metal, o aceptar que no se habla del agregado.
@@ -752,7 +765,8 @@ encender: empieza por cerrar.</p>
   <tbody>
     <tr>
       <td class="riesgo"><b>Esta semana</b><br>Cerrar lo abierto</td>
-      <td>Exigir sesión y recortar la respuesta en las rutas del directorio de comercios. Quitar las direcciones de los nodos del archivo público del mapa. Corregir los términos y la política de la billetera —custodia con llave de operador, y el proveedor de identidad que de verdad recibe los datos— y arreglar su maquetado. Activar el segundo factor de los tres operadores y firmar la bitácora.</td>
+      <td>Exigir sesión y recortar la respuesta en las rutas del directorio de comercios. Quitar las direcciones de los nodos del archivo público del mapa, del documento de los nodos y de la
+      configuración de ejemplo de ULTRON, y activar en esta la verificación de certificados. Corregir los términos y la política de la billetera —custodia con llave de operador, y el proveedor de identidad que de verdad recibe los datos— y arreglar su maquetado. Activar el segundo factor de los tres operadores y firmar la bitácora.</td>
       <td>Son datos de personas y son afirmaciones escritas que hoy no se sostienen. Nada de esto tarda más de unos días y ninguna de las otras cosas vale nada si esto sigue abierto.</td>
     </tr>
     <tr>
@@ -780,9 +794,10 @@ encender: empieza por cerrar.</p>
 
 <div class="nota bien">
   <b class="t">Lo que no hay que hacer</b>
-  No hay que construir más producto. Lo que falta no es software: es corregir textos, cerrar dos rutas, poner
-  todo en una sola versión, probar el respaldo y reclutar gente. De programación nueva quedan tres cosas —el
-  cobro real, la fuente automática de precios y los vigilantes de los nodos— y ninguna pasa de una semana.
+  No hay que construir más producto del que ya está en este plan. Lo primero que falta no es software: es
+  corregir textos, cerrar tres puertas, poner todo en una sola versión, probar el respaldo y reclutar gente. De
+  programación nueva quedan cuatro cosas —el cobro real, la fuente automática de precios, los vigilantes de los
+  nodos y, al final, la rampa de dinero de curso legal—; las tres primeras no pasan de una semana.
   Agregar una pieza nueva antes de cerrar la sección 6 sería el error más caro del año.
 </div>
 
@@ -831,14 +846,17 @@ la sección 6.</p>
   Si una frase de campaña necesita que el oyente confíe en algo que no puede comprobar, hay que cambiarla por
   una que se pueda comprobar. La fuerza de este proyecto no está en lo que promete sino en lo que ya pesa: el
   metal, la red propia, los veintitrés países. Prometer de más es, literalmente, el error de las cuatro eras que
-  el comercial va a criticar — y esta vez el riesgo no es solo de reputación: <strong>hay dos textos publicados
-  que ya prometen de más</strong>, y están en 6.1 y en 6.15.
+  el comercial va a criticar — y esta vez el riesgo no es solo de reputación: <strong>hay dos textos ya publicados
+  que prometen de más</strong>, y están en 6.1 y en 6.4. El tercero, el de remesas, viaja dentro de una aplicación
+  que todavía no está en ninguna tienda (6.15).
 </div>
 
 <div class="nota">
   <b class="t">Cómo se hizo esta revisión</b>
   Ocho auditores leyeron en paralelo el código de cada pieza —no los README, el código— y ocho verificadores
-  independientes trataron de refutar cada hallazgo antes de que entrara aquí. Sobre eso, quien firma este
+  independientes trataron de refutar cada hallazgo antes de que entrara aquí. Después, cinco revisores más
+  releyeron este documento contra el código buscando afirmaciones dichas con más fuerza de la que aguantan, y
+  las que encontraron están corregidas. Sobre eso, quien firma este
   documento comprobó por su cuenta lo más grave: corrió las tres baterías de pruebas, consultó los servicios
   vivos, leyó los textos legales publicados y la diferencia entre el código de producción y el de esta rama, y
   confirmó una por una las rutas y los archivos que se citan. Lo que no se pudo comprobar de primera mano no
