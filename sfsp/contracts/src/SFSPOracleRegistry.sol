@@ -23,6 +23,13 @@ import {SFSPCodes} from "./lib/SFSPCodes.sol";
 ///           · Un salto mayor que la tolerancia queda en CUARENTENA hasta que otro
 ///             publicador DISTINTO lo confirme dentro de tolerancia. El primer
 ///             precio de cada metal también necesita esa confirmación.
+///           · La tolerancia se mide contra el ANCLA: el último nivel en el que
+///             coincidieron dos publicadores distintos, dentro de la edad máxima.
+///             Un publicador solo puede actualizar el precio dentro de tolerancia
+///             del ancla, pero no la mueve: una llave comprometida o averiada no
+///             puede llevar el precio a ninguna parte por escalones pequeños.
+///           · Una observación más vieja que la edad máxima no se publica: no se
+///             rellenan rondas hacia atrás.
 ///
 ///         Aritmética de denominación (la que usa el repositorio y SFSP-300 §0.4):
 ///           1 onza troy = 31,1035 g  ⇒  1 onza = 31,1035 × 55 = 1.710,6925 gramin.
@@ -81,8 +88,9 @@ contract SFSPOracleRegistry is SFSPAccessControl {
     mapping(bytes32 => Params) private _params;
     mapping(bytes32 => uint64) private _lastRound;
     mapping(bytes32 => mapping(uint64 => Round)) private _rounds;
-    /// @dev Último precio ACEPTADO (no en cuarentena): referencia de la tolerancia.
-    mapping(bytes32 => uint256) private _acceptedPrice;
+    /// @dev Ancla: último precio en el que coincidieron DOS publicadores distintos.
+    ///      Es la referencia de la tolerancia; un publicador solo nunca la mueve.
+    mapping(bytes32 => uint256) private _anchorPrice;
 
     event OracleParametersSet(bytes32 indexed metal, uint32 version, uint64 maxAge, uint16 maxDeviationBps);
     event OracleParametersCleared(bytes32 indexed metal, bytes32 reasonCode);
@@ -146,28 +154,37 @@ contract SFSPOracleRegistry is SFSPAccessControl {
         if (!p.set) revert OracleBlocked(SFSPCodes.BLOCKED_DECISION, bytes32("ORACLE_PARAMS_NOT_SET"));
         if (price == 0) revert InvalidPublication(bytes32("PRICE_ZERO"));
         if (observedAt > block.timestamp) revert InvalidPublication(bytes32("FUTURE_TIMESTAMP"));
+        // Una observación que ya nació vieja no se acepta: sin relleno hacia atrás.
+        if (uint256(observedAt) + p.maxAge < block.timestamp) revert InvalidPublication(bytes32("STALE_OBSERVATION"));
         uint64 last = _lastRound[metal];
         Round memory prev = _rounds[metal][last];
         if (last != 0 && observedAt <= prev.observedAt) revert InvalidPublication(bytes32("NOT_NEWER"));
 
-        bool quarantined;
-        uint256 accepted = _acceptedPrice[metal];
-        if (accepted != 0 && _within(price, accepted, p.maxDeviationBps)) {
-            quarantined = false;
-        } else if (
-            last != 0 && prev.quarantined && prev.publisher != msg.sender && _within(price, prev.price, p.maxDeviationBps)
+        bool quarantined = true;
+        if (
+            last != 0 && prev.publisher != msg.sender && uint256(prev.observedAt) + p.maxAge >= block.timestamp
+                && _within(price, prev.price, p.maxDeviationBps)
         ) {
-            // Un publicador DISTINTO confirma el nuevo nivel dentro de tolerancia.
+            // Dos publicadores DISTINTOS coinciden dentro de tolerancia y de la edad
+            // máxima: el nivel queda confirmado y el ancla se mueve aquí.
             quarantined = false;
+            _anchorPrice[metal] = price;
         } else {
-            quarantined = true;
+            // Un publicador solo: dentro de tolerancia del ANCLA (no de su propio
+            // último precio), se acepta sin mover el ancla; fuera, cuarentena.
+            uint256 anchor = _anchorPrice[metal];
+            if (anchor != 0 && _within(price, anchor, p.maxDeviationBps)) quarantined = false;
         }
 
         round = last + 1;
         _lastRound[metal] = round;
         _rounds[metal][round] = Round({price: price, observedAt: observedAt, publisher: msg.sender, quarantined: quarantined});
-        if (!quarantined) _acceptedPrice[metal] = price;
         emit OraclePricePublished(metal, round, msg.sender, price, observedAt, quarantined);
+    }
+
+    /// @notice Ancla vigente de la tolerancia: último nivel confirmado por dos publicadores.
+    function anchorOf(bytes32 metal) external view returns (uint256) {
+        return _anchorPrice[metal];
     }
 
     function _within(uint256 a, uint256 ref, uint16 bps) internal pure returns (bool) {

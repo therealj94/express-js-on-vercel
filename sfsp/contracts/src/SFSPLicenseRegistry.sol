@@ -22,6 +22,10 @@ import {ILicenseGate} from "./lib/ILicenseGate.sol";
 ///         aprobada con doble control y con motivo, recalculada aquí desde los
 ///         argumentos reales y consumida (patrón de `consumeAuthorization`).
 ///      Ningún número de licencia vive en el código: entra por la orden.
+///      Implementa `ILicenseGate`: es la compuerta que reciben el motor de
+///      reservas y los demás módulos. El id del módulo es el que preguntan (por
+///      ejemplo `CUSTODIA_CLASE_G` para la custodia interna y los canales físicos),
+///      y gobierno lo declara con ese mismo id.
 contract SFSPLicenseRegistry is SFSPAccessControl, ILicenseGate {
     // Apéndice A · Licencia. El orden es parte del contrato: no se reordena.
     enum LicenseState { EN_TRAMITE, OTORGADA, VIGENTE, SUSPENDIDA, VENCIDA, REVOCADA }

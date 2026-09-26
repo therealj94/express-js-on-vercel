@@ -7,6 +7,7 @@ pragma solidity 0.8.28;
 ///         compuerta, los módulos que dependen de una licencia reciben la
 ///         dirección cero y quedan CERRADOS: ausencia de registro = licencia no
 ///         otorgada, nunca «abierto por defecto».
+///         Quien la consulta trata una compuerta que revierte como «no otorgada».
 interface ILicenseGate {
     /// @return true sólo si TODAS las licencias de las que depende `moduleId`
     ///         están otorgadas y vigentes a la fecha del bloque y el módulo está

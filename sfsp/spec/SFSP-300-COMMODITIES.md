@@ -103,13 +103,18 @@ Esto **sustituye** el `null` de «mínimo de redención física» en §5 por los
 
 **Estado del código (26-sep-2026, plan v0.3 fase 2 punto 5, sin desplegar):** `contracts/src/SFSPReserveEngine.sol` implementa:
 - lotes con los estados del Apéndice A del v0.3;
-- atestaciones que vencen solas;
-- capacidad de colocación y cobertura contra lo colocado;
-- no doble cómputo por certificado;
-- límite de concentración por custodio (`BLOCKED_DECISION` hasta que la Junta lo fije);
+- atestaciones que vencen solas, con una vigencia máxima que fija la Junta (`BLOCKED_DECISION` hasta entonces; parámetro de metodología, D04);
+- capacidad de colocación y cobertura contra lo colocado: una colocación nunca supera lo cubierto menos lo ya colocado, aunque haya compromisos en lotes vencidos;
+- lo colocado se **mide** (suministro menos saldo real de la tesorería), no se deduce: una unidad que llegue a un tercero sin `RELEASE` cuenta igual como obligación;
+- no doble cómputo por certificado y por token (un token, un activo; la configuración sólo se corrige mientras el activo está vacío);
+- límite de concentración por custodio (`BLOCKED_DECISION` hasta que la Junta lo fije), medido sobre el metal **vigente del mismo activo** (nunca se suman onzas de oro y de plata) y comprobado también al colocar;
+- la Junta suspende o rehabilita un custodio y rota la llave de su atestador; suspendido, sus lotes dejan de contar en el acto;
+- tope de 64 lotes **activos** por activo: un lote LIBERADO sale de la lista y deja su hueco;
 - redención con quema anterior o simultánea a la entrega.
 
-La liquidación en ORIGEN pasa por `SFSPOracleRegistry`: AUKA por denominación y AGKA por el ratio oro/plata. Los canales físicos quedan cerrados sin licencia Clase G (interfaz `ILicenseGate`). Pruebas: `contracts/test/24-reservas-commodities.js`.
+La liquidación en ORIGEN pasa por `SFSPOracleRegistry`: AUKA por denominación y AGKA por el ratio oro/plata. Los canales físicos quedan cerrados sin licencia Clase G (interfaz `ILicenseGate`). La compuerta real es `SFSPLicenseRegistry`, que implementa `ILicenseGate`: gobierno declara el módulo con el id `CUSTODIA_CLASE_G` y sus licencias; una compuerta que revierte cuenta como licencia no otorgada. Pruebas: `contracts/test/24-reservas-commodities.js`.
+
+El motor se compila por la vía IR (sólo ese archivo, ver `contracts/compilador/LEEME.md`) para caber en el límite de EIP-170.
 
 El motor aplica el v0.3: acuña a tesorería sin metal y coloca solo con capacidad. Es lo mismo que dice esta serie desde el draft-0.5, donde la enmienda SFSP-410 quedó revertida para commodities. `SFSPIssuanceController` todavía aplica R1 a `COM`, y hay que alinearlo.
 
