@@ -56,10 +56,10 @@ def plano(t0, t1, img, grado, c0, c1=None, mano=0.0, **kw): P.append(dict(t0=t0,
 REGLA = (1090, 880, 1250)          # el encuadre de la balanza: idéntico en el bloque 2 y en el 15
 # 1 · lo que perdí
 plano(0.0, 0.5, 'C3', 'gris', (1090, 935, 560), vibra=1)
-plano(0.5, 2.3, 'C1', 'natural', (1123, 430, 1000), (1123, 420, 950))
-plano(2.3, 4.1, 'C2', 'natural', (1007, 330, 900), (1007, 322, 860))
-plano(4.1, 5.9, 'C4', 'natural', (1057, 470, 1000), (1057, 460, 950))
-plano(5.9, 8.0, 'C5', 'natural', (800, 370, 1000), (800, 360, 950))
+plano(0.5, 2.55, 'C1', 'natural', (1123, 430, 1000), (1123, 420, 950))
+plano(2.55, 4.05, 'C2', 'natural', (1007, 330, 900), (1007, 322, 860))
+plano(4.05, 5.45, 'C4', 'natural', (1057, 470, 1000), (1057, 460, 950))
+plano(5.45, 8.0, 'C5', 'natural', (800, 370, 1000), (800, 360, 950))
 # 2 · la regla
 plano(8.0, 10.2, 'C3', 'gris', REGLA, (1090, 890, 1180), mano=6)
 plano(10.2, 11.2, 'C3', 'gris', (1090, 940, 620), mano=5)
@@ -80,16 +80,16 @@ for i, c in enumerate(cortes4):
     plano(28.0 + i*0.41, 28.0 + (i+1)*0.41, 'S04', 'frio', c, mano=16)
 plano(28.0 + 8*0.41, 32.0, 'S04', 'frio', (1150, 690, 880), (1165, 690, 860), mano=4)
 # 8 · nos faltó peso — el cuadro se abre sobre el minero
-plano(37.6, 40.0, 'S05', 'calido', (1097, 390, 900), (1097, 370, 800))
+plano(38.9, 41.5, 'S05', 'calido', (1097, 390, 900), (1097, 370, 800))
 # 9 · el foso
-plano(40.0, 43.0, 'S05', 'calido', (980, 600, 1800), (990, 590, 1650))
-plano(43.0, 46.0, 'S05', 'calido', (420, 560, 900), (450, 560, 820))
+plano(41.5, 43.8, 'S05', 'calido', (980, 600, 1800), (990, 590, 1650))
+plano(43.8, 46.0, 'S05', 'calido', (420, 560, 900), (450, 560, 820))
 plano(46.0, 51.0, 'S10', 'calido', (960, 610, 900), (969, 595, 700))
 # 10 · siete máquinas (procedural)
-P.append(dict(t0=51.0, t1=55.0, proc='maquinas'))
+P.append(dict(t0=51.0, t1=55.6, proc='maquinas'))
 # 11 · nadie se aprueba solo: la misma cara de la era dos, ahora entera y cálida
-plano(55.0, 59.0, 'S02', 'calido', (870, 560, 1150), (870, 560, 1000))
-P.append(dict(t0=59.0, t1=66.0, proc='cumplimiento'))
+plano(55.6, 59.4, 'S02', 'calido', (870, 560, 1150), (870, 560, 1000))
+P.append(dict(t0=59.4, t1=66.0, proc='cumplimiento'))
 # 12 · los oficios: seis planos de 1,4 s exactos, misma talla
 relevo = [('C2', (1007, 340, 900)), ('S09', (1050, 420, 950)), ('C1', (1123, 430, 1000)), ('C4', (1057, 470, 1000)), ('S06', (900, 560, 1200)), ('S05', (1097, 400, 950))]
 for j, (k, c) in enumerate(relevo):
@@ -127,9 +127,9 @@ def ventana(t):
     elif t < 32.0: s = 0.58 - 0.24*ease((t-28.0)/0.25)
     elif t < 32.25:
         k = ease((t-32.0)/0.25); w = W*0.34; h = max(1, H*0.34*(1-k)); return ((W-w)/2, (H-h)/2, w, h)
-    elif t < 37.6: return None
-    elif t < 37.6 + 0.5:   # doce fotogramas: de una línea a pantalla completa
-        k = ease((t-37.6)/0.5); h = max(1, H*k); return (0, (H-h)/2, W, h)
+    elif t < 38.9: return None
+    elif t < 38.9 + 0.5:   # doce fotogramas: de una línea a pantalla completa
+        k = ease((t-38.9)/0.5); h = max(1, H*k); return (0, (H-h)/2, W, h)
     elif 115.0 <= t: return None
     else: s = 1.0
     return ((W - W*s)/2, (H - H*s)/2, W*s, H*s)
@@ -153,7 +153,7 @@ LINEAS = [  # (t0, t1, texto, traducción, estilo)
  (49.4, 50.8, 'Eso es un ORIGEN.', None, 'sub'),
  (51.4, 53.0, 'São sete máquinas nossas.', 'Son siete máquinas nuestras.', 'sub'),
  (53.1, 54.9, 'ORIGEN se move sem taxa de rede.', 'ORIGEN se mueve sin comisión de red.', 'sub'),
- (55.6, 57.1, 'No la doy en cada app.', None, 'sub'),
+ (55.6, 57.1, 'No la doy en cada aplicación.', None, 'sub'),
  (57.3, 58.8, 'Me revisó una persona.', None, 'sub'),
  (63.8, 65.8, 'Nadie se aprueba solo.', None, 'sub'),
  (66.1, 67.3, 'Reparto.', None, 'sub'), (67.5, 68.7, 'Vendo verdura.', None, 'sub'),
@@ -164,6 +164,14 @@ LINEAS = [  # (t0, t1, texto, traducción, estilo)
  (106.4, 109.2, 'No te pedimos que creas.', None, 'sub'),
  (112.05, 114.8, 'Pésalo.', None, 'remate'),
 ]
+import json as _json, re as _re
+_DV = _json.load(open(AQUI / 'voz' / 'duraciones.json'))
+_COL = {int(k): float(v) for k, v in _re.findall(r"(\d+): \(([\d.]+), '", open(AQUI / 'audio.py', encoding='utf-8').read().split('COLOCACION = {')[1].split('}')[0])}
+_ORDEN = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 30, 31, 32, 33]
+LINEAS = [(_COL[n] - 0.05, _COL[n] + _DV[str(n)] + (0.5 if n in (12, 30, 33) else 0.3), tx, tr, es) for n, (a_, b_, tx, tr, es) in zip(_ORDEN, LINEAS)]
+_EXT = {12: 38.9, 30: 79.8, 33: 114.8}
+LINEAS = [(a_, _EXT.get(n, b_), tx, tr, es) for n, (a_, b_, tx, tr, es) in zip(_ORDEN, LINEAS)]
+LINEAS = [(a_, min(b_, LINEAS[i+1][0] - 0.02) if i + 1 < len(LINEAS) else b_, tx, tr, es) for i, (a_, b_, tx, tr, es) in enumerate(LINEAS)]
 def capa_texto(texto, trad, estilo):
     """Capa RGBA de 1920×1080 con sombra suave; se cachea por línea."""
     capa = Image.new('RGBA', (W, H), (0, 0, 0, 0))
@@ -263,7 +271,7 @@ def cumplimiento(t):
     d.text(((rech[0]+rech[2])/2, 625), 'RECHAZAR', font=f, fill=(255, 235, 235) if pulsado_r else (225, 120, 120), anchor='mm')
     d.text(((apro[0]+apro[2])/2, 625), 'APROBAR', font=f, fill=(235, 255, 245) if pulsado_a else (130, 210, 160), anchor='mm')
     if not siguiente:   # el cursor llega a RECHAZAR
-        k = ease((t - 59.0) / 0.9); cx = 1500 + ((rech[0]+rech[2])/2 - 1500) * k; cy = 900 + (630 - 900) * k
+        k = ease((t - 59.4) / 0.55); cx = 1500 + ((rech[0]+rech[2])/2 - 1500) * k; cy = 900 + (630 - 900) * k
     else:
         k = ease((t - 62.4) / 1.0); cx = (rech[0]+rech[2])/2 + ((apro[0]+apro[2])/2 - (rech[0]+rech[2])/2) * k; cy = 630
     d.polygon([(cx, cy), (cx, cy + 34), (cx + 9, cy + 25), (cx + 16, cy + 40), (cx + 22, cy + 37), (cx + 15, cy + 22), (cx + 27, cy + 22)], fill=(245, 245, 245), outline=(0, 0, 0))

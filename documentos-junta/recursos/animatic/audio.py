@@ -82,7 +82,8 @@ n = int((32.0 - 3.0) * SR); tt = t(n)
 nivel = np.interp(tt + 3.0, [3, 8, 13, 17, 23, 28, 32], [0, .08, .12, .17, .23, .30, .34])
 cama = (np.sin(2*np.pi*41*tt) + 0.6*np.sin(2*np.pi*55*tt + 1) + 0.25*np.sin(2*np.pi*82*tt)) * nivel
 cama += lp(ruido(n), 120) * nivel * 0.5
-poner(3.0, cama * 0.9)
+dron = (signal.sawtooth(2*np.pi*36.71*tt) + 0.5*signal.sawtooth(2*np.pi*55.0*tt + 1)) * nivel
+poner(3.0, cama * 1.25 + lp(dron, 180) * 0.35)
 # el relé: clic en el uno de cada compás de diez segundos
 for s in (6.0, 16.0, 26.0):
     poner(s, rele(), 0.8, 0.25)
@@ -157,7 +158,17 @@ def chelo(f, dur, g, ataque=1.5):
     x = lp(x, 900); e = np.minimum(1, tt/ataque)
     return x * e * g
 poner(39.5, chelo(73.42, 72.46, 0.10), bus='mus')                   # re grave, una sola nota larga
-poner(66.0, chelo(110.0, 45.96, 0.06, 2.0), pan=0.2, bus='mus')     # la quinta entra con los oficios
+poner(39.5, chelo(146.83, 72.46, 0.05, 3.0), pan=-0.3, bus='mus')     # la octava, a la izquierda
+poner(66.0, chelo(110.0, 45.96, 0.08, 2.0), pan=0.2, bus='mus')     # la quinta entra con los oficios
+def ostinato(a, b, bpm, notas, g):
+    paso = 60.0 / bpm / 2; s_ = a; k = 0
+    while s_ < b - 1e-6:
+        f = notas[k % len(notas)]; n = int(paso * 0.9 * SR); tt_ = t(n)
+        x = signal.sawtooth(2*np.pi*f*tt_) * np.exp(-tt_ / 0.11); x = lp(x, 1400)
+        poner(s_, x, g * (1.0 if k % 4 == 0 else 0.7), 0.35 if k % 2 else -0.35, 'mus'); s_ += paso; k += 1
+ostinato(51.0, 66.0, 84, [146.83, 220.0, 174.61, 220.0], 0.05)
+ostinato(66.0, 105.0, 96, [146.83, 220.0, 174.61, 220.0, 146.83, 233.08, 174.61, 220.0], 0.065)
+ostinato(105.0, 111.95, 96, [146.83, 220.0, 185.0, 220.0], 0.085)
 def coro(fs, dur, g, ataque=2.0):
     n = int(dur*SR); tt = t(n); x = np.zeros(n)
     for f in fs:
@@ -165,10 +176,12 @@ def coro(fs, dur, g, ataque=2.0):
             x += signal.sawtooth(2*np.pi*(f + d)*tt + rng.uniform(0, 6))
     y = bp(x, 650, 950) * 1.0 + bp(x, 1050, 1300) * 0.6 + bp(x, 2600, 3100) * 0.25   # vocal «a»
     return y * np.minimum(1, tt/ataque) * g
-poner(74.4, coro([146.83, 174.61, 220.0], 30.6, 0.05), bus='mus')           # re menor
-poner(105.0, coro([146.83, 185.0, 220.0], 6.96, 0.06, 1.0), bus='mus')      # re mayor antes del golpe
+poner(55.0, coro([146.83, 220.0], 19.4, 0.025, 4.0), bus='mus')             # el coro entra de lejos
+poner(74.4, coro([146.83, 174.61, 220.0, 293.66], 30.6, 0.07), bus='mus')   # re menor, abierto
+poner(105.0, coro([146.83, 185.0, 220.0, 293.66], 6.96, 0.10, 1.0), bus='mus')      # re mayor antes del golpe
+n_ = int(6.96*SR); poner(105.0, np.sin(2*np.pi*36.71*t(n_)) * np.linspace(0.02, 0.16, n_), bus='mus')   # el grave que sube
 
-def bombo():  return golpe(95, 50, .7, .22, .25, (300, 1500))
+def bombo():  x = golpe(95, 50, .9, .26, .25, (300, 1500)); x += golpe(55, 38, .9, .3, 0) * 0.8; return x
 def cajon():  x = golpe(120, 75, .3, .07, .6, (1500, 5000)); return x
 def surdo():  return golpe(75, 55, .9, .3, .2, (200, 900))
 def tambora(): return golpe(190, 140, .25, .06, .7, (1200, 6000))
@@ -224,6 +237,45 @@ poner(105.0, pad_ruido(7.0, 250, 3500, .025, .3, 0))
 for k in range(6):
     poner(108.6 + k*0.55, metal([(2400 + 50*k, .5), (3300, .3)], .25, .04, .07))     # la cadena se tensa
 
+
+# ---------- VOCES PROVISIONALES (ver voces.py) ----------
+VOZ_L = np.zeros(N); VOZ_R = np.zeros(N)
+import json as _json
+DV = _json.load(open(pathlib.Path(__file__).parent / 'voz' / 'duraciones.json'))
+COLOCACION = {  # línea: (segundo, sala, ganancia, paneo)
+ 1: (0.6, 'seca', 1.0, -0.1), 2: (2.65, 'seca', 1.0, 0.1), 3: (4.15, 'seca', 1.0, -0.05), 4: (5.6, 'seca', 1.0, 0.05),
+ 5: (8.4, 'mercado', 1.0, 0), 6: (11.5, 'mercado', 0.6, 0),
+ 7: (13.5, 'cuarto', 0.95, -0.1), 8: (17.4, 'cuarto', 0.95, 0), 9: (20.6, 'cuarto', 0.95, 0), 10: (23.7, 'cuarto', 0.95, 0.1),
+ 11: (28.6, 'seca', 0.95, -0.2), 111: (28.74, 'seca', 0.6, 0.3),
+ 12: (35.9, 'cueva', 1.15, 0), 13: (39.5, 'cueva_chica', 1.05, 0),
+ 14: (46.3, 'cuarto', 1.0, 0), 15: (49.2, 'cuarto', 1.0, 0),
+ 16: (51.3, 'cuarto', 0.95, 0), 17: (53.25, 'cuarto', 0.95, 0),
+ 18: (55.8, 'seca', 1.0, 0), 19: (57.6, 'seca', 1.0, 0), 20: (63.8, 'cuarto', 1.0, 0),
+ 21: (66.15, 'seca', 1.0, 0), 22: (67.55, 'seca', 1.0, 0), 23: (68.95, 'seca', 1.0, 0), 24: (70.35, 'seca', 1.0, 0),
+ 25: (71.75, 'seca', 1.0, 0), 26: (73.15, 'seca', 1.0, 0),
+ 30: (74.6, 'sala', 1.2, 0),
+ 31: (100.3, 'cuarto', 1.3, 0),
+ 32: (109.6, 'seca', 1.0, 0), 33: (112.05, 'seca', 1.2, 0),
+}
+SALAS = {'seca': (0.35, 0.10, 5000), 'mercado': (0.8, 0.18, 4500), 'cuarto': (0.6, 0.16, 4500), 'cueva': (3.2, 0.42, 3000),
+         'cueva_chica': (1.6, 0.28, 3200), 'sala': (2.2, 0.32, 4000)}
+for n, (seg, sala, g, pan) in COLOCACION.items():
+    x = np.load(pathlib.Path(__file__).parent / 'voz' / f'{n:03d}.npy')
+    x = hp(x, 90)
+    dur_, mez, bri = SALAS[sala]; x = reverb(x, dur_, mez, bri)
+    i = int(seg * SR); x = x[: N - i] * g * 2.3
+    gl, gr = np.cos((pan + 1) * np.pi / 4), np.sin((pan + 1) * np.pi / 4)
+    VOZ_L[i:i+len(x)] += x * gl; VOZ_R[i:i+len(x)] += x * gr
+# la música se agacha debajo de la voz (unos 7 dB) y vuelve despacio
+env = np.abs(VOZ_L) + np.abs(VOZ_R)
+b_, a_ = signal.butter(1, 6 / (SR/2)); env = signal.filtfilt(b_, a_, env)
+env = np.clip(env / (np.percentile(env[env > 1e-4], 90) + 1e-9), 0, 1)
+agache = 1 - 0.6 * env
+MUS_L *= agache; MUS_R *= agache
+# los efectos también se agachan cuando alguien habla, salvo el golpe final
+agache_fx = 1 - 0.5 * env; agache_fx[int(111.9*SR):] = 1.0
+L *= agache_fx; R *= agache_fx
+
 # el bus de música se corta un fotograma antes del impacto
 corte = int((112.0 - 1/24) * SR)
 MUS_L[corte:] = 0; MUS_R[corte:] = 0
@@ -241,7 +293,7 @@ for k in range(2):   # el fiel oscila dos veces y se clava
 poner(117.6, metal([(2600, .5), (3700, .3), (5100, .2)], .8, .15, .09))   # último tintineo sobre el negro
 
 # ---------- mezcla ----------
-Lf = L + MUS_L * 1.0; Rf = R + MUS_R * 1.0
+Lf = L + MUS_L * 1.25 + VOZ_L; Rf = R + MUS_R * 1.25 + VOZ_R
 Lf[int(119.95*SR):] = 0; Rf[int(119.95*SR):] = 0           # corte a seco, sin cola
 pico_max = max(np.abs(Lf).max(), np.abs(Rf).max())
 Lf = np.tanh(Lf / pico_max * 1.25) / np.tanh(1.25) * 0.89; Rf = np.tanh(Rf / pico_max * 1.25) / np.tanh(1.25) * 0.89
