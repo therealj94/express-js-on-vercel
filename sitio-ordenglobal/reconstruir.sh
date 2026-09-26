@@ -6,14 +6,17 @@ set -e
 AQUI=$(cd "$(dirname "$0")" && pwd)
 RAIZ=${1:-/tmp/ogsite}
 B=https://www.ordenglobal.org
-mkdir -p "$RAIZ/assets/fuentes" "$RAIZ/audio" "$RAIZ/en" "$RAIZ/historia"
+mkdir -p "$RAIZ/assets/fuentes" "$RAIZ/assets/medios" "$RAIZ/audio" "$RAIZ/en" "$RAIZ/historia"
 cd "$RAIZ"
 
 # El código, del repositorio.
 cp "$AQUI/index.html" "$AQUI/404.html" "$AQUI/robots.txt" "$AQUI/sitemap.xml" .
 cp "$AQUI/en/index.html" en/
 cp "$AQUI/historia/index.html" historia/
-cp "$AQUI/assets/"*.css "$AQUI/assets/"*.js assets/
+cp "$AQUI/assets/"*.css "$AQUI/assets/"*.js "$AQUI/assets/"*.svg assets/
+# Los dos videos de la campaña y sus pósteres viven en el repositorio: la
+# portada nueva los estrena y producción todavía no los tiene.
+cp "$AQUI/assets/medios/"* assets/medios/
 cp "$AQUI/assets/fuentes/"*.woff2 assets/fuentes/
 
 # Los medios, de producción.

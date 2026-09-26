@@ -1,21 +1,48 @@
 # El sitio de ordenglobal.org
 
-Tres páginas sin dependencias ni compilación, servidas tal cual:
-
 | Ruta | Archivo | Qué es |
 |---|---|---|
-| `/` | `index.html` | La portada: el ecosistema como constelación, las cifras vivas, ORIGEN, la cadena |
+| `/` | `index.html` | La portada (septiembre de 2026) |
 | `/en/` | `en/index.html` | La misma portada en inglés |
 | `/historia/` | `historia/index.html` | "El viaje del valor": un solo desplazamiento con sonido |
 | cualquier otra | `404.html` | La página que no existe (Amplify la sirve con estado 404) |
 
-El código compartido vive en `assets/`: `portada.css` (con las `@font-face` al
-principio), `portada.js` (menú, cielo, cifras vivas y **quién dibuja el
-ecosistema**), `sistema.js` (los mundos, en WebGL), `constelacion.js` (el
-dibujo plano de repliegue) y `galaxia.js` (el cielo de fondo, el mismo archivo
-que la puerta de Veta Wallet). Las cuatro letras de la casa están en
-`assets/fuentes/` como woff2 variables, servidas desde aquí y no desde Google:
-dos dominios menos que resolver antes del titular, y la CSP cerrada a `self`.
+## La portada
+
+**No se edita `index.html` a mano.** Sale de la plantilla y de los datos:
+
+```sh
+python3 construir-portada.py      # escribe index.html y en/index.html
+sh reconstruir.sh /tmp/ogsite     # arma la copia completa
+python3 desplegar.py /tmp/ogsite  # la sube a Amplify
+```
+
+- `portada.plantilla.html` y `portada.plantilla.en.html`: el texto de cada idioma.
+- `construir-portada.py`: las siete casas, las cinco pruebas y el disco de las
+  55 porciones, en los dos idiomas. Una casa nueva es una fila más ahí.
+- `assets/og26.css` y `assets/og26.js`: todo el estilo y todo el código.
+  El JS hace cuatro cosas: el logo que se ordena solo (sobre el trazado de
+  `assets/og-vector.js`), el precio del ORIGEN y el último bloque en vivo,
+  copiar los códigos, y el botón propio de los videos.
+- `assets/medios/`: el tráiler de ORIGEN y el spot de Ordenex con sus pósteres.
+
+Tres reglas que conviene no romper:
+
+- **Un solo ornamento**: la regla de seis líneas, y una sola vez, justo donde
+  la página pasa del desorden al orden. Entre secciones hay aire, no adornos.
+- **Nada inventado se mueve.** Si el precio o la cadena no contestan, el dato
+  no aparece (arriba) o queda su guion (en la fórmula). Nunca un número de
+  relleno.
+- **SFSP se presenta como lo que es**: en construcción y sin nada encendido.
+  El día que se encienda, se cambia el sello y se añade su fila de prueba.
+
+Los planetas en WebGL de la portada anterior siguen en `assets/` y en el
+historial de git (`sistema.js`, `constelacion.js`, `portada.css`, `portada.js`),
+por si se quieren recuperar; la portada nueva no los carga.
+
+---
+
+## La portada anterior (hasta septiembre de 2026)
 
 ## El ecosistema: siete mundos y una estrella
 

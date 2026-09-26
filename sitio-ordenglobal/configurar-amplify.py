@@ -23,7 +23,8 @@ headers=[{"pattern":"**","headers":seguridad}]
 for pat in ["/seq/**","/audio/**","/assets/fuentes/**","/assets/*.png","/assets/*.jpg","/favicon.ico"]:
     headers.append({"pattern":pat,"headers":cache(INMUTABLE)})
 # CSS y JS llevan ?v= en el HTML: una semana en el navegador, y el cambio de versión los renueva.
-for pat in ["/assets/*.css","/assets/*.js"]:
+# Los videos, sus pósteres y el logo en SVG no llevan versión: una semana.
+for pat in ["/assets/*.css","/assets/*.js","/assets/*.svg","/assets/medios/**"]:
     headers.append({"pattern":pat,"headers":cache("public, max-age=604800")})
 rules=[{"source":"/<*>","target":"/404.html","status":"404"}]
 r=am.update_app(appId=A, customHeaders=json.dumps({"customHeaders": headers}), customRules=rules)
