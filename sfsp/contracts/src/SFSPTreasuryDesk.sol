@@ -11,7 +11,9 @@ import {SFSPOracleRegistry} from "./SFSPOracleRegistry.sol";
 /// @notice Cotiza compra y venta de ORIGEN contra el oráculo único (precio del
 ///         gramin = oro por onza / 1.710,6925), con los cinco controles:
 ///           1. Diferencial ≥ el del mercado: si el diferencial observado del
-///              mercado supera al de la tesorería, deja de cotizar.
+///              mercado supera al de la tesorería, deja de cotizar. Y si la
+///              observación del mercado falta o es más vieja que su edad
+///              máxima, también: sin saber el mercado no se sabe si hay arbitraje.
 ///           2. Frescura con tolerancia: si la lectura del oráculo no está OK
 ///              (vieja o fuera de tolerancia) o es más vieja que la tolerancia
 ///              propia de la tesorería, la cotización se suspende sola.
@@ -41,6 +43,7 @@ contract SFSPTreasuryDesk is SFSPAccessControl, SFSPReentrancyGuard {
         uint16 buySpreadBps; // la tesorería compra por debajo de la referencia
         uint16 sellSpreadBps; // la tesorería vende por encima de la referencia
         uint64 maxOracleAge; // tolerancia de frescura propia (≤ la del oráculo)
+        uint64 maxMarketSpreadAge; // edad máxima de la observación del diferencial de mercado
         uint64 window; // ventana de límites e inventario, en segundos
         uint256 perIdentityLimit; // ORIGEN (wei) por identidad y ventana, sumando ambos lados
         uint256 sellInventory; // ORIGEN que puede vender por ventana
@@ -78,6 +81,7 @@ contract SFSPTreasuryDesk is SFSPAccessControl, SFSPReentrancyGuard {
         uint16 buySpreadBps,
         uint16 sellSpreadBps,
         uint64 maxOracleAge,
+        uint64 maxMarketSpreadAge,
         uint64 window,
         uint256 perIdentityLimit,
         uint256 sellInventory,
@@ -131,14 +135,25 @@ contract SFSPTreasuryDesk is SFSPAccessControl, SFSPReentrancyGuard {
         if (p.buySpreadBps < marketSpreadBps || p.sellSpreadBps < marketSpreadBps) {
             revert InvalidParams("SPREAD_BELOW_MARKET");
         }
-        if (p.maxOracleAge == 0 || p.window == 0 || p.perIdentityLimit == 0) revert InvalidParams("ZERO");
+        if (p.maxOracleAge == 0 || p.maxMarketSpreadAge == 0 || p.window == 0 || p.perIdentityLimit == 0) {
+            revert InvalidParams("ZERO");
+        }
         if (p.identityPurpose == bytes32(0)) revert InvalidParams("PURPOSE");
         uint32 v = _params.version + 1;
         _params = p;
         _params.set = true;
         _params.version = v;
         emit DeskParametersSet(
-            assetId, v, p.buySpreadBps, p.sellSpreadBps, p.maxOracleAge, p.window, p.perIdentityLimit, p.sellInventory, p.buyInventory
+            assetId,
+            v,
+            p.buySpreadBps,
+            p.sellSpreadBps,
+            p.maxOracleAge,
+            p.maxMarketSpreadAge,
+            p.window,
+            p.perIdentityLimit,
+            p.sellInventory,
+            p.buyInventory
         );
     }
 
@@ -207,7 +222,13 @@ contract SFSPTreasuryDesk is SFSPAccessControl, SFSPReentrancyGuard {
             q.reason = SFSPCodes.R_PAUSED;
             return q;
         }
-        // Control 1.
+        // Control 1: sin una observación del mercado reciente no se puede comparar.
+        uint64 seen = marketSpreadObservedAt;
+        if (seen == 0 || block.timestamp > uint256(seen) + p.maxMarketSpreadAge) {
+            q.code = SFSPCodes.UNKNOWN_SOURCE;
+            q.reason = bytes32("MARKET_SPREAD_STALE");
+            return q;
+        }
         uint16 spread = side == SIDE_DESK_SELLS ? p.sellSpreadBps : p.buySpreadBps;
         if (spread < marketSpreadBps) {
             q.code = SFSPCodes.DENY_POLICY;

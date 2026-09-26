@@ -2596,7 +2596,7 @@
     {
       "nombre": "DeskParametersSet",
       "emisor": "TreasuryDesk",
-      "significado": "SFSP v0.3 §10.4 · la Junta fija diferenciales de compra y venta, tolerancia de frescura, ventana, limite por identidad e inventario por lado. Sin ellos la tesoreria no cotiza (BLOCKED_DECISION).",
+      "significado": "SFSP v0.3 §10.4 · la Junta fija diferenciales de compra y venta, tolerancia de frescura del oraculo, edad maxima de la observacion del diferencial de mercado, ventana, limite por identidad e inventario por lado. Sin ellos la tesoreria no cotiza (BLOCKED_DECISION).",
       "atribucion": "POR_ACTIVO",
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": true,
@@ -2635,6 +2635,14 @@
         },
         {
           "nombre": "maxOracleAge",
+          "tipo": "uint64",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "maxMarketSpreadAge",
           "tipo": "uint64",
           "indexado": false,
           "obligatorio": true,

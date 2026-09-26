@@ -18,6 +18,7 @@ const PARAMS = {
   buySpreadBps: 100,
   sellSpreadBps: 150,
   maxOracleAge: 120,
+  maxMarketSpreadAge: 86400, // un día, de PRUEBA
   window: 600,
   perIdentityLimit: String(10n * E18),
   sellInventory: String(15n * E18),
@@ -26,7 +27,8 @@ const PARAMS = {
   version: 0,
 };
 
-async function montar() {
+async function montar(o) {
+  const op = o || {};
   const f = await F.deployAll();
   const acc = f.acc;
   const x = { f, board: f.board, pubA: acc[9], pubB: acc[10], fondeador: acc[16], alice2: acc[17] };
@@ -39,6 +41,8 @@ async function montar() {
   for (const rol of ["TECH_OPS", "ISSUER"]) await x.d.send("grantRole", [await x.d.call(rol), x.board], x.board);
   await x.d.send("grantRole", [await x.d.call("TECH_OPS"), x.fondeador], x.board);
   await x.d.sendValue("fund", [], x.fondeador, 20n * E18);
+  // Control 1: la operación observa el diferencial del mercado (valor de PRUEBA).
+  if (!op.sinMercado) await x.d.send("observeMarketSpread", [50], x.board);
 
   // Identidad: compromisos por propósito con claim vigente. La segunda dirección
   // de Alice queda atada al MISMO compromiso (misma persona, otra billetera).
@@ -85,6 +89,34 @@ describe("SFSP v0.3 §10.4 · tesorería cotizadora (SFSPTreasuryDesk)", functio
     assert.equal(Number(q.code), F.CODE.DENY_POLICY);
     assert.equal(q.reason, H.b32("SPREAD_BELOW_MARKET"));
     await H.expectRevert(vender(x, f.alice, x.cAlice, E18, "p1"), "QuoteUnavailable(1");
+  });
+
+  it("control 1 · adversario (mercado sin observar o viejo): sin una observación reciente del mercado no cotiza", async function () {
+    await x.d.send("setParameters", [PARAMS], x.board);
+    assert.equal(Number((await x.d.call("quote", [SELLS, String(E18)])).code), F.CODE.ALLOW);
+    // Nadie vuelve a observar el mercado: pasada su edad máxima la tesorería deja de cotizar
+    // (el mercado pudo ensancharse por encima de su diferencial sin que nadie lo registre).
+    await H.increaseTime(PARAMS.maxMarketSpreadAge + 1);
+    await C.publicarAmbos(x.o, x.pubA, x.pubB, C.ORO, C.PLATA);
+    let q = await x.d.call("quote", [SELLS, String(E18)]);
+    assert.equal(Number(q.code), F.CODE.UNKNOWN_SOURCE);
+    assert.equal(q.reason, H.b32("MARKET_SPREAD_STALE"));
+    assert.equal(q.priceUsd.toString(), "0");
+    await H.expectRevert(vender(x, f.alice, x.cAlice, E18, "p1", q.oracleRound), "QuoteUnavailable(8");
+    await H.expectRevert(x.d.sendValue("buy", [x.cAlice, q.oracleRound, "0"], f.alice, E18), "QuoteUnavailable(8");
+    await x.d.send("observeMarketSpread", [50], x.board);
+    q = await x.d.call("quote", [SELLS, String(E18)]);
+    assert.equal(Number(q.code), F.CODE.ALLOW);
+    // Sin edad máxima de la observación, los parámetros no se aceptan.
+    await H.expectRevert(x.d.send("setParameters", [Object.assign({}, PARAMS, { maxMarketSpreadAge: 0 })], x.board), H.b32("ZERO"));
+  });
+
+  it("control 1 · negativo: una tesorería que nunca observó el mercado no cotiza", async function () {
+    const y = await montar({ sinMercado: true });
+    await y.d.send("setParameters", [PARAMS], y.board);
+    const q = await y.d.call("quote", [BUYS, String(E18)]);
+    assert.equal(Number(q.code), F.CODE.UNKNOWN_SOURCE);
+    assert.equal(q.reason, H.b32("MARKET_SPREAD_STALE"));
   });
 
   it("control 5 · asimetría: compra y venta con diferenciales distintos contra la misma lectura", async function () {
