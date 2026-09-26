@@ -17,6 +17,8 @@
  *
  * CRYPTOMATE_API_KEY en el entorno. Solo LEE: no mueve nada.
  */
+import { createRequire } from 'node:module';
+
 const l4 = process.argv[2];
 if (!l4) { console.log('Uso: node bin/comprobar-recarga.mjs <ultimos4 de la tarjeta>'); process.exit(1); }
 
@@ -52,32 +54,37 @@ console.log(`  ${(tarjeta.meta || {}).email || 'sin correo'}\n`);
 const saldo = await cm(`/cards/virtual-cards/${tarjeta.id}/virtual-balances`);
 const usd = Number(saldo.available_credit);
 
-/* El precio: el mismo que usa el backend, para que la cifra en ORIGEN de aquí
-   sea la MISMA que la persona ve en su app. Si diera otra, esta comprobación
-   crearía la duda que viene a resolver. */
-let precio = Number(process.env.OG_ORIGEN_USD);
-let deDonde = 'OG_ORIGEN_USD';
-if (!(precio > 0)) {
-  if ((process.env.OG_PRECIO_MODO || 'fijo').toLowerCase() === 'oro') {
-    /* Se le pregunta a ORDENEX y no a CoinGecko, y no es por comodidad: la
-       casa YA publica su precio de ORIGEN en /mercados, y es el que ve
-       cualquiera que mire el mercado. Preguntarle al feed de fuera por
-       separado abre la puerta a que esta comprobación diga un número y la
-       pantalla de la persona diga otro — que es exactamente la duda que esto
-       viene a cerrar. Además CoinGecko limita las consultas y hoy no contestó. */
-    try {
-      const m = await fetch('https://ordenex-api-ba4b27b8b51a.herokuapp.com/mercados',
-        { signal: AbortSignal.timeout(20000) }).then((x) => x.json());
-      const ref = (m || []).map((x) => x?.referencia?.origenUsd).find((v) => v > 0);
-      if (ref > 0) { precio = ref; deDonde = 'Ordenex (/mercados)'; }
-    } catch { /* se dirá abajo */ }
-    if (!(precio > 0)) {
-      const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd')
-        .then((x) => x.json()).catch(() => null);
-      const oro = r?.['pax-gold']?.usd;
-      if (oro > 0) { precio = oro / 31.1035 / 55; deDonde = 'CoinGecko (oro)'; }
-    }
-  } else { precio = 0.01; deDonde = 'fijo'; }
+/* El precio: el mismo que usa el backend (lib/origenPrice.js), para que la
+   cifra en ORIGEN de aquí sea la MISMA que la persona ve en su app. Si diera
+   otra, esta comprobación crearía la duda que viene a resolver.
+
+   Las mismas reglas que el backend: por omisión el gramin (gramo de oro / 55,
+   decisión del 26-sep-2026); `fijo` sólo si se pide con OG_PRECIO_MODO=fijo
+   y OG_ORIGEN_USD, y fuera de ese modo OG_ORIGEN_USD no cuenta. Los 0,01 USD
+   NO son el precio de ORIGEN: son la comisión por transacción. */
+let precio = null;
+let deDonde = null;
+if ((process.env.OG_PRECIO_MODO || 'oro').toLowerCase() === 'fijo') {
+  const fijado = Number(process.env.OG_ORIGEN_USD);
+  if (fijado > 0) { precio = fijado; deDonde = 'fijo'; }
+} else {
+  /* Primero a ORDENEX, y no es por comodidad: la casa YA publica su precio de
+     ORIGEN en /mercados, sacado del oráculo único, y es el que ve cualquiera
+     que mire el mercado. Además CoinGecko limita las consultas. */
+  try {
+    const m = await fetch('https://ordenex-api-ba4b27b8b51a.herokuapp.com/mercados',
+      { signal: AbortSignal.timeout(20000) }).then((x) => x.json());
+    const ref = (m || []).map((x) => x?.referencia?.origenUsd).find((v) => v > 0);
+    if (ref > 0) { precio = ref; deDonde = 'Ordenex (/mercados)'; }
+  } catch { /* se pregunta al oráculo */ }
+  if (!(precio > 0)) {
+    /* Si Ordenex no contesta, el oráculo único (lib/oraculo.js, SFSP v0.3
+       §10.5): el MISMO archivo que usa el backend, con CoinGecko de principal
+       y gold-api de respaldo. Nunca una lectura propia de un feed. */
+    const oraculo = createRequire(import.meta.url)('../lib/oraculo.js');
+    const gramin = await oraculo.precioOrigenUsd();
+    if (gramin > 0) { precio = gramin; deDonde = 'oráculo (lib/oraculo.js)'; }
+  }
 }
 if (!(precio > 0)) {
   /* Sin precio NO se inventa uno: se dice. Una cifra en ORIGEN sacada de un
