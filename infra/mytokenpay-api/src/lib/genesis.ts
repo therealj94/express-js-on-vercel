@@ -23,6 +23,20 @@ const CLAVE = (process.env.GENESIS_API_KEY || '').trim()
 
 export const genesisConfigurado = (): boolean => Boolean(CLAVE)
 
+/**
+ * ¿Ata MyTokenPay cuentas a Genesis ID? APAGADO salvo `MTP_VINCULO_GENESIS=1`.
+ *
+ * El vínculo es la llave del SSO: con él, Genesis emite pases a nombre de la
+ * persona. Hasta el SFSP v0.3 nunca funcionó desde aquí (no se mandaba el
+ * correo y Genesis lo rechazaba), y al arreglarlo quedó a la vista que
+ * MyTokenPay no verifica correos ni puede revocar sesiones: una cuenta
+ * registrada con el correo de otra persona se ataba a su GID. Se enciende
+ * cuando existan las dos cosas. Apagado no le quita nada a nadie: desde que
+ * Genesis exige el correo, aquí no se creaba ninguno (los vínculos que ya
+ * existen no se tocan). Se lee en cada llamada.
+ */
+export const vinculoGenesisActivo = (): boolean => process.env.MTP_VINCULO_GENESIS === '1'
+
 export interface RespuestaGenesis {
   ok: boolean
   estado: number

@@ -15,12 +15,23 @@
 // Cada ruta exige la sesión propia de MyTokenPay y actúa SOLO sobre la
 // identidad del usuario autenticado: el correo sale de la sesión, jamás del
 // cuerpo de la petición. Ninguna ruta aprueba nada.
+//
+// PERO EL CORREO DE UNA CUENTA DE MYTOKENPAY NO PRUEBA NADA. El alta no lo
+// verifica y «olvidé mi contraseña» devuelve el enlace en la respuesta, así
+// que cualquiera tiene una cuenta con el correo de otra persona. Por eso el
+// puente se monta con `exigirGidDeSesion`: una identidad que ya tiene GID solo
+// la toca una sesión que lo PROBÓ, es decir, que nació de un pase de Genesis
+// ID en `/api/auth/sso` y lleva ese GID firmado en el token (lib/auth.ts). Y
+// el vínculo (`/vincular`) va APAGADO salvo MTP_VINCULO_GENESIS=1
+// (lib/genesis.ts).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { NextFunction, Request, Response } from 'express'
 import { requireAuth } from '../middleware/auth.js'
 import { db } from '../lib/db.js'
-import { routerGenesis } from '../lib/genesisPuente.js'
+import { leerToken } from '../lib/auth.js'
+import { vinculoGenesisActivo } from '../lib/genesis.js'
+import { mismoGid, routerGenesis } from '../lib/genesisPuente.js'
 import type { User } from '../types.js'
 
 declare global {
@@ -32,6 +43,17 @@ declare global {
   }
 }
 
+/**
+ * El GID que ESTA sesión probó: el que lleva firmado su token, y solo si sigue
+ * siendo el de la cuenta. Un token de contraseña no lleva ninguno.
+ */
+function gidProbado(req: Request, usuario: User): string | null {
+  const cabecera = req.headers.authorization
+  const token = cabecera?.startsWith('Bearer ') ? cabecera.slice(7) : ''
+  const gid = token ? leerToken(token)?.gid ?? null : null
+  return gid && mismoGid(gid, usuario.gid) ? gid : null
+}
+
 /** Carga el usuario completo de la sesión; el puente necesita su id y su correo. */
 async function cargarUsuario(req: Request, res: Response, next: NextFunction) {
   try {
@@ -40,7 +62,10 @@ async function cargarUsuario(req: Request, res: Response, next: NextFunction) {
       res.status(401).json({ error: 'No autorizado' })
       return
     }
-    req.usuario = usuario
+    // `gid` NO es el de la cuenta guardada sino el que la sesión probó: una
+    // cuenta de contraseña con el GID de alguien (adoptada por correo en
+    // `/auth/sso`) no prueba que quien entró con esa contraseña sea esa persona.
+    req.usuario = { ...usuario, gid: gidProbado(req, usuario) }
     next()
   } catch (err) {
     next(err)
@@ -51,7 +76,9 @@ async function cargarUsuario(req: Request, res: Response, next: NextFunction) {
  * La sesión de MyTokenPay, en la forma que pide el puente: un solo middleware.
  *
  * MyTokenPay no guarda dirección de billetera en la sesión, así que el puente
- * la toma del cuerpo de `/vincular` —y sin ella no vincula (SFSP v0.3 §11)—.
+ * la toma del cuerpo de `/vincular` —y sin ella no vincula (SFSP v0.3 §11)—,
+ * pero solo si Genesis ID ya la conoce del vínculo de Veta Wallet de la misma
+ * identidad: una dirección tecleada no prueba de quién es.
  */
 function exigirSesion(req: Request, res: Response, next: NextFunction) {
   void requireAuth(req, res, (err?: unknown) => {
@@ -63,4 +90,8 @@ function exigirSesion(req: Request, res: Response, next: NextFunction) {
   })
 }
 
-export const genesisRouter = routerGenesis({ exigirSesion })
+export const genesisRouter = routerGenesis({
+  exigirSesion,
+  exigirGidDeSesion: true,
+  vinculoActivo: vinculoGenesisActivo,
+})

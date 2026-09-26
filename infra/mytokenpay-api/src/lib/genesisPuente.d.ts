@@ -20,6 +20,19 @@ export declare const CODIGOS_VINCULO: Readonly<{
   DIRECCION_INVALIDA: 'VINCULO_DIRECCION_INVALIDA'
 }>
 
+/** Los códigos propios del puente (Genesis ID no los conoce). */
+export declare const CODIGOS_PUENTE: Readonly<{
+  CUENTA_NO_ATADA: 'CUENTA_NO_ATADA'
+  VINCULO_APAGADO: 'VINCULO_APAGADO'
+  DIRECCION_NO_PROBADA: 'VINCULO_DIRECCION_NO_PROBADA'
+}>
+
+/** Apps cuyo vínculo trae una dirección custodiada por la app (no tecleada por el cliente). */
+export declare const APPS_CUSTODIAS: readonly string[]
+
+/** ¿Son el mismo GID? (sin distinguir mayúsculas ni espacios; vacío nunca coincide) */
+export declare function mismoGid(a: unknown, b: unknown): boolean
+
 /** Keccak-256 de un texto, en hexadecimal (sin 0x). */
 export declare function keccak256Hex(texto: string): string
 
@@ -29,5 +42,16 @@ export declare function normalizarDireccion(valor: unknown): string | null
 /**
  * El router `/genesis/*`. `exigirSesion` tiene que dejar en `req.usuario` al
  * menos `{ id, email }`, y `address` si la app conoce la billetera del usuario.
+ *
+ * `exigirGidDeSesion`: la sesión de la app no prueba el correo, así que una
+ * identidad que ya tiene GID solo la toca una sesión con `req.usuario.gid`
+ * igual a ese GID (probado con un pase de Genesis ID).
+ *
+ * `vinculoActivo`: si `/vincular` puede atar cuentas; se pregunta en cada
+ * petición. Por omisión, sí.
  */
-export declare function routerGenesis(opciones: { exigirSesion: RequestHandler }): Router
+export declare function routerGenesis(opciones: {
+  exigirSesion: RequestHandler
+  exigirGidDeSesion?: boolean
+  vinculoActivo?: () => boolean
+}): Router
