@@ -142,6 +142,13 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         uint64 validUntil
     );
     event DbnxApprovalRevoked(bytes32 indexed docHash, address indexed by, bytes32 reasonCode);
+    /// @notice El documento DBNX `docHash` respaldó la acuñación `operationId`.
+    /// @dev Apéndice B: el paso de «sin usar» a «usada» es una transición y
+    ///      tiene evento. La conciliación casa este `operationId` con el de
+    ///      `MintExecuted` sin decodificar calldata.
+    event DbnxApprovalUsed(
+        bytes32 indexed docHash, bytes32 indexed assetId, uint256 amount, bytes32 indexed operationId
+    );
 
     error DbnxApprovalRequired();
     error DbnxApprovalUnknown(bytes32 docHash);
@@ -285,11 +292,18 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
     ///      documento DBNX registrado, firmado por quien TODAVÍA tiene el rol,
     ///      no revocado, sin usar, vigente, del mismo activo y por la cantidad
     ///      EXACTA. Si algo falla, revierte; si todo cuadra, se gasta.
+    ///      v0.3 §5.2 · la separación DBNX/emisor se comprueba AQUÍ, al usar, y
+    ///      no sólo al registrar: si no, quien registró la aprobación podía
+    ///      recibir ISSUER después (o perderlo, registrar y recuperarlo) y
+    ///      acuñar con su propia firma. Ni el firmante puede ejecutar, ni
+    ///      puede tener ISSUER, ni el ejecutor puede tener DBNX.
     function _useDbnxApproval(bytes32 docHash, bytes32 assetId, uint256 amount, bytes32 operationId) internal {
         if (docHash == bytes32(0)) revert DbnxApprovalRequired();
         DbnxApproval storage a = _dbnxApproval[docHash];
         if (a.signer == address(0)) revert DbnxApprovalUnknown(docHash);
         if (!hasRole(DBNX, a.signer)) revert DbnxApprovalSignerNotDbnx(a.signer);
+        if (a.signer == msg.sender || hasRole(ISSUER, a.signer)) revert DbnxSeparationOfDuties(a.signer);
+        if (hasRole(DBNX, msg.sender)) revert DbnxSeparationOfDuties(msg.sender);
         if (a.revoked) revert DbnxApprovalRevokedErr(docHash);
         if (a.usedBy != bytes32(0)) revert DbnxApprovalAlreadyUsed(docHash, a.usedBy);
         if (block.timestamp < a.validFrom || block.timestamp >= a.validUntil) {
@@ -298,6 +312,7 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         if (a.assetId != assetId) revert DbnxApprovalAssetMismatch(a.assetId, assetId);
         if (a.amount != amount) revert DbnxApprovalAmountMismatch(a.amount, amount);
         a.usedBy = operationId;
+        emit DbnxApprovalUsed(docHash, assetId, amount, operationId);
     }
 
     // ------------------------------------------------------------- reservas concurrentes

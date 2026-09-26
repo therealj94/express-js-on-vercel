@@ -49,11 +49,13 @@ const DEL_410 = ['InternalAccountFlagged', 'MintBudgetSet', 'MintBudgetRevoked',
 // SFSP v0.3 fase 2 · 4, 5 y 6: oraculo unico, motor de reservas y tesoreria cotizadora.
 const DEL_FASE2 = ['OracleParametersSet', 'OracleParametersCleared', 'OraclePricePublished', 'CommodityAssetConfigured', 'CustodianRegistered', 'LicenseGateSet', 'ConcentrationLimitsSet', 'RedemptionChannelSet', 'MetalLotRegistered', 'MetalLotStateChanged', 'LotAuditVerified', 'UnitsPlaced', 'OrigenSettlementFunded', 'DeskParametersSet', 'DeskParametersCleared', 'MarketSpreadObserved', 'DeskFunded', 'DeskTradeExecuted'];
 // SFSP v0.3 fase 2 (puntos 1-3) · eventos nuevos, todos con contrato.
-const DEL_V03 = ['LicenseRegistered', 'PlacementBasisSet', 'ExposureParamsSet', 'DbnxApprovalRecorded', 'DbnxApprovalRevoked'];
+const DEL_V03 = ['LicenseRegistered', 'PlacementBasisSet', 'ExposureParamsSet', 'DbnxApprovalRecorded', 'DbnxApprovalRevoked',
+  // Revision 26-sep (contratos-licencias): consumo de la aprobacion DBNX.
+  'DbnxApprovalUsed'];
 // Del v0.2, los que la fase 2 del v0.3 ya emite desde un contrato.
 const V02_CON_CONTRATO = ['PassportUpdated', 'ExposureLimitRecorded', 'AcquirerDeclarationRecorded', 'LicenseStatusChanged', 'ModuleAvailabilityChanged', 'CountryStatusChanged', 'CoveragePublished', 'NetworkPermissionChanged'];
 
-test('los quince eventos del §3, los catorce del v0.2, los seis de SFSP-160, los nueve de SFSP-410 y los cinco del v0.3 estan en la fuente unica, con su emisor', () => {
+test('los quince eventos del §3, los catorce del v0.2, los seis de SFSP-160, los nueve de SFSP-410 y los del v0.3 estan en la fuente unica, con su emisor', () => {
   const nombres = espec.eventos.map((e) => e.nombre);
   const todos = [...DEL_TRES, ...DEL_V02, ...DEL_160, ...DEL_410, ...DEL_FASE2, ...DEL_V03];
   for (const n of todos) assert.ok(nombres.includes(n), 'falta ' + n);

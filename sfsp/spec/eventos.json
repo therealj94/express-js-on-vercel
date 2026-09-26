@@ -11,7 +11,8 @@
     "draft-0.4: se anaden los eventos del Apendice B del borrador SFSP v0.2 que faltaban, todos sin contrato todavia (implementadoEnContratos: false). La correspondencia con el Apendice B esta en spec/ESTADOS-Y-EVENTOS.md.",
     "draft-0.5: SFSP-410 (politica de suministro: circulante = usuarios). Se anaden los eventos del cupo de emision, de las cuentas internas y de la boveda nativa de ORIGEN.",
     "draft-0.6: SFSP v0.3 fase 2 (puntos 1-3). Tienen contrato LicenseStatusChanged y ModuleAvailabilityChanged (SFSPLicenseRegistry), CountryStatusChanged, ExposureLimitRecorded y AcquirerDeclarationRecorded (SFSPEligibilityEngine; esta ultima cambia de emisor: la declaracion del adquirente se registra donde se exige, en el motor) y PassportUpdated (SFSPAssetRegistry). Se anaden LicenseRegistered, PlacementBasisSet, ExposureParamsSet, DbnxApprovalRecorded y DbnxApprovalRevoked.",
-    "SFSP-150 (26-sep-2026): NetworkPermissionChanged pasa a implementado (SFSPNetworkPermissions, la lista que consulta el filtro de red de Besu)."
+    "SFSP-150 (26-sep-2026): NetworkPermissionChanged pasa a implementado (SFSPNetworkPermissions, la lista que consulta el filtro de red de Besu).",
+    "Revision 26-sep (contratos-licencias): se anade DbnxApprovalUsed (IssuanceController): el consumo de la aprobacion DBNX tiene evento y casa con MintExecuted por operationId."
   ],
   "version": "draft-0.6",
   "reglas": [
@@ -3061,6 +3062,48 @@
           "nombre": "reasonCode",
           "tipo": "bytes32",
           "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "DbnxApprovalUsed",
+      "emisor": "IssuanceController",
+      "significado": "El documento de aprobacion DBNX docHash respaldo la acunacion operationId (SFSP v0.3 §5; Apendice B: el paso de sin usar a usada tiene evento). La conciliacion casa operationId con el de MintExecuted. NO es emision: la creacion de unidades la cuenta SOLO MintExecuted.",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        {
+          "nombre": "docHash",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "amount",
+          "tipo": "uint256",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": true
+        },
+        {
+          "nombre": "operationId",
+          "tipo": "bytes32",
+          "indexado": true,
           "obligatorio": true,
           "atribuyeActivo": false,
           "esCantidad": false

@@ -236,7 +236,7 @@ describe("SFSP v0.3 §5 · verificación previa a la acuñación (aprobación DB
     });
     const d = OA.digestDe(p);
     await OA.aprobar(f, d, H.b32("MINT"));
-    return await f.issuance.send("mint", [sobre.auth, sobre.sigs, OA.tupla(p), d], f.board);
+    return await f.issuance.send("mint", [sobre.auth, sobre.sigs, OA.tupla(p), d], x.from || f.board);
   }
 
   async function saldo() {
@@ -317,6 +317,40 @@ describe("SFSP v0.3 §5 · verificación previa a la acuñación (aprobación DB
     await f.issuance.send("revokeRole", [await f.issuance.call("DBNX"), f.dbnx], f.board);
     await H.expectRevert(acunarCon(100, doc), "DbnxApprovalSignerNotDbnx");
     assert.equal(await saldo(), 0n);
+  });
+
+  it("positivo: DbnxApprovalUsed casa el documento con la operación de MintExecuted, sin decodificar calldata", async function () {
+    const doc = await aprobacionDbnx(f, F.ASSET_NEW, 400, "casar");
+    const rc = await acunarCon(400, doc);
+    const usado = V.logsDe(f.issuance, rc).find((e) => e.name === "DbnxApprovalUsed");
+    const emision = V.logsDe(f.issuance, rc).find((e) => e.name === "MintExecuted");
+    assert.ok(usado, "el consumo de la aprobación tiene evento");
+    assert.equal(usado.args.docHash, doc);
+    assert.equal(usado.args.assetId, F.ASSET_NEW);
+    assert.equal(BigInt(usado.args.amount.toString()), 400n);
+    assert.equal(usado.args.operationId, emision.args.operationId);
+    assert.equal((await f.issuance.call("dbnxApprovalOf", [doc])).usedBy, usado.args.operationId);
+  });
+
+  it("negativo (v0.3 §5.2): la separación DBNX/emisor se comprueba al USAR, no sólo al registrar", async function () {
+    const ISSUER = await f.issuance.call("ISSUER");
+    const DBNX = await f.issuance.call("DBNX");
+    // DBNX registra y DESPUÉS recibe ISSUER: no ejecuta con su propia firma…
+    const doc = await aprobacionDbnx(f, F.ASSET_NEW, 100, "propia");
+    await f.issuance.send("grantRole", [ISSUER, f.dbnx], f.board);
+    await H.expectRevert(acunarCon(100, doc, { from: f.dbnx }), "DbnxSeparationOfDuties");
+    // …ni otro emisor puede usar una aprobación de un firmante que ahora es emisor.
+    await H.expectRevert(acunarCon(100, doc), "DbnxSeparationOfDuties");
+    assert.equal(await saldo(), 0n);
+    // Sin el rol ISSUER, la misma aprobación vuelve a valer para el emisor.
+    await f.issuance.send("revokeRole", [ISSUER, f.dbnx], f.board);
+    await acunarCon(100, doc);
+    assert.equal(await saldo(), 100n);
+    // Y un ejecutor que tiene también el rol DBNX no ejecuta, aunque firme otro.
+    const doc2 = await aprobacionDbnx(f, F.ASSET_NEW, 50, "ejecutor_dbnx");
+    await f.issuance.send("grantRole", [DBNX, f.board], f.board);
+    await H.expectRevert(acunarCon(50, doc2), "DbnxSeparationOfDuties");
+    assert.equal(await saldo(), 100n);
   });
 
   it("negativo: registrar dos veces el mismo documento, o con cantidad cero, se rechaza", async function () {

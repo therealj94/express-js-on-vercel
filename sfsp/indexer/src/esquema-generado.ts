@@ -36,7 +36,7 @@ export interface EventoGenerado {
   readonly camposDeAtribucion: readonly string[];
 }
 
-/** Los 67 eventos del §3, por su nombre canonico. */
+/** Los 68 eventos del §3, por su nombre canonico. */
 export type NombreEvento =
   | "AssetRegistered"
   | "PolicyUpdated"
@@ -104,7 +104,8 @@ export type NombreEvento =
   | "PlacementBasisSet"
   | "ExposureParamsSet"
   | "DbnxApprovalRecorded"
-  | "DbnxApprovalRevoked";
+  | "DbnxApprovalRevoked"
+  | "DbnxApprovalUsed";
 
 /** Esquema completo por evento. Generado: editar el JSON, no esto. */
 export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
@@ -1275,6 +1276,23 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
     cantidades: [],
     camposDeAtribucion: [],
   },
+  DbnxApprovalUsed: {
+    nombre: "DbnxApprovalUsed",
+    emisor: "IssuanceController",
+    significado: "El documento de aprobacion DBNX docHash respaldo la acunacion operationId (SFSP v0.3 §5; Apendice B: el paso de sin usar a usada tiene evento). La conciliacion casa operationId con el de MintExecuted. NO es emision: la creacion de unidades la cuenta SOLO MintExecuted.",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "docHash", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "amount", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "operationId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["docHash", "assetId", "amount", "operationId"],
+    cantidades: ["amount"],
+    camposDeAtribucion: ["assetId"],
+  },
 };
 
 /** Nombre de evento -> emisor declarado. Compatibilidad con el §3. */
@@ -1346,6 +1364,7 @@ export const EVENTOS_CONOCIDOS: Readonly<Record<NombreEvento, string>> = {
   ExposureParamsSet: "EligibilityEngine",
   DbnxApprovalRecorded: "IssuanceController",
   DbnxApprovalRevoked: "IssuanceController",
+  DbnxApprovalUsed: "IssuanceController",
 };
 
 /**
