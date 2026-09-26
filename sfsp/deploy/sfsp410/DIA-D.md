@@ -33,7 +33,9 @@ distinta de quien ejecuta.
 - [ ] Acceso de sólo lectura a Veta, Ordenex y Genesis ID (variables en la configuración del entorno, nunca en el chat). 26-sep:
   - **Genesis ID**: no se leyó. Sacar sus credenciales de Render no está autorizado para el agente. Hace falta una variable de sólo lectura propia.
   - **Veta**: el proxy del entorno inyecta una credencial AWS en `vetawallet.com` y responde 502. Hay que corregir esa regla.
-- [x] Resolver las posiciones de ONDK sin dirección: **139/139 claves resueltas** con el respaldo de la 8532 en S3 (`migracion-410/censo-ondk-5550.mjs`, bloque 273.383). Queda un **residuo de 804,5 ONDK** cuya clave no está en ninguna fuente disponible (movimientos de la 8532 posteriores a la foto del 10-ago). Candidatos: Veta y Genesis ID.
+- [x] Resolver las posiciones de ONDK sin dirección: **139/139 claves resueltas** (`migracion-410/censo-ondk-5550.mjs`).
+  - Saldos de la 5550 a la fecha, bloque 273.468. De la 8532 sólo se usan las direcciones, como diccionario, nunca los saldos.
+  - Queda un **residuo de 804,5 ONDK** en claves del génesis sin titular identificado. Ninguna de las 78 direcciones con actividad en la 5550 lo tiene. Candidatos: Veta y Genesis ID.
 - [x] Padrón de ONDK y lote de 1 ORIGEN **sin firmar**, armados fuera del repositorio y simulados en hardhat.
   - Lote: 92 envíos, 91,80 ORIGEN, máx. 1 ORIGEN por operación.
   - Ninguno es «firme»: falta la hoja de aceptación y D25.

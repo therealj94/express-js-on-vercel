@@ -57,7 +57,12 @@ node censo-ondk-5550.mjs
 
   Sin la hoja, además, ningún envío del lote es «firme».
 
-**Resultado en el bloque 273.383** (datos fuera del repositorio):
+**Resultado en el bloque 273.468 de la 5550** (26-sep, 15:18 UTC; datos fuera del repositorio):
+
+Los **saldos son los de la 5550 a la fecha**, sin usar ningún saldo de la 8532.
+El respaldo de la 8532 sirve sólo como diccionario de direcciones: dice a quién
+pertenece cada clave. No dice cuánto tiene. Toda la actividad propia de la 5550
+también está cubierta: 95 transacciones y 42 eventos, 78 direcciones.
 
 | | |
 |---|---|
@@ -66,13 +71,12 @@ node censo-ondk-5550.mjs
 | Tenedores con saldo | 134: 121 usuarios, 3 en revisión, 9 internas (propuesta D25), 1 contrato |
 | `totalSupply` | 555.000.000 ONDK |
 | Suma con dirección | 554.999.195,5 |
-| **Residuo sin clave conocida** | **804,5 ONDK** |
+| **Residuo sin titular identificado** | **804,5 ONDK** |
 
-El residuo tiene una explicación. En la 8532, entre la foto del 10-ago y el corte,
-cuatro billeteras movieron ONDK sin dejar evento en la 5550. El destino de 804,5
-ONDK no aparece en ninguna fuente disponible. Puede estar en Veta o Genesis ID. En
-la 5550 no se puede enumerar el almacenamiento: Bonsai no sirve `debug_storageRangeAt`.
-No entra en `S0` ni en el lote.
+El residuo es saldo que la 5550 guarda en claves de su génesis que ninguna fuente
+disponible resuelve. Ninguna de las 78 direcciones con actividad en la 5550 lo
+tiene. En la 5550 no se puede enumerar el almacenamiento: Bonsai no sirve
+`debug_storageRangeAt`. No entra en `S0` ni en el lote. Candidatos: Veta y Genesis ID.
 
 ## Reconstruir
 
