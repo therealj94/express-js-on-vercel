@@ -1,0 +1,745 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<title>Orden Global · Cómo queda el sistema (SFSP)</title>
+<link rel="stylesheet" href="recursos/estilo.css">
+<style>
+  td.bien   { color: #1F6B4F; }
+  td.riesgo { color: #8C2F26; }
+  td b      { color: var(--verde); }
+  .marco    { margin: 16px 0; page-break-inside: avoid; }
+  .marco img { width: 100%; display: block; border: 1px solid var(--linea); }
+  .tira     { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
+  .tira figure { flex: 1 1 calc(50% - 8px); margin: 0; page-break-inside: avoid; }
+  .tira img { width: 100%; display: block; border: 1px solid var(--linea); }
+  .tira figcaption { margin-top: 4px; font-size: 8pt; }
+  .vo { font-family: "JetBrains Mono", Consolas, monospace; font-size: 9pt; background: #FAF7F0;
+        border-left: 3px solid var(--oro); padding: 8px 10px; margin: 10px 0; white-space: pre-wrap; }
+</style>
+</head><body>
+<section class="portada">
+  <div>
+    <div class="sello">
+      <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="24" cy="24" r="22" fill="none" stroke="#0A3436" stroke-width="1.6"/>
+        <circle cx="24" cy="24" r="17" fill="none" stroke="#C9A961" stroke-width="1"/>
+        <path d="M24 7 L24 41" stroke="#0A3436" stroke-width="1.6"/>
+        <path d="M12 15 Q24 24 36 15" fill="none" stroke="#C9A961" stroke-width="1.6"/>
+        <path d="M12 33 Q24 24 36 33" fill="none" stroke="#C9A961" stroke-width="1.6"/>
+        <circle cx="24" cy="24" r="3.4" fill="#C9A961"/>
+      </svg>
+      <div class="marca"><b>Orden Global</b><span>Revisión del sistema</span></div>
+    </div>
+  </div>
+  <div>
+    <div class="filete"></div>
+    <h1>Cómo queda el sistema</h1>
+    <p class="bajada">Revisión de todo lo construido —cadena, identidad, billetera, cobros, casa de cambio, rampa y asistente— leído en el código, no en el folleto, y ordenado como lo que es: un Sistema Financiero Social y Productivo.</p>
+  </div>
+  <div class="pie">
+    <b>Documento 8 · Junta Directiva</b><br>
+    26 de septiembre de 2026 · Auditoría sobre el código de los repositorios <i>express-js-on-vercel</i> y <i>ULTRON-APP</i><br>
+    Cada afirmación de estado en este documento se comprobó en el código. Lo que no se pudo comprobar se declara como no comprobado.
+  </div>
+</section>
+
+<h2>0 · Qué es este documento y cómo se hizo</h2>
+
+<p>El fundador pidió una revisión de <strong>todo el sistema de Orden Global con el SFSP</strong> y de
+<strong>cómo va a quedar</strong>. Eso es lo que hay aquí, y se hizo de una manera concreta: ocho auditores
+independientes leyeron el código de cada pieza —no los README, el código— y un noveno verificó cada
+afirmación buscando lo contrario: datos de demostración presentados como reales, integraciones enunciadas
+que no existen, promesas sin respaldo. Después se consolidó.</p>
+
+<div class="nota">
+  <b class="t">Sobre la sigla SFSP</b>
+  El nombre ya existe dentro del propio sistema y no hubo que inventarlo: el código de MyTokenPay se describe a
+  sí mismo como <i>directorio de comercios afiliados del Sistema Financiero Social</i>, su presentación nombra a
+  los tres miembros —<strong>Orden Global · AuCorp · DBNX</strong>—, la capa de comercio se rotula <i>Sistema
+  Financiero Social</i> y el sitio de Veta Wallet llama a ORIGEN <i>cripto nativa del Sistema Financiero Social
+  de Orden Global</i>. En el material del sitio de mayo de 2024 la misma idea aparece como <i>sistema financiero
+  social respaldado con proyectos mineros</i>. En este documento la sigla se lee
+  <strong>Sistema Financiero Social y Productivo</strong>: social porque la gente lo usa a diario en su moneda,
+  productivo porque el respaldo lo paga una operación minera real. Si en la junta la P significa otra cosa, es un
+  cambio de una línea y el resto del documento no se mueve. Lo que sí hay que resolver es el tercer miembro:
+  <strong>DBNX no está documentado en ninguna parte</strong>, y eso se trata en la sección 6.2.
+</div>
+
+<p>Tres advertencias de lectura. La primera: esto es una auditoría, no una presentación de ventas; cuando una
+pieza está a medias, aquí dice que está a medias. La segunda: el estado de cada pieza cambia con cada
+despliegue, así que el valor del documento está en el mapa y en los huecos, no en el semáforo del día. La
+tercera: las secciones 8 y 9 existen para que nadie prometa en público lo que el producto todavía no sostiene.</p>
+
+<h2>1 · Qué es Orden Global, en una página</h2>
+
+<p>Casi todo el mundo que explica esto empieza por el software, y empezar por ahí es lo que hace que suene a
+otra criptomoneda. El orden correcto es al revés: <strong>Orden Global empieza en un cerro de Danlí</strong>.
+Hay concesiones mineras propias —dos en Danlí, El Paraíso, y una en Choluteca—, hay metal que sale de ahí y se
+certifica, y hay una bóveda donde ese metal se queda quieto. Todo lo demás existe para que ese metal quieto
+pueda moverse en el bolsillo de una persona sin dejar de estar quieto.</p>
+
+<p>Para moverlo hace falta un registro de quién tiene qué. Ese registro es la <strong>cadena 5550</strong>, una
+red propia —Hyperledger Besu, consenso QBFT, siete validadores, bloques de unos diez segundos— donde la unidad
+se llama <strong>ORIGEN</strong> y vale <strong>un cincuentaicincoavo de gramo de oro</strong>. No es un token
+invitado en la red de otro: es la moneda nativa de una red que la empresa opera, y por eso mover ORIGEN no
+cuesta comisión de red. Sobre la misma cadena viven AUKA (una onza troy de oro), AGKA (una onza de plata) y
+ONDK, que es gobierno de la empresa, no dinero.</p>
+
+<p>Con el registro resuelto falta lo difícil: que una persona de carne y hueso pueda usarlo. Ahí entran
+<strong>Genesis ID</strong>, que verifica a la persona una sola vez y la deja verificada en todas las apps;
+<strong>Veta Wallet</strong>, donde guarda; <strong>MyTokenPay</strong>, para cobrar con un código;
+<strong>OrdenExchange</strong>, para cambiar a lempiras, quetzales, soles o pesos con el banco que ya usa; y
+<strong>AuCorp</strong>, la rampa entre el dinero de curso legal y el metal. <strong>ULTRON</strong> y
+<strong>AU-RA</strong> explican el sistema a la junta y al público.</p>
+
+<div class="cifras">
+  <div class="tarjeta"><div class="n">1/55 g</div><div class="et">de oro en bóveda es un ORIGEN</div></div>
+  <div class="tarjeta"><div class="n">5550</div><div class="et">cadena propia, comisión cero</div></div>
+  <div class="tarjeta"><div class="n">23</div><div class="et">países con moneda y bancos propios</div></div>
+  <div class="tarjeta"><div class="n">457</div><div class="et">bancos y entidades en el catálogo</div></div>
+</div>
+
+<figure>
+<svg viewBox="0 0 980 300" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="fl" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#9A7B2E"/></marker>
+    <linearGradient id="oro" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#C9A961"/><stop offset="1" stop-color="#0A3436"/></linearGradient>
+  </defs>
+  <rect x="0" y="0" width="980" height="300" fill="#FBF9F4"/>
+  <text x="18" y="26" font-size="10" letter-spacing="1.6" fill="#9A7B2E">LA PASADA ÚNICA — DEL METAL AL BOLSILLO</text>
+  <line x1="18" y1="36" x2="962" y2="36" stroke="#D9E0DE"/>
+
+  <g font-size="11.5">
+    <!-- fila 1: el metal -->
+    <g>
+      <rect x="18" y="58" width="128" height="62" rx="6" fill="#0A3436"/>
+      <text x="82" y="82" text-anchor="middle" fill="#F4EFE4" font-weight="700" font-size="12">Concesiones</text>
+      <text x="82" y="99" text-anchor="middle" fill="#C9A961" font-size="9.5">Danlí · Choluteca</text>
+      <text x="82" y="112" text-anchor="middle" fill="#9AA2B4" font-size="8.5">oro propio, no alquilado</text>
+    </g>
+    <line x1="146" y1="89" x2="186" y2="89" stroke="#9A7B2E" stroke-width="1.6" marker-end="url(#fl)"/>
+    <g>
+      <rect x="188" y="58" width="118" height="62" rx="6" fill="#135054"/>
+      <text x="247" y="82" text-anchor="middle" fill="#F4EFE4" font-weight="700" font-size="12">Bóveda</text>
+      <text x="247" y="99" text-anchor="middle" fill="#C9A961" font-size="9.5">metal certificado</text>
+      <text x="247" y="112" text-anchor="middle" fill="#9AA2B4" font-size="8.5">la barra antes que el saldo</text>
+    </g>
+    <line x1="306" y1="89" x2="346" y2="89" stroke="#9A7B2E" stroke-width="1.6" marker-end="url(#fl)"/>
+    <g>
+      <rect x="348" y="58" width="150" height="62" rx="6" fill="#0A3436" stroke="#C9A961" stroke-width="1.5"/>
+      <text x="423" y="80" text-anchor="middle" fill="#F5E4AB" font-weight="700" font-size="12">Cadena 5550</text>
+      <text x="423" y="96" text-anchor="middle" fill="#F4EFE4" font-size="9.5">Besu · QBFT · 7 validadores</text>
+      <text x="423" y="110" text-anchor="middle" fill="#74E6C8" font-size="8.5">bloque ~10 s · comisión cero</text>
+    </g>
+    <line x1="498" y1="89" x2="538" y2="89" stroke="#9A7B2E" stroke-width="1.6" marker-end="url(#fl)"/>
+    <!-- tokens -->
+    <g>
+      <rect x="540" y="46" width="200" height="86" rx="6" fill="#FFFFFF" stroke="#D9E0DE"/>
+      <text x="640" y="64" text-anchor="middle" font-size="9" letter-spacing="1.2" fill="#9A7B2E">LO QUE SE MUEVE</text>
+      <text x="556" y="82" font-size="11" fill="#16211F"><tspan font-weight="700" fill="#0A3436">ORIGEN</tspan>  1/55 de gramo de oro</text>
+      <text x="556" y="99" font-size="11" fill="#16211F"><tspan font-weight="700" fill="#0A3436">AUKA</tspan>  onza de oro · <tspan font-weight="700" fill="#0A3436">AGKA</tspan> onza de plata</text>
+      <text x="556" y="116" font-size="11" fill="#16211F"><tspan font-weight="700" fill="#0A3436">ONDK</tspan>  gobierno de la empresa</text>
+    </g>
+    <line x1="740" y1="89" x2="780" y2="89" stroke="#9A7B2E" stroke-width="1.6" marker-end="url(#fl)"/>
+    <g>
+      <rect x="782" y="58" width="180" height="62" rx="6" fill="#135054"/>
+      <text x="872" y="82" text-anchor="middle" fill="#F4EFE4" font-weight="700" font-size="12">AuCorp</text>
+      <text x="872" y="99" text-anchor="middle" fill="#C9A961" font-size="9.5">la rampa</text>
+      <text x="872" y="112" text-anchor="middle" fill="#9AA2B4" font-size="8.5">moneda ⇄ metal ⇄ token</text>
+    </g>
+
+    <!-- fila 2: las personas -->
+    <line x1="423" y1="120" x2="423" y2="156" stroke="#9A7B2E" stroke-width="1.6" marker-end="url(#fl)"/>
+    <rect x="18" y="158" width="944" height="86" rx="6" fill="#F4F7F6" stroke="#D9E0DE"/>
+    <text x="34" y="176" font-size="9" letter-spacing="1.2" fill="#9A7B2E">DONDE VIVE LA GENTE</text>
+    <g font-size="10.5" fill="#16211F">
+      <g><rect x="34" y="186" width="168" height="44" rx="5" fill="#fff" stroke="#D9E0DE"/>
+        <text x="118" y="204" text-anchor="middle" font-weight="700" fill="#0A3436">Genesis ID</text>
+        <text x="118" y="219" text-anchor="middle" font-size="9" fill="#5C6B68">una identidad, todas las apps</text></g>
+      <g><rect x="214" y="186" width="168" height="44" rx="5" fill="#fff" stroke="#D9E0DE"/>
+        <text x="298" y="204" text-anchor="middle" font-weight="700" fill="#0A3436">Veta Wallet</text>
+        <text x="298" y="219" text-anchor="middle" font-size="9" fill="#5C6B68">guardar y mandar</text></g>
+      <g><rect x="394" y="186" width="168" height="44" rx="5" fill="#fff" stroke="#D9E0DE"/>
+        <text x="478" y="204" text-anchor="middle" font-weight="700" fill="#0A3436">MyTokenPay</text>
+        <text x="478" y="219" text-anchor="middle" font-size="9" fill="#5C6B68">cobrar con un QR</text></g>
+      <g><rect x="574" y="186" width="188" height="44" rx="5" fill="#fff" stroke="#C9A961" stroke-width="1.4"/>
+        <text x="668" y="204" text-anchor="middle" font-weight="700" fill="#0A3436">OrdenExchange</text>
+        <text x="668" y="219" text-anchor="middle" font-size="9" fill="#5C6B68">cambiar en 23 países</text></g>
+      <g><rect x="774" y="186" width="188" height="44" rx="5" fill="#fff" stroke="#D9E0DE"/>
+        <text x="868" y="204" text-anchor="middle" font-weight="700" fill="#0A3436">ULTRON · AU-RA</text>
+        <text x="868" y="219" text-anchor="middle" font-size="9" fill="#5C6B68">asisten y explican</text></g>
+    </g>
+    <text x="490" y="266" text-anchor="middle" font-size="10" fill="#5C6B68" font-style="italic">El valor entra por la mina y sale por el teléfono de una persona, en su moneda y con su nombre verificado.</text>
+    <rect x="18" y="278" width="944" height="3" fill="url(#oro)"/>
+  </g>
+</svg>
+<figcaption>Figura 1 · La pasada única: cada eslabón existe porque el anterior lo respalda.</figcaption>
+</figure>
+
+
+<h2>2 · El SFSP: por qué las capas van en este orden</h2>
+
+<p>La diferencia entre Orden Global y las dos cosas con las que se lo suele confundir está en <strong>por qué
+capa se empieza</strong>. Un banco empieza por la circulación: abre cuentas, mueve dinero que otro respalda y
+promete que el sistema aguanta. Una criptomoneda empieza por el registro: escribe un libro de cuentas
+impecable de algo que no respalda nadie. Orden Global empieza por el respaldo —el metal— y sube desde ahí.
+Cada capa solo puede prometer lo que la de abajo sostiene.</p>
+
+<figure>
+<svg viewBox="0 0 900 430" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif">
+  <rect x="0" y="0" width="900" height="430" fill="#FBF9F4"/>
+  <text x="18" y="26" font-size="10" letter-spacing="1.6" fill="#9A7B2E">EL SFSP POR CAPAS — QUÉ SOSTIENE A QUÉ</text>
+  <line x1="18" y1="36" x2="882" y2="36" stroke="#D9E0DE"/>
+  <g font-size="11">
+    <!-- capas, de abajo (el metal) a arriba (la gente) -->
+    <g>
+      <rect x="60" y="356" width="780" height="46" rx="5" fill="#0A3436"/>
+      <text x="76" y="376" fill="#C9A961" font-size="9" letter-spacing="1.2">CAPA 1 · RESPALDO</text>
+      <text x="76" y="393" fill="#F4EFE4" font-size="11.5">Concesiones propias, metal certificado en bóveda. Lo único que no es promesa de nadie.</text>
+      <text x="826" y="386" text-anchor="end" fill="#74E6C8" font-size="9">oro · plata</text>
+    </g>
+    <g>
+      <rect x="60" y="302" width="780" height="46" rx="5" fill="#123F41"/>
+      <text x="76" y="322" fill="#C9A961" font-size="9" letter-spacing="1.2">CAPA 2 · REGISTRO</text>
+      <text x="76" y="339" fill="#F4EFE4" font-size="11.5">Cadena 5550 propia: quién tiene qué, sin pedirle permiso a otra red ni pagar su comisión.</text>
+      <text x="826" y="332" text-anchor="end" fill="#74E6C8" font-size="9">Besu · QBFT</text>
+    </g>
+    <g>
+      <rect x="60" y="248" width="780" height="46" rx="5" fill="#135054"/>
+      <text x="76" y="268" fill="#C9A961" font-size="9" letter-spacing="1.2">CAPA 3 · UNIDAD DE VALOR</text>
+      <text x="76" y="285" fill="#F4EFE4" font-size="11.5">ORIGEN, AUKA, AGKA: el gramo partido en pedazos que caben en un bolsillo.</text>
+      <text x="826" y="278" text-anchor="end" fill="#74E6C8" font-size="9">1 ORIGEN = 1/55 g</text>
+    </g>
+    <g>
+      <rect x="60" y="194" width="780" height="46" rx="5" fill="#1A6165"/>
+      <text x="76" y="214" fill="#C9A961" font-size="9" letter-spacing="1.2">CAPA 4 · IDENTIDAD</text>
+      <text x="76" y="231" fill="#F4EFE4" font-size="11.5">Genesis ID: una persona verificada una vez, válida en todo el ecosistema, con cumplimiento de verdad.</text>
+      <text x="826" y="224" text-anchor="end" fill="#74E6C8" font-size="9">KYC · AML</text>
+    </g>
+    <g>
+      <rect x="60" y="140" width="780" height="46" rx="5" fill="#227276"/>
+      <text x="76" y="160" fill="#C9A961" font-size="9" letter-spacing="1.2">CAPA 5 · CIRCULACIÓN</text>
+      <text x="76" y="177" fill="#F4EFE4" font-size="11.5">Veta Wallet guarda, MyTokenPay cobra, OrdenExchange cambia a la moneda del país, AuCorp entra y sale.</text>
+      <text x="826" y="170" text-anchor="end" fill="#74E6C8" font-size="9">23 países</text>
+    </g>
+    <g>
+      <rect x="60" y="86" width="780" height="46" rx="5" fill="#2B8489"/>
+      <text x="76" y="106" fill="#C9A961" font-size="9" letter-spacing="1.2">CAPA 6 · GOBIERNO Y ASISTENCIA</text>
+      <text x="76" y="123" fill="#F4EFE4" font-size="11.5">ONDK gobierna la empresa; ULTRON y AU-RA explican el sistema a la junta y a la gente.</text>
+      <text x="826" y="116" text-anchor="end" fill="#74E6C8" font-size="9">ONDK · ULTRON</text>
+    </g>
+    <!-- lo social y lo productivo, a los lados -->
+    <g>
+      <rect x="18" y="86" width="34" height="316" rx="5" fill="#C9A961" opacity=".18"/>
+      <text x="35" y="250" text-anchor="middle" font-size="9.5" fill="#9A7B2E" font-weight="700" transform="rotate(-90 35 250)">LO PRODUCTIVO · la mina paga el respaldo</text>
+      <rect x="848" y="86" width="34" height="316" rx="5" fill="#74E6C8" opacity=".18"/>
+      <text x="865" y="250" text-anchor="middle" font-size="9.5" fill="#135054" font-weight="700" transform="rotate(-90 865 250)">LO SOCIAL · la gente lo usa a diario</text>
+    </g>
+    <text x="450" y="64" text-anchor="middle" font-size="11" fill="#5C6B68" font-style="italic">Un banco empieza por la capa 5. Una criptomoneda empieza por la capa 2. Aquí se empieza por la 1.</text>
+  </g>
+</svg>
+<figcaption>Figura 2 · El Sistema Financiero Social y Productivo: seis capas, cada una sostenida por la de abajo.</figcaption>
+</figure>
+
+
+<p>Leído así, el sistema se explica sin jerga: <strong>la mina paga el respaldo, la bóveda lo guarda, la cadena
+lo anota, los tokens lo parten en pedazos usables, la identidad dice quién es cada quien, las apps lo hacen
+circular y el gobierno decide.</strong> Lo social y lo productivo no son adornos del nombre: lo productivo es
+que el respaldo sale de una operación que emplea gente y extrae metal, y lo social es que la unidad se diseñó
+para que quepa en una compra de mercado, no en una cartera de inversión.</p>
+
+<h2 class="salto">3 · Lo nuevo de este ciclo</h2>
+
+<p>Hasta este ciclo el ecosistema tenía respaldo, cadena, identidad y billetera, y le faltaba la pieza que
+convierte todo eso en algo que una persona pueda usar el martes por la mañana: <strong>el lugar donde su
+lempira se vuelve ORIGEN y su ORIGEN se vuelve lempira</strong>. Eso es lo que se construyó. Y al construirlo
+salieron a la luz cuatro cosas más que había que resolver de verdad.</p>
+
+<h3>3.1 · OrdenExchange dejó de ser una promesa</h3>
+
+<p>Es una casa de cambio entre personas, con la misma mecánica que cualquiera reconoce de Binance P2P, pero en
+la moneda y con los bancos de cada país. Alguien publica un anuncio —vendo ORIGEN a este precio, acepto estos
+bancos, montos de tanto a tanto—; otro lo toma; el activo del vendedor queda <strong>en custodia</strong> en el
+mismo instante; el comprador transfiere por su banco y sube el comprobante; el vendedor confirma y la custodia
+se libera. Si no se ponen de acuerdo, el chat de la orden y los comprobantes quedan guardados y un operador de
+la empresa resuelve leyendo lo que pasó, no lo que cada uno dice que pasó.</p>
+
+<p>Alrededor de ese flujo hay lo que hace falta para que funcione y no solo para que se vea: precio de
+referencia calculado desde el oro (onza en dólares, dividido entre 31,1035 gramos, dividido entre 55), anuncios
+a precio fijo o a porcentaje sobre la referencia, límites por anuncio, reputación por operaciones cumplidas,
+cronómetros de pago, bitácora de todo lo que toca el dinero, y la figura del <strong>agente de cambio</strong>
+para quien quiera hacer de esto un oficio. Todo eso está escrito, probado y con su panel de operadores.</p>
+
+<h3>3.2 · La verificación ya es la de Genesis ID, no una imitación</h3>
+
+<p>Esta es la diferencia más importante del ciclo y la más fácil de pasar por alto. OrdenExchange no verifica a
+nadie: <strong>le pregunta a Genesis ID</strong>, con su propia llave de aplicación, igual que Veta Wallet y
+MyTokenPay. La persona hace tres pasos —sus datos y su perfil de cumplimiento, la lectura del documento, el
+rostro— y lo que la app muestra es siempre lo que Genesis ID contestó, reflejado en la cuenta en el mismo
+momento.</p>
+
+<p>Hay cuatro decisiones dentro de eso que conviene que la junta conozca, porque son las que hacen que esto
+aguante una revisión externa:</p>
+
+<ul>
+  <li><strong>Nadie se aprueba solo.</strong> Ninguna ruta del código de la casa de cambio puede marcar a una
+  persona como verificada. Eso lo decide un operador de cumplimiento en el panel de Genesis ID, y solo después
+  de que las listas de sanciones estén cargadas.</li>
+  <li><strong>El correo tiene que estar confirmado antes de empezar.</strong> La identidad se busca en Genesis
+  por el correo de la cuenta; sin esa confirmación, quien se registrara con el correo de otra persona se
+  quedaría con su identidad.</li>
+  <li><strong>La cuenta la pone la sesión, nunca el formulario.</strong> Si el número de cuenta viniera en el
+  cuerpo de la petición, cualquiera podría atar su verificación a la cuenta de otro.</li>
+  <li><strong>Al usuario se le muestra su trámite, no su expediente.</strong> La respuesta se recorta antes de
+  salir: la persona ve en qué paso va y qué le falta; nunca el tamizado, ni el riesgo, ni las notas del
+  operador.</li>
+</ul>
+
+<h3>3.3 · Cumplimiento que no se cae si Genesis se cae</h3>
+
+<p>Cada movimiento que hay que reportar al monitoreo antilavado sale por una <strong>cola en disco con
+reintentos</strong>, no por una llamada directa. Si Genesis ID no responde —despliegue, corte, plan gratuito
+dormido—, el movimiento no se pierde: se guarda y se reintenta. Es una pieza pequeña y es la diferencia entre
+un expediente de cumplimiento completo y uno con huecos el día que alguien lo pida.</p>
+
+<h3>3.4 · Los bancos de cada país, al detalle</h3>
+
+<p>La lista de bancos era, hasta este ciclo, lo más frágil del producto: si el destino de pago no es el banco
+que la persona realmente usa, la operación no ocurre. Ahora hay <strong>457 bancos y entidades en 23
+países</strong>, cada uno con su tipo —banco, cooperativa, billetera, efectivo—, los tipos de cuenta que
+acepta, el formato de número de cuenta que valida, su código y una nota cuando hace falta. Y no está escrito a
+mano en el código: hay un archivo de datos que es la fuente de verdad y un generador que produce el código a
+partir de él, para que actualizar un banco sea editar un dato y no tocar el programa.</p>
+
+<h3>3.5 · El lado del usuario, terminado</h3>
+
+<p>La última parte del ciclo fue la que no se ve en un diagrama: el centro de ayuda dentro de la aplicación, la
+animación de los estados de la orden, los textos en español y en inglés, el comportamiento en teléfono —donde
+va a ocurrir casi todo—, el contraste, el foco del teclado y el respeto por quien pide menos movimiento en
+pantalla. Se auditó y se corrigió alrededor de una veintena de hallazgos, entre ellos un desbordamiento
+horizontal en teléfono y un nombre de anunciante que se cortaba a una sola letra.</p>
+
+<div class="nota bien">
+  <b class="t">Lo comprobado hoy, con fecha</b>
+  Se corrieron las tres baterías de pruebas: <strong>151 casos</strong> en Genesis ID, <strong>48</strong> en la
+  casa de cambio y <strong>28</strong> de integración real entre las dos —una Genesis ID levantada de verdad, no
+  simulada—. <strong>227 de 227 pasaron</strong> y la verificación de tipos de ambos servicios está limpia.
+  Además se comprobó contra los servicios vivos: la <strong>cadena 5550 contesta</strong> y va por el bloque
+  268 613, con AUKA en 55 000 000 y ONDK en 555 000 000 exactos; <strong>Genesis ID en producción responde</strong>
+  con las listas de sanciones cargadas —19 391 fichas, un día de antigüedad—, biometría automática encendida y
+  sesión única configurada; y <strong>las doce llamadas que la casa de cambio le hace a Genesis ID existen las
+  doce</strong> en la interfaz pública que ese servicio publica hoy. Eso es lo que se puede afirmar del código y
+  de los servicios; lo que no se puede afirmar está en la sección 6.
+</div>
+
+<h2 class="salto">4 · Inventario: pieza por pieza, qué hay de verdad</h2>
+
+<p>Esta es la tabla que conviene tener a mano en la junta. El código contado es solo programa —TypeScript y
+JavaScript—, sin datos, sin hojas de estilo y sin lo que instala la máquina.</p>
+
+<table>
+  <thead>
+    <tr><th>Pieza</th><th>Qué hace</th><th>Código</th><th>Estado comprobado hoy</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><b>Cadena 5550</b></td>
+      <td>La red: Besu, QBFT, siete validadores, bloques de ~10 s, comisión cero.</td>
+      <td>—</td>
+      <td class="bien">Viva. Contestó 5550 y el bloque 268 613. AUKA y ONDK dan su emisión exacta.</td>
+    </tr>
+    <tr>
+      <td><b>Genesis ID</b></td>
+      <td>Identidad, verificación, tamizado de sanciones, monitoreo antilavado, sesión única, panel y directorio.</td>
+      <td>46 archivos · 12 982 líneas</td>
+      <td class="riesgo">En servicio desde el 6 de septiembre, pero <b>lo que corre no es esta rama</b> (ver 6.1).</td>
+    </tr>
+    <tr>
+      <td><b>OrdenExchange</b></td>
+      <td>Casa de cambio entre personas en 23 países: anuncios, custodia, chat, apelaciones, agentes, panel.</td>
+      <td>46 archivos · 12 845 líneas</td>
+      <td class="riesgo">Escrito y probado (76 pruebas). <b>No está desplegado</b>: la dirección contesta 404.</td>
+    </tr>
+    <tr>
+      <td><b>Veta Wallet</b> (app)</td>
+      <td>Billetera: tokens, envíos reales en la cadena, tarjeta con emisión y congelado, remesas como calculadora.</td>
+      <td>52 archivos · 16 889 líneas</td>
+      <td class="riesgo">Compilación 68, con servidor propio en línea. Comprar y Canjear apagados. Sin publicar.</td>
+    </tr>
+    <tr>
+      <td><b>MyTokenPay</b> (app y web)</td>
+      <td>Directorio de comercios afiliados y pantallas de cobro con código QR.</td>
+      <td>88 archivos · 12 711 líneas</td>
+      <td class="riesgo">El directorio y las cuentas son reales; <b>el cobro es maqueta</b>: el dinero no se mueve.</td>
+    </tr>
+    <tr>
+      <td><b>Genesis ID</b> (app)</td>
+      <td>La verificación desde el teléfono, que es donde está la cámara.</td>
+      <td>29 archivos · 5 659 líneas</td>
+      <td class="riesgo">Código completo; no publicada en tienda.</td>
+    </tr>
+    <tr>
+      <td><b>Sitios de las apps</b></td>
+      <td>Las versiones web de Veta Wallet y MyTokenPay, y las páginas legales.</td>
+      <td>13 archivos · 4 754 líneas</td>
+      <td>Estáticos. Las páginas legales de Veta Wallet ya responden en línea.</td>
+    </tr>
+    <tr>
+      <td><b>Infraestructura</b></td>
+      <td>Puente de identidad para las apps, idempotencia, migración de claves, telemetría.</td>
+      <td>20 archivos · 2 495 líneas</td>
+      <td>En uso por las apps.</td>
+    </tr>
+    <tr>
+      <td><b>OrdenScan</b></td>
+      <td>Explorador de la cadena 5550: bloques, transacciones, tokens.</td>
+      <td>15 archivos · 1 294 líneas</td>
+      <td class="riesgo">Servicio escrito; depende del RPC público.</td>
+    </tr>
+    <tr>
+      <td><b>ULTRON</b> / Genesis Core</td>
+      <td>El asistente de la junta: voz, cerebro propio y acceso de consulta por persona.</td>
+      <td>76 archivos (repo aparte)</td>
+      <td>En servicio para la junta.</td>
+    </tr>
+    <tr>
+      <td><b>AuCorp</b></td>
+      <td>La rampa entre dinero de curso legal y metal o token.</td>
+      <td>—</td>
+      <td class="riesgo">Sociedad con LEI; sin servicio propio en el repositorio.</td>
+    </tr>
+    <tr>
+      <td><b>PULSE2CHAT</b></td>
+      <td>Anunciado como «hablar y pagar».</td>
+      <td>—</td>
+      <td class="riesgo">No existe como código en ninguno de los dos repositorios.</td>
+    </tr>
+    <tr>
+      <td><b>DBNX</b></td>
+      <td>Tercer miembro del sistema, según el propio material del ecosistema.</td>
+      <td>—</td>
+      <td class="riesgo">Sin documentar. Ver 6.2.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="nota riesgo">
+  <b class="t">La lectura incómoda de esta tabla</b>
+  Hay más sistema escrito que sistema encendido. De doce piezas, <strong>una sola está en servicio público hoy
+  —Genesis ID—</strong>, y corre una versión que no es la de esta rama. La casa de cambio, que es la puerta de
+  entrada del público, está escrita y probada pero su dirección contesta 404. Las tres aplicaciones móviles
+  están terminadas y ninguna está en una tienda. Eso no es un problema de programación: es una lista de cosas
+  por encender, y está en la sección 8 con fecha.
+</div>
+
+<h2 class="salto">5 · El recorrido de un lempira</h2>
+
+<p>La forma más honesta de revisar un sistema financiero es seguir una sola moneda de punta a punta y ver
+dónde se atora. Este es el recorrido completo, tal como está escrito hoy.</p>
+
+<table>
+  <thead><tr><th>Paso</th><th>Qué pasa</th><th>Quién lo sostiene</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Doña Blanca se registra con su correo y lo confirma.</td><td>OrdenExchange</td></tr>
+    <tr><td>2</td><td>Se verifica una sola vez: datos, documento, rostro. Un operador aprueba y le queda un GID.</td><td>Genesis ID</td></tr>
+    <tr><td>3</td><td>Con ese GID entra también a Veta Wallet y a MyTokenPay sin volver a verificarse.</td><td>Sesión única de Genesis ID</td></tr>
+    <tr><td>4</td><td>Busca en el mercado quién vende ORIGEN y acepta su banco. Toma el anuncio.</td><td>OrdenExchange</td></tr>
+    <tr><td>5</td><td>El ORIGEN del vendedor queda en custodia al instante. Corre el cronómetro.</td><td>Custodia de OrdenExchange</td></tr>
+    <tr><td>6</td><td>Transfiere desde su banco, en lempiras, y sube el comprobante al chat de la orden.</td><td>Su banco · el chat queda guardado</td></tr>
+    <tr><td>7</td><td>El vendedor confirma que recibió y la custodia se libera.</td><td>OrdenExchange · bitácora</td></tr>
+    <tr><td>8</td><td>El movimiento entra a la cola de monitoreo antilavado.</td><td>Cola con reintentos → Genesis ID</td></tr>
+    <tr><td>9</td><td>Guarda su ORIGEN en Veta Wallet. Es 1/55 de gramo de oro por unidad.</td><td>Cadena 5550 · bóveda</td></tr>
+    <tr><td>10</td><td>Al día siguiente quiere cobrar en su puesto con un código QR.</td><td class="riesgo">MyTokenPay (maqueta, ver 6.4)</td></tr>
+    <tr><td>11</td><td>Cuando quiere lempiras otra vez, vuelve al mercado y vende.</td><td>OrdenExchange</td></tr>
+    <tr><td>12</td><td>Si el monto es grande, no pasa por el mercado: entra o sale por la rampa.</td><td class="riesgo">AuCorp (ver 6.5)</td></tr>
+  </tbody>
+</table>
+
+<p>Doce pasos. Diez están escritos y probados de punta a punta. Dos no: el <strong>paso 10</strong>, porque
+las pantallas de cobro de MyTokenPay todavía no mueven dinero de verdad, y el <strong>paso 12</strong>, porque
+la rampa grande de AuCorp no tiene servicio. No son detalles: el paso 10 es lo que hace que el ORIGEN sirva para
+comprar, y el paso 12 es la diferencia entre un mercado entre personas y un sistema financiero. Los dos están en
+la sección siguiente, con los demás huecos y sin adornos.</p>
+
+<h2 class="salto">6 · Los huecos, sin adornos</h2>
+
+<p>Un documento de revisión que no tenga esta sección no sirve para nada. Cada hueco está descrito con lo que se
+comprobó, con lo que falta y con quién tiene que resolverlo. Van en orden de lo que bloquea a lo demás. El
+primero es el más serio de todos y no estaba en el radar de nadie.</p>
+
+<h3>6.1 · Lo que corre en producción no es lo que hay en esta rama</h3>
+
+<p>Genesis ID está en línea y contesta. Pero la versión que contesta no es la de esta rama de trabajo: es un
+código que vive en otra rama, arrancado el 6 de septiembre, y que tiene <strong>105 archivos de programa contra
+los 44 que hay aquí</strong>. Son sesenta y un archivos de diferencia, y no son archivos menores: ahí están el
+segundo factor de autenticación de los operadores, la cadena de auditoría y su anclaje, la interfaz pública
+documentada, el envío y la firma del correo, la credencial digital, los enganches de mensajería, la lectura de
+fotos del documento, el expediente de cada identidad, el bloqueo de cuentas y el almacén de movimientos
+antilavado con su temporizador.</p>
+
+<p>Esta rama se separó del tronco el 10 de agosto. Todo ese trabajo llegó después y nunca se trajo. La rama
+principal del repositorio tampoco lo tiene. Dicho de la manera más directa posible:</p>
+
+<div class="nota riesgo">
+  <b class="t">Riesgo operativo inmediato</b>
+  <strong>Si alguien despliega esta rama sobre Genesis ID, producción pierde sesenta y un archivos</strong>,
+  incluidos el segundo factor de los operadores, la cadena de auditoría y el almacén de movimientos de
+  cumplimiento. No es un riesgo teórico: el archivo de despliegue de este repositorio publica Genesis ID desde
+  esta misma carpeta. Antes de desplegar cualquier cosa hay que traer esa rama a esta, resolver lo que choque y
+  volver a correr las pruebas. Es trabajo de días, no de semanas, y es lo primero de todo.
+</div>
+
+<p>Hay una buena noticia dentro de la mala, y se comprobó una por una: las <strong>doce llamadas</strong> que la
+casa de cambio le hace a Genesis ID —buscar la identidad por correo, crearla, declarar datos, mandar el
+documento, pedir vivacidad, mandar el rostro, mandar la foto, vincular la cuenta, consultar el GID, pedir y
+verificar la sesión única, tamizar una dirección y reportar movimientos— <strong>existen las doce en la interfaz
+pública que Genesis ID publica hoy en producción</strong>. La integración está escrita contra el contrato
+correcto. Lo que falta es poner las dos piezas en la misma versión.</p>
+
+<h3>6.2 · DBNX no está documentado, y PULSE2CHAT no existe</h3>
+
+<p>El propio material del ecosistema nombra al sistema como <strong>Orden Global · AuCorp · DBNX</strong>: los
+tres miembros. De los dos primeros hay sociedad, identificador internacional y función clara. Del tercero, lo
+único que consta en todo el código es una línea de un archivo de presentación, y el mapa interno del ecosistema
+lo marca literalmente como <i>pendiente de documentar</i>.</p>
+
+<p>Al lado de eso hay un caso parecido y más simple: <strong>PULSE2CHAT</strong>, que aparece como pieza del
+ecosistema con la idea de «hablar y pagar», no existe como código en ninguno de los dos repositorios. Buscándolo
+en todo el árbol aparecen dos menciones, y ninguna es programa.</p>
+
+<div class="nota riesgo">
+  <b class="t">Decisión de junta, no de ingeniería</b>
+  Con las dos hay que hacer lo mismo: decir qué son y qué papel tienen —y entonces se documentan y entran en el
+  mapa— o quitarlas del material público hasta que existan. Dejarlas como están es el tipo de detalle por el que
+  una pieza de comunicación buena se cae en la primera entrevista.
+</div>
+
+<h3>6.3 · La casa de cambio no está desplegada</h3>
+
+<p>OrdenExchange está escrito, probado y con su panel de operadores; se recorrió el flujo completo por red
+—orden creada, activo en custodia, pago marcado, liberación con contraseña, saldos cuadrando al último
+decimal— y las 76 pruebas pasan. Pero <strong>hoy no está en ningún servidor público</strong>: la dirección
+prevista contesta 404 y la de respaldo no existe. El detalle que lo confirma desde adentro es que el propio
+monitor de salud de Genesis ID vigila esa dirección caída.</p>
+
+<p>Es el hueco más fácil de cerrar de toda la lista —es un despliegue— y el más caro de dejar abierto, porque es
+la única puerta por la que el público entra al sistema.</p>
+
+<h3>6.4 · El cobro de MyTokenPay todavía no mueve dinero</h3>
+
+<p>MyTokenPay tiene un directorio de comercios que funciona de verdad, cuentas con registro y recuperación de
+contraseña bien resueltas, verificación de empresas y una interfaz de cobro muy trabajada, con su propio
+generador de códigos QR escrito a mano. Lo que no tiene es el pago: <strong>ningún cobro toca la cadena 5550 ni
+un banco</strong>. Las pantallas se comportan como si el dinero se moviera, y no se mueve.</p>
+
+<p>Esto importa más de lo que parece, porque el cobro con QR es el paso que convierte al ORIGEN en algo que
+sirve para comprar. Mientras siga así, el sistema permite guardar y cambiar, pero no gastar. Y es exactamente el
+gesto que cualquier pieza de comunicación va a querer mostrar.</p>
+
+<h3>6.5 · La rampa grande —AuCorp— no tiene servicio</h3>
+
+<p>AuCorp es una sociedad real, con identificador internacional propio, y su función en el sistema es la entrada
+y la salida entre dinero de curso legal y metal o token. En el código no hay ningún servicio de AuCorp. Mientras
+eso siga así, <strong>todo el peso de entrar y salir lo carga el mercado entre personas</strong>, que está
+diseñado para montos de gente común. Un comercio que quiera cambiar el equivalente a cien mil lempiras no tiene
+por dónde, y un inversionista tampoco.</p>
+
+<h3>6.6 · Las tres faltas que Genesis ID se marca solo</h3>
+
+<p>Hay que decir primero lo bueno, porque es mucho y es verificable en vivo: Genesis ID corre con almacén
+persistente, con las <strong>listas de sanciones cargadas —19 391 fichas, un día de antigüedad—</strong>, con
+biometría automática encendida, con sesión única configurada, con correo funcionando y con la cadena 5550
+contestando el identificador correcto. Su bitácora lleva 2 885 entradas encadenadas y se declara íntegra.</p>
+
+<p>Y el propio servicio, en su chequeo de salud, se marca tres faltas de cumplimiento que nadie más va a
+señalar:</p>
+
+<ul>
+  <li><strong>La bitácora no está firmada.</strong> Falta la clave de firma. Una bitácora encadenada pero sin
+  firmar demuestra que nadie la alteró por dentro; no demuestra ante un tercero quién la escribió.</li>
+  <li><strong>Tres operadores tienen exigido el segundo factor y no lo han activado.</strong> Son cuentas que
+  aprueban identidades. Es la puerta más sensible del sistema.</li>
+  <li><strong>Hay una rotura de cadena sellada.</strong> Está registrada y sellada, que es lo correcto, pero
+  sigue siendo una rotura que alguien tiene que explicar por escrito.</li>
+</ul>
+
+<p>Ninguna de las tres es grave hoy. Las tres son exactamente lo que un auditor externo mira primero, y las tres
+se cierran con trabajo de horas.</p>
+
+<h3>6.7 · El precio del oro lo pone una persona a mano</h3>
+
+<p>El precio de referencia del mercado se calcula bien: onza de oro en dólares, entre 31,1035 gramos, entre 55.
+Pero <strong>el precio de la onza y las tasas de cambio los fija un operador en el panel</strong>, o vienen de
+la configuración al arrancar; no hay una fuente automática. El código está escrito con el criterio correcto —si
+no hay precio de metal, la referencia no existe y los anuncios a porcentaje no se pueden publicar, porque es
+preferible que falte a que sea inventado—, pero eso convierte una tarea diaria en una dependencia humana. Con
+mercado abierto en veintitrés monedas, esa tarea no puede depender de que alguien se acuerde.</p>
+
+<h3>6.8 · Tres aplicaciones terminadas y ninguna publicada</h3>
+
+<p>Veta Wallet, MyTokenPay y la app de Genesis ID están escritas —cerca de treinta y cinco mil líneas entre las
+tres— y ninguna está en una tienda. Veta Wallet va por la compilación 68, con su servidor propio en línea y con
+envíos reales sobre la cadena; tiene apagados a propósito Comprar y Canjear. Y la app de Genesis ID es justo la
+que hace falta para verificarse bien, porque la cámara está en el teléfono. Los obstáculos conocidos son de
+trámite, no de programación: la cuenta de Google en modo individual y la de Apple con organización e
+identificador de empresa. Es el cuello de botella más caro de todos, porque una campaña que lleve gente a una
+tienda vacía se pierde entera.</p>
+
+<h3>6.9 · La comisión cero y los siete validadores</h3>
+
+<p>Mover ORIGEN no cuesta comisión de red porque los siete validadores de la cadena 5550 son propios. Eso es una
+ventaja comercial enorme y hay que decirla con el condicional puesto: <strong>es gratis mientras los nodos sean
+nuestros</strong>. También es un punto de confianza concentrado: quien opera los siete validadores opera la red.
+Abrir validadores a terceros —una cooperativa, una universidad, un socio— es lo que convierte esa concentración
+en credibilidad, y no está hecho.</p>
+
+<h3>6.10 · Remesas, puentes y bóveda: tres cosas que no se pueden decir todavía</h3>
+
+<ul>
+  <li><strong>Remesas.</strong> Hoy es una calculadora dentro de la billetera. Sin licencia por país, calculadora
+  se queda. No se puede insinuar un canal de envío vivo.</li>
+  <li><strong>Puentes a otras cadenas.</strong> Son plan hasta que se verifiquen. Mientras tanto, el activo vive
+  en su propia red, y eso es lo que hay que decir.</li>
+  <li><strong>Cifra de bóveda.</strong> La definición de un ORIGEN es sólida y comprobable, y la emisión de AUKA
+  y ONDK se puede leer en la cadena en este momento. El total de onzas en bóveda no es publicable hasta que
+  exista una auditoría que se pueda mostrar. Una cifra sin auditoría es peor que ninguna.</li>
+</ul>
+
+<h3>6.11 · El expediente del incidente de claves sigue abierto</h3>
+
+<p>Antes de la migración de la cadena hubo un incidente con claves: cuatro tokens quedaron con contador en cero
+y saldo en cero, y la causa no se ha cerrado. Que no haya vuelto a ocurrir no es lo mismo que saber por qué
+ocurrió. Antes de una campaña que lleve gente a guardar valor en la billetera, ese expediente tiene que estar
+cerrado por escrito.</p>
+
+<h2 class="salto">7 · Cómo queda el sistema</h2>
+
+<p>Puesto todo junto, así queda —y así se ve el cambio que produjo este ciclo—:</p>
+
+<div class="comparar">
+  <div class="col antes">
+    <div class="cab">Antes de este ciclo</div>
+    <ul>
+      <li>Respaldo, cadena e identidad construidos, sin puerta de entrada para el público.</li>
+      <li>La verificación de identidad existía en Genesis ID, pero cada app la resolvía a su manera.</li>
+      <li>Ningún lugar donde cambiar moneda local por activo y al revés.</li>
+      <li>Listas de bancos aproximadas, que es lo mismo que no tenerlas.</li>
+      <li>Cumplimiento dependiente de que cada llamada saliera bien a la primera.</li>
+    </ul>
+  </div>
+  <div class="col ahora">
+    <div class="cab">Como queda</div>
+    <ul>
+      <li>Una puerta pública escrita y probada: casa de cambio entre personas en veintitrés países, con custodia y apelaciones.</li>
+      <li>Una sola identidad para todo el ecosistema, verificada una vez y válida en todas las apps.</li>
+      <li>Nadie se aprueba solo: un operador de cumplimiento decide, con las listas de sanciones cargadas.</li>
+      <li>457 bancos y entidades con su formato de cuenta, generados desde una fuente de datos única.</li>
+      <li>Cumplimiento con cola en disco y reintentos: el expediente no se rompe si un servicio se cae.</li>
+      <li>227 pruebas en verde, incluidas 28 de integración real entre la casa de cambio y Genesis ID.</li>
+    </ul>
+  </div>
+</div>
+
+<p>Dicho en una sola frase, que es la que conviene aprenderse: <strong>Orden Global queda como un sistema donde
+el respaldo es metal propio, el registro es una red propia, la identidad es una sola y el cambio a moneda local
+lo hace la gente entre sí, con la empresa como custodia y como juez.</strong> Las cuatro cosas están escritas y
+probadas; la cadena y la identidad, además, están encendidas y contestando hoy.</p>
+
+<p>Y hay que ser igual de claros con la otra mitad: <strong>el sistema está construido y a medio encender</strong>.
+La puerta del público no está desplegada, el cobro con QR todavía no mueve dinero, las tres aplicaciones no
+están en tienda, la rampa grande no existe y lo que corre en producción no es lo que hay en esta rama. Ninguna
+de esas cinco cosas requiere inventar nada nuevo. Las cinco requieren decisiones y semanas.</p>
+
+<div class="nota">
+  <b class="t">Las seis decisiones que solo la junta puede tomar</b>
+  Todo lo demás de este documento es ejecución. Estas no: <strong>(1)</strong> ordenar la reconciliación de esta
+  rama con lo que corre en producción antes de cualquier despliegue; <strong>(2)</strong> desplegar la casa de
+  cambio y pasar los servicios a plan pago antes de cualquier anuncio; <strong>(3)</strong> resolver los trámites
+  de tienda y publicar las tres aplicaciones; <strong>(4)</strong> decidir si el cobro con QR de MyTokenPay entra
+  en este trimestre o si la campaña no lo menciona; <strong>(5)</strong> definir qué son DBNX y PULSE2CHAT o
+  quitarlos del material público; <strong>(6)</strong> decidir si AuCorp opera la rampa grande ahora o si el
+  mercado entre personas la sostiene solo.
+</div>
+
+<h2 class="salto">8 · Los próximos noventa días</h2>
+
+<p>Este plan está ordenado por lo que bloquea a lo demás, no por lo que es más fácil. El primer bloque completo
+tiene que estar cerrado antes de publicar un solo segundo de comercial.</p>
+
+<table>
+  <thead><tr><th>Bloque</th><th>Qué se hace</th><th>Por qué ahora</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><b>Días 1–15</b><br>Poner el código en una sola versión</td>
+      <td>Traer a esta rama los sesenta y un archivos de Genesis ID que corren en producción, resolver lo que choque, volver a correr las 227 pruebas y dejar una sola rama de verdad. Cerrar las tres faltas que el propio servicio se marca: firmar la bitácora, activar el segundo factor de los tres operadores y explicar por escrito la rotura sellada.</td>
+      <td>Mientras esto no esté hecho, cualquier despliegue puede borrar un mes de trabajo de cumplimiento. Bloquea todo lo demás.</td>
+    </tr>
+    <tr>
+      <td><b>Días 16–30</b><br>Encender la puerta</td>
+      <td>Desplegar la casa de cambio y pasar los dos servicios a plan pago. Fuente automática de precio del oro y de tasas, con el fijado a mano como respaldo. Trámites de tienda y publicación de las tres aplicaciones. Cierre por escrito del expediente de claves.</td>
+      <td>Son las cuatro cosas que convierten una campaña en registros en lugar de en una pantalla que no responde.</td>
+    </tr>
+    <tr>
+      <td><b>Días 31–60</b><br>Aguantar el volumen</td>
+      <td>Cobro real en MyTokenPay contra la cadena. Segundo operador de cumplimiento con turnos junto a la biometría automática. Primeros agentes de cambio por país, empezando por Honduras, Guatemala y Perú. Definición pública de DBNX y de PULSE2CHAT. Explorador OrdenScan publicado.</td>
+      <td>Cuando la gente entre, el cuello de botella va a ser humano —verificación y liquidez— y el reclamo va a ser «¿y dónde lo gasto?».</td>
+    </tr>
+    <tr>
+      <td><b>Días 61–90</b><br>Aguantar la confianza</td>
+      <td>Rampa de AuCorp para montos grandes. Primer validador operado por un tercero. Auditoría de bóveda con informe mostrable. Licencia de remesas en el primer país, o retirar la palabra del producto.</td>
+      <td>Son las cuatro cosas que un tercero serio va a pedir antes de tomar el proyecto en serio, y las cuatro toman más de treinta días.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="nota bien">
+  <b class="t">Lo que no hay que hacer</b>
+  No hay que construir más producto. Con lo que hay escrito hoy —cadena, identidad, billetera, cobros, casa de
+  cambio y asistente— alcanza para abrir en veintitrés países. Los noventa días de arriba son casi todos
+  reconciliación, trámite, gasto y operación; de programación nueva, solo el cobro real de MyTokenPay y la
+  fuente automática de precios. Agregar una pieza nueva antes de encender las que ya están terminadas sería el
+  error más caro del año.
+</div>
+
+<h2 class="salto">9 · Qué se puede decir en público y qué no</h2>
+
+<p>Esta sección existe porque la revisión se hizo, entre otras cosas, para alimentar una campaña. Todo lo de la
+columna izquierda lo sostiene el producto tal como está hoy; todo lo de la derecha sería falso, prematuro o
+imprudente, y compromete a la empresa.</p>
+
+<div class="comparar">
+  <div class="col ahora">
+    <div class="cab">Se puede afirmar hoy</div>
+    <ul>
+      <li>Que un ORIGEN es un cincuentaicincoavo de gramo de oro en bóveda. Es una definición, no una cifra de tesorería.</li>
+      <li>Que el respaldo viene de concesiones mineras propias en Danlí y Choluteca, no de metal alquilado.</li>
+      <li>Que la red es propia y que mover ORIGEN en ella no cuesta comisión de red.</li>
+      <li>Que hay una casa de cambio entre personas en veintitrés países, con los bancos y billeteras que cada quien ya usa.</li>
+      <li>Que mientras el dinero viaja, el activo queda en custodia, y que si algo falla lo resuelve un operador leyendo el chat y los comprobantes.</li>
+      <li>Que para operar hay que estar verificado con Genesis ID, y que esa verificación vale en todas las apps del ecosistema.</li>
+      <li>Que la operación diaria está en Tegucigalpa y que el lanzamiento LATAM fue ahí en agosto de 2024.</li>
+    </ul>
+  </div>
+  <div class="col antes">
+    <div class="cab">No se puede afirmar</div>
+    <ul>
+      <li>Rendimientos, revalorización o cualquier promesa de ganancia. No es un instrumento de inversión.</li>
+      <li>Que sea un banco, que esté regulada como banco o que los saldos estén asegurados.</li>
+      <li>Remesas como servicio vivo: sin licencia por país, es una calculadora.</li>
+      <li>Cifras de onzas en bóveda o de respaldo total mientras no haya auditoría publicable.</li>
+      <li>Licencias, autorizaciones o avales de la zona de Roatán. No se han obtenido.</li>
+      <li>Alianzas con bancos o billeteras por el hecho de aparecer como destino de pago.</li>
+      <li>Que el puente a otras cadenas esté vivo. Es plan hasta que se verifique.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="nota riesgo">
+  <b class="t">La regla que resume todas</b>
+  Si una frase de campaña necesita que el oyente confíe en algo que no puede comprobar, hay que cambiarla por
+  una que se pueda comprobar. La fuerza de este proyecto no está en lo que promete sino en lo que ya pesa: el
+  metal, la red propia, los veintitrés países. Prometer de más es, literalmente, el error de las cuatro eras
+  que el comercial va a criticar.
+</div>
+
+<div class="pie-doc">Documento 8 · Junta Directiva · Orden Global Corp · 26 de septiembre de 2026 · Revisión hecha sobre el código de express-js-on-vercel y ULTRON-APP</div>
+</body></html>
