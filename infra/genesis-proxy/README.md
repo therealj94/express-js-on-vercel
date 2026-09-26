@@ -1,5 +1,24 @@
 # Puente a Genesis ID
 
+> **RETIRADO (26-sep-2026, SFSP v0.3 §11, plan tarea 0.6).** Esta carpeta ya
+> no tiene lógica propia. El puente es **uno solo**:
+>
+> | Dónde | Qué es |
+> | --- | --- |
+> | `infra/veta-wallet-backend/lib/genesisPuente.js` | **El canónico.** Se edita aquí y en ningún otro sitio |
+> | `infra/mytokenpay-api/src/lib/genesisPuente.js` | Copia byte a byte (con `genesisPuente.d.ts`); `src/routes/genesis.ts` es un adaptador de sesión |
+> | `infra/genesis-proxy/genesis.router.js` | Reexporta el canónico, para que las rutas antiguas sigan llevando al mismo código |
+>
+> `infra/veta-wallet-backend/pruebas/probar-puente-genesis.mjs` falla si las
+> copias divergen y prueba el comportamiento sin red (Genesis de mentira).
+> Nada se desplegaba desde esta carpeta, así que no hay despliegue que retirar.
+>
+> Cambios de comportamiento respecto de esta copia: la dirección de billetera
+> es **obligatoria** en `/vincular` (422 `VINCULO_SIN_DIRECCION` /
+> `VINCULO_DIRECCION_INVALIDA`); se suman `/gid`, `/documento-fotos` y
+> `/billetera`; `/documento/leer` ya no manda `cara` (Genesis ID nunca la leyó).
+> El resto de este documento se conserva como historia.
+
 Router de Express que monta cada backend del ecosistema para hablar con
 Genesis ID sin que la clave de API salga del servidor.
 

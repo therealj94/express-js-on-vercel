@@ -7,7 +7,7 @@ saber cuál corre antes de tocar nada:
 | --- | --- | --- |
 | **`genesis-id/`** | **El motor de identidad que corre en Render** (`genesis-id.onrender.com`). Lo dice `render.yaml` (`rootDir: genesis-id`). KYC, KYB, sanciones, AML, bitácora firmada y anclada en la cadena, credenciales firmadas, panel `/admin`. | **PRODUCCIÓN — la única fuente de verdad** |
 | **`infra/veta-wallet-backend/`** | El backend de Veta Wallet que corre en **Heroku**. Su puente con Genesis es **`lib/genesisPuente.js`**: la clave de API vive ahí y nunca en el teléfono. | Producción |
-| `infra/genesis-proxy/` | El mismo puente como router suelto, con su prueba (`pruebas/puente.test.mjs`). Es la referencia; `genesisPuente.js` es la copia montada. Al tocar uno hay que tocar el otro. | Referencia |
+| `infra/genesis-proxy/` | **Retirado** (SFSP v0.3, tarea 0.6). `genesis.router.js` solo reexporta `infra/veta-wallet-backend/lib/genesisPuente.js`, que es el puente canónico; `infra/mytokenpay-api/src/lib/genesisPuente.js` es su copia byte a byte, y `infra/veta-wallet-backend/pruebas/probar-puente-genesis.mjs` falla si divergen. | Retirado |
 | **`orden-global-app/`** | **La app que se distribuye** (paquete `com.ordenglobal.app`, 1.33.x). El registro con Genesis vive en `src/screens/Onboard.js` y `src/genesis.js`; el pasaporte en `src/screens/More.js`; la tarjeta con QR en `src/TarjetaGid.js`. | **Producción** |
 | `veta-wallet-app/` | La app **vieja** (`com.ordenglobal.vetawallet`, 1.33.0). No se toca. | Vieja |
 | `apps-web/veta-wallet/` | El cliente web (Amplify): registro con fotos, tarjeta de identidad con QR y la página pública `/gid/<GID>`. | Producción |
@@ -23,6 +23,7 @@ Pruebas:
 
 ```sh
 cd genesis-id && npm install && npm run prueba && npm run typecheck
+cd infra/veta-wallet-backend && node pruebas/probar-puente-genesis.mjs   # el puente único, sin red
 cd infra/genesis-proxy/pruebas && GENESIS_URL=… GENESIS_API_KEY=… node puente.test.mjs   # contra un Genesis local
 cd orden-global-app && node pruebas/probar-codigos.cjs
 cd apps-web/veta-wallet && node --check app.js
