@@ -2,7 +2,7 @@
 const assert = require("node:assert/strict");
 const F = require("./fixture");
 const H = require("./helpers");
-const { buildAuthorization, acunar } = require("./authorization");
+const { buildAuthorization, acunar, colocable } = require("./authorization");
 const OA = require("./orden-autorizada");
 
 const CASH = 1_000_000_000_000_000n; // wei sintéticos del fixture
@@ -37,6 +37,7 @@ describe("SFSPCashVault + SFSPSettlementEngine · DvP atómico", function () {
   beforeEach(async function () {
     f = await F.deployAll();
     await f.issuance.send("setInstrumentLimits", [f.ASSET_NEW, 1000000, 1000000], f.board);
+    await colocable(f, [f.alice]);
     const { auth, sigs } = await buildAuthorization(f, { destination: f.alice, amount: 1000 });
     await acunar(f, { auth, sigs }, 1000, H.b32("op_seed_dvp"));
     // El nativo no tiene approve: el comprador prefinancia el vault.

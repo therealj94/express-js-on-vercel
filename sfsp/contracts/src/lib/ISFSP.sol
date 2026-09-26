@@ -63,6 +63,12 @@ interface ISFSPEligibilityEngine {
         uint256 amount,
         bytes32 authorizationDigest
     ) external view returns (uint8 result, bytes32 reasonCode, uint32 policyVersion);
+
+    /// @dev SFSP-120 §0.3 regla 1 · toda salida del emisor o de su tesorería
+    ///      hacia un tercero aplica `SUBSCRIBE` sobre el adquirente en la misma
+    ///      transacción. Revierte si no da ALLOW. Sólo lo llaman los ejecutores
+    ///      con el rol SUBSCRIPTION_EXECUTOR del motor.
+    function enforceSubscription(address account, bytes32 assetId, uint256 amount) external;
 }
 
 interface ISFSPGovernanceController {
@@ -84,6 +90,9 @@ interface ISFSPGovernanceController {
 
 interface ISFSPRegulatedAsset {
     function assetId() external view returns (bytes32);
+    /// @dev Motor de elegibilidad del activo: el controlador de emisión aplica
+    ///      SUBSCRIBE en el MISMO motor que evalúa MINT.
+    function engine() external view returns (ISFSPEligibilityEngine);
     function totalSupply() external view returns (uint256);
     function balanceOf(address account) external view returns (uint256);
     function mintFromIssuance(address to, uint256 amount, bytes32 operationId) external;

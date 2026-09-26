@@ -3,8 +3,12 @@
 //
 // A partir del censo de tokens (`censo-tokens.json`, formato de censo-tokens-5550.mjs)
 // genera, POR ACTIVO y SIN FIRMAR:
+//   0. la SOLICITUD a DBNX del documento de aprobación del cupo (v0.3 §5, SFSP-200
+//      §0.5: no hay ruta de acuñación exenta de DBNX): activo, cantidad = S0, regla
+//      de destino = raíz del padrón, clase MIGRACION (continuidad de tenencia);
 //   1. la orden de gobierno `SET_MINT_BUDGET` del cupo: S0 = suma de lo que se va a
-//      acuñar, máximo por operación = el mayor saldo, `termsDocRoot` = raíz del padrón;
+//      acuñar, máximo por operación = el mayor saldo, `termsDocRoot` = hash del
+//      documento de aprobación DBNX (lo registra DBNX; sin él, BLOCKED_DECISION);
 //   2. la lista de llamadas `SFSPIssuanceController.mintOnDemand(assetId, dirección,
 //      oldUnits·ratio, paymentRef, evidenceRoot)`, una por titular, con
 //        paymentRef   = keccak256(utf8("MIGRACION|<assetId hex minúsculas>|<dirección minúsculas>"))
@@ -22,7 +26,16 @@
 //
 // activos.json (decisión D09/D26; lo que falte sale BLOCKED_DECISION):
 //   { "<contrato heredado>": { "activo": "ONDK", "assetId": "0x<bytes32>",
-//                              "ratio": { "num": "1", "den": "1" } } }
+//                              "ratio": { "num": "1", "den": "1" },
+//                              "clase": "SEC" | "COM" | ...,
+//                              "dbnxDocHash": "0x<bytes32 del documento DBNX registrado>",
+//                              "actaConciliacion": "0x<bytes32 del acta de la Junta>" } }
+//   · `dbnxDocHash`: sin él la orden sale BLOCKED_DECISION (v0.3 §5).
+//   · `actaConciliacion`: AUKA y ONDK no se migran mientras SFSP-700 §0.5 no esté
+//     resuelto (conciliación ubicada Y tratamiento decidido por la Junta).
+//   · Un activo COM (AUKA, AGKA) sale BLOCKED_DECISION: colocarlo con terceros exige
+//     capacidad en onzas (SFSP-300 §0.2) y el controlador de emisión no la lleva (D26).
+//   · Un censo que no cuadra (o que no se puede cuadrar) sale BLOCKED_DECISION.
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { join, dirname, resolve } from "node:path";
@@ -45,6 +58,11 @@ const EMISOR_ABI = new Interface([
   "function mintOnDemand(bytes32 assetId, address destination, uint256 amount, bytes32 paymentRef, bytes32 evidenceRoot)",
   "function setMintBudget((uint256,address,bytes32,bytes32,address,address,uint256,uint256,bytes32,uint64,uint64,bytes32) p, bytes32 approvedDigest, uint64 period, uint64 validUntil, bytes32 termsDocRoot)",
 ]);
+/** Activos cuya conciliación (SFSP-700 §0.5) exige acta de la Junta antes de migrar. */
+export const CONCILIACION_SFSP700 = new Set(["AUKA", "ONDK"]);
+/** Activos de la clase COM por nombre (además de `clase: "COM"` en activos.json). */
+export const ACTIVOS_COM = new Set(["AUKA", "AGKA"]);
+const B32 = /^0x[0-9a-fA-F]{64}$/;
 // Clases del censo que NUNCA reciben: la organización, contratos, lo pendiente y lo sin dueño.
 const CLASES_EXCLUIDAS = { "INTERNA-OrdenGlobal": "cuenta interna (D25)", CONTRATO: "contrato", "EN-REVISION": "pendiente de decisión", "SIN-RESOLVER": "residuo sin titular (clave sin dirección)" };
 
@@ -128,25 +146,49 @@ export function generarLotes(censo, activos, o = {}) {
     const residuoRaw = res.residuoSinTitular !== undefined ? aUnidades(String(res.residuoSinTitular).replace(/^-/, ""), dec) * (String(res.residuoSinTitular).startsWith("-") ? -1n : 1n) : null;
     const totalSupply = res.totalSupply !== undefined ? aUnidades(res.totalSupply, dec) : null;
 
+    const cuadra = totalSupply === null || residuoRaw === null ? null : sumaCenso + residuoRaw === totalSupply;
+
     // Orden SET_MINT_BUDGET. period = validUntil + 1 => toda la ventana cae en el periodo 0.
     const faltan = [];
     if (!o.validUntil) faltan.push("VALIDO_HASTA (fin de la ventana de migración)");
     if (!o.ordenNoAntes || !o.ordenVence) faltan.push("ORDEN_NO_ANTES / ORDEN_VENCE (vigencia de la orden)");
     if (!emisor) faltan.push("EMISOR (SFSPIssuanceController desplegado)");
+    const dbnxDocHash = cfg.dbnxDocHash && B32.test(cfg.dbnxDocHash) ? cfg.dbnxDocHash.toLowerCase() : null;
+    if (!dbnxDocHash) faltan.push("dbnxDocHash: documento de aprobación DBNX del cupo, registrado por DBNX (v0.3 §5, SFSP-200 §0.5)");
+    // Bloqueos que no son un dato que falta sino una regla que no se cumple.
+    const bloqueosOrden = [];
+    if (cuadra !== true) {
+      bloqueosOrden.push(cuadra === false
+        ? "el censo no cuadra: suma de tenedores + residuo ≠ totalSupply (T-700-25, SFSP-700 §0.5)"
+        : "no se puede comprobar que el censo cuadre: falta totalSupply o el residuo (UNKNOWN_SOURCE)");
+    }
+    if (CONCILIACION_SFSP700.has(cfg.activo) && !(cfg.actaConciliacion && B32.test(cfg.actaConciliacion))) {
+      bloqueosOrden.push(`${cfg.activo}: SFSP-700 §0.5 sin resolver (conciliación ubicada y tratamiento de los adquirentes tempranos decididos por la Junta); falta actaConciliacion (T-700-25)`);
+    }
+    if (cfg.clase === "COM" || ACTIVOS_COM.has(cfg.activo)) {
+      bloqueosOrden.push(`${cfg.activo}: activo COM; colocarlo con terceros exige capacidad en onzas (SFSP-300 §0.2, T-300-30) y el controlador de emisión no la lleva: decisión D26`);
+    }
     const period = o.validUntil ? BigInt(o.validUntil) + 1n : null;
     const payload = {
       chainId, verifyingContract: emisor || ZERO_ADDR, action: ACCION, assetId, origin: ZERO_ADDR, destination: ZERO_ADDR,
       amount: S0.toString(), amountSecondary: maxOp.toString(),
       nonce: keccak256(toUtf8Bytes(`MIGRACION_CUPO|${assetId}|${raiz.toLowerCase()}`)),
       notBefore: o.ordenNoAntes ? String(o.ordenNoAntes) : null, expiry: o.ordenVence ? String(o.ordenVence) : null,
-      evidenceRoot: period ? budgetTermsRoot(period, o.validUntil, raiz) : null,
+      evidenceRoot: period && dbnxDocHash ? budgetTermsRoot(period, o.validUntil, dbnxDocHash) : null,
     };
+    const bloqueada = faltan.length > 0 || bloqueosOrden.length > 0;
     const orden = {
-      accion: "SET_MINT_BUDGET", estado: faltan.length ? "BLOCKED_DECISION" : "LISTA_PARA_PROPONER", faltan, firmado: false,
-      payload, period: period ? period.toString() : null, validUntil: o.validUntil ? String(o.validUntil) : null, termsDocRoot: raiz,
-      digest: faltan.length ? null : digestPayload(payload),
+      accion: "SET_MINT_BUDGET", estado: bloqueada ? "BLOCKED_DECISION" : "LISTA_PARA_PROPONER", faltan, bloqueos: bloqueosOrden, firmado: false,
+      payload, period: period ? period.toString() : null, validUntil: o.validUntil ? String(o.validUntil) : null, termsDocRoot: dbnxDocHash,
+      digest: bloqueada ? null : digestPayload(payload),
       comprobacionPeriodoUnico: period ? "floor(t/period) = 0 para todo t < validUntil < period" : null,
       aprobacion: "proposeAuthorization(digest, \"SET_MINT_BUDGET\") + quórum + timelock; ejecutor TECH_OPS: setMintBudget(payload, digest, period, validUntil, termsDocRoot)",
+    };
+    // v0.3 §5 · lo que DBNX tiene que aprobar y registrar (registerDbnxApproval).
+    const solicitudDbnx = {
+      assetId, cantidad: S0.toString(), destino: raiz, migracion: true,
+      vigenciaMinimaHasta: o.validUntil ? String(o.validUntil) : null,
+      registro: "registerDbnxApproval(docHash, assetId, S0, validFrom, validUntil >= fin de la ventana, raíz del padrón, true) con la cuenta DBNX",
     };
 
     const llamadas = arbol.entradas.map((e) => {
@@ -171,7 +213,7 @@ export function generarLotes(censo, activos, o = {}) {
       conciliacionCenso: {
         sumaTenedoresCenso: sumaCenso.toString(), residuoSinTitular: residuoRaw === null ? null : residuoRaw.toString(),
         totalSupply: totalSupply === null ? null : totalSupply.toString(),
-        cuadra: totalSupply === null || residuoRaw === null ? null : sumaCenso + residuoRaw === totalSupply,
+        cuadra,
         sumaOldUnitsPadron: beneficiarios.reduce((s, b) => s + b.oldUnits, 0n).toString(),
         sumaExcluida: excluidas.reduce((s, x) => s + BigInt(x.oldUnits), 0n).toString(),
       },
@@ -182,7 +224,7 @@ export function generarLotes(censo, activos, o = {}) {
         emisor: "llave ISSUER; un OperationReplay es «ya migrado», no un error",
         cierre: "revokeMintBudget(assetId, \"MIGRACION_FIN\") al terminar",
       },
-      orden, llamadas,
+      solicitudDbnx, orden, llamadas,
     });
   }
   return lotes;
@@ -210,7 +252,8 @@ if (ES_PRINCIPAL) {
     if (l.estado !== "GENERADO") { console.log(`${l.symbol || l.contrato}: ${l.estado} — ${(l.bloqueos || []).join("; ")}`); continue; }
     writeFileSync(join(SALIDA, `lote-migracion-${l.activo}.mintOnDemand.json`), JSON.stringify(l.llamadas.map((c) => c.mintOnDemand), null, 2) + "\n");
     writeFileSync(join(SALIDA, `lote-migracion-${l.activo}.orden-cupo.json`), JSON.stringify(l.orden, null, 2) + "\n");
-    console.log(`${l.activo} (${l.symbol}): ${l.beneficiarios} titulares · S0 ${l.S0Texto ?? l.S0 + " (unidades mínimas del activo nuevo)"} · máx/op ${l.maxPorOperacion} · excluidas ${l.excluidas.length} · raíz ${l.raizPadron} · orden ${l.orden.estado}${l.orden.faltan.length ? " (" + l.orden.faltan.join(", ") + ")" : ""} · censo cuadra: ${l.conciliacionCenso.cuadra}`);
+    const motivos = [...l.orden.faltan, ...l.orden.bloqueos];
+    console.log(`${l.activo} (${l.symbol}): ${l.beneficiarios} titulares · S0 ${l.S0Texto ?? l.S0 + " (unidades mínimas del activo nuevo)"} · máx/op ${l.maxPorOperacion} · excluidas ${l.excluidas.length} · raíz ${l.raizPadron} · orden ${l.orden.estado}${motivos.length ? " (" + motivos.join("; ") + ")" : ""} · censo cuadra: ${l.conciliacionCenso.cuadra}`);
   }
   if (process.argv.includes("--simular")) {
     const r = spawnSync("npx", ["hardhat", "run", join(raizRepo, "sfsp", "migracion-410", "simular-lote-migracion.cjs")], {

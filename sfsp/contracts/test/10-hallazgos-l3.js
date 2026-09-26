@@ -9,12 +9,13 @@ const assert = require("node:assert/strict");
 const F = require("./fixture");
 const H = require("./helpers");
 const OA = require("./orden-autorizada");
-const { buildAuthorization, acunar, ordenDeQuema } = require("./authorization");
+const { buildAuthorization, acunar, ordenDeQuema, colocable } = require("./authorization");
 
 const CASH = 1_000_000_000_000_000n;
 
 async function sembrar(f, to, amount, tag) {
   await f.issuance.send("setInstrumentLimits", [f.ASSET_NEW, 1000000, 1000000], f.board);
+  await colocable(f, [to]);
   const { auth, sigs } = await buildAuthorization(f, {
     destination: to,
     amount,

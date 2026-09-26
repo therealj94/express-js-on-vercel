@@ -18,13 +18,25 @@ import {ISFSPGovernanceController, ISFSPEligibilityEngine} from "./lib/ISFSP.sol
 ///                       el circulante.
 ///         La bóveda no tiene retiro de administrador, ni dueño, ni actualización:
 ///         la ÚNICA salida es `release` o `releaseOnDemand`.
+///
+///         SFSP-120 §0.3 y §0.5 regla 3 · vender ORIGEN desde la bóveda al usuario
+///         que pagó es una SUSCRIPCIÓN primaria sobre MON: un cupo de VENTA
+///         (`SET_RELEASE_BUDGET`) aplica SUBSCRIBE sobre el destino en la misma
+///         transacción. Una salida que no es venta (p. ej. el ORIGEN de gas para
+///         los tenedores de ONDK) va por un cupo de DISTRIBUCIÓN
+///         (`SET_DISTRIBUTION_BUDGET`), con su propia etiqueta aprobada por
+///         gobierno: la naturaleza de la salida la deciden los firmantes, no el
+///         emisor. Su calificación legal es una decisión de la Junta.
 /// @dev El circulante que publica `circulating()` es
 ///      génesis − bóveda − saldos de las cuentas internas declaradas, y se puede
 ///      recalcular desde fuera con lecturas de saldo: no depende de confiar en
 ///      ningún contador de este contrato.
 contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
     bytes32 public constant ACTION_RELEASE = bytes32("RELEASE_NATIVE");
+    /// @dev Cupo de VENTA: cada `releaseOnDemand` es una suscripción primaria.
     bytes32 public constant ACTION_SET_RELEASE_BUDGET = bytes32("SET_RELEASE_BUDGET");
+    /// @dev Cupo de DISTRIBUCIÓN (no venta): sólo la política MINT del destino.
+    bytes32 public constant ACTION_SET_DISTRIBUTION_BUDGET = bytes32("SET_DISTRIBUTION_BUDGET");
     bytes32 public constant BUDGET_TERMS_TAG = keccak256("SFSP.RELEASE_BUDGET.TERMS.v1");
     uint256 public constant MAX_INTERNAL_ACCOUNTS = 64;
 
@@ -45,6 +57,10 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
     }
 
     ReleaseBudget private _budget;
+    /// @dev Etiqueta con la que gobierno aprobó el cupo vigente (venta o
+    ///      distribución). Aparte de `ReleaseBudget` para no cambiar lo que
+    ///      devuelve `releaseBudget()`.
+    bytes32 private _budgetKind;
     mapping(bytes32 => bool) private _usedOperation;
     mapping(address => bool) private _internalAccount;
     address[] private _internalList;
@@ -151,6 +167,11 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
         return _budget;
     }
 
+    /// @notice `SET_RELEASE_BUDGET` (venta: SUBSCRIBE) o `SET_DISTRIBUTION_BUDGET`.
+    function releaseBudgetKind() external view returns (bytes32) {
+        return _budgetKind;
+    }
+
     function budgetRemaining() external view returns (uint256) {
         ReleaseBudget memory b = _budget;
         if (b.period == 0 || block.timestamp >= b.validUntil) return 0;
@@ -212,7 +233,7 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
         SFSPAuthorization.authorize(m, approvedDigest);
         governance.consumeAuthorization(approvedDigest);
 
-        _pay(p.destination, p.amount, p.nonce, bytes32("GOVERNANCE"), p.evidenceRoot);
+        _pay(p.destination, p.amount, p.nonce, bytes32("GOVERNANCE"), p.evidenceRoot, false);
     }
 
     // ------------------------------------------------------------- salida 2: cupo
@@ -222,6 +243,10 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
     }
 
     /// @notice Fija el cupo de liberación con doble control, espera y consumo único.
+    /// @dev `p.action` dice si es un cupo de VENTA (`SET_RELEASE_BUDGET`, cada
+    ///      liberación exige SUBSCRIBE) o de DISTRIBUCIÓN
+    ///      (`SET_DISTRIBUTION_BUDGET`); gobierno tiene que haberlo aprobado con
+    ///      esa misma etiqueta.
     function setReleaseBudget(
         SFSPAuthorization.Payload calldata p,
         bytes32 approvedDigest,
@@ -230,7 +255,9 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
         bytes32 termsDocRoot
     ) external nonReentrant {
         if (!hasRole(TECH_OPS, msg.sender) && !hasRole(DBNX_BOARD, msg.sender)) revert Unauthorized(TECH_OPS, msg.sender);
-        if (p.action != ACTION_SET_RELEASE_BUDGET) revert AuthorizationActionMismatch(ACTION_SET_RELEASE_BUDGET, p.action);
+        if (p.action != ACTION_SET_RELEASE_BUDGET && p.action != ACTION_SET_DISTRIBUTION_BUDGET) {
+            revert AuthorizationActionMismatch(ACTION_SET_RELEASE_BUDGET, p.action);
+        }
         if (p.assetId != assetId) revert BudgetInvalid(bytes32("ASSET"));
         if (p.origin != address(0) || p.destination != address(0)) revert BudgetInvalid(bytes32("PARTIES"));
         if (p.amount == 0 || p.amountSecondary == 0 || p.amountSecondary > p.amount) revert BudgetInvalid(bytes32("AMOUNTS"));
@@ -238,8 +265,8 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
         bytes32 terms = budgetTermsRoot(period, validUntil, termsDocRoot);
         if (p.evidenceRoot != terms) revert BudgetTermsMismatch(p.evidenceRoot, terms);
 
-        if (governance.authorizationActionOf(approvedDigest) != ACTION_SET_RELEASE_BUDGET) {
-            revert AuthorizationActionMismatch(ACTION_SET_RELEASE_BUDGET, governance.authorizationActionOf(approvedDigest));
+        if (governance.authorizationActionOf(approvedDigest) != p.action) {
+            revert AuthorizationActionMismatch(p.action, governance.authorizationActionOf(approvedDigest));
         }
         if (!governance.isAuthorizationApproved(approvedDigest)) revert ReleaseNotAuthorized(approvedDigest);
         uint64 readyAt = governance.authorizationProposedAt(approvedDigest) + governance.timelockDelay();
@@ -257,6 +284,7 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
             periodIndex: uint64(block.timestamp / period),
             usedInPeriod: 0
         });
+        _budgetKind = p.action;
         emit ReleaseBudgetSet(assetId, approvedDigest, p.amount, period, p.amountSecondary, validUntil, termsDocRoot);
     }
 
@@ -267,10 +295,13 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
         }
         require(reasonCode != bytes32(0), "SFSP: motivo requerido");
         delete _budget;
+        delete _budgetKind;
         emit ReleaseBudgetRevoked(assetId, msg.sender, reasonCode);
     }
 
     /// @notice Libera al USUARIO exactamente lo que pagó, dentro del cupo.
+    /// @dev En un cupo de venta, SUBSCRIBE sobre el destino (SFSP-120 §0.3 regla
+    ///      1): la bóveda necesita el rol SUBSCRIPTION_EXECUTOR del motor.
     function releaseOnDemand(address destination, uint256 amount, bytes32 paymentRef, bytes32 evidenceRoot)
         external
         onlyRole(ISSUER)
@@ -291,7 +322,7 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
         b.periodIndex = idx;
         b.usedInPeriod = used + amount;
 
-        _pay(destination, amount, paymentRef, bytes32("BUDGET"), evidenceRoot);
+        _pay(destination, amount, paymentRef, bytes32("BUDGET"), evidenceRoot, _budgetKind == ACTION_SET_RELEASE_BUDGET);
     }
 
     // ------------------------------------------------------------- pago
@@ -299,7 +330,10 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
     /// @dev Reglas comunes a las dos salidas: nunca a una cuenta interna (eso
     ///      sería sacar ORIGEN de la bóveda para guardarlo en otro cajón), el
     ///      destino tiene que ser elegible, y efectos antes de la transferencia.
-    function _pay(address destination, uint256 amount, bytes32 operationId, bytes32 route, bytes32 evidenceRoot) internal {
+    /// @param subscribe venta: además, SUBSCRIBE sobre el destino (SFSP-120 §0.3).
+    function _pay(address destination, uint256 amount, bytes32 operationId, bytes32 route, bytes32 evidenceRoot, bool subscribe)
+        internal
+    {
         // REV-410 · pagarse a sí misma no es una salida: consumiría cupo y
         // `paymentRef`, y el receive() lo contaría como absorbido, inflando
         // totalReleased y totalAbsorbed sin que nadie reciba nada.
@@ -307,6 +341,7 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
         if (_internalAccount[destination]) revert ReleaseToInternalAccount(destination);
         (uint8 code, bytes32 reason,) = engine.evaluateOperation(destination, assetId, bytes32("MINT"), amount, bytes32(0));
         if (code != SFSPCodes.ALLOW) revert ReleaseRejected(code, reason);
+        if (subscribe) engine.enforceSubscription(destination, assetId, amount);
         uint256 bal = address(this).balance;
         if (bal < amount) revert InsufficientVaultBalance(bal, amount);
         totalReleased += amount;

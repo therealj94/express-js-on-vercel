@@ -78,31 +78,34 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     ///      todo país no evaluado. El orden es parte del contrato.
     enum CountryState { SOLO_ENTRANTE, PERMITIDO, PERMITIDO_CON_CONDICIONES, BLOQUEADO }
 
-    /// @dev Lo que una suscripción aporta y una transferencia no necesita.
-    ///      `country` es la residencia que el adquirente ACREDITA (claim vigente
-    ///      en el propósito de residencia de ese país); `exposureRef` es su
-    ///      compromiso en el propósito EXPOSICION —el mismo para todas las
-    ///      direcciones de una identidad—; `acquisitionCost` es el costo de
-    ///      adquisición en la unidad de cuenta del protocolo.
-    struct SubscriptionContext {
-        bytes32 country;
-        bytes32 exposureRef;
-        uint256 acquisitionCost;
-    }
-
     /// @dev Parámetros del límite de exposición (v0.3 §8.5, decisión D03/D04 en
     ///      §18). `set == false` ⇒ BLOCKED_DECISION: no hay valor por defecto.
+    ///      Son reglas PÚBLICAS: Genesis ID las aplica FUERA de la cadena sobre
+    ///      el agregado de la identidad (SFSP-110 §0). En la cadena sólo acotan
+    ///      la vigencia del resultado que Genesis ID trae (`declarationTtl`).
     struct ExposureParams {
         bool set;
         uint32 incomeBps;       // porcentaje del ingreso autodeclarado, en pb
         uint256 floor;          // piso, en unidad de cuenta
         uint256 ceiling;        // techo, en unidad de cuenta
-        uint64 declarationTtl;  // vigencia de una autodeclaración
+        uint64 declarationTtl;  // vigencia máxima de un resultado de exposición
     }
 
-    struct IncomeDeclaration {
-        uint256 declaredIncome;
+    /// @dev Resultado del límite de exposición para UNA adquisición (v0.3 §11 y
+    ///      §12, SFSP-110 §0): Genesis ID calcula fuera de la cadena el agregado
+    ///      de la identidad —todas sus direcciones, a costo de adquisición,
+    ///      contra el % de su ingreso autodeclarado— y trae a la cadena sólo el
+    ///      resultado: «esta dirección puede adquirir hasta `maxUnits` de este
+    ///      activo hasta `validUntil`, con la declaración del adquirente
+    ///      `documentHash` v`documentVersion` aceptada». No viaja ningún
+    ///      compromiso estable de la identidad ni el ingreso: desde la cadena no
+    ///      se puede saber que dos direcciones son de la misma persona. Se gasta
+    ///      en la colocación que lo usa.
+    struct ExposureClearance {
+        uint256 maxUnits;
         uint64 validUntil;
+        uint32 documentVersion;
+        bytes32 documentHash;
     }
 
     /// @dev Base legal de la colocación primaria de un activo: la licencia o
@@ -126,35 +129,40 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     event ExposureParamsSet(
         bytes32 indexed digest, uint32 incomeBps, uint256 floor, uint256 ceiling, uint64 declarationTtl
     );
+    /// @dev D13 · criterio aprobado de ACREDITADO o SOFISTICADO (hash del acta).
+    event InvestorCriteriaSet(bytes32 indexed purpose, bytes32 criteriaHash, bytes32 reasonCode);
 
     error OrderMismatch(bytes32 field, bytes32 expected, bytes32 got);
     error CountryCodeInvalid(bytes32 countryCode);
     error CountryTransitionInvalid(uint8 fromState, uint8 toState);
     error BlockedCountriesFull(uint256 max);
+    error OpenCountriesFull(uint256 max);
     error EvidenceRequired();
     error ReasonRequired();
     error ExposureParamsInvalid(bytes32 reason);
     error ExposureParamsNotSet(uint8 code);
-    error ExposureRefUnbound(address account);
-    error ExposureLimitExceeded(uint256 used, uint256 requested, uint256 limit);
-    error ExposureDeclarationMissing(uint8 code);
     error NotGrowthSegment(bytes32 assetId);
     error DeclarationInvalid(bytes32 reason);
-    error LicenseRegistryNotWired();
+    error InvestorCriteriaInvalid(bytes32 purpose);
+    /// @dev La suscripción no dio ALLOW: el ejecutor no coloca (SFSP-120 §0.3).
+    error SubscriptionRejected(uint8 code, bytes32 reason);
 
     bytes32 public constant ACTION_SET_COUNTRY = bytes32("SET_COUNTRY");
     bytes32 public constant ACTION_SET_EXPOSURE_PARAMS = bytes32("SET_EXPOSURE_PARAMS");
     bytes32 public constant ACTION_SET_PLACEMENT_BASIS = bytes32("SET_PLACEMENT_BASIS");
+    bytes32 public constant ACTION_SET_INVESTOR_CRITERIA = bytes32("SET_INVESTOR_CRITERIA");
     bytes32 public constant SCOPE_COUNTRY = bytes32("SFSP:GOV:COUNTRY_MATRIX");
     bytes32 public constant SCOPE_EXPOSURE = bytes32("SFSP:GOV:EXPOSURE_LIMIT");
+    bytes32 public constant SCOPE_INVESTOR_CRITERIA = bytes32("SFSP:GOV:INVESTOR_CRITERIA");
 
     /// @dev Propósitos de identidad. La residencia es un propósito por país
-    ///      (`residencePurpose`); la exposición se agrega por el compromiso del
-    ///      propósito EXPOSICION, que es por identidad y no por dirección.
-    bytes32 public constant PURPOSE_EXPOSURE = bytes32("EXPOSICION");
+    ///      (`residencePurpose`). La exposición NO tiene propósito en la
+    ///      cadena: se agrega fuera, en Genesis ID (ver `ExposureClearance`).
     bytes32 public constant RESIDENCE_TAG = keccak256("SFSP.PURPOSE.RESIDENCE.v1");
     /// @dev Los tres perfiles que admite la notificación de oferta exenta
-    ///      (v0.3 §6). No son parámetros: los fija el texto de la exención.
+    ///      (v0.3 §6). No son parámetros: los fija el texto de la exención. Los
+    ///      CRITERIOS de acreditado y sofisticado sí lo son (D13): mientras no
+    ///      estén fijados, esos dos perfiles dan BLOCKED_DECISION.
     bytes32 public constant PURPOSE_PROSPERA_RESIDENT = bytes32("RESIDENTE_PROSPERA");
     bytes32 public constant PURPOSE_ACCREDITED = bytes32("INVERSIONISTA_ACREDITADO");
     bytes32 public constant PURPOSE_SOPHISTICATED = bytes32("INVERSIONISTA_SOFISTICADO");
@@ -163,24 +171,34 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     bytes32 public constant REGIME_CRECIMIENTO = bytes32("CRECIMIENTO");
     bytes32 public constant DECLARATION_TAG = keccak256("SFSP.EXPOSURE.DECLARATION.v1");
     bytes32 public constant ACQUIRER_TAG = keccak256("SFSP.ACQUIRER.DECLARATION.v1");
-    /// @dev Quien registra declaraciones y adquisiciones en nombre del
-    ///      adquirente. Lo hace un operador, no la dirección del adquirente: si
-    ///      lo hiciera cada dirección, la transacción uniría en público todas
-    ///      las direcciones de una misma identidad (H16).
+    /// @dev Genesis ID: registra el resultado del límite de exposición de una
+    ///      adquisición concreta. Lo hace un operador, no la dirección del
+    ///      adquirente, y sin ninguna referencia estable de la identidad (H16).
     bytes32 public constant EXPOSURE_OPERATOR = keccak256("SFSP.ROLE.EXPOSURE_OPERATOR");
-    /// @dev Techo técnico de la lista de países bloqueados: cada evaluación la
-    ///      recorre. No es un parámetro económico.
+    /// @dev Los contratos que COLOCAN (motor de reservas, controlador de
+    ///      emisión, bóveda nativa, tesorería): aplican la suscripción en la
+    ///      misma transacción que la colocación y gastan el resultado de
+    ///      exposición (SFSP-120 §0.3, regla 1).
+    bytes32 public constant SUBSCRIPTION_EXECUTOR = keccak256("SFSP.ROLE.SUBSCRIPTION_EXECUTOR");
+    /// @dev Techo técnico de las listas de países (bloqueados y abiertos a la
+    ///      suscripción): cada evaluación las recorre. No es un parámetro económico.
     uint256 public constant MAX_BLOCKED_COUNTRIES = 64;
+    uint256 public constant MAX_OPEN_COUNTRIES = 64;
 
     ISFSPLicenseRegistry public licenses;
     mapping(bytes32 => CountryState) private _country;
     bytes32[] private _blockedCountries;
     mapping(bytes32 => uint256) private _blockedIndex;              // país => índice + 1
+    /// @dev Países PERMITIDO o PERMITIDO_CON_CONDICIONES: los únicos desde los
+    ///      que se puede suscribir. El resto es SOLO_ENTRANTE o BLOQUEADO.
+    bytes32[] private _openCountries;
+    mapping(bytes32 => uint256) private _openIndex;                 // país => índice + 1
     ExposureParams private _exposure;
-    mapping(bytes32 => IncomeDeclaration) private _income;           // exposureRef => declaración
-    mapping(bytes32 => uint256) private _exposureUsed;               // exposureRef => costo agregado
-    mapping(bytes32 => mapping(bytes32 => uint32)) private _acquirerDecl; // ref => activo => versión
+    mapping(address => mapping(bytes32 => ExposureClearance)) private _clearance; // dirección => activo
+    uint256 private _clearanceNonce;
     mapping(bytes32 => PlacementBasis) private _placement;
+    /// @dev D13 · hash del acta que fija el criterio; 0 = null (BLOCKED_DECISION).
+    mapping(bytes32 => bytes32) private _investorCriteria;
 
     error PolicyNotAuthorized(bytes32 digest);
     error AuthorizationActionMismatch(bytes32 expected, bytes32 got);
@@ -354,19 +372,49 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     }
 
     /// @notice Evaluación de una SUSCRIPCIÓN primaria (v0.3 §7 y §8.5).
-    /// @dev Además de todo lo de `evaluateOperation`: residencia acreditada y
-    ///      su estado en la matriz; base legal de la colocación y, si es la
-    ///      notificación de oferta exenta, su alcance; y en el Mercado de
-    ///      Crecimiento, el límite de exposición POR IDENTIDAD.
-    function evaluateSubscription(
-        address account,
-        bytes32 assetId,
-        uint256 amount,
-        bytes32 authorizationDigest,
-        SubscriptionContext calldata ctx
-    ) external view returns (uint8 result, bytes32 reasonCode, uint32 policyVersion) {
+    /// @dev Además de todo lo de `evaluateOperation`: residencia acreditada en
+    ///      un país que permita suscribir; base legal de la colocación y, si es
+    ///      la notificación de oferta exenta, su alcance; y en el Mercado de
+    ///      Crecimiento, el resultado del límite de exposición de la identidad
+    ///      que Genesis ID trajo para ESTA dirección y ESTE activo.
+    ///      El país no lo declara el llamador: se busca entre los países
+    ///      abiertos aquel en que la dirección acredita residencia (claim
+    ///      vigente). Callarlo no ayuda: sin residencia acreditada en un país
+    ///      abierto, la dirección es SOLO_ENTRANTE.
+    /// @param amount unidades del activo que se colocarían.
+    function evaluateSubscription(address account, bytes32 assetId, uint256 amount, bytes32 authorizationDigest)
+        external
+        view
+        returns (uint8 result, bytes32 reasonCode, uint32 policyVersion)
+    {
+        return _subscription(account, assetId, amount, authorizationDigest);
+    }
+
+    /// @notice Aplica la suscripción en la ruta de dinero (SFSP-120 §0.3).
+    /// @dev Lo llama, en la MISMA transacción que la colocación, cada contrato
+    ///      que saca unidades del emisor o de su tesorería hacia un tercero:
+    ///      `SFSPReserveEngine.place`, `SFSPIssuanceController.mint` y
+    ///      `mintOnDemand`, `SFSPNativeVault.releaseOnDemand` y
+    ///      `SFSPTreasuryDesk.sell`. Revierte si la evaluación no es ALLOW y, en
+    ///      el Mercado de Crecimiento, gasta el resultado de exposición: un
+    ///      resultado sirve para una sola colocación.
+    function enforceSubscription(address account, bytes32 assetId, uint256 amount)
+        external
+        onlyRole(SUBSCRIPTION_EXECUTOR)
+    {
+        (uint8 code, bytes32 reason,) = _subscription(account, assetId, amount, bytes32(0));
+        if (code != SFSPCodes.ALLOW) revert SubscriptionRejected(code, reason);
+        (bytes32 segment,) = registry.segmentOf(assetId);
+        if (segment == SFSPTypes.SEGMENT_CRECIMIENTO) delete _clearance[account][assetId];
+    }
+
+    function _subscription(address account, bytes32 assetId, uint256 amount, bytes32 authorizationDigest)
+        internal
+        view
+        returns (uint8 result, bytes32 reasonCode, uint32 policyVersion)
+    {
         (result, reasonCode, policyVersion) = _evaluate(account, assetId, ACTION_SUBSCRIBE, amount, authorizationDigest);
-        if (result == SFSPCodes.ALLOW) (result, reasonCode) = _subscriptionCheck(account, assetId, ctx);
+        if (result == SFSPCodes.ALLOW) (result, reasonCode) = _subscriptionCheck(account, assetId, amount);
         return _finish(assetId, ACTION_SUBSCRIBE, result, reasonCode, policyVersion);
     }
 
@@ -508,19 +556,18 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
     // v0.3 §7 · matriz de países · §6 base de colocación · §8.5 exposición
     // ======================================================================
 
+    // Códigos de motivo: los del catálogo de ESTADOS-Y-EVENTOS §C. El catálogo
+    // se completa ANTES de usar un código nuevo, y uno retirado no se reutiliza.
     bytes32 internal constant R_INBOUND_ONLY = bytes32("COUNTRY_INBOUND_ONLY");
     bytes32 internal constant R_COUNTRY_BLOCKED = bytes32("COUNTRY_BLOCKED");
-    bytes32 internal constant R_COUNTRY_UNPROVEN = bytes32("COUNTRY_UNPROVEN");
     bytes32 internal constant R_COUNTRY_CONDITIONS = bytes32("COUNTRY_CONDITIONS_UNSET");
     bytes32 internal constant R_PLACEMENT_UNSET = bytes32("PLACEMENT_BASIS_UNSET");
-    bytes32 internal constant R_PLACEMENT_LICENSE = bytes32("PLACEMENT_LICENSE_NOT_IN_FORCE");
-    bytes32 internal constant R_EXEMPT_SCOPE = bytes32("EXEMPT_OFFER_SCOPE");
+    bytes32 internal constant R_PLACEMENT_LICENSE = bytes32("LICENCIA_NO_OTORGADA");
+    bytes32 internal constant R_EXEMPT_SCOPE = bytes32("FUERA_DE_ALCANCE_OFERTA_EXENTA");
+    bytes32 internal constant R_INVESTOR_CRITERIA = bytes32("INVESTOR_CRITERIA_UNSET");
     bytes32 internal constant R_SEGMENT_UNKNOWN = bytes32("SEGMENT_UNKNOWN");
     bytes32 internal constant R_EXPOSURE_UNSET = bytes32("EXPOSURE_PARAMS_UNSET");
-    bytes32 internal constant R_EXPOSURE_REF = bytes32("EXPOSURE_REF_UNBOUND");
-    bytes32 internal constant R_INCOME_MISSING = bytes32("INCOME_DECLARATION_MISSING");
-    bytes32 internal constant R_ACQUIRER_MISSING = bytes32("ACQUIRER_DECLARATION_MISSING");
-    bytes32 internal constant R_COST_UNKNOWN = bytes32("ACQUISITION_COST_UNKNOWN");
+    bytes32 internal constant R_EXPOSURE_UNKNOWN = bytes32("EXPOSURE_RESULT_MISSING");
     bytes32 internal constant R_EXPOSURE_LIMIT = bytes32("EXPOSURE_LIMIT_EXCEEDED");
     bytes32 internal constant R_LICENSES_UNWIRED = bytes32("LICENSE_REGISTRY_UNSET");
 
@@ -545,6 +592,12 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
         return _blockedCountries;
     }
 
+    /// @notice Países desde los que se puede suscribir: PERMITIDO o
+    ///         PERMITIDO_CON_CONDICIONES.
+    function openCountries() external view returns (bytes32[] memory) {
+        return _openCountries;
+    }
+
     function exposureParams() external view returns (ExposureParams memory) {
         return _exposure;
     }
@@ -553,74 +606,74 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
         return _placement[assetId];
     }
 
-    function exposureUsedOf(bytes32 exposureRef) external view returns (uint256) {
-        return _exposureUsed[exposureRef];
+    /// @notice Resultado de exposición vigente de una dirección para un activo.
+    function exposureClearanceOf(address account, bytes32 assetId) external view returns (ExposureClearance memory) {
+        return _clearance[account][assetId];
     }
 
-    function acquirerDeclarationVersion(bytes32 exposureRef, bytes32 assetId) external view returns (uint32) {
-        return _acquirerDecl[exposureRef][assetId];
-    }
-
-    /// @notice Límite vigente de una identidad; `known == false` si faltan los
-    ///         parámetros o la declaración de ingreso está vencida o no existe.
-    function exposureLimitOf(bytes32 exposureRef) public view returns (bool known, uint256 limit) {
-        if (!_exposure.set) return (false, 0);
-        IncomeDeclaration storage d = _income[exposureRef];
-        if (d.validUntil <= block.timestamp) return (false, 0);
-        limit = (d.declaredIncome * _exposure.incomeBps) / 10000;
-        if (limit < _exposure.floor) limit = _exposure.floor;
-        if (limit > _exposure.ceiling) limit = _exposure.ceiling;
-        return (true, limit);
+    /// @notice D13 · hash del acta del criterio; 0 = sin fijar (BLOCKED_DECISION).
+    function investorCriteriaOf(bytes32 purpose) external view returns (bytes32) {
+        return _investorCriteria[purpose];
     }
 
     // ------------------------------------------------------------- suscripción
 
     /// @dev País → base de colocación (y alcance de la oferta exenta) →
     ///      exposición. Cada paso devuelve su código; ninguno se degrada a ALLOW.
-    function _subscriptionCheck(address account, bytes32 assetId, SubscriptionContext calldata ctx)
+    function _subscriptionCheck(address account, bytes32 assetId, uint256 amount)
         internal
         view
         returns (uint8, bytes32)
     {
-        (uint8 c, bytes32 r) = _countryCheck(account, ctx.country);
+        (uint8 c, bytes32 r) = _countryCheck(account);
         if (c != SFSPCodes.ALLOW) return (c, r);
         (c, r) = _placementCheck(account, assetId);
         if (c != SFSPCodes.ALLOW) return (c, r);
-        return _exposureCheck(account, assetId, ctx);
+        return _exposureCheck(account, assetId, amount);
     }
 
-    function _countryCheck(address account, bytes32 country) internal view returns (uint8, bytes32) {
-        // Residencia no acreditada = país no evaluado = SOLO_ENTRANTE.
-        if (country == bytes32(0)) return (SFSPCodes.DENY_JURISDICTION, R_INBOUND_ONLY);
-        (bool bound,,, bool valid) = identity.purposeStatus(account, residencePurpose(country));
-        if (!bound || !valid) return (SFSPCodes.UNKNOWN_SOURCE, R_COUNTRY_UNPROVEN);
-        CountryState st = _country[country];
-        if (st == CountryState.SOLO_ENTRANTE) return (SFSPCodes.DENY_JURISDICTION, R_INBOUND_ONLY);
-        if (st == CountryState.BLOQUEADO) return (SFSPCodes.DENY_JURISDICTION, R_COUNTRY_BLOCKED);
-        // Las reglas por instrumento de PERMITIDO_CON_CONDICIONES no están
-        // parametrizadas: no se elige un valor, se bloquea la decisión.
-        if (st == CountryState.PERMITIDO_CON_CONDICIONES) return (SFSPCodes.BLOCKED_DECISION, R_COUNTRY_CONDITIONS);
-        return (SFSPCodes.ALLOW, SFSPCodes.R_OK);
+    /// @dev Residencia no acreditada en un país abierto = país no evaluado =
+    ///      SOLO_ENTRANTE. Con residencia acreditada en un país PERMITIDO,
+    ///      suscribe; si sólo la acredita en uno PERMITIDO_CON_CONDICIONES, cuyas
+    ///      reglas por instrumento no están parametrizadas, la decisión se
+    ///      bloquea. BLOQUEADO ya lo resolvió `_subjectCheck` (deniega todo).
+    function _countryCheck(address account) internal view returns (uint8, bytes32) {
+        bool conditional;
+        uint256 n = _openCountries.length;
+        for (uint256 i = 0; i < n; i++) {
+            bytes32 c = _openCountries[i];
+            if (!_hasValidClaim(account, residencePurpose(c))) continue;
+            if (_country[c] == CountryState.PERMITIDO) return (SFSPCodes.ALLOW, SFSPCodes.R_OK);
+            conditional = true;
+        }
+        if (conditional) return (SFSPCodes.BLOCKED_DECISION, R_COUNTRY_CONDITIONS);
+        return (SFSPCodes.DENY_JURISDICTION, R_INBOUND_ONLY);
     }
 
     /// @dev v0.3 §6 y §7: mientras la colocación se base en la notificación de
     ///      oferta exenta, sólo suscriben residentes de Próspera, acreditados y
     ///      sofisticados, con independencia del estado del país.
+    ///      SFSP-140 §4 regla 2 · mientras el criterio de acreditado o de
+    ///      sofisticado sea null (D13), sólo RESIDENTE_PROSPERA puede evaluarse:
+    ///      una suscripción que dependa de los otros dos es BLOCKED_DECISION,
+    ///      nunca ALLOW (T-120-28).
     function _placementCheck(address account, bytes32 assetId) internal view returns (uint8, bytes32) {
         if (address(licenses) == address(0)) return (SFSPCodes.BLOCKED_DECISION, R_LICENSES_UNWIRED);
         PlacementBasis storage b = _placement[assetId];
         if (!b.set) return (SFSPCodes.BLOCKED_DECISION, R_PLACEMENT_UNSET);
         (bytes32 licenseId, uint8 kind, bool effective) = licenses.resolveLicense(b.holder, b.licenseType);
         if (licenseId == bytes32(0) || !effective) return (SFSPCodes.DENY_AUTHORIZATION, R_PLACEMENT_LICENSE);
-        if (kind == LICENSE_KIND_LIMITED) {
-            if (
-                !_hasValidClaim(account, PURPOSE_PROSPERA_RESIDENT) && !_hasValidClaim(account, PURPOSE_ACCREDITED)
-                    && !_hasValidClaim(account, PURPOSE_SOPHISTICATED)
-            ) {
-                return (SFSPCodes.DENY_ELIGIBILITY, R_EXEMPT_SCOPE);
-            }
+        if (kind != LICENSE_KIND_LIMITED) return (SFSPCodes.ALLOW, SFSPCodes.R_OK);
+        if (_hasValidClaim(account, PURPOSE_PROSPERA_RESIDENT)) return (SFSPCodes.ALLOW, SFSPCodes.R_OK);
+        bool pending;
+        bytes32[2] memory perfiles = [PURPOSE_ACCREDITED, PURPOSE_SOPHISTICATED];
+        for (uint256 i = 0; i < 2; i++) {
+            if (!_hasValidClaim(account, perfiles[i])) continue;
+            if (_investorCriteria[perfiles[i]] != bytes32(0)) return (SFSPCodes.ALLOW, SFSPCodes.R_OK);
+            pending = true;
         }
-        return (SFSPCodes.ALLOW, SFSPCodes.R_OK);
+        if (pending) return (SFSPCodes.BLOCKED_DECISION, R_INVESTOR_CRITERIA);
+        return (SFSPCodes.DENY_ELIGIBILITY, R_EXEMPT_SCOPE);
     }
 
     function _hasValidClaim(address account, bytes32 purpose) internal view returns (bool) {
@@ -628,10 +681,11 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
         return bound && !blocked && valid;
     }
 
-    /// @dev v0.3 §8.5 · por identidad (compromiso EXPOSICION), agregado sobre el
-    ///      segmento, a costo de adquisición, % del ingreso autodeclarado con
-    ///      piso y techo. Sólo en el Mercado de Crecimiento.
-    function _exposureCheck(address account, bytes32 assetId, SubscriptionContext calldata ctx)
+    /// @dev v0.3 §8.5 · sólo en el Mercado de Crecimiento. El agregado por
+    ///      identidad lo calcula Genesis ID fuera de la cadena; aquí se exige su
+    ///      resultado para ESTA dirección y ESTE activo, vigente y suficiente.
+    ///      Sin resultado: UNKNOWN_SOURCE, nunca se supone cero (SFSP-120 §0.7).
+    function _exposureCheck(address account, bytes32 assetId, uint256 amount)
         internal
         view
         returns (uint8, bytes32)
@@ -640,16 +694,9 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
         if (!inForce) return (SFSPCodes.UNKNOWN_SOURCE, R_SEGMENT_UNKNOWN);
         if (segment != SFSPTypes.SEGMENT_CRECIMIENTO) return (SFSPCodes.ALLOW, SFSPCodes.R_OK);
         if (!_exposure.set) return (SFSPCodes.BLOCKED_DECISION, R_EXPOSURE_UNSET);
-        if (ctx.exposureRef == bytes32(0) || !identity.isCommitmentBound(account, PURPOSE_EXPOSURE, ctx.exposureRef)) {
-            return (SFSPCodes.UNKNOWN_SOURCE, R_EXPOSURE_REF);
-        }
-        (bool known, uint256 limit) = exposureLimitOf(ctx.exposureRef);
-        if (!known) return (SFSPCodes.UNKNOWN_SOURCE, R_INCOME_MISSING);
-        if (_acquirerDecl[ctx.exposureRef][assetId] == 0) return (SFSPCodes.DENY_ELIGIBILITY, R_ACQUIRER_MISSING);
-        if (ctx.acquisitionCost == 0) return (SFSPCodes.UNKNOWN_SOURCE, R_COST_UNKNOWN);
-        if (_exposureUsed[ctx.exposureRef] + ctx.acquisitionCost > limit) {
-            return (SFSPCodes.DENY_LIMIT, R_EXPOSURE_LIMIT);
-        }
+        ExposureClearance storage c = _clearance[account][assetId];
+        if (c.validUntil <= block.timestamp) return (SFSPCodes.UNKNOWN_SOURCE, R_EXPOSURE_UNKNOWN);
+        if (amount == 0 || amount > c.maxUnits) return (SFSPCodes.DENY_LIMIT, R_EXPOSURE_LIMIT);
         return (SFSPCodes.ALLOW, SFSPCodes.R_OK);
     }
 
@@ -684,6 +731,14 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
         return keccak256(abi.encode(ACTION_SET_PLACEMENT_BASIS, assetId, holder, licenseType, reasonCode));
     }
 
+    function investorCriteriaContent(bytes32 purpose, bytes32 criteriaHash, bytes32 reasonCode)
+        public
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encode(SCOPE_INVESTOR_CRITERIA, purpose, criteriaHash, reasonCode));
+    }
+
     /// @notice Cambia el estado de un país en la matriz, por orden de gobierno.
     /// @dev `amount` = estado anterior, `amountSecondary` = nuevo. BLOQUEADO
     ///      exige fundamento (`evidenceHash`): no se bloquea por precaución.
@@ -715,18 +770,38 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
             _blockedCountries.push(countryCode);
             _blockedIndex[countryCode] = _blockedCountries.length;
         } else if (prev == CountryState.BLOQUEADO) {
-            uint256 idx = _blockedIndex[countryCode] - 1;
-            uint256 last = _blockedCountries.length - 1;
-            if (idx != last) {
-                bytes32 moved = _blockedCountries[last];
-                _blockedCountries[idx] = moved;
-                _blockedIndex[moved] = idx + 1;
-            }
-            _blockedCountries.pop();
-            delete _blockedIndex[countryCode];
+            _removeFrom(_blockedCountries, _blockedIndex, countryCode);
+        }
+        // Lista de países abiertos a la suscripción: la que recorre `_countryCheck`.
+        bool wasOpen = _isOpen(prev);
+        bool isOpen = _isOpen(newState);
+        if (isOpen && !wasOpen) {
+            if (_openCountries.length >= MAX_OPEN_COUNTRIES) revert OpenCountriesFull(MAX_OPEN_COUNTRIES);
+            _openCountries.push(countryCode);
+            _openIndex[countryCode] = _openCountries.length;
+        } else if (wasOpen && !isOpen) {
+            _removeFrom(_openCountries, _openIndex, countryCode);
         }
         _country[countryCode] = newState;
         emit CountryStatusChanged(countryCode, uint8(prev), uint8(newState), reasonCode, evidenceHash);
+    }
+
+    function _isOpen(CountryState st) internal pure returns (bool) {
+        return st == CountryState.PERMITIDO || st == CountryState.PERMITIDO_CON_CONDICIONES;
+    }
+
+    /// @dev Quita `code` de una lista con índice (índice + 1), intercambiando
+    ///      con el último. El orden de la lista no significa nada.
+    function _removeFrom(bytes32[] storage list, mapping(bytes32 => uint256) storage index, bytes32 code) internal {
+        uint256 idx = index[code] - 1;
+        uint256 last = list.length - 1;
+        if (idx != last) {
+            bytes32 moved = list[last];
+            list[idx] = moved;
+            index[moved] = idx + 1;
+        }
+        list.pop();
+        delete index[code];
     }
 
     /// @dev ISO 3166-1 alfa-2: dos letras mayúsculas y nada más.
@@ -779,67 +854,77 @@ contract SFSPEligibilityEngine is SFSPAccessControl {
         emit PlacementBasisSet(assetId, holder, licenseType, reasonCode);
     }
 
-    // ------------------------------------------------------------- declaraciones
-
-    /// @notice Autodeclaración de ingreso o patrimonio anual, sin comprobación
-    ///         documental (v0.3 §8.5), en la unidad de cuenta del protocolo.
-    /// @dev El evento publica sólo la referencia de la declaración y su
-    ///      vigencia, nunca el monto. El monto queda en almacenamiento indexado
-    ///      por el compromiso seudónimo (ver decisiones abiertas del lote).
-    function declareIncome(bytes32 exposureRef, uint256 declaredIncome) external onlyRole(EXPOSURE_OPERATOR) {
-        if (!_exposure.set) revert ExposureParamsNotSet(SFSPCodes.BLOCKED_DECISION);
-        if (exposureRef == bytes32(0) || declaredIncome == 0) revert DeclarationInvalid(bytes32("INCOME"));
-        uint64 validUntil = uint64(block.timestamp) + _exposure.declarationTtl;
-        _income[exposureRef] = IncomeDeclaration({declaredIncome: declaredIncome, validUntil: validUntil});
-        emit ExposureLimitRecorded(keccak256(abi.encode(DECLARATION_TAG, exposureRef)), REGIME_CRECIMIENTO, validUntil);
+    /// @notice D13 · fija el criterio de INVERSIONISTA_ACREDITADO o de
+    ///         INVERSIONISTA_SOFISTICADO, por orden de gobierno con referencia al
+    ///         acta (`criteriaHash`). Hasta entonces, una suscripción que dependa
+    ///         de ese perfil es BLOCKED_DECISION (SFSP-140 §4 regla 2).
+    function setInvestorCriteria(
+        bytes32 purpose,
+        bytes32 criteriaHash,
+        bytes32 reasonCode,
+        SFSPAuthorization.Payload calldata p,
+        bytes32 approvedDigest
+    ) external onlyRole(TECH_OPS) {
+        if (purpose != PURPOSE_ACCREDITED && purpose != PURPOSE_SOPHISTICATED) revert InvestorCriteriaInvalid(purpose);
+        if (criteriaHash == bytes32(0)) revert DeclarationInvalid(bytes32("CRITERIA"));
+        if (reasonCode == bytes32(0)) revert ReasonRequired();
+        _consumeOrder(
+            p,
+            approvedDigest,
+            ACTION_SET_INVESTOR_CRITERIA,
+            SCOPE_INVESTOR_CRITERIA,
+            investorCriteriaContent(purpose, criteriaHash, reasonCode)
+        );
+        _investorCriteria[purpose] = criteriaHash;
+        emit InvestorCriteriaSet(purpose, criteriaHash, reasonCode);
     }
 
-    /// @notice Declaración del adquirente: aceptación de los términos del
-    ///         activo con la versión del documento aceptado.
-    function recordAcquirerDeclaration(
+    // ------------------------------------------------------------- exposición
+
+    /// @notice Genesis ID trae el RESULTADO del límite de exposición para una
+    ///         adquisición concreta (v0.3 §8.5, SFSP-110 §0): la dirección
+    ///         `account` puede adquirir hasta `maxUnits` de `assetId` hasta
+    ///         `validUntil`, y aceptó la declaración del adquirente
+    ///         `documentHash` en su versión `documentVersion`.
+    /// @dev Lo que NO viaja, a propósito (v0.3 §11 y §12, SFSP-600 T23): el
+    ///      ingreso autodeclarado, el agregado de la identidad y cualquier
+    ///      compromiso estable de la identidad. Las dos referencias de los
+    ///      eventos salen de un contador, no del sujeto: no enlazan direcciones.
+    ///      La vigencia no puede superar `declarationTtl`. Registrar otra vez
+    ///      para el mismo par sustituye el resultado anterior.
+    function recordExposureClearance(
+        address account,
         bytes32 assetId,
-        bytes32 exposureRef,
+        uint256 maxUnits,
+        uint64 validUntil,
         bytes32 documentHash,
         uint32 documentVersion
     ) external onlyRole(EXPOSURE_OPERATOR) {
-        if (!registry.isRegistered(assetId)) revert DeclarationInvalid(bytes32("ASSET"));
-        if (exposureRef == bytes32(0) || documentHash == bytes32(0) || documentVersion == 0) {
-            revert DeclarationInvalid(bytes32("DOCUMENT"));
+        if (!_exposure.set) revert ExposureParamsNotSet(SFSPCodes.BLOCKED_DECISION);
+        (bytes32 segment, bool inForce) = registry.segmentOf(assetId);
+        if (!inForce || segment != SFSPTypes.SEGMENT_CRECIMIENTO) revert NotGrowthSegment(assetId);
+        if (account == address(0) || maxUnits == 0) revert DeclarationInvalid(bytes32("CLEARANCE"));
+        if (validUntil <= block.timestamp || validUntil > block.timestamp + _exposure.declarationTtl) {
+            revert DeclarationInvalid(bytes32("VALIDITY"));
         }
-        _acquirerDecl[exposureRef][assetId] = documentVersion;
+        if (documentHash == bytes32(0) || documentVersion == 0) revert DeclarationInvalid(bytes32("DOCUMENT"));
+        _clearance[account][assetId] = ExposureClearance({
+            maxUnits: maxUnits,
+            validUntil: validUntil,
+            documentVersion: documentVersion,
+            documentHash: documentHash
+        });
+        _clearanceNonce += 1;
+        bytes32 ref = keccak256(abi.encode(DECLARATION_TAG, address(this), _clearanceNonce));
+        emit ExposureLimitRecorded(ref, REGIME_CRECIMIENTO, validUntil);
         emit AcquirerDeclarationRecorded(
-            assetId, keccak256(abi.encode(ACQUIRER_TAG, exposureRef, assetId)), documentHash, documentVersion
+            assetId, keccak256(abi.encode(ACQUIRER_TAG, ref)), documentHash, documentVersion
         );
     }
 
-    /// @notice Registra una adquisición en el Mercado de Crecimiento y la suma
-    ///         a la exposición AGREGADA de la identidad, a costo de adquisición.
-    /// @dev Revierte si excede: el `evaluateSubscription` es una vista, y esta
-    ///      es la escritura que lo hace cumplir en la ruta de dinero. La
-    ///      dirección tiene que estar dada de alta en EXPOSICION con ESE
-    ///      compromiso, así que abrir otra dirección no abre otro límite.
-    function recordAcquisition(address account, bytes32 exposureRef, bytes32 assetId, uint256 cost)
-        external
-        onlyRole(EXPOSURE_OPERATOR)
-    {
-        (bytes32 segment, bool inForce) = registry.segmentOf(assetId);
-        if (!inForce || segment != SFSPTypes.SEGMENT_CRECIMIENTO) revert NotGrowthSegment(assetId);
-        if (!identity.isCommitmentBound(account, PURPOSE_EXPOSURE, exposureRef)) revert ExposureRefUnbound(account);
-        if (!_exposure.set) revert ExposureParamsNotSet(SFSPCodes.BLOCKED_DECISION);
-        (bool known, uint256 limit) = exposureLimitOf(exposureRef);
-        if (!known) revert ExposureDeclarationMissing(SFSPCodes.UNKNOWN_SOURCE);
-        uint256 used = _exposureUsed[exposureRef];
-        if (cost == 0) revert DeclarationInvalid(bytes32("COST"));
-        if (used + cost > limit) revert ExposureLimitExceeded(used, cost, limit);
-        _exposureUsed[exposureRef] = used + cost;
-    }
-
-    /// @notice Descuenta de la exposición el costo de adquisición de lo que se
-    ///         dejó de tener. La apreciación no cuenta, ni al subir ni al bajar.
-    function releaseExposure(bytes32 exposureRef, uint256 cost) external onlyRole(EXPOSURE_OPERATOR) {
-        uint256 used = _exposureUsed[exposureRef];
-        if (cost == 0 || cost > used) revert DeclarationInvalid(bytes32("COST"));
-        _exposureUsed[exposureRef] = used - cost;
+    /// @notice Retira un resultado no usado (la compra no se hizo).
+    function revokeExposureClearance(address account, bytes32 assetId) external onlyRole(EXPOSURE_OPERATOR) {
+        delete _clearance[account][assetId];
     }
 
     /// @dev Patrón de `consumeAuthorization`: acción, alcance y contenido

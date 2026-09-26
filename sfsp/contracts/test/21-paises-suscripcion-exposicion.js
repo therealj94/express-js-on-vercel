@@ -8,7 +8,13 @@
  * BLOQUEADO (sanción u orden con fundamento) cierra todo. Las políticas por
  * acción ya fijadas no cambian: por eso las pruebas 03 y 10 siguen como estaban.
  *
- * Todos los parámetros del límite de exposición son sintéticos. */
+ * El país de la suscripción no lo declara el llamador: el motor busca, entre los
+ * países abiertos, aquel en que la dirección acredita residencia.
+ *
+ * Límite de exposición (v0.3 §8.5, §11 y §12; SFSP-110 §0): el agregado por
+ * identidad se calcula FUERA de la cadena, en Genesis ID; a la cadena llega sólo
+ * el resultado de UNA adquisición, sin ingreso y sin compromiso estable de la
+ * identidad. Todos los parámetros del límite de exposición son sintéticos. */
 const assert = require("node:assert/strict");
 const F = require("./fixture");
 const H = require("./helpers");
@@ -62,11 +68,8 @@ describe("SFSP v0.3 §7 y §8.5 · países, suscripción primaria y exposición"
     return await f.engine.send("setExposureParams", [e, motivo, ord.tupla, ord.digest], f.board);
   }
 
-  function suscribir(cuenta, ctx) {
-    return f.engine.call("evaluateSubscription", [
-      cuenta, F.ASSET_NEW, 100, H.ZERO32,
-      { country: ctx.country || H.ZERO32, exposureRef: ctx.exposureRef || H.ZERO32, acquisitionCost: String(ctx.cost || 0) },
-    ]);
+  function suscribir(cuenta, unidades) {
+    return f.engine.call("evaluateSubscription", [cuenta, F.ASSET_NEW, String(unidades || 100), H.ZERO32]);
   }
 
   function op(cuenta, accion) {
@@ -102,21 +105,26 @@ describe("SFSP v0.3 §7 y §8.5 · países, suscripción primaria y exposición"
       const sinPais = await op(f.alice, "SUBSCRIBE");
       assert.equal(Number(sinPais.result), CODE.DENY_JURISDICTION);
       assert.equal(sinPais.reasonCode, H.b32("COUNTRY_INBOUND_ONLY"));
-      const conPais = await suscribir(f.alice, { country: HN });
+      // T-120-21 · residente acreditado de un país no evaluado: SOLO_ENTRANTE.
+      const conPais = await suscribir(f.alice);
       assert.equal(Number(conPais.result), CODE.DENY_JURISDICTION);
       assert.equal(conPais.reasonCode, H.b32("COUNTRY_INBOUND_ONLY"));
     });
 
-    it("negativo: un país declarado sin residencia acreditada es fuente desconocida, no un permiso", async function () {
+    it("negativo: sin residencia ACREDITADA en un país abierto no se suscribe; el país no se declara", async function () {
       await pais(PA, PAIS.SOLO_ENTRANTE, PAIS.PERMITIDO);
-      // Alta de residencia sin claim vigente.
+      assert.deepEqual([...(await f.engine.call("openCountries"))], [PA]);
+      // Alta de residencia sin claim vigente: no acredita nada.
       await residencia(f.alice, "alice", PA);
-      const r = await suscribir(f.alice, { country: PA });
-      assert.equal(Number(r.result), CODE.UNKNOWN_SOURCE);
-      assert.equal(r.reasonCode, H.b32("COUNTRY_UNPROVEN"));
-      // Y declarar un país que no es el suyo tampoco sirve.
-      const r2 = await suscribir(f.bob, { country: PA });
-      assert.equal(Number(r2.result), CODE.UNKNOWN_SOURCE);
+      const r = await suscribir(f.alice);
+      assert.equal(Number(r.result), CODE.DENY_JURISDICTION);
+      assert.equal(r.reasonCode, H.b32("COUNTRY_INBOUND_ONLY"));
+      // Quien no tiene residencia en PA tampoco suscribe porque PA esté abierto.
+      const r2 = await suscribir(f.bob);
+      assert.equal(Number(r2.result), CODE.DENY_JURISDICTION);
+      // Cerrar el país lo saca de la lista de países abiertos.
+      await pais(PA, PAIS.PERMITIDO, PAIS.SOLO_ENTRANTE, { reason: H.b32("CIERRE_SINT") });
+      assert.deepEqual([...(await f.engine.call("openCountries"))], []);
     });
 
     it("positivo: CountryStatusChanged lleva estado anterior, nuevo, motivo y fundamento", async function () {
@@ -172,7 +180,7 @@ describe("SFSP v0.3 §7 y §8.5 · países, suscripción primaria y exposición"
       const { c, purpose } = await residencia(f.alice, "alice", PA);
       await V.acreditar(f, c, purpose);
       await pais(PA, PAIS.SOLO_ENTRANTE, PAIS.PERMITIDO_CON_CONDICIONES);
-      const r = await suscribir(f.alice, { country: PA });
+      const r = await suscribir(f.alice);
       assert.equal(Number(r.result), CODE.BLOCKED_DECISION);
       assert.equal(r.reasonCode, H.b32("COUNTRY_CONDITIONS_UNSET"));
     });
@@ -191,36 +199,100 @@ describe("SFSP v0.3 §7 y §8.5 · países, suscripción primaria y exposición"
       await V.acreditar(f, cp, pp);
     }
 
+    async function exenta() {
+      await V.fijarSegmento(f, F.ASSET_NEW, "PRINCIPAL");
+      await V.licenciaVigente(f, LIC_EXENTA, V.terminos(TIT.ORDEN_GLOBAL, TIPO.OFERTA_EXENTA, { kind: KIND.AUTORIZACION_LIMITADA }));
+      return await baseColocacion(F.ASSET_NEW, TIT.ORDEN_GLOBAL, TIPO.OFERTA_EXENTA);
+    }
+
+    async function perfil(dir, nombre, subj) {
+      const purpose = await f.engine.call(nombre);
+      const c = await V.darAlta(f, dir, subj, purpose, H.b32("salt_" + nombre.slice(8, 20)));
+      await V.acreditar(f, c, purpose);
+      return purpose;
+    }
+
+    async function criterio(purpose, o) {
+      const x = o || {};
+      const hash = x.hash || H.b32("acta_criterio_sint");
+      const motivo = H.b32("ACTA_D13_SINT");
+      const scope = await f.engine.call("SCOPE_INVESTOR_CRITERIA");
+      const contenido = await f.engine.call("investorCriteriaContent", [purpose, hash, motivo]);
+      const ord = await V.ordenGob(f, {
+        contrato: f.engine, action: "SET_INVESTOR_CRITERIA", scope, evidenceRoot: contenido,
+        aprobar: x.aprobar, etiqueta: x.etiqueta,
+      });
+      return await f.engine.send("setInvestorCriteria", [purpose, hash, motivo, ord.tupla, ord.digest], f.board);
+    }
+
     it("negativo: sin base de colocación, o sin segmento declarado, no se suscribe", async function () {
       await residentesPA();
-      let r = await suscribir(f.alice, { country: PA });
+      let r = await suscribir(f.alice);
       assert.equal(Number(r.result), CODE.BLOCKED_DECISION);
       assert.equal(r.reasonCode, H.b32("PLACEMENT_BASIS_UNSET"));
       await V.licenciaVigente(f, LIC_EXENTA, V.terminos(TIT.ORDEN_GLOBAL, TIPO.OFERTA_EXENTA, { kind: KIND.AUTORIZACION_LIMITADA }));
       await baseColocacion(F.ASSET_NEW, TIT.ORDEN_GLOBAL, TIPO.OFERTA_EXENTA);
-      r = await suscribir(f.alice, { country: PA });
+      r = await suscribir(f.alice);
       assert.equal(Number(r.result), CODE.UNKNOWN_SOURCE);
       assert.equal(r.reasonCode, H.b32("SEGMENT_UNKNOWN"));
     });
 
-    it("negativo: bajo AUTORIZACION_LIMITADA sólo suscribe el perfil admitido; con licencia plena, cualquiera del país", async function () {
+    it("negativo (T-120-26, T-140-09): bajo AUTORIZACION_LIMITADA sólo suscribe el perfil admitido; con licencia plena, cualquiera del país", async function () {
       await residentesPA();
-      await V.fijarSegmento(f, F.ASSET_NEW, "PRINCIPAL");
-      await V.licenciaVigente(f, LIC_EXENTA, V.terminos(TIT.ORDEN_GLOBAL, TIPO.OFERTA_EXENTA, { kind: KIND.AUTORIZACION_LIMITADA }));
-      const rc = await baseColocacion(F.ASSET_NEW, TIT.ORDEN_GLOBAL, TIPO.OFERTA_EXENTA);
+      const rc = await exenta();
       assert.ok(V.logsDe(f.engine, rc).find((e) => e.name === "PlacementBasisSet"));
 
-      assert.equal(Number((await suscribir(f.alice, { country: PA })).result), CODE.ALLOW, "residente de Próspera");
-      const rb = await suscribir(f.bob, { country: PA });
+      assert.equal(Number((await suscribir(f.alice)).result), CODE.ALLOW, "residente de Próspera");
+      const rb = await suscribir(f.bob);
       assert.equal(Number(rb.result), CODE.DENY_ELIGIBILITY, "un residente de país PERMITIDO sin perfil admitido no suscribe");
-      assert.equal(rb.reasonCode, H.b32("EXEMPT_OFFER_SCOPE"));
-      // Transferir sí puede: el alcance limita la SUSCRIPCIÓN, no el secundario.
+      // Código del catálogo de ESTADOS-Y-EVENTOS §C.
+      assert.equal(rb.reasonCode, H.b32("FUERA_DE_ALCANCE_OFERTA_EXENTA"));
+      // T-120-29 · transferir sí puede: el alcance limita la SUSCRIPCIÓN, no el secundario.
       assert.equal(Number((await op(f.bob, "TRANSFER_OUT")).result), CODE.ALLOW);
 
       // Con la Investment Company License como base, el perfil deja de importar.
       await V.licenciaVigente(f, LIC_ICL, V.terminos(TIT.ORDEN_GLOBAL, TIPO.INVESTMENT_CO));
       await baseColocacion(F.ASSET_NEW, TIT.ORDEN_GLOBAL, TIPO.INVESTMENT_CO);
-      assert.equal(Number((await suscribir(f.bob, { country: PA })).result), CODE.ALLOW);
+      assert.equal(Number((await suscribir(f.bob)).result), CODE.ALLOW);
+    });
+
+    it("negativo (T-120-28): ACREDITADO o SOFISTICADO sin criterio fijado (D13) es BLOCKED_DECISION, no ALLOW", async function () {
+      await residentesPA();
+      await exenta();
+      const acreditado = await perfil(f.bob, "PURPOSE_ACCREDITED", F.SUBJ.bob);
+      let r = await suscribir(f.bob);
+      assert.equal(Number(r.result), CODE.BLOCKED_DECISION);
+      assert.equal(r.reasonCode, H.b32("INVESTOR_CRITERIA_UNSET"));
+      // Fijar el criterio del OTRO perfil no abre éste.
+      const sofisticado = await f.engine.call("PURPOSE_SOPHISTICATED");
+      await criterio(sofisticado);
+      r = await suscribir(f.bob);
+      assert.equal(Number(r.result), CODE.BLOCKED_DECISION);
+      // Con su criterio fijado por orden de gobierno, suscribe.
+      const rc = await criterio(acreditado);
+      const ev = V.logsDe(f.engine, rc).find((e) => e.name === "InvestorCriteriaSet");
+      assert.equal(ev.args.purpose, acreditado);
+      assert.equal(ev.args.criteriaHash, H.b32("acta_criterio_sint"));
+      assert.equal(Number((await suscribir(f.bob)).result), CODE.ALLOW);
+      assert.equal(await f.engine.call("investorCriteriaOf", [acreditado]), H.b32("acta_criterio_sint"));
+    });
+
+    it("negativo (T-120-27): ACREDITADO con criterio fijado desde un país SOLO_ENTRANTE no suscribe", async function () {
+      await exenta();
+      const res = await residencia(f.bob, "bob", HN);
+      await V.acreditar(f, res.c, res.purpose);
+      const acreditado = await perfil(f.bob, "PURPOSE_ACCREDITED", F.SUBJ.bob);
+      await criterio(acreditado);
+      const r = await suscribir(f.bob);
+      assert.equal(Number(r.result), CODE.DENY_JURISDICTION);
+      assert.equal(r.reasonCode, H.b32("COUNTRY_INBOUND_ONLY"));
+    });
+
+    it("negativo: el criterio sólo se fija para los dos perfiles de D13 y sólo con orden aprobada con su etiqueta", async function () {
+      await H.expectRevert(criterio(await f.engine.call("PURPOSE_PROSPERA_RESIDENT")), "InvestorCriteriaInvalid");
+      const acreditado = await f.engine.call("PURPOSE_ACCREDITED");
+      await H.expectRevert(criterio(acreditado, { etiqueta: "SET_POLICY" }), "OrderMismatch");
+      assert.equal(await f.engine.call("investorCriteriaOf", [acreditado]), H.ZERO32);
     });
 
     it("negativo: la autorización suspendida o vencida cierra la suscripción", async function () {
@@ -228,49 +300,49 @@ describe("SFSP v0.3 §7 y §8.5 · países, suscripción primaria y exposición"
       await V.fijarSegmento(f, F.ASSET_NEW, "PRINCIPAL");
       await V.licenciaVigente(f, LIC_EXENTA, V.terminos(TIT.ORDEN_GLOBAL, TIPO.OFERTA_EXENTA, { kind: KIND.AUTORIZACION_LIMITADA }), 0.02);
       await baseColocacion(F.ASSET_NEW, TIT.ORDEN_GLOBAL, TIPO.OFERTA_EXENTA);
-      assert.equal(Number((await suscribir(f.alice, { country: PA })).result), CODE.ALLOW);
+      assert.equal(Number((await suscribir(f.alice)).result), CODE.ALLOW);
       await V.transicion(f, LIC_EXENTA, LS.VIGENTE, LS.SUSPENDIDA, SIN_OTORGAMIENTO, H.b32("SUSPENSION"));
-      let r = await suscribir(f.alice, { country: PA });
+      let r = await suscribir(f.alice);
       assert.equal(Number(r.result), CODE.DENY_AUTHORIZATION);
-      assert.equal(r.reasonCode, H.b32("PLACEMENT_LICENSE_NOT_IN_FORCE"));
+      assert.equal(r.reasonCode, H.b32("LICENCIA_NO_OTORGADA"));
       await V.transicion(f, LIC_EXENTA, LS.SUSPENDIDA, LS.VIGENTE, SIN_OTORGAMIENTO, H.b32("LEVANTAMIENTO"));
-      assert.equal(Number((await suscribir(f.alice, { country: PA })).result), CODE.ALLOW);
+      assert.equal(Number((await suscribir(f.alice)).result), CODE.ALLOW);
       // Vence por plazo (unos 29 minutos): nadie tiene que registrarlo.
       await H.increaseTime(1800);
-      r = await suscribir(f.alice, { country: PA });
+      r = await suscribir(f.alice);
       assert.equal(Number(r.result), CODE.DENY_AUTHORIZATION);
     });
   });
 
-  describe("límite de exposición por identidad (Mercado de Crecimiento)", function () {
-    let PURPOSE_EXP, refAlice;
+  describe("límite de exposición: el agregado fuera de la cadena, el resultado dentro", function () {
     const PARAMS = { set: true, incomeBps: 1000, floor: 100, ceiling: 10000, declarationTtl: 3000 };
+    const DOC = H.b32("hash_terminos_v3");
+
+    async function resultado(cuenta, maxUnidades, o) {
+      const x = o || {};
+      const ts = await H.now();
+      return await f.engine.send("recordExposureClearance", [
+        cuenta, F.ASSET_NEW, String(maxUnidades), x.hasta || ts + 600, x.doc || DOC, x.version !== undefined ? x.version : 3,
+      ], x.desde || f.board);
+    }
 
     beforeEach(async function () {
-      PURPOSE_EXP = await f.engine.call("PURPOSE_EXPOSURE");
       await pais(PA, PAIS.SOLO_ENTRANTE, PAIS.PERMITIDO);
       await V.fijarSegmento(f, F.ASSET_NEW, "CRECIMIENTO");
       await V.licenciaVigente(f, LIC_ICL, V.terminos(TIT.ORDEN_GLOBAL, TIPO.INVESTMENT_CO));
       await baseColocacion(F.ASSET_NEW, TIT.ORDEN_GLOBAL, TIPO.INVESTMENT_CO);
-      // Las DOS direcciones de alice: misma residencia y MISMO compromiso de
-      // exposición, porque son la misma identidad.
-      const saltRes = H.b32("salt_res_alice");
-      const res = await residencia(f.alice, "alice", PA, saltRes);
-      await residencia(alice2, "alice", PA, saltRes);
-      await V.acreditar(f, res.c, res.purpose);
-      refAlice = await V.darAlta(f, f.alice, F.SUBJ.alice, PURPOSE_EXP, H.b32("salt_exp_alice"));
-      await V.darAlta(f, alice2, F.SUBJ.alice, PURPOSE_EXP, H.b32("salt_exp_alice"));
+      // Las DOS direcciones de alice acreditan residencia en PA.
+      for (const dir of [f.alice, alice2]) {
+        const res = await residencia(dir, "alice", PA, H.b32("salt_res_" + dir.slice(2, 8)));
+        await V.acreditar(f, res.c, res.purpose);
+      }
     });
 
-    it("negativo: sin parámetros (null) el límite es BLOCKED_DECISION y no se admiten declaraciones", async function () {
-      const r = await suscribir(f.alice, { country: PA, exposureRef: refAlice, cost: 10 });
+    it("negativo: sin parámetros (null) el límite es BLOCKED_DECISION y no se admiten resultados", async function () {
+      const r = await suscribir(f.alice, 10);
       assert.equal(Number(r.result), CODE.BLOCKED_DECISION);
       assert.equal(r.reasonCode, H.b32("EXPOSURE_PARAMS_UNSET"));
-      await H.expectRevert(f.engine.send("declareIncome", [refAlice, 1000], f.board), "ExposureParamsNotSet");
-      await H.expectRevert(
-        f.engine.send("recordAcquisition", [f.alice, refAlice, F.ASSET_NEW, 10], f.board),
-        "ExposureParamsNotSet",
-      );
+      await H.expectRevert(resultado(f.alice, 10), "ExposureParamsNotSet");
       for (const malo of [
         Object.assign({}, PARAMS, { incomeBps: 0 }),
         Object.assign({}, PARAMS, { incomeBps: 10001 }),
@@ -281,89 +353,78 @@ describe("SFSP v0.3 §7 y §8.5 · países, suscripción primaria y exposición"
       }
     });
 
-    it("negativo: exceder el límite con varias direcciones de la MISMA identidad no funciona", async function () {
+    it("negativo (T-120-24): sin el resultado de exposición la suscripción es UNKNOWN_SOURCE, nunca ALLOW", async function () {
       const rcp = await parametrosExposicion(PARAMS);
       assert.ok(V.logsDe(f.engine, rcp).find((e) => e.name === "ExposureParamsSet"));
-      const rcd = await f.engine.send("declareIncome", [refAlice, 20000], f.board); // 10 % => 2000
-      const evd = V.logsDe(f.engine, rcd).find((e) => e.name === "ExposureLimitRecorded");
-      assert.equal(evd.args.regime, H.b32("CRECIMIENTO"));
-      assert.notEqual(evd.args.declarationRef, refAlice, "el evento no expone el compromiso tal cual");
-      assert.ok(!Object.keys(evd.args).includes("declaredIncome"), "el ingreso no viaja en el evento");
+      const r = await suscribir(f.alice, 10);
+      assert.equal(Number(r.result), CODE.UNKNOWN_SOURCE);
+      assert.equal(r.reasonCode, H.b32("EXPOSURE_RESULT_MISSING"));
+    });
 
-      // Sin declaración del adquirente para ESTE activo, no suscribe.
-      let r = await suscribir(f.alice, { country: PA, exposureRef: refAlice, cost: 1500 });
-      assert.equal(Number(r.result), CODE.DENY_ELIGIBILITY);
-      assert.equal(r.reasonCode, H.b32("ACQUIRER_DECLARATION_MISSING"));
-      const rca = await f.engine.send(
-        "recordAcquirerDeclaration", [F.ASSET_NEW, refAlice, H.b32("hash_terminos_v3"), 3], f.board,
-      );
-      const eva = V.logsDe(f.engine, rca).find((e) => e.name === "AcquirerDeclarationRecorded");
-      assert.equal(eva.args.assetId, F.ASSET_NEW);
-      assert.equal(Number(eva.args.documentVersion), 3);
-      assert.equal(eva.args.documentHash, H.b32("hash_terminos_v3"));
+    it("positivo: el resultado vale para ESA dirección, ESE activo y hasta ESE máximo, con la declaración del adquirente", async function () {
+      await parametrosExposicion(PARAMS);
+      const rc = await resultado(f.alice, 150);
+      const evl = V.logsDe(f.engine, rc).find((e) => e.name === "ExposureLimitRecorded");
+      assert.equal(evl.args.regime, H.b32("CRECIMIENTO"));
+      const evd = V.logsDe(f.engine, rc).find((e) => e.name === "AcquirerDeclarationRecorded");
+      assert.equal(evd.args.assetId, F.ASSET_NEW);
+      assert.equal(evd.args.documentHash, DOC);
+      assert.equal(Number(evd.args.documentVersion), 3);
 
-      assert.equal(Number((await suscribir(f.alice, { country: PA, exposureRef: refAlice, cost: 1500 })).result), CODE.ALLOW);
-      await f.engine.send("recordAcquisition", [f.alice, refAlice, F.ASSET_NEW, 1500], f.board);
-
-      // La segunda dirección de alice ve el MISMO consumo: 1500 + 600 > 2000.
-      r = await suscribir(alice2, { country: PA, exposureRef: refAlice, cost: 600 });
+      assert.equal(Number((await suscribir(f.alice, 150)).result), CODE.ALLOW);
+      const r = await suscribir(f.alice, 151);
       assert.equal(Number(r.result), CODE.DENY_LIMIT);
       assert.equal(r.reasonCode, H.b32("EXPOSURE_LIMIT_EXCEEDED"));
-      await H.expectRevert(
-        f.engine.send("recordAcquisition", [alice2, refAlice, F.ASSET_NEW, 600], f.board),
-        "ExposureLimitExceeded",
-      );
-      // Presentar otro compromiso (uno inventado) no abre otro límite.
-      const inventado = F.compromiso(F.SUBJ.alice, PURPOSE_EXP, H.b32("otra_sal"));
-      r = await suscribir(alice2, { country: PA, exposureRef: inventado, cost: 600 });
-      assert.equal(Number(r.result), CODE.UNKNOWN_SOURCE);
-      assert.equal(r.reasonCode, H.b32("EXPOSURE_REF_UNBOUND"));
-      await H.expectRevert(
-        f.engine.send("recordAcquisition", [alice2, inventado, F.ASSET_NEW, 600], f.board),
-        "ExposureRefUnbound",
-      );
-      // Lo que cabe, cabe; y al vender se libera a COSTO de adquisición.
-      assert.equal(Number((await suscribir(alice2, { country: PA, exposureRef: refAlice, cost: 500 })).result), CODE.ALLOW);
-      await f.engine.send("releaseExposure", [refAlice, 1000], f.board);
-      assert.equal(BigInt((await f.engine.call("exposureUsedOf", [refAlice])).toString()), 500n);
+      // La otra dirección de la misma persona no hereda el resultado: el
+      // agregado lo lleva Genesis ID, que trae un resultado propio por dirección.
+      assert.equal(Number((await suscribir(alice2, 10)).result), CODE.UNKNOWN_SOURCE);
     });
 
-    it("positivo: piso y techo acotan el porcentaje del ingreso autodeclarado", async function () {
+    it("adversario (v0.3 §11/§12, T23): la cadena no guarda ingreso ni un compromiso estable que una dos direcciones", async function () {
       await parametrosExposicion(PARAMS);
-      await f.engine.send("declareIncome", [refAlice, 10], f.board); // 10 % de 10 = 1 → piso 100
-      assert.equal(BigInt((await f.engine.call("exposureLimitOf", [refAlice])).limit.toString()), 100n);
-      await f.engine.send("declareIncome", [refAlice, 10_000_000], f.board); // → techo 10000
-      assert.equal(BigInt((await f.engine.call("exposureLimitOf", [refAlice])).limit.toString()), 10000n);
+      const a1 = await resultado(f.alice, 100);
+      const a2 = await resultado(alice2, 100);
+      const ref1 = V.logsDe(f.engine, a1).find((e) => e.name === "ExposureLimitRecorded").args.declarationRef;
+      const ref2 = V.logsDe(f.engine, a2).find((e) => e.name === "ExposureLimitRecorded").args.declarationRef;
+      assert.notEqual(ref1, ref2, "cada resultado lleva una referencia propia, sin relación con el sujeto");
+      // Nada en el ABI recibe ni devuelve el ingreso o un agregado por identidad.
+      const nombres = f.engine.abi.filter((x) => x.type === "function").map((x) => x.name);
+      for (const retirado of ["declareIncome", "recordAcquisition", "releaseExposure", "exposureUsedOf", "exposureLimitOf", "recordAcquirerDeclaration", "PURPOSE_EXPOSURE"]) {
+        assert.ok(!nombres.includes(retirado), retirado + " no puede existir: publicaría el ingreso o enlazaría direcciones");
+      }
+      // Los argumentos de la escritura son la dirección, el activo y el resultado; ningún bytes32 del sujeto.
+      const entradas = f.engine.abi.find((x) => x.name === "recordExposureClearance").inputs.map((i) => i.name);
+      assert.deepEqual(entradas, ["account", "assetId", "maxUnits", "validUntil", "documentHash", "documentVersion"]);
     });
 
-    it("negativo: la autodeclaración vencida deja el límite desconocido; sin costo tampoco se decide", async function () {
+    it("negativo: el resultado vence (y no puede durar más que declarationTtl); se gasta al colocar", async function () {
       await parametrosExposicion(PARAMS);
-      await f.engine.send("declareIncome", [refAlice, 20000], f.board);
-      await f.engine.send("recordAcquirerDeclaration", [F.ASSET_NEW, refAlice, H.b32("hash_terminos_v1"), 1], f.board);
-      let r = await suscribir(f.alice, { country: PA, exposureRef: refAlice, cost: 0 });
+      const ts = await H.now();
+      await H.expectRevert(resultado(f.alice, 100, { hasta: ts + 5000 }), "DeclarationInvalid");
+      await H.expectRevert(resultado(f.alice, 100, { version: 0 }), "DeclarationInvalid");
+      await resultado(f.alice, 100);
+      await H.increaseTime(700);
+      let r = await suscribir(f.alice, 10);
       assert.equal(Number(r.result), CODE.UNKNOWN_SOURCE);
-      assert.equal(r.reasonCode, H.b32("ACQUISITION_COST_UNKNOWN"));
-      await H.increaseTime(3001);
-      r = await suscribir(f.alice, { country: PA, exposureRef: refAlice, cost: 10 });
+
+      await resultado(f.alice, 100);
+      // Sólo un ejecutor con el rol aplica la suscripción.
+      await H.expectRevert(f.engine.send("enforceSubscription", [f.alice, F.ASSET_NEW, 50], f.board), "Unauthorized");
+      await f.engine.send("grantRole", [await f.engine.call("SUBSCRIPTION_EXECUTOR"), carol], f.board);
+      await f.engine.send("enforceSubscription", [f.alice, F.ASSET_NEW, 50], carol);
+      // Gastado: la segunda colocación con el mismo resultado se rechaza.
+      r = await suscribir(f.alice, 10);
       assert.equal(Number(r.result), CODE.UNKNOWN_SOURCE);
-      assert.equal(r.reasonCode, H.b32("INCOME_DECLARATION_MISSING"));
+      await V.revertCon(f.engine.send("enforceSubscription", [f.alice, F.ASSET_NEW, 10], carol), f.engine, "SubscriptionRejected");
     });
 
     it("negativo: sólo el operador registra; y en el Mercado Principal no hay límite que registrar", async function () {
       await parametrosExposicion(PARAMS);
-      await H.expectRevert(f.engine.send("declareIncome", [refAlice, 20000], f.alice), "Unauthorized");
-      await H.expectRevert(
-        f.engine.send("recordAcquisition", [f.alice, refAlice, F.ASSET_NEW, 1], f.alice),
-        "Unauthorized",
-      );
+      await H.expectRevert(resultado(f.alice, 100, { desde: f.alice }), "Unauthorized");
       await V.fijarSegmento(f, F.ASSET_NEW, "PRINCIPAL");
-      await f.engine.send("declareIncome", [refAlice, 20000], f.board);
-      await H.expectRevert(
-        f.engine.send("recordAcquisition", [f.alice, refAlice, F.ASSET_NEW, 1], f.board),
-        "NotGrowthSegment",
-      );
+      await H.expectRevert(resultado(f.alice, 100), "NotGrowthSegment");
       // En Principal la suscripción no mira la exposición.
-      assert.equal(Number((await suscribir(f.alice, { country: PA })).result), CODE.ALLOW);
+      assert.equal(Number((await suscribir(f.alice)).result), CODE.ALLOW);
     });
   });
 });

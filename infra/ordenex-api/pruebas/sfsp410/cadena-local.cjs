@@ -11,6 +11,11 @@
  *     por gobierno con doble control y espera, fondeada con `absorb`;
  *   · SFSPIssuanceController con topes del instrumento y cupo de emisión;
  *   · una cuenta interna declarada en los dos (la "tesorería" del fixture);
+ *   · SFSP v0.3 §7 (SFSP-120 §0.3): vender desde la bóveda y emitir al usuario
+ *     que pagó es SUSCRIBIR en primaria, así que los usuarios de la prueba
+ *     acreditan residencia en un país PERMITIDO y el activo tiene base de
+ *     colocación (todo sintético, test/v03.js); y el cupo de emisión lleva su
+ *     aprobación DBNX (v0.3 §5);
  *   · una llave de EMISOR efímera (aleatoria, creada aquí, sin valor fuera de
  *     esta cadena de juguete) con el rol ISSUER en los dos contratos;
  *   · un usuario elegible con llave propia (para probar `absorb`).
@@ -49,6 +54,8 @@ async function main() {
   const F = req('./test/fixture');
   const H = req('./test/helpers');
   const OA = req('./test/orden-autorizada');
+  const V = req('./test/v03');
+  const A = req('./test/authorization');
 
   const server = await hre.run(TASK_NODE_CREATE_SERVER, {
     hostname: '127.0.0.1',
@@ -78,6 +85,8 @@ async function main() {
   await f.governance.send('grantRole', [await f.governance.call('TECH_OPS'), vault.address], f.board);
   await vault.sendValue('absorb', [H.b32('CONSOLIDACION')], f.board, 100n * ETH);
   await vault.send('setInternalAccount', [f.treasury, true, H.b32('TESORERIA')], f.board);
+  // SUBSCRIBE: los destinos de la prueba suscriben; bóveda y emisión la aplican.
+  await V.habilitarSuscripcion(f, [f.ASSET_NEW], [f.alice, f.bob, usuario.address], [vault.address, f.issuance.address]);
 
   {
     const ts = await H.now();
@@ -105,7 +114,9 @@ async function main() {
   await f.issuance.send('grantRole', [await f.issuance.call('ISSUER'), emisor.address], f.board);
   {
     const ts = await H.now();
-    const period = DIA, validUntil = ts + 30 * DIA, docRoot = H.b32('acta_cupo_emision');
+    const period = DIA, validUntil = ts + 30 * DIA;
+    // v0.3 §5 · el respaldo del cupo es la aprobación DBNX (regla: adquirente elegible).
+    const docRoot = await A.aprobacionDbnx(f, f.ASSET_NEW, 1000000, 'cupo_emision_prueba', { validUntil: ts + 60 * DIA });
     const terms = await f.issuance.call('budgetTermsRoot', [period, validUntil, docRoot]);
     const p = await OA.orden({
       verifyingContract: f.issuance.address,

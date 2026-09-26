@@ -11,9 +11,10 @@
     "draft-0.4: se anaden los eventos del Apendice B del borrador SFSP v0.2 que faltaban, todos sin contrato todavia (implementadoEnContratos: false). La correspondencia con el Apendice B esta en spec/ESTADOS-Y-EVENTOS.md.",
     "draft-0.5: SFSP-410 (politica de suministro: circulante = usuarios). Se anaden los eventos del cupo de emision, de las cuentas internas y de la boveda nativa de ORIGEN.",
     "draft-0.6: SFSP v0.3 fase 2 (puntos 1-3). Tienen contrato LicenseStatusChanged y ModuleAvailabilityChanged (SFSPLicenseRegistry), CountryStatusChanged, ExposureLimitRecorded y AcquirerDeclarationRecorded (SFSPEligibilityEngine; esta ultima cambia de emisor: la declaracion del adquirente se registra donde se exige, en el motor) y PassportUpdated (SFSPAssetRegistry). Se anaden LicenseRegistered, PlacementBasisSet, ExposureParamsSet, DbnxApprovalRecorded y DbnxApprovalRevoked.",
-    "SFSP-150 (26-sep-2026): NetworkPermissionChanged pasa a implementado (SFSPNetworkPermissions, la lista que consulta el filtro de red de Besu)."
+    "SFSP-150 (26-sep-2026): NetworkPermissionChanged pasa a implementado (SFSPNetworkPermissions, la lista que consulta el filtro de red de Besu).",
+    "draft-0.7 (26-sep-2026, correcciones de conformidad v0.3): DbnxApprovalRecorded anade destino o regla de destino y la clase migracion (SFSP-200 §0.5 fila 1); ExposureLimitRecorded y AcquirerDeclarationRecorded pasan a ser el resultado por adquisicion, sin compromiso de identidad (v0.3 §11/§12, SFSP-110 §0); se anaden InvestorCriteriaSet (D13) y CommodityAssetFlagged (SFSP-300 §0.2)."
   ],
-  "version": "draft-0.6",
+  "version": "draft-0.7",
   "reglas": [
     "El nombre canonico de un evento es el de este archivo. Un nombre retirado no se reutiliza: se declara en 'aliasesRetirados' y se sigue decodificando al canonico.",
     "Todo evento que cambie el suministro lleva 'assetId'. Sin 'assetId' el evento no se puede atribuir y el suministro del activo sale DESCONOCIDO.",
@@ -1034,7 +1035,7 @@
     {
       "nombre": "ExposureLimitRecorded",
       "emisor": "EligibilityEngine",
-      "significado": "Registro del regimen de limite de exposicion aplicable a una identidad (Mercado de Crecimiento). Solo la referencia de la declaracion.",
+      "significado": "Genesis ID trae a la cadena el RESULTADO del limite de exposicion para una adquisicion concreta en el Mercado de Crecimiento (el agregado por identidad se calcula fuera, SFSP-110 §0). 'declarationRef' sale de un contador: no es un compromiso de la identidad ni enlaza direcciones. Ni el ingreso ni el agregado viajan.",
       "atribucion": "GLOBAL",
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": true,
@@ -2786,7 +2787,7 @@
     {
       "nombre": "AcquirerDeclarationRecorded",
       "emisor": "EligibilityEngine",
-      "significado": "El adquirente reconoce los terminos, con la version del documento aceptado (v0.2 §8.3 bloque 7).",
+      "significado": "Declaracion del adquirente aceptada para la adquisicion registrada con el mismo resultado de exposicion: hash y version del documento aceptado. 'declarationRef' no depende del sujeto.",
       "atribucion": "POR_ACTIVO",
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": true,
@@ -2978,7 +2979,7 @@
     {
       "nombre": "DbnxApprovalRecorded",
       "emisor": "IssuanceController",
-      "significado": "DBNX registra el hash de un documento de aprobacion de emision: activo, cantidad exacta y vigencia (SFSP v0.3 §5). NO es emision ni capacidad: es la pieza que la acunacion verifica en forma antes de ejecutar.",
+      "significado": "DBNX registra el hash de un documento de aprobacion de emision: activo, cantidad, vigencia y destino o regla de destino (SFSP v0.3 §5, SFSP-200 §0.5 fila 1). En 'mint' el destino es la direccion exacta y la cantidad es exacta; en un cupo (setMintBudget) la cantidad es el total del cupo y la regla es ADQUIRENTE_ELEGIBLE (colocacion: SUBSCRIBE) o la raiz del padron (migration = true: continuidad de tenencia, sin SUBSCRIBE). NO es emision ni capacidad: es la pieza que la acunacion verifica en forma antes de ejecutar.",
       "atribucion": "POR_ACTIVO",
       "afectaSuministro": "NINGUNO",
       "implementadoEnContratos": true,
@@ -3030,6 +3031,22 @@
           "obligatorio": true,
           "atribuyeActivo": false,
           "esCantidad": false
+        },
+        {
+          "nombre": "destination",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "migration",
+          "tipo": "bool",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
         }
       ]
     },
@@ -3045,6 +3062,82 @@
           "nombre": "docHash",
           "tipo": "bytes32",
           "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "by",
+          "tipo": "address",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "reasonCode",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "InvestorCriteriaSet",
+      "emisor": "EligibilityEngine",
+      "significado": "D13 · gobierno fija, con orden y acta, el criterio de INVERSIONISTA_ACREDITADO o INVERSIONISTA_SOFISTICADO. Hasta entonces una SUBSCRIBE que dependa de ese perfil devuelve BLOCKED_DECISION (SFSP-140 §4 regla 2).",
+      "atribucion": "GLOBAL",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        {
+          "nombre": "purpose",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "criteriaHash",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "reasonCode",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "CommodityAssetFlagged",
+      "emisor": "IssuanceController",
+      "significado": "Un activo se marca (o desmarca, solo la Junta) como COM en el controlador de emision: desde ahi no se acuna a un tercero, porque la colocacion de un commodity exige capacidad en onzas y pasa por el motor de reservas (SFSP-300 §0.2, T-300-30).",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "commodity",
+          "tipo": "bool",
+          "indexado": false,
           "obligatorio": true,
           "atribuyeActivo": false,
           "esCantidad": false

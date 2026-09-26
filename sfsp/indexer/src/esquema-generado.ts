@@ -5,7 +5,7 @@
 // La prueba 'esquema.test.ts' falla si este archivo y el JSON divergen.
 
 /** Version de la fuente unica desde la que se genero este modulo. */
-export const VERSION_ESPEC_EVENTOS = "draft-0.6";
+export const VERSION_ESPEC_EVENTOS = "draft-0.7";
 
 /** Un campo de un evento, con todo lo que el indexador necesita saber. */
 export interface CampoEventoGenerado {
@@ -36,7 +36,7 @@ export interface EventoGenerado {
   readonly camposDeAtribucion: readonly string[];
 }
 
-/** Los 67 eventos del §3, por su nombre canonico. */
+/** Los 69 eventos del §3, por su nombre canonico. */
 export type NombreEvento =
   | "AssetRegistered"
   | "PolicyUpdated"
@@ -104,7 +104,9 @@ export type NombreEvento =
   | "PlacementBasisSet"
   | "ExposureParamsSet"
   | "DbnxApprovalRecorded"
-  | "DbnxApprovalRevoked";
+  | "DbnxApprovalRevoked"
+  | "InvestorCriteriaSet"
+  | "CommodityAssetFlagged";
 
 /** Esquema completo por evento. Generado: editar el JSON, no esto. */
 export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
@@ -483,7 +485,7 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
   ExposureLimitRecorded: {
     nombre: "ExposureLimitRecorded",
     emisor: "EligibilityEngine",
-    significado: "Registro del regimen de limite de exposicion aplicable a una identidad (Mercado de Crecimiento). Solo la referencia de la declaracion.",
+    significado: "Genesis ID trae a la cadena el RESULTADO del limite de exposicion para una adquisicion concreta en el Mercado de Crecimiento (el agregado por identidad se calcula fuera, SFSP-110 §0). 'declarationRef' sale de un contador: no es un compromiso de la identidad ni enlaza direcciones. Ni el ingreso ni el agregado viajan.",
     atribucion: "GLOBAL",
     afectaSuministro: "NINGUNO",
     implementadoEnContratos: true,
@@ -1172,7 +1174,7 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
   AcquirerDeclarationRecorded: {
     nombre: "AcquirerDeclarationRecorded",
     emisor: "EligibilityEngine",
-    significado: "El adquirente reconoce los terminos, con la version del documento aceptado (v0.2 §8.3 bloque 7).",
+    significado: "Declaracion del adquirente aceptada para la adquisicion registrada con el mismo resultado de exposicion: hash y version del documento aceptado. 'declarationRef' no depende del sujeto.",
     atribucion: "POR_ACTIVO",
     afectaSuministro: "NINGUNO",
     implementadoEnContratos: true,
@@ -1243,7 +1245,7 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
   DbnxApprovalRecorded: {
     nombre: "DbnxApprovalRecorded",
     emisor: "IssuanceController",
-    significado: "DBNX registra el hash de un documento de aprobacion de emision: activo, cantidad exacta y vigencia (SFSP v0.3 §5). NO es emision ni capacidad: es la pieza que la acunacion verifica en forma antes de ejecutar.",
+    significado: "DBNX registra el hash de un documento de aprobacion de emision: activo, cantidad, vigencia y destino o regla de destino (SFSP v0.3 §5, SFSP-200 §0.5 fila 1). En 'mint' el destino es la direccion exacta y la cantidad es exacta; en un cupo (setMintBudget) la cantidad es el total del cupo y la regla es ADQUIRENTE_ELEGIBLE (colocacion: SUBSCRIBE) o la raiz del padron (migration = true: continuidad de tenencia, sin SUBSCRIBE). NO es emision ni capacidad: es la pieza que la acunacion verifica en forma antes de ejecutar.",
     atribucion: "POR_ACTIVO",
     afectaSuministro: "NINGUNO",
     implementadoEnContratos: true,
@@ -1254,8 +1256,10 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
       { nombre: "amount", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
       { nombre: "validFrom", tipo: "uint64", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
       { nombre: "validUntil", tipo: "uint64", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "destination", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "migration", tipo: "bool", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
     ],
-    requeridos: ["docHash", "assetId", "signer", "amount", "validFrom", "validUntil"],
+    requeridos: ["docHash", "assetId", "signer", "amount", "validFrom", "validUntil", "destination", "migration"],
     cantidades: ["amount"],
     camposDeAtribucion: ["assetId"],
   },
@@ -1274,6 +1278,39 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
     requeridos: ["docHash", "by", "reasonCode"],
     cantidades: [],
     camposDeAtribucion: [],
+  },
+  InvestorCriteriaSet: {
+    nombre: "InvestorCriteriaSet",
+    emisor: "EligibilityEngine",
+    significado: "D13 · gobierno fija, con orden y acta, el criterio de INVERSIONISTA_ACREDITADO o INVERSIONISTA_SOFISTICADO. Hasta entonces una SUBSCRIBE que dependa de ese perfil devuelve BLOCKED_DECISION (SFSP-140 §4 regla 2).",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "purpose", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "criteriaHash", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["purpose", "criteriaHash", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  CommodityAssetFlagged: {
+    nombre: "CommodityAssetFlagged",
+    emisor: "IssuanceController",
+    significado: "Un activo se marca (o desmarca, solo la Junta) como COM en el controlador de emision: desde ahi no se acuna a un tercero, porque la colocacion de un commodity exige capacidad en onzas y pasa por el motor de reservas (SFSP-300 §0.2, T-300-30).",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "commodity", tipo: "bool", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "by", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["assetId", "commodity", "by", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: ["assetId"],
   },
 };
 
@@ -1346,6 +1383,8 @@ export const EVENTOS_CONOCIDOS: Readonly<Record<NombreEvento, string>> = {
   ExposureParamsSet: "EligibilityEngine",
   DbnxApprovalRecorded: "IssuanceController",
   DbnxApprovalRevoked: "IssuanceController",
+  InvestorCriteriaSet: "EligibilityEngine",
+  CommodityAssetFlagged: "IssuanceController",
 };
 
 /**

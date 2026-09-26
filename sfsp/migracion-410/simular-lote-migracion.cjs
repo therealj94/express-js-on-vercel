@@ -8,8 +8,9 @@
  * La prueba test/27-lote-migracion.js llama a `simularLote` con datos sintéticos.
  *
  * Por cada activo comprueba:
- *   1. el cupo SET_MINT_BUDGET se fija con quórum y espera, con S0 y máx/op del lote
- *      y `termsDocRoot` = raíz del padrón;
+ *   1. DBNX registra el documento de aprobación del cupo (S0, regla de destino =
+ *      raíz del padrón, clase migración) y el cupo SET_MINT_BUDGET se fija con
+ *      quórum y espera, con S0 y máx/op del lote y `termsDocRoot` = ese documento;
  *   2. las llamadas se ejecutan con el calldata EXACTO del lote;
  *   3. cada titular recibe EXACTAMENTE su monto;
  *   4. la suma acuñada = S0 y el cupo queda en 0;
@@ -65,7 +66,13 @@ async function simularLote(hre, lote) {
   const ts = await H.now();
   const validUntil = ts + 30 * 86400;
   const period = validUntil + 1; // un solo periodo para toda la ventana
-  const terms = await f.issuance.call("budgetTermsRoot", [period, validUntil, lote.raizPadron]);
+  // v0.3 §5 · DBNX registra su aprobación del cupo: exactamente S0, destino = la
+  // raíz del padrón, clase migración (continuidad de tenencia: MINT, no SUBSCRIBE).
+  const docDbnx = lote.orden.termsDocRoot;
+  if (!docDbnx) throw new Error("el lote no trae el documento DBNX del cupo (dbnxDocHash)");
+  if (lote.solicitudDbnx.destino !== lote.raizPadron || BigInt(lote.solicitudDbnx.cantidad) !== S0) throw new Error("la solicitud DBNX no es la del padrón");
+  await f.issuance.send("registerDbnxApproval", [docDbnx, assetId, String(S0), ts - 60, validUntil + 1, lote.raizPadron, true], f.dbnx);
+  const terms = await f.issuance.call("budgetTermsRoot", [period, validUntil, docDbnx]);
   const po = await OA.orden({
     verifyingContract: f.issuance.address, action: H.b32("SET_MINT_BUDGET"), assetId,
     amount: lote.orden.payload.amount, amountSecondary: lote.orden.payload.amountSecondary,
@@ -75,7 +82,7 @@ async function simularLote(hre, lote) {
   const d = OA.digestDe(po);
   await OA.aprobar(f, d, H.b32("SET_MINT_BUDGET"));
   await H.increaseTime(F.GOV.timelockDelay + 1);
-  await f.issuance.send("setMintBudget", [OA.tupla(po), d, period, validUntil, lote.raizPadron], f.board);
+  await f.issuance.send("setMintBudget", [OA.tupla(po), d, period, validUntil, docDbnx], f.board);
 
   const enviar = async (data) => {
     const hash = await P.send("eth_sendTransaction", [{ from: f.board, to: f.issuance.address, data, gas: "0x" + (1_500_000).toString(16) }]);
