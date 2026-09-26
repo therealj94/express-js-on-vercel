@@ -489,9 +489,12 @@ export const getMyCard = async (req, res) => {
       await card.save();
     }
 
-    // Obtener available_credit + precio ORIGEN en paralelo
+    // Obtener available_credit + precio ORIGEN en paralelo.
+    // Sin precio del oráculo, lo que depende de él va en null y la app enseña
+    // un guion (SFSP v0.3 §10.5, plan C5). Antes caía a OG_TOKEN_PRICE_USD o a
+    // 1 USD por ORIGEN, y 100 USD salían como 100 ORIGEN: 2,57 veces lo que hay.
     let availableCredit = null;
-    let ogTokenPrice = parseFloat(process.env.OG_TOKEN_PRICE_USD) || 1;
+    let ogTokenPrice = null;
 
     const [balanceResult, priceResult] = await Promise.allSettled([
       cryptomateClient.get(`/cards/virtual-cards/${card.cryptomateCardId}/virtual-balances`),
@@ -505,12 +508,13 @@ export const getMyCard = async (req, res) => {
     } else {
       console.error("[getMyCard] virtual-balances FAILED:", balanceResult.reason?.response?.data || balanceResult.reason?.message);
     }
-    if (priceResult.status === "fulfilled") {
+    if (priceResult.status === "fulfilled" && priceResult.value > 0) {
       ogTokenPrice = priceResult.value;
     }
 
-    // Convertir saldo de USD → ORIGEN
-    const availableOrigen = availableCredit != null ? availableCredit / ogTokenPrice : null;
+    // Convertir de USD → ORIGEN; sin precio, null (guion).
+    const aOrigen = (usd) => (ogTokenPrice ? usd / ogTokenPrice : null);
+    const availableOrigen = availableCredit != null ? aOrigen(availableCredit) : null;
 
     res.json({
       id: data.id,
@@ -519,9 +523,9 @@ export const getMyCard = async (req, res) => {
       status: data.status,
       approvalMethod: data.approval_method,
       // Límites internos en USD — convertidos a ORIGEN para mostrar al usuario
-      dailyLimit: data.daily_limit ? data.daily_limit / ogTokenPrice : null,
-      weeklyLimit: data.weekly_limit ? data.weekly_limit / ogTokenPrice : null,
-      monthlyLimit: data.monthly_limit ? data.monthly_limit / ogTokenPrice : null,
+      dailyLimit: data.daily_limit ? aOrigen(data.daily_limit) : null,
+      weeklyLimit: data.weekly_limit ? aOrigen(data.weekly_limit) : null,
+      monthlyLimit: data.monthly_limit ? aOrigen(data.monthly_limit) : null,
       // Saldo en ORIGEN (jamás mostrar USD/USDT al usuario)
       availableOrigen,
       ogTokenPrice,
@@ -854,20 +858,21 @@ export const getCardTransactions = async (req, res) => {
     } catch (err) {
       const code = err?.response?.data?.code;
       if (code === "NOT_FOUND" || err?.response?.status === 404) {
-        return res.json({ transactions: [], total: 0, page, ogTokenPrice: 1 });
+        return res.json({ transactions: [], total: 0, page, ogTokenPrice: null });
       }
       throw err;
     }
 
-    // Obtener precio ORIGEN para convertir los montos
-    const ogTokenPrice = await getOrigenPriceUsd().catch(() =>
-      parseFloat(process.env.OG_TOKEN_PRICE_USD) || 1
-    );
+    // Obtener precio ORIGEN para convertir los montos. Sin precio, null: el
+    // monto en ORIGEN va con guion y el de dólares sigue en `amount`. Nunca
+    // un precio de reserva (SFSP v0.3 §10.5).
+    const p = await getOrigenPriceUsd().catch(() => null);
+    const ogTokenPrice = p > 0 ? p : null;
 
     // Normalizar y convertir montos a ORIGEN
     const transactions = (data.data || data.transactions || data || []).map((tx) => {
       const usdAmount = tx.amount ?? 0;
-      const origenAmount = usdAmount / ogTokenPrice;
+      const origenAmount = ogTokenPrice ? usdAmount / ogTokenPrice : null;
       return {
         id: tx.id,
         date: tx.created_at || tx.date,
