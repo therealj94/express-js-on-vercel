@@ -595,8 +595,8 @@ en credibilidad, y no está hecho.</p>
 <h3>6.10 · Remesas, puentes y bóveda: tres cosas que no se pueden decir todavía</h3>
 
 <ul>
-  <li><strong>Remesas.</strong> Hoy es una calculadora dentro de la billetera. Sin licencia por país, calculadora
-  se queda. No se puede insinuar un canal de envío vivo.</li>
+  <li><strong>Remesas.</strong> Sin licencia por país no hay servicio de remesas. Y aquí hay un problema que no
+  es de comunicación sino de producto: la billetera ya lo promete en su propia pantalla. Está en 6.12.</li>
   <li><strong>Puentes a otras cadenas.</strong> Son plan hasta que se verifiquen. Mientras tanto, el activo vive
   en su propia red, y eso es lo que hay que decir.</li>
   <li><strong>Cifra de bóveda.</strong> La definición de un ORIGEN es sólida y comprobable, y la emisión de AUKA
@@ -610,6 +610,26 @@ en credibilidad, y no está hecho.</p>
 y saldo en cero, y la causa no se ha cerrado. Que no haya vuelto a ocurrir no es lo mismo que saber por qué
 ocurrió. Antes de una campaña que lleve gente a guardar valor en la billetera, ese expediente tiene que estar
 cerrado por escrito.</p>
+
+<h3>6.12 · La billetera promete remesas en su propia pantalla</h3>
+
+<p>Esto salió al preparar la campaña y es el hallazgo más incómodo de los que no estaban en el radar. En el
+código de Veta Wallet hay una pantalla llamada <i>Remesas</i>, y en la pantalla principal hay una tarjeta cuyo
+título dice, textualmente, <strong>«Enviá remesas a tu familia»</strong>, con la bajada <strong>«A cualquier
+país, en segundos y sin bancos»</strong>. Al pie de la pantalla de remesas se lee: <strong>«Las remesas son
+transferencias directas en la blockchain. No hay control de cambios, límites bancarios ni horarios: funcionan
+24/7.»</strong> Las tres frases existen también en inglés. La palabra aparece <strong>74 veces</strong> en el
+código y el marcado del repositorio.</p>
+
+<div class="nota riesgo">
+  <b class="t">Por qué esto es distinto de los demás huecos</b>
+  Los otros huecos son cosas que faltan. Este es una <strong>afirmación regulatoria hecha por el producto</strong>:
+  ofrecer envío de dinero a cualquier país, sin controles de cambio y sin límites bancarios, es exactamente lo
+  que en cada país requiere licencia. No importa lo que diga el material de campaña —que ya tiene prohibida la
+  palabra—: si alguien abre la aplicación, la aplicación lo promete. Hay que <strong>re-rotular esa pantalla
+  antes de publicar nada</strong> y antes de filmarla: lo que el producto hace de verdad es cambio entre
+  personas y transferencia en la cadena, y así se tiene que llamar.
+</div>
 
 <h2 class="salto">7 · Cómo queda el sistema</h2>
 
@@ -650,7 +670,7 @@ están en tienda, la rampa grande no existe y lo que corre en producción no es 
 de esas cinco cosas requiere inventar nada nuevo. Las cinco requieren decisiones y semanas.</p>
 
 <div class="nota">
-  <b class="t">Las seis decisiones que solo la junta puede tomar</b>
+  <b class="t">Las siete decisiones que solo la junta puede tomar</b>
   Todo lo demás de este documento es ejecución. Estas no: <strong>(1)</strong> ordenar la reconciliación de esta
   rama con lo que corre en producción antes de cualquier despliegue; <strong>(2)</strong> desplegar la casa de
   cambio y pasar los servicios a plan pago antes de cualquier anuncio; <strong>(3)</strong> resolver los trámites
@@ -670,7 +690,7 @@ tiene que estar cerrado antes de publicar un solo segundo de comercial.</p>
   <tbody>
     <tr>
       <td><b>Días 1–15</b><br>Poner el código en una sola versión</td>
-      <td>Traer a esta rama los sesenta y un archivos de Genesis ID que corren en producción, resolver lo que choque, volver a correr las 227 pruebas y dejar una sola rama de verdad. Cerrar las tres faltas que el propio servicio se marca: firmar la bitácora, activar el segundo factor de los tres operadores y explicar por escrito la rotura sellada.</td>
+      <td>Traer a esta rama los sesenta y un archivos de Genesis ID que corren en producción, resolver lo que choque, volver a correr las 227 pruebas y dejar una sola rama de verdad. Cerrar las tres faltas que el propio servicio se marca: firmar la bitácora, activar el segundo factor de los tres operadores y explicar por escrito la rotura sellada. Y re-rotular la pantalla de remesas de la billetera (6.12) antes de que nadie la vea.</td>
       <td>Mientras esto no esté hecho, cualquier despliegue puede borrar un mes de trabajo de cumplimiento. Bloquea todo lo demás.</td>
     </tr>
     <tr>
