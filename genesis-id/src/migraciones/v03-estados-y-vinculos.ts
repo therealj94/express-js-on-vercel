@@ -1,20 +1,34 @@
 // SFSP v0.3 · revisión de los datos que ya existen (plan, tarea 0.6).
 //
-//   npx tsx src/migraciones/v03-estados-y-vinculos.ts                    # solo mira
-//   npx tsx src/migraciones/v03-estados-y-vinculos.ts --aplicar-vencidas # cambia datos
+//   npx tsx src/migraciones/v03-estados-y-vinculos.ts      # solo mira
 //
-// ESTE SCRIPT NO SE HA EJECUTADO contra ninguna base. Se escribió junto con el
-// cambio y se deja para que una persona lo corra cuando decida, con el mismo
-// GENESIS_MONGO_URL del servicio.
+// SOLO LEE, SIEMPRE. Se puede correr con el servicio encendido y con el mismo
+// GENESIS_MONGO_URL: abre el almacén con `iniciarSoloLectura()`, que lee el
+// documento de estado, cierra la conexión y deja el almacén de este proceso
+// negándose a volcar. No carga la bitácora ni migra nada.
+//
+// POR QUE NO CAMBIA NADA DESDE AQUÍ
+//
+// Tenía una bandera, `--aplicar-vencidas`, que vencía identidades desde este
+// proceso. No se puede hacer así: el servicio guarda todo en memoria, vuelca
+// el estado entero sobre un solo documento y lleva su propio contador de la
+// bitácora sobre un índice único. Un segundo proceso que escribe le pisa la
+// foto y le ocupa los sitios de la bitácora; desde ese momento el servicio no
+// persiste nada más —aunque siga contestando 200— y al siguiente reinicio se
+// pierde todo lo hecho en memoria. La bandera ahora se niega y lo explica.
+//
+// El vencimiento se aplica DENTRO del servicio: GENESIS_VENCER_AUTO=si hace que
+// la vuelta diaria del temporizador de listas (src/aml/temporizador.ts) pase a
+// `vencida` las verificadas con el documento caducado, con decisión, bitácora y
+// aviso a las apps como cualquier otro cambio de estado. Esa vuelta necesita el
+// temporizador de listas encendido (GENESIS_LISTAS_AUTO no en «no»).
 //
 // Dos cosas del v0.3 tocan expedientes que ya existen, y ninguna se aplica
 // sola al desplegar:
 //
 //   1. El estado `vencida`. Una verificada cuyo documento ya caducó DEBERÍA
-//      estar vencida. Sin `--aplicar-vencidas` solo se cuentan; con él se
-//      pasan por `vencer()`, que deja decisión, bitácora y aviso a las apps
-//      como cualquier otro cambio de estado. Después se puede encender el
-//      vencimiento diario con GENESIS_VENCER_AUTO=si.
+//      estar vencida. Aquí solo se cuentan, para saber qué va a pasar antes de
+//      encender GENESIS_VENCER_AUTO.
 //
 //   2. Los vínculos sin dirección de billetera. Desde el v0.3 no se crea
 //      ninguno así, pero los viejos siguen ahí y el límite de exposición no
@@ -24,15 +38,24 @@
 //
 // No imprime correos ni nombres: solo identificadores internos y recuentos.
 
-import { iniciar, store } from '../store.js'
-import * as ids from '../motor/identidades.js'
-import { estadoPublicado, type EstadoPublicado } from '../motor/estados.js'
-import { normalizarDireccion } from '../lib/direccion.js'
+// La bandera vieja se rechaza ANTES de abrir nada.
+if (process.argv.slice(2).some((a) => a.startsWith('--aplicar'))) {
+  console.error(
+    'Este script ya no cambia datos: solo lee.\n' +
+    'Vencer desde un proceso aparte del servicio deja al servicio sin poder guardar\n' +
+    '(le pisa el estado y le ocupa la bitácora) y termina en pérdida de datos.\n' +
+    'Para vencer las verificadas con el documento caducado, encienda\n' +
+    'GENESIS_VENCER_AUTO=si en el servicio: lo hace él mismo en su vuelta diaria.')
+  process.exit(2)
+}
 
-const APLICAR = process.argv.includes('--aplicar-vencidas')
-const ACTOR = 'migracion:sfsp-v0.3'
+const { iniciarSoloLectura, store } = await import('../store.js')
+const ids = await import('../motor/identidades.js')
+const { estadoPublicado } = await import('../motor/estados.js')
+const { normalizarDireccion } = await import('../lib/direccion.js')
+type EstadoPublicado = import('../motor/estados.js').EstadoPublicado
 
-await iniciar()
+await iniciarSoloLectura()
 const { identidades } = store.todo()
 
 // ── Estados, tal como se publican ────────────────────────────────────────────
@@ -66,13 +89,6 @@ console.log('Vínculos con dirección INVÁLIDA, por app:', invalidas)
 console.log(`Vínculos con dirección válida pero no en minúsculas: ${sinNormalizar} ` +
   '(no hace falta tocarlos: las búsquedas por dirección ya comparan en minúsculas)')
 
-// ── Aplicar, solo si se pidió ────────────────────────────────────────────────
-if (!APLICAR) {
-  console.log('\nNo se cambió nada. Para vencer las de arriba: --aplicar-vencidas')
-  process.exit(0)
-}
-let hechas = 0
-for (const i of vencibles) if (ids.vencer(i.id, ACTOR).ok) hechas++
-await store.guardarYa()
-console.log(`\nPasadas a vencida: ${hechas} de ${vencibles.length}`)
+console.log('\nNo se cambió nada: este script solo lee. Las vencibles de arriba las pasa a ' +
+  'vencida el propio servicio con GENESIS_VENCER_AUTO=si.')
 process.exit(0)
