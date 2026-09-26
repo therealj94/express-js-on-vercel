@@ -11,6 +11,7 @@ import { cobrosRouter } from './routes/cobros.js'
 import { retirosRouter } from './routes/retiros.js'
 import { adminRouter } from './routes/admin.js'
 import { genesisRouter } from './routes/genesis.js'
+import { parserRostro } from './lib/genesisPuente.js'
 import { premiosRouter } from './routes/premios.js'
 import { actividadRouter } from './routes/actividad.js'
 import { db } from './lib/db.js'
@@ -41,6 +42,10 @@ const listo = inicializar()
 
 const app = express()
 app.use(cors())
+// Las fotografías del trámite de Genesis ID (rostro, credencial, las dos caras
+// del documento) van con el parser ancho del puente, ANTES del general: el
+// cuerpo lo parsea el primero que lo alcanza. Es el mismo montaje que Veta.
+app.use(['/genesis/biometria', '/genesis/foto', '/genesis/documento-fotos', '/genesis/documento/leer'], parserRostro)
 app.use(express.json({ limit: '12mb' }))
 
 // ─────────────────────────────────────────────────────────────────────────────

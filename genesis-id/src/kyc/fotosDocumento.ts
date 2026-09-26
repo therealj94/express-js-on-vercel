@@ -348,7 +348,7 @@ export async function migrarFotosDelEstado(): Promise<{
     // sería resucitar documentos de identidad ajenos que ya no hace falta que
     // nadie vea.
     const decidida = identidad.estado === 'verificada' || identidad.estado === 'rechazada' ||
-      identidad.estado === 'suspendida'
+      identidad.estado === 'suspendida' || identidad.estado === 'vencida'
     if (decidida) {
       identidad.documento!.imagenes = null
       sueltas++

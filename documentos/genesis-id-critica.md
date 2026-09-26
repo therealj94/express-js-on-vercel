@@ -27,7 +27,12 @@ Plan de consolidación (sin borrar nada todavía):
 1. **[hecho]** `LEEME.md` en la raíz diciendo cuál es la real y qué es cada copia.
 2. **[hecho]** Nota de obsoleto al principio de `GENESIS_ID_INTEGRACION.md`.
 3. Mover `genesis-admin.html` y `GENESIS_ID_INTEGRACION.md` a `documentos/archivo/` en un commit propio, cuando José confirme que nadie los abre desde un marcador.
-4. Un solo puente: `infra/genesis-proxy/genesis.router.js` y
+4. **[hecho, 26-sep, SFSP v0.3 tarea 0.6]** Un solo puente: el canónico es
+   `infra/veta-wallet-backend/lib/genesisPuente.js`, copiado byte a byte en
+   `infra/mytokenpay-api/src/lib/genesisPuente.js`; `genesis-proxy` quedó
+   retirado y solo reexporta. `pruebas/probar-puente-genesis.mjs` (Veta)
+   falla si divergen. Lo que decía este punto antes:
+   `infra/genesis-proxy/genesis.router.js` y
    `infra/veta-wallet-backend/lib/genesisPuente.js` son el mismo código
    divergiendo (el segundo tiene `/gid` y `/documento-fotos`; el primero tiene
    `/status`). Que el backend importe el router de `genesis-proxy` (o al revés)

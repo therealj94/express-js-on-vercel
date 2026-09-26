@@ -60,6 +60,9 @@ export const EVENTOS = [
   'identidad.verificada',
   'identidad.rechazada',
   'identidad.suspendida',
+  // SFSP v0.3: el documento caducó y la identidad dejó de valer hasta que se
+  // re-verifique. A una app le cambia qué hacer igual que una suspensión.
+  'identidad.vencida',
   'negocio.verificado',
   'negocio.rechazado',
   'negocio.suspendido',

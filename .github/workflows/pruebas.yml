@@ -129,6 +129,10 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           node --test pruebas/caja.test.mjs
+          # El puente con Genesis ID es el de Veta, copiado byte a byte (la
+          # copia la vigila la prueba de Veta); esta prueba el adaptador de
+          # sesion y que /vincular exige la direccion (SFSP v0.3 §11).
+          node --test --test-force-exit pruebas/puente-genesis.test.mjs
 
       # El candado de AU-RA y su oido. El primero abre un navegador de verdad
       # con el candado.js que se despacha: sin eso solo se comprobaria que las

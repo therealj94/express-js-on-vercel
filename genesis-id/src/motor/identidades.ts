@@ -44,6 +44,7 @@ import { evaluarRiesgo, UMBRAL_DILIGENCIA_USD } from '../aml/riesgo.js'
 import { abrirCasoPorTamiz } from '../aml/casos.js'
 import { bloqueada } from './bloqueo.js'
 import type { Identidad, EstadoIdentidad, Operador, VinculoApp } from '../types.js'
+import { documentoVencido, estadoPublicado } from './estados.js'
 
 const ahora = () => new Date().toISOString()
 
@@ -283,7 +284,13 @@ export function adjuntarDocumento(
   // documento, hace la prueba de vida y DESPUÉS confirma sus datos, y al
   // confirmarlos vuelve a mandar la misma MRZ para que el cotejo del nombre se
   // haga con lo que declaró. Ese reenvío no puede borrar el rostro.
-  if (identidad.estado === 'iniciada' || identidad.estado === 'datos') identidad.estado = 'documento'
+  //
+  // Una identidad VENCIDA que trae documento nuevo vuelve a empezar por aquí:
+  // es el camino normal de re-verificación, que termina otra vez en revisión
+  // humana y en `aprobar()`.
+  if (identidad.estado === 'iniciada' || identidad.estado === 'datos' || identidad.estado === 'vencida') {
+    identidad.estado = 'documento'
+  }
   recalcularRiesgo(identidad)
   identidad.actualizadaEn = ahora()
   store.guardar()
@@ -495,7 +502,10 @@ export async function adjuntarDocumentoPorFotos(
   // documento, hace la prueba de vida y DESPUÉS confirma sus datos, y al
   // confirmarlos vuelve a mandar la misma MRZ para que el cotejo del nombre se
   // haga con lo que declaró. Ese reenvío no puede borrar el rostro.
-  if (identidad.estado === 'iniciada' || identidad.estado === 'datos') identidad.estado = 'documento'
+  // Una VENCIDA con documento nuevo vuelve a empezar aquí (ver adjuntarDocumento).
+  if (identidad.estado === 'iniciada' || identidad.estado === 'datos' || identidad.estado === 'vencida') {
+    identidad.estado = 'documento'
+  }
   recalcularRiesgo(identidad)
   identidad.actualizadaEn = ahora()
   store.guardar()
@@ -790,6 +800,16 @@ export async function aprobar(
   if (!motivo || motivo.trim().length < 5) {
     return { ok: false, motivo: 'Hay que escribir el motivo de la aprobación' }
   }
+  /* Una identidad VENCIDA no se re-aprueba con el mismo documento caducado: eso
+     sería deshacer el vencimiento con un clic. Tiene que traer uno vigente —que
+     la devuelve al trámite normal (`adjuntarDocumento`)—, o seguir vencida. */
+  if (identidad.estado === 'vencida' && documentoVencido(identidad)) {
+    return {
+      ok: false,
+      motivo: 'El documento de esta identidad está vencido: hace falta uno vigente antes de volver a aprobarla',
+      identidad,
+    }
+  }
 
   recalcularRiesgo(identidad)
   const bloqueos = identidad.riesgo?.bloqueos ?? []
@@ -887,6 +907,55 @@ export async function suspender(idn: string, operador: Operador, motivo: string)
 }
 
 /**
+ * Pasa a VENCIDA una identidad verificada cuyo documento ya caducó.
+ *
+ * SFSP v0.3, Apéndice A: verificada → vencida cuando vence el documento con
+ * que se verificó. No es una decisión de cumplimiento sobre la persona —por
+ * eso la puede tomar el sistema y no hace falta un operador—, pero SÍ le quita
+ * la puerta: `perfilPublico` deja de decir `verificada`, la credencial sale en
+ * la lista de revocadas y el SSO se cierra, igual que con cualquier estado que
+ * no sea `verificada`. El GID se conserva para la trazabilidad.
+ *
+ * Volver es el camino humano normal: documento vigente, rostro, revisión y
+ * `aprobar()`, que sigue siendo la única vía a `verificada`.
+ */
+export function vencer(idn: string, actor: string, hoy: Date = new Date()): ResultadoAprobacion {
+  const identidad = porId(idn)
+  if (!identidad) return { ok: false, motivo: 'Identidad no encontrada' }
+  if (identidad.estado !== 'verificada') {
+    return { ok: false, motivo: 'Solo vence una identidad verificada', identidad }
+  }
+  if (!documentoVencido(identidad, hoy)) {
+    return { ok: false, motivo: 'El documento sigue vigente', identidad }
+  }
+  anotar(identidad, 'vencida', actor, `Documento vencido el ${identidad.vencimientoDocumento}`)
+  store.guardar()
+  registrar(actor, 'identidad.vencida', identidad.id, {
+    gid: identidad.gid, vencimientoDocumento: identidad.vencimientoDocumento,
+  })
+  return { ok: true, identidad }
+}
+
+/**
+ * Las verificadas cuyo documento ya caducó, SIN tocarlas.
+ *
+ * Es lo que se revisa antes de encender el vencimiento automático
+ * (GENESIS_VENCER_AUTO) y lo que lista el script de revisión: cuántas
+ * pasarían a vencida, sin cambiar ningún dato.
+ */
+export function verificadasConDocumentoVencido(hoy: Date = new Date()): Identidad[] {
+  return store.todo().identidades.filter((i) => i.estado === 'verificada' && documentoVencido(i, hoy))
+}
+
+/** Vence todas las que toca. La llama el temporizador solo si está encendido. */
+export function vencerCaducadas(actor: string, hoy: Date = new Date()): { revisadas: number; vencidas: number } {
+  const candidatas = verificadasConDocumentoVencido(hoy)
+  let vencidas = 0
+  for (const i of candidatas) if (vencer(i.id, actor, hoy).ok) vencidas++
+  return { revisadas: store.todo().identidades.length, vencidas }
+}
+
+/**
  * Devuelve una identidad al principio para que la persona la rehaga.
  *
  * NO es un borrado, y no puede serlo: un expediente de cumplimiento no se
@@ -943,7 +1012,7 @@ export function marcarPep(idn: string, operador: Operador, pep: boolean, nota: s
  * verificada una sola vez.
  */
 export function vincular(
-  idn: string, app: string, cuenta: string, direccion: string | null, origen: string,
+  idn: string, app: string, cuenta: string, direccion: string, origen: string,
 ): Identidad | null {
   const identidad = porId(idn)
   if (!identidad) return null
@@ -951,7 +1020,7 @@ export function vincular(
   const existente = identidad.vinculos.find((v) => v.app === app && v.cuenta === cuenta)
   if (existente) {
     existente.ultimoAcceso = ahora()
-    if (direccion) existente.direccion = direccion
+    existente.direccion = direccion
   } else {
     const vinculo: VinculoApp = {
       app, cuenta, direccion, vinculadaEn: ahora(), ultimoAcceso: ahora(),
@@ -991,6 +1060,9 @@ export function perfilPublico(identidad: Identidad) {
        cambia el KYC de nadie. Una app que quiera distinguir «no terminó su
        verificación» de «la casa le cerró la puerta» tiene los dos campos. */
     estado: identidad.estado,
+    /* El de los seis del SFSP v0.3 (Apéndice A): los cuatro pasos del trámite
+       salen como «pendiente». `estado` sigue tal cual para quien ya lo lee. */
+    estadoPublicado: estadoPublicado(identidad.estado),
     nombre: identidad.estado === 'verificada' ? identidad.nombreLegal : null,
     nacionalidad: identidad.estado === 'verificada' ? identidad.nacionalidad : null,
     nivelRiesgo: identidad.riesgo?.nivel ?? null,
@@ -1089,6 +1161,7 @@ export function estadoParaUsuario(identidad: Identidad) {
       identidad.estado === 'verificada' ? 'Listo'
         : identidad.estado === 'rechazada' ? 'Verificación rechazada'
         : identidad.estado === 'suspendida' ? 'Identidad suspendida'
+        : identidad.estado === 'vencida' ? 'Tu documento venció: escanea uno vigente para verificarte de nuevo'
         : !hecho.documento ? 'Escanear el documento de identidad'
         : rostroPendiente ? 'Repetir la comprobación del rostro'
         : !hecho.rostro ? 'Hacer la prueba de vida con la cámara'

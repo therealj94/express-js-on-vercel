@@ -51,6 +51,7 @@ panelRouter.get('/resumen', async (_req, res) => {
       enRevision: porEstado('en-revision') + porEstado('biometria') + porEstado('documento'),
       rechazadas: porEstado('rechazada'),
       suspendidas: porEstado('suspendida'),
+      vencidas: porEstado('vencida'),
       sinTerminar: porEstado('iniciada') + porEstado('datos'),
       riesgoAlto: d.identidades.filter((i) => i.riesgo?.nivel === 'alto' || i.riesgo?.nivel === 'inaceptable').length,
       /* ── LAS QUE ORDENSCAN NO PUEDE VER ─────────────────────────────────
