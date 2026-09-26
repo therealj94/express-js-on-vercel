@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>MyTokenPay · trailer</title>
+<style>
+@font-face { font-family: 'Bricolage'; font-weight: 800; src: url(media/fuentes/BricolageGrotesque_800ExtraBold.ttf); }
+@font-face { font-family: 'Bricolage'; font-weight: 600; src: url(media/fuentes/BricolageGrotesque_600SemiBold.ttf); }
+@font-face { font-family: 'Instrument'; font-weight: 500; src: url(media/fuentes/InstrumentSans_500Medium.ttf); }
+@font-face { font-family: 'Instrument'; font-weight: 600; src: url(media/fuentes/InstrumentSans_600SemiBold.ttf); }
+:root {
+  --noche: #0A0812; --tinta: #100C1B; --sup: #171224; --borde: #2C2444;
+  --niebla: #9D91B8; --claro: #F5F2FA;
+  --violeta: #C266F5; --azul: #4C6EF0; --cian: #4FF0FF; --ok: #34D399; --oro: #E9C46A;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: var(--noche); }
+body { font-family: 'Instrument', sans-serif; color: var(--claro); }
+#escena { position: absolute; inset: 0; overflow: hidden; background: var(--noche); }
+.capa { position: absolute; inset: 0; will-change: transform, opacity; }
+
+#fondo { background:
+  radial-gradient(60% 55% at var(--fx1, 18%) var(--fy1, 22%), rgba(194,102,245,.22), transparent 70%),
+  radial-gradient(55% 50% at var(--fx2, 86%) var(--fy2, 82%), rgba(79,240,255,.13), transparent 70%),
+  radial-gradient(40% 40% at 60% 45%, rgba(76,110,240,.10), transparent 70%),
+  var(--noche); }
+
+#broll img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.franja { position: absolute; left: 0; right: 0; height: 0; background: #000; z-index: 30; }
+#franja-a { top: 0; } #franja-b { bottom: 0; }
+
+/* rótulo de neón: el recurso central de la pieza */
+.neon { font-family: 'Bricolage'; font-weight: 800; letter-spacing: -.02em; color: #fff;
+  text-shadow: 0 0 .04em #fff, 0 0 .12em var(--violeta), 0 0 .32em var(--violeta), 0 0 .7em rgba(76,110,240,.8), 0 0 1.4em rgba(79,240,255,.35); }
+.neon.cian { text-shadow: 0 0 .04em #fff, 0 0 .12em var(--cian), 0 0 .32em var(--cian), 0 0 .7em rgba(76,110,240,.8), 0 0 1.4em rgba(194,102,245,.35); }
+.neon.oro { color: #FFF4D6; text-shadow: 0 0 .04em #fff, 0 0 .14em var(--oro), 0 0 .36em rgba(233,196,106,.8), 0 0 .9em rgba(233,196,106,.35); }
+.apagado { color: #3a3150; text-shadow: none; }
+
+#titulo { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+#titulo .sup { font-family: 'Bricolage'; font-weight: 600; color: var(--niebla); }
+#titulo .grande { line-height: .9; }
+#titulo .sub { font-family: 'Bricolage'; font-weight: 600; color: #E9E4F3; }
+
+#marca { display: flex; align-items: center; justify-content: center; }
+#marca .lockup { display: flex; align-items: center; }
+#marca img { display: block; filter: drop-shadow(0 0 30px rgba(194,102,245,.55)) drop-shadow(0 0 60px rgba(79,240,255,.25)); }
+#marca .nombre { font-family: 'Bricolage'; font-weight: 800; letter-spacing: -.03em; }
+#marca .lema { position: absolute; left: 0; right: 0; text-align: center; font-family: 'Bricolage'; font-weight: 600; color: #EDE8F6; }
+#marca .firma { position: absolute; left: 0; right: 0; display: flex; align-items: center; justify-content: center; gap: 28px; color: var(--niebla); font-weight: 500; letter-spacing: .02em; }
+#marca .firma img { filter: none; }
+
+#bicho { position: absolute; display: flex; align-items: center; gap: 12px; font-family: 'Bricolage'; font-weight: 800; letter-spacing: -.02em; }
+#bicho img { display: block; }
+
+/* teléfono */
+#telefono { position: absolute; left: 0; top: 0; width: 390px; height: 844px; transform-origin: 0 0; }
+#telefono .cuerpo { position: absolute; inset: -14px; border-radius: 62px; background: linear-gradient(145deg, #2a2438, #0d0a15 40%, #1d1829);
+  box-shadow: 0 0 0 1.5px #3b3350, 0 50px 120px rgba(0,0,0,.65), 0 0 90px rgba(194,102,245,.22), 0 0 160px rgba(79,240,255,.10); }
+#telefono .pantalla { position: absolute; inset: 0; border-radius: 48px; overflow: hidden; background: #0A0812; }
+#telefono .pantalla img { position: absolute; left: 0; top: 0; width: 390px; height: 844px; }
+#telefono .isla { position: absolute; top: 10px; left: 50%; width: 112px; height: 32px; margin-left: -56px; border-radius: 20px; background: #000; z-index: 5; }
+#telefono .brillo { position: absolute; inset: 0; border-radius: 48px; z-index: 6; pointer-events: none;
+  background: linear-gradient(115deg, rgba(255,255,255,.10), rgba(255,255,255,0) 30%, rgba(255,255,255,0) 70%, rgba(255,255,255,.04)); }
+#foco { position: absolute; z-index: 7; border: 3px solid var(--cian); border-radius: 18px; opacity: 0;
+  box-shadow: 0 0 12px var(--cian), 0 0 34px rgba(79,240,255,.55), inset 0 0 12px rgba(79,240,255,.35); }
+#barrido { position: absolute; z-index: 7; height: 3px; opacity: 0; background: linear-gradient(90deg, transparent, var(--cian), transparent); box-shadow: 0 0 18px var(--cian); }
+
+#palabras .p { position: absolute; white-space: nowrap; }
+#palabras .p small { display: block; font-family: 'Instrument'; font-weight: 500; color: var(--niebla); letter-spacing: .01em; text-shadow: none; }
+
+#subtitulo { display: flex; justify-content: center; }
+#subtitulo .linea { position: absolute; left: 0; right: 0; text-align: center; font-family: 'Bricolage'; font-weight: 600; color: #fff;
+  text-shadow: 0 2px 18px rgba(0,0,0,.85), 0 0 2px rgba(0,0,0,.9); }
+
+#eco svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+#eco .nodo { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 14px; transform: translate(-50%, -50%); }
+#eco .nodo .aro { border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(23,18,36,.85);
+  box-shadow: 0 0 0 2px rgba(194,102,245,.55), 0 0 40px rgba(194,102,245,.35); overflow: hidden; }
+#eco .nodo span { font-family: 'Bricolage'; font-weight: 600; color: #EDE8F6; }
+
+#grano { background-repeat: repeat; mix-blend-mode: overlay; opacity: .5; z-index: 40; }
+#vineta { z-index: 41; background: radial-gradient(120% 90% at 50% 50%, transparent 55%, rgba(0,0,0,.55) 100%); }
+#negro { z-index: 50; background: #000; opacity: 0; }
+</style>
+</head>
+<body>
+<div id="escena">
+  <div class="capa" id="fondo"></div>
+  <div class="capa" id="broll"><img id="broll-img" alt=""></div>
+  <div class="capa" id="titulo">
+    <div class="sup" id="t-sup">Ahora, ese lugar acepta</div>
+    <div class="grande neon" id="t-grande">ORIGEN</div>
+    <div class="sub" id="t-sub">la moneda que sigue el precio del <span class="neon oro" id="t-oro">oro</span></div>
+  </div>
+  <div class="capa" id="eco">
+    <svg id="eco-svg"></svg>
+  </div>
+  <div class="capa" id="palabras"></div>
+  <div class="capa" id="telefono-capa">
+    <div id="telefono">
+      <div class="cuerpo"></div>
+      <div class="pantalla" id="pantalla">
+        <img id="scr-a" alt=""><img id="scr-b" alt="">
+        <div id="foco"></div><div id="barrido"></div>
+      </div>
+      <div class="isla"></div>
+      <div class="brillo"></div>
+    </div>
+  </div>
+  <div class="capa" id="marca">
+    <div class="lockup" id="lockup"><img id="marca-img" src="media/logos/mytokenpay.png" alt="MyTokenPay"><div class="nombre neon" id="marca-nombre">MyTokenPay</div></div>
+    <div class="lema" id="lema">Donde ya te conocen.</div>
+    <div class="firma" id="firma"><span>Parte del ecosistema</span><img id="og" src="media/logos/orden-global.png" alt="Orden Global"></div>
+  </div>
+  <div id="bicho"><img src="media/logos/mytokenpay.png" alt=""><span>MyTokenPay</span></div>
+  <div class="capa" id="subtitulo"></div>
+  <div class="franja" id="franja-a"></div><div class="franja" id="franja-b"></div>
+  <div class="capa" id="grano"></div>
+  <div class="capa" id="vineta"></div>
+  <div class="capa" id="negro"></div>
+</div>
+<script src="linea.js"></script>
+</body>
+</html>
