@@ -1831,18 +1831,40 @@ const VETA = (() => {
      borra y se pinta guion. Antes se quedaba en pantalla para siempre, y un
      oro de hace horas es un numero inventado con otra fecha. */
   const PRECIO_EDAD_MAX_MS = 10 * 60_000;
-  let preciosEn = 0;
+  /* Y LA EDAD SE LLEVA POR SIMBOLO. Con un solo reloj para toda la cartera,
+     basta que llegue UNA pata del feed (la plata de gold-api con CoinGecko
+     caido, o el oro de CoinGecko sin la plata) para renovarlo, y la otra se
+     queda con su precio viejo para siempre: nunca pasa de 10 minutos. */
+  const preciosEn = {};         // simbolo -> cuando llego su ultimo precio
+  const SIGUEN_FEED = ['ORIGEN', 'AUKA', 'AGKA'];
   let relojPrecios = null;
 
+  function sellarPrecios(simbolos) {
+    const ahora = Date.now();
+    for (const s of simbolos) preciosEn[s] = ahora;
+  }
+
+  // Borra el precio (y su variacion) de cada simbolo del feed que pase de
+  // 10 minutos. Devuelve si cambio algo.
   function caducarPrecios() {
-    if (!cartera || !preciosEn || Date.now() - preciosEn < PRECIO_EDAD_MAX_MS) return;
+    if (!cartera) return false;
+    const ahora = Date.now();
     let cambio = false;
     for (const m of cartera) {
       // Lo declarado por acta no viene del feed: no caduca con el.
-      if (m.declarado || !['ORIGEN', 'AUKA', 'AGKA'].includes(m.s)) continue;
-      if (m.precio != null || m.chg != null) { m.precio = null; m.chg = null; cambio = true; }
+      if (m.declarado || !SIGUEN_FEED.includes(m.s)) continue;
+      if (m.precio == null && m.chg == null) continue;
+      // Un precio sin sello (una cartera sembrada a mano) empieza a contar ahora.
+      if (preciosEn[m.s] == null) { preciosEn[m.s] = ahora; continue; }
+      if (ahora - preciosEn[m.s] >= PRECIO_EDAD_MAX_MS) { m.precio = null; m.chg = null; cambio = true; }
     }
-    if (cambio && !$('#app').classList.contains('oculto')
+    return cambio;
+  }
+
+  // Se repinta solo en las pantallas donde el precio se ve: repintar la de
+  // enviar en medio de una escritura no.
+  function repintarPrecios() {
+    if (!$('#app').classList.contains('oculto')
         && ['billetera', 'token', 'cambiar'].includes(vistaActual)) {
       vista(vistaActual, vistaDato);
     }
@@ -1850,10 +1872,10 @@ const VETA = (() => {
 
   async function refrescarPrecios() {
     if (!cartera || !cartera.length) return;
-    let p, chg;
-    try { ({ p, chg } = await CADENA.precios()); } catch { return caducarPrecios(); }
-    if (!p || !(p.AUKA > 0 || p.AGKA > 0)) return caducarPrecios();
-    preciosEn = Date.now();
+    let p = {}, chg = {};
+    try { ({ p = {}, chg = {} } = (await CADENA.precios()) || {}); } catch {}
+    const llegaron = SIGUEN_FEED.filter(s => p[s] > 0);
+    sellarPrecios(llegaron);
     // La onza del sorteo viaja gratis en este mismo ciclo: si el reloj de
     // precios ya la trajo, no hay que esperar al refresco lento del sorteo.
     if (p.AUKA > 0) sorteoOro = p.AUKA;
@@ -1862,17 +1884,16 @@ const VETA = (() => {
       // El precio declarado por la Junta NO se toca: no sale de un feed y
       // pisarlo con un null del mercado seria borrar un dato bueno.
       if (m.declarado) continue;
-      const nuevo = p[m.s];
-      if (nuevo != null && nuevo > 0 && nuevo !== m.precio) { m.precio = nuevo; cambio = true; }
-      const c = chg?.[m.s];
-      if (c != null && c !== m.chg) { m.chg = c; cambio = true; }
+      if (!llegaron.includes(m.s)) continue;
+      if (p[m.s] !== m.precio) { m.precio = p[m.s]; cambio = true; }
+      // La variacion va con SU precio: si esta lectura no la trae (gold-api no
+      // la da), la de antes ya no corresponde y se quita.
+      const c = chg?.[m.s] ?? null;
+      if (c !== m.chg) { m.chg = c; cambio = true; }
     }
-    // Se repinta solo si algo se movio, y solo en las pantallas donde el
-    // precio se ve: repintar la de enviar en medio de una escritura no.
-    if (cambio && !$('#app').classList.contains('oculto')
-        && ['billetera', 'token', 'cambiar'].includes(vistaActual)) {
-      vista(vistaActual, vistaDato);
-    }
+    // Lo que no llego en esta lectura sigue contando su edad.
+    if (caducarPrecios()) cambio = true;
+    if (cambio) repintarPrecios();
   }
 
   function arrancarRelojPrecios() {
@@ -1908,7 +1929,7 @@ const VETA = (() => {
 
     try {
       cartera = await CADENA.portafolio(sesion.direccion, null);
-      preciosEn = Date.now();
+      sellarPrecios(cartera.filter(x => !x.declarado && x.precio != null && SIGUEN_FEED.includes(x.s)).map(x => x.s));
       /* `portafolio()` NO lanza cuando falla un saldo suelto, a proposito: si
          lanzara, tres tokens caidos se llevarian por delante las doce lecturas
          buenas. Devuelve cada fila con `leido`, y es aca donde se decide si eso
