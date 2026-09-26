@@ -30,6 +30,12 @@ const CONTRATO = {
   MigrationRegistry: "SFSPMigrationRegistry",
   DidRegistry: "SFSPDidRegistry",
   NativeVault: "SFSPNativeVault",
+  // SFSP v0.3 fase 2 · 4, 5 y 6. El §3 del contrato interno nombra dos módulos
+  // lógicos (ReserveEngine y CommodityEngine); los implementa un solo contrato.
+  OracleRegistry: "SFSPOracleRegistry",
+  ReserveEngine: "SFSPReserveEngine",
+  CommodityEngine: "SFSPReserveEngine",
+  TreasuryDesk: "SFSPTreasuryDesk",
 };
 
 describe("H15 · el ABI compilado coincide con spec/eventos.json", function () {

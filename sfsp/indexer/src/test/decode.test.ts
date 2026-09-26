@@ -13,10 +13,12 @@ const DEL_V02 = ['PassportUpdated','AssetStatusChanged','SupplyExpansionDeclared
 const DEL_160 = ['OrgDidRegistered','OrgDidControllerChanged','OrgDidKeyChanged','OrgDidAttestorChanged','OrgDidDocumentChanged','OrgDidDeactivated'] as const;
 // SFSP-410 · política de suministro: cupo de emisión, cuentas internas y bóveda nativa.
 const DEL_410 = ['InternalAccountFlagged', 'MintBudgetSet', 'MintBudgetRevoked', 'MintOnDemand', 'NativeAbsorbed', 'NativeReleased', 'ReleaseBudgetSet', 'ReleaseBudgetRevoked', 'VaultInternalAccountFlagged'] as const;
+// SFSP v0.3 fase 2 · 4, 5 y 6: oraculo unico, motor de reservas y tesoreria cotizadora.
+const DEL_FASE2 = ['OracleParametersSet', 'OracleParametersCleared', 'OraclePricePublished', 'CommodityAssetConfigured', 'CustodianRegistered', 'LicenseGateSet', 'ConcentrationLimitsSet', 'RedemptionChannelSet', 'MetalLotRegistered', 'MetalLotStateChanged', 'LotAuditVerified', 'UnitsPlaced', 'OrigenSettlementFunded', 'DeskParametersSet', 'DeskParametersCleared', 'MarketSpreadObserved', 'DeskFunded', 'DeskTradeExecuted'] as const;
 
 test('los quince eventos del §3, los catorce del v0.2 los seis de SFSP-160 y los nueve de SFSP-410 estan registrados', () => {
-  for (const n of [...DEL_TRES, ...DEL_V02, ...DEL_160, ...DEL_410]) assert.ok(n in EVENTOS_CONOCIDOS, 'falta ' + n);
-  assert.equal(Object.keys(EVENTOS_CONOCIDOS).length, DEL_TRES.length + DEL_V02.length + DEL_160.length + DEL_410.length);
+  for (const n of [...DEL_TRES, ...DEL_V02, ...DEL_160, ...DEL_410, ...DEL_FASE2]) assert.ok(n in EVENTOS_CONOCIDOS, 'falta ' + n);
+  assert.equal(Object.keys(EVENTOS_CONOCIDOS).length, DEL_TRES.length + DEL_V02.length + DEL_160.length + DEL_410.length + DEL_FASE2.length);
   assert.equal(EVENTOS_CONOCIDOS.MintExecuted, 'IssuanceController');
   assert.equal(EVENTOS_CONOCIDOS.RiskChanged, 'AssetRegistry');
 });

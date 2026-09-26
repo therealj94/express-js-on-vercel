@@ -36,7 +36,7 @@ export interface EventoGenerado {
   readonly camposDeAtribucion: readonly string[];
 }
 
-/** Los 44 eventos del §3, por su nombre canonico. */
+/** Los 62 eventos del §3, por su nombre canonico. */
 export type NombreEvento =
   | "AssetRegistered"
   | "PolicyUpdated"
@@ -81,7 +81,25 @@ export type NombreEvento =
   | "NativeReleased"
   | "ReleaseBudgetSet"
   | "ReleaseBudgetRevoked"
-  | "VaultInternalAccountFlagged";
+  | "VaultInternalAccountFlagged"
+  | "OracleParametersSet"
+  | "OracleParametersCleared"
+  | "OraclePricePublished"
+  | "CommodityAssetConfigured"
+  | "CustodianRegistered"
+  | "LicenseGateSet"
+  | "ConcentrationLimitsSet"
+  | "RedemptionChannelSet"
+  | "MetalLotRegistered"
+  | "MetalLotStateChanged"
+  | "LotAuditVerified"
+  | "UnitsPlaced"
+  | "OrigenSettlementFunded"
+  | "DeskParametersSet"
+  | "DeskParametersCleared"
+  | "MarketSpreadObserved"
+  | "DeskFunded"
+  | "DeskTradeExecuted";
 
 /** Esquema completo por evento. Generado: editar el JSON, no esto. */
 export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
@@ -197,7 +215,7 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
     significado: "Una reserva recibio evidencia con vigencia.",
     atribucion: "POR_ACTIVO",
     afectaSuministro: "NINGUNO",
-    implementadoEnContratos: false,
+    implementadoEnContratos: true,
     campos: [
       { nombre: "reserveAssetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
       { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
@@ -214,7 +232,7 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
     significado: "Una reserva perdio vigencia; la capacidad de emision baja.",
     atribucion: "POR_ACTIVO",
     afectaSuministro: "NINGUNO",
-    implementadoEnContratos: false,
+    implementadoEnContratos: true,
     campos: [
       { nombre: "reserveAssetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
       { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
@@ -284,7 +302,7 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
     significado: "Avance en la maquina de redencion (SFSP-300 §RedemptionState).",
     atribucion: "POR_ACTIVO",
     afectaSuministro: "NINGUNO",
-    implementadoEnContratos: false,
+    implementadoEnContratos: true,
     campos: [
       { nombre: "redemptionId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
       { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
@@ -496,7 +514,7 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
     significado: "Ratio de cobertura de una serie con respaldo, calculado contra lo COLOCADO; la tesorería se reporta aparte (SFSP-300 §0.2).",
     atribucion: "POR_ACTIVO",
     afectaSuministro: "NINGUNO",
-    implementadoEnContratos: false,
+    implementadoEnContratos: true,
     campos: [
       { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
       { nombre: "fineOuncesAssigned", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
@@ -851,6 +869,318 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
     cantidades: [],
     camposDeAtribucion: [],
   },
+  OracleParametersSet: {
+    nombre: "OracleParametersSet",
+    emisor: "OracleRegistry",
+    significado: "SFSP v0.3 §10.5 · la Junta fija edad maxima y tolerancia de variacion de un metal del oraculo unico. Sin ellas el oraculo no acepta ni devuelve precio (BLOCKED_DECISION).",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "metal", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "version", tipo: "uint32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "maxAge", tipo: "uint64", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "maxDeviationBps", tipo: "uint16", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["metal", "version", "maxAge", "maxDeviationBps"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  OracleParametersCleared: {
+    nombre: "OracleParametersCleared",
+    emisor: "OracleRegistry",
+    significado: "SFSP v0.3 §10.5 · se retiran los parametros de un metal: el oraculo vuelve a BLOCKED_DECISION, sin conservar el ultimo valor como defecto.",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "metal", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["metal", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  OraclePricePublished: {
+    nombre: "OraclePricePublished",
+    emisor: "OracleRegistry",
+    significado: "SFSP v0.3 §10.5 · un publicador autorizado publica el precio de un metal (USD por onza troy fina, 8 decimales) con la marca de tiempo de la observacion. 'quarantined' = salto fuera de tolerancia sin confirmar.",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "metal", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "round", tipo: "uint64", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "publisher", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "price", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "observedAt", tipo: "uint64", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "quarantined", tipo: "bool", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["metal", "round", "publisher", "price", "observedAt", "quarantined"],
+    cantidades: ["price"],
+    camposDeAtribucion: [],
+  },
+  CommodityAssetConfigured: {
+    nombre: "CommodityAssetConfigured",
+    emisor: "ReserveEngine",
+    significado: "SFSP-300 · la Junta declara un activo de commodity (metal, token, billetera de tesoreria y unidades por onza).",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "metal", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "token", tipo: "address", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "treasuryWallet", tipo: "address", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "unitsPerOunce", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "physicalAllowed", tipo: "bool", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["assetId", "metal", "token", "treasuryWallet", "unitsPerOunce", "physicalAllowed"],
+    cantidades: ["unitsPerOunce"],
+    camposDeAtribucion: ["assetId"],
+  },
+  CustodianRegistered: {
+    nombre: "CustodianRegistered",
+    emisor: "ReserveEngine",
+    significado: "SFSP-300 §9.2 · alta de un custodio con su atestador; 'internalCustody' marca la custodia interna (Ordenex bajo Clase G).",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "custodianId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "attestor", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "internalCustody", tipo: "bool", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "jurisdiction", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["custodianId", "attestor", "internalCustody", "jurisdiction"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  LicenseGateSet: {
+    nombre: "LicenseGateSet",
+    emisor: "ReserveEngine",
+    significado: "SFSP v0.3 §6 · la Junta fija la compuerta de licencias de la que dependen la custodia interna y los canales fisicos.",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "gate", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "by", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["gate", "by"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  ConcentrationLimitsSet: {
+    nombre: "ConcentrationLimitsSet",
+    emisor: "ReserveEngine",
+    significado: "SFSP-300 §9.2 · limites de concentracion por custodio (independiente e interno) y total minimo desde el que aplican. Sin ellos no se asigna ningun lote (BLOCKED_DECISION).",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "maxIndependentBps", tipo: "uint16", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "maxInternalBps", tipo: "uint16", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "minTotalOz", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+    ],
+    requeridos: ["maxIndependentBps", "maxInternalBps", "minTotalOz"],
+    cantidades: ["minTotalOz"],
+    camposDeAtribucion: [],
+  },
+  RedemptionChannelSet: {
+    nombre: "RedemptionChannelSet",
+    emisor: "ReserveEngine",
+    significado: "SFSP-300 §9.3 · estado publicado de un canal de redencion (0 liquidacion en ORIGEN, 1 envio asegurado, 2 retiro presencial), con minimo, diferencial y referencia de licencia.",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "channel", tipo: "uint8", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "open", tipo: "bool", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "minimumUnits", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "spreadBps", tipo: "uint16", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "licenseRef", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["assetId", "channel", "open", "minimumUnits", "spreadBps", "licenseRef"],
+    cantidades: ["minimumUnits"],
+    camposDeAtribucion: ["assetId"],
+  },
+  MetalLotRegistered: {
+    nombre: "MetalLotRegistered",
+    emisor: "ReserveEngine",
+    significado: "SFSP-300 §9.2 · ingreso de un lote de metal con destino unico, onzas finas derivadas de peso bruto y pureza, y hash del certificado de ensayo (un certificado, un lote).",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "lotId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "custodianId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "fineOunces", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "assayCertHash", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["lotId", "assetId", "custodianId", "fineOunces", "assayCertHash"],
+    cantidades: ["fineOunces"],
+    camposDeAtribucion: ["assetId"],
+  },
+  MetalLotStateChanged: {
+    nombre: "MetalLotStateChanged",
+    emisor: "ReserveEngine",
+    significado: "Apendice A · transicion del lote: 1 recibido, 2 verificado, 3 asignado, 4 parcialmente tokenizado, 5 bloqueado por redencion, 6 liberado.",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "lotId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "previousState", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "newState", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["lotId", "assetId", "previousState", "newState", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: ["assetId"],
+  },
+  LotAuditVerified: {
+    nombre: "LotAuditVerified",
+    emisor: "ReserveEngine",
+    significado: "SFSP-300 §9.2 · verificacion del auditor externo sobre un lote (obligatoria para la custodia interna), con su vencimiento.",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "lotId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "auditor", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "validUntil", tipo: "uint64", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["lotId", "auditor", "validUntil"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  UnitsPlaced: {
+    nombre: "UnitsPlaced",
+    emisor: "ReserveEngine",
+    significado: "SFSP v0.3 §9.4 · colocacion: unidades que salen de la tesoreria hacia un tercero contra onzas verificadas y no comprometidas. No cambia el suministro.",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "to", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "operationId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "amount", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "ouncesCommitted", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+    ],
+    requeridos: ["assetId", "to", "operationId", "amount", "ouncesCommitted"],
+    cantidades: ["amount", "ouncesCommitted"],
+    camposDeAtribucion: ["assetId"],
+  },
+  OrigenSettlementFunded: {
+    nombre: "OrigenSettlementFunded",
+    emisor: "ReserveEngine",
+    significado: "SFSP-300 §9.3 · la tesoreria deposita ORIGEN para liquidar redenciones en ORIGEN.",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "from", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "amount", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+    ],
+    requeridos: ["from", "amount"],
+    cantidades: ["amount"],
+    camposDeAtribucion: [],
+  },
+  DeskParametersSet: {
+    nombre: "DeskParametersSet",
+    emisor: "TreasuryDesk",
+    significado: "SFSP v0.3 §10.4 · la Junta fija diferenciales de compra y venta, tolerancia de frescura, ventana, limite por identidad e inventario por lado. Sin ellos la tesoreria no cotiza (BLOCKED_DECISION).",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "version", tipo: "uint32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "buySpreadBps", tipo: "uint16", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "sellSpreadBps", tipo: "uint16", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "maxOracleAge", tipo: "uint64", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "window", tipo: "uint64", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "perIdentityLimit", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "sellInventory", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "buyInventory", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+    ],
+    requeridos: ["assetId", "version", "buySpreadBps", "sellSpreadBps", "maxOracleAge", "window", "perIdentityLimit", "sellInventory", "buyInventory"],
+    cantidades: ["perIdentityLimit", "sellInventory", "buyInventory"],
+    camposDeAtribucion: ["assetId"],
+  },
+  DeskParametersCleared: {
+    nombre: "DeskParametersCleared",
+    emisor: "TreasuryDesk",
+    significado: "SFSP v0.3 §10.4 · se retiran los parametros de la tesoreria: vuelve a BLOCKED_DECISION.",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["assetId", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: ["assetId"],
+  },
+  MarketSpreadObserved: {
+    nombre: "MarketSpreadObserved",
+    emisor: "TreasuryDesk",
+    significado: "SFSP v0.3 §10.4 control 1 · diferencial observado del mercado; si supera al de la tesoreria, la tesoreria deja de cotizar ese lado.",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "by", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "marketSpreadBps", tipo: "uint16", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["assetId", "by", "marketSpreadBps"],
+    cantidades: [],
+    camposDeAtribucion: ["assetId"],
+  },
+  DeskFunded: {
+    nombre: "DeskFunded",
+    emisor: "TreasuryDesk",
+    significado: "SFSP v0.3 §10.4 · deposito de ORIGEN en el inventario de venta de la tesoreria.",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "from", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "amount", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+    ],
+    requeridos: ["assetId", "from", "amount"],
+    cantidades: ["amount"],
+    camposDeAtribucion: ["assetId"],
+  },
+  DeskTradeExecuted: {
+    nombre: "DeskTradeExecuted",
+    emisor: "TreasuryDesk",
+    significado: "SFSP v0.3 §10.4 · operacion de la tesoreria contra el oraculo (side 0 = la tesoreria vende ORIGEN, 1 = compra), con la lectura del oraculo usada. El lado en USD se liquida fuera de la cadena. No publica el compromiso de identidad.",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "operationId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "account", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "side", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "origenAmount", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "usdAmount", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "priceUsd", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "oracleRound", tipo: "uint64", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["assetId", "operationId", "account", "side", "origenAmount", "usdAmount", "priceUsd", "oracleRound"],
+    cantidades: ["origenAmount", "usdAmount", "priceUsd"],
+    camposDeAtribucion: ["assetId"],
+  },
 };
 
 /** Nombre de evento -> emisor declarado. Compatibilidad con el §3. */
@@ -899,6 +1229,24 @@ export const EVENTOS_CONOCIDOS: Readonly<Record<NombreEvento, string>> = {
   ReleaseBudgetSet: "NativeVault",
   ReleaseBudgetRevoked: "NativeVault",
   VaultInternalAccountFlagged: "NativeVault",
+  OracleParametersSet: "OracleRegistry",
+  OracleParametersCleared: "OracleRegistry",
+  OraclePricePublished: "OracleRegistry",
+  CommodityAssetConfigured: "ReserveEngine",
+  CustodianRegistered: "ReserveEngine",
+  LicenseGateSet: "ReserveEngine",
+  ConcentrationLimitsSet: "ReserveEngine",
+  RedemptionChannelSet: "ReserveEngine",
+  MetalLotRegistered: "ReserveEngine",
+  MetalLotStateChanged: "ReserveEngine",
+  LotAuditVerified: "ReserveEngine",
+  UnitsPlaced: "ReserveEngine",
+  OrigenSettlementFunded: "ReserveEngine",
+  DeskParametersSet: "TreasuryDesk",
+  DeskParametersCleared: "TreasuryDesk",
+  MarketSpreadObserved: "TreasuryDesk",
+  DeskFunded: "TreasuryDesk",
+  DeskTradeExecuted: "TreasuryDesk",
 };
 
 /**

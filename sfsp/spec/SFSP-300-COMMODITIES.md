@@ -80,7 +80,7 @@ Esto **sustituye** el `null` de «mínimo de redención física» en §5 por los
 
 ### 0.5 Diferencia con el código actual
 
-No hay código de esta serie: ni lotes, ni capacidad de colocación, ni redención. Los eventos `ReserveAttested`, `ReserveExpired` y `RedemptionUpdated` están en `eventos.json` sin emisor. Todo es fase 3.
+**Actualización 26-sep-2026 (plan v0.3, fase 2 punto 5), sin desplegar:** `contracts/src/SFSPReserveEngine.sol` implementa lotes (estados del Apéndice A del v0.3), atestaciones que vencen solas, capacidad de colocación, cobertura contra lo colocado, no doble cómputo por certificado, límite de concentración por custodio (`BLOCKED_DECISION` hasta que la Junta lo fije) y redención con quema anterior o simultánea a la entrega. Liquidación en ORIGEN por `SFSPOracleRegistry` (1 AUKA = 1.710,6925 ORIGEN; AGKA por el ratio oro/plata); canales físicos cerrados sin licencia Clase G (interfaz `ILicenseGate`). Pruebas: `contracts/test/24-reservas-commodities.js`. Sigue el conflicto C8: el motor aplica el v0.3 (acuñar a tesorería sin metal, colocar sólo con capacidad), no la enmienda SFSP-410 de arriba. El token de AUKA/AGKA aún no implementa `ISFSPCommodityToken`.
 
 ### 0.6 Pruebas de aceptación nuevas
 
