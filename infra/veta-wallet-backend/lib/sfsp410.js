@@ -41,12 +41,13 @@
 //   sistema  quién cobra:          ordenex | veta
 //   tipo     qué se cobró:         compra-usdt | deposito-usdt | …
 //   id       el identificador del REGISTRO DEL PAGO en su base: el _id de Mongo
-//            de la orden (Ordenex) o del depósito (Veta). Es único por
-//            construcción y no se recicla. NUNCA un monto, una dirección o un
-//            rango de saldos: esos se repiten.
+//            del depósito (DepositoExterno en Ordenex, Deposit en Veta). Es
+//            único por construcción y no se recicla. NUNCA un monto, una
+//            dirección, un rango de saldos ni el _id de una ORDEN: una orden se
+//            puede duplicar para el mismo pago (REV-410-07).
 //
 // Cada parte: [A-Za-z0-9._:-], 1 a 96 caracteres. Ejemplo:
-//     SFSP410/v1|ordenex|compra-usdt|66f1c0ffee0000000000abcd
+//     SFSP410/v1|ordenex|deposito-usdt|66f1c0ffee0000000000abcd
 //
 // ══════════════════════════════════════════════════════════════════════════
 // LA EVIDENCIA (evidenceRoot)
@@ -524,6 +525,15 @@ async function operar({ direccion, iface, metodo, args, evento, ref, destino, mo
     };
   }
   if (r.revertida) {
+    // REV-410-06 · la causa más probable de revertir al minar con la misma
+    // referencia es que OTRA transacción (otro proceso, un reintento en duda)
+    // ya la gastó: eso es "ya entregado", no un fallo. Se mira el evento.
+    const primera = await leerPrimera();
+    if (primera) {
+      const discrepancia = primera.destino !== destino || primera.monto !== String(monto)
+        ? 'la primera entrega con esta referencia fue a otro destino o por otro monto: revisar' : null;
+      return { ok: true, estado: 'ya-entregado', hash: primera.hash, primera, discrepancia, ...base };
+    }
     return {
       ok: false, estado: 'revisar', hash: r.hash, reintentable: true, codigo: 'REVERTIDA_AL_MINAR',
       mensaje: 'La transacción se minó revertida (probablemente otra operación consumió el cupo en el mismo bloque). Reintentar con la misma referencia es seguro.',

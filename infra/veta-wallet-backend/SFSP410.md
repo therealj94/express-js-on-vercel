@@ -82,6 +82,14 @@ precio de `lib/origenPrice.js` en nanodólares ·10⁹. Trunca: nunca de más.
    emisión real en cadena (100 USDT = 10.000 ORIGEN aquí, ≈38 en Ordenex).
    **Hay que resolverlo antes de encender.**
 
+## Revisión del 26-sep (REV-410-06)
+
+La entrega espera el minado (`{ esperar: true }`): 'entregada' ya significa
+minada con éxito, no sólo enviada. La petición de `/wallet/deposit` tarda un
+bloque más; pasado el plazo queda `en-duda` y se reintenta sola. Una
+transacción revertida al minar vuelve a `pendiente` (si la referencia ya estaba
+gastada por otro intento, se da por entregada leyendo el evento).
+
 ## Encender / apagar / rollback
 
 - Encender: `heroku config:set SFSP410_EMISION=1`.

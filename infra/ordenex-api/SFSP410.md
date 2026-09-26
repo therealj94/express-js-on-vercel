@@ -25,12 +25,16 @@ vez.
 ### La referencia del pago (`paymentRef`)
 
 ```
-canónica   = "SFSP410/v1|ordenex|compra-usdt|<_id de la OrdenCompra>"
+canónica   = "SFSP410/v1|ordenex|deposito-usdt|<_id del DepositoExterno que paga la orden>"
 paymentRef = keccak256(utf8(canónica))
 ```
 
-Una por orden, determinista y nunca reusada (el `_id` de Mongo no se recicla).
-La cadena la gasta: un segundo intento con la misma orden revierte con
+Una por **depósito** (el pago real), determinista y nunca reusada: el
+`DepositoExterno` es único por `{cadena, txHash, logIndex}`. Hasta la revisión
+del 26-sep era el `_id` de la orden; se cambió (REV-410-07) porque dos procesos
+que atienden el mismo depósito podían crear dos órdenes y la cadena habría
+visto dos pagos. La entrega espera el minado (REV-410-06).
+La cadena la gasta: un segundo intento con el mismo depósito revierte con
 `OperationReplay`, y el adaptador lo trata como **ya entregado**: lee el evento
 `NativeReleased` de la primera entrega y anota su hash. Por eso reintentar una
 orden (incluso una `en-duda`) es seguro.
@@ -103,7 +107,10 @@ SFSP-410 (`en-revision`/`en-duda` con motivo `SFSP410`):
 
 - **No** las pases a `esperando` con el interruptor apagado sin mirar antes la
   cadena: si la liberación ya salió, la caliente entregaría otra vez.
-  Comprobación: `SFSPNativeVault.isOperationUsed(keccak256("SFSP410/v1|ordenex|compra-usdt|<id>"))`.
+  Comprobación: `SFSPNativeVault.isOperationUsed(keccak256("SFSP410/v1|ordenex|deposito-usdt|<depositoId>"))`.
+  Desde REV-410-08 el código ya lo impide: apagado, una orden con motivo
+  `SFSP410…` que llegue a `entregar` vuelve a `en-revision` en vez de salir por
+  la caliente.
   Si es `true`, márcala `entregada` a mano con el hash del evento `NativeReleased`.
 - Si es `false`, no salió nada y la puede entregar la caliente.
 

@@ -473,6 +473,12 @@ contract SFSPIssuanceController is SFSPAccessControl, SFSPEIP712, SFSPReentrancy
         if (_usedOperationId[p.nonce]) revert OperationReplay(p.nonce);
         _usedOperationId[p.nonce] = true;
 
+        // REV-410 · la etiqueta con la que gobierno APROBÓ el digest tiene que
+        // ser MINT, igual que exigen setMintBudget y la bóveda. Sin esto, un
+        // payload MINT propuesto con otra etiqueta (que es lo que ven los
+        // firmantes en el registro) se ejecutaba como emisión.
+        bytes32 label = governance.authorizationActionOf(approvedDigest);
+        if (label != ACTION_MINT) revert AuthorizationActionMismatch(ACTION_MINT, label);
         if (!governance.isAuthorizationApproved(approvedDigest)) revert MintNotAuthorized(approvedDigest);
         SFSPAuthorization.Payload memory m = p;
         SFSPAuthorization.authorize(m, approvedDigest);

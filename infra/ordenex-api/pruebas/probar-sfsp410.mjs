@@ -234,8 +234,8 @@ try {
     comprobar(enviadosCaliente === enviosAntes, 'la caliente NO firma nada');
     comprobar(lecturasCaliente === lecturasAntes, 'y su inventario no se mira');
 
-    const esperada = keccak256(toUtf8Bytes(`SFSP410/v1|ordenex|compra-usdt|${o._id}`));
-    comprobar(r.paymentRef === esperada, 'paymentRef = keccak256("SFSP410/v1|ordenex|compra-usdt|<id de la orden>")', r.paymentRef);
+    const esperada = keccak256(toUtf8Bytes(`SFSP410/v1|ordenex|deposito-usdt|${o.depositoId}`));
+    comprobar(r.paymentRef === esperada, 'paymentRef = keccak256("SFSP410/v1|ordenex|deposito-usdt|<id del depósito>") (REV-410-07)', r.paymentRef);
     const evs = await liberaciones(esperada);
     comprobar(evs.length === 1, 'hay UNA liberación en la bóveda con esa referencia', String(evs.length));
     comprobar(evs[0]?.destination === ALICE && evs[0]?.amount === 2n * ETH, 'al usuario, por el monto exacto');
@@ -271,6 +271,19 @@ try {
     const r3 = await sfsp410.entregarOrigen(BOB, 1n, compra._adentro.referenciaDeOrden(primeraOrden), { x: 1 });
     comprobar(r3.ok && r3.estado === 'ya-entregado' && !!r3.discrepancia,
       'y si la referencia se reusara con otro destino/monto, lo marca como discrepancia', JSON.stringify(r3.discrepancia));
+  }
+
+  decir('REV-410-07: dos órdenes para el MISMO depósito no entregan dos veces');
+  {
+    const gemela = await orden({ aWallet: ALICE, origenWei: 2n * ETH });
+    await compra.OrdenCompra.updateOne({ _id: gemela._id }, { depositoId: primeraOrden.depositoId });
+    const antesAlice = await saldo(ALICE);
+    const r = await compra.entregar(gemela._id);
+    comprobar(r.ok && r.sfsp410 === 'ya-entregado' && r.hash === primerHash,
+      'la orden duplicada choca con la referencia del depósito y se da por entregada', JSON.stringify(r));
+    comprobar((await saldo(ALICE)) === antesAlice, 'y el usuario NO recibe otra vez');
+    await compra.PorPagar.deleteOne({ ordenId: gemela._id });
+    await compra.OrdenCompra.deleteOne({ _id: gemela._id });
   }
 
   decir('cupo agotado: a la cola de gobierno, sin bucle');
@@ -420,6 +433,17 @@ try {
     comprobar(r.ok && enviadosCaliente === envios + 1, 'apagar el interruptor devuelve al camino de la caliente al instante (rollback)');
     let e4 = null; try { await compra.reintentarSfsp410(o._id); } catch (x) { e4 = x; }
     comprobar(e4?.codigo === 'SFSP410_APAGADO', 'y apagado no se reintenta nada por SFSP-410');
+
+    // REV-410-08: una orden que pasó por la bóveda (en duda y reencolada) no
+    // se entrega por la caliente si el interruptor se apagó entre medias.
+    const tocada = await orden({ aWallet: ALICE, origenWei: ETH });
+    await compra.OrdenCompra.updateOne({ _id: tocada._id }, { motivo: 'SFSP410 · devuelta a la fila por una persona' });
+    const envios2 = enviadosCaliente;
+    const rt = await compra.entregar(tocada._id);
+    const lt = await leer(tocada._id);
+    comprobar(!rt.ok && rt.estado === 'en-revision' && enviadosCaliente === envios2,
+      'REV-410-08: apagado, una orden que pasó por la bóveda NO sale por la caliente', JSON.stringify(rt));
+    comprobar(/^SFSP410 · .*isOperationUsed/.test(lt.motivo || ''), 'y el motivo dice qué comprobar', lt.motivo);
   }
 } catch (e) {
   fallos++;

@@ -180,3 +180,102 @@ todos.
 4. **Decimales.** Si el activo SFSP nuevo no usa 18 decimales, el ratio lo decide
    D09 y el resto va a `ResidualEntitlementRecorded`. La hoja compromete
    `oldUnits`, no el ratio, así que la raíz no cambia con el ratio.
+
+## Alternativa evaluada: un cupo por activo en lugar de N órdenes `MIGRATION_CLAIM`
+
+Evaluada en la revisión adversarial del 26-sep-2026
+(`../auditoria/REVISION-SFSP410-2026-09-26.md`, REV-410-17). **Es sólida como
+mecanismo, pero cambia el modelo de control de SFSP-700**: la Junta tiene que
+aceptarlo expresamente (D26 + ADR) antes de usarlo en la 5550.
+
+### Qué es
+
+Por cada activo nuevo (ONDK, AUKA, IBS, HARV), **una** orden de gobierno
+`SET_MINT_BUDGET` cuyo cupo es exactamente el padrón, y el emisor acuña a cada
+beneficiario su saldo con `mintOnDemand`:
+
+| Campo | Valor |
+|---|---|
+| `amount` (por periodo) | `S0` del padrón (suma de `oldUnits` del árbol; la reserva por ranura NO entra) |
+| `amountSecondary` (máx. por operación) | el mayor `oldUnits` del padrón (ver «Riesgos», punto 3) |
+| `period` | tan largo que toda la ventana cae en UN solo periodo: comprobar `floor(ahora/period) == floor(validUntil/period)` |
+| `validUntil` | fin de la ventana de migración (días, no meses) |
+| `termsDocRoot` | la **raíz Merkle del padrón** (`raizMerkle` de `padron-<ACTIVO>.json`) |
+| por cada beneficiario | `mintOnDemand(assetId, address, oldUnits·ratio, paymentRef, evidenceRoot)` |
+| `paymentRef` | `keccak256(utf8("MIGRACION|<assetId en hex 0x…, minúsculas>|<dirección en hex, minúsculas>"))` |
+| `evidenceRoot` | la raíz Merkle del padrón (la misma de `termsDocRoot`) |
+
+### Por qué es sólida
+
+- Pasa por `_mintTo`, así que se aplican **R1** (nunca a una cuenta interna: si
+  el padrón se equivocó y lista una interna declarada en D25, revierte con
+  `MintToInternalAccount`), **R3** (elegibilidad), **R8** (topes de stock y
+  acumulado) y **R9** (pausa). El camino de `SFSPMigrationRegistry` →
+  `mintForMigration` **no** aplica R1 ni los topes (REV-410-12).
+- `paymentRef` por (activo, dirección) es un **nullifier en cadena**: la misma
+  dirección no puede cobrar dos veces el mismo activo por este camino, ni en
+  reintentos ni en rondas posteriores (`OperationReplay`). Por eso NO lleva el
+  `migrationId` ni el número de ronda.
+- El digest que aprueba gobierno compromete la raíz del padrón (vía
+  `termsDocRoot` dentro de `budgetTermsRoot`) y el total `S0`: los firmantes
+  aprueban ESE padrón y ESE total, con la espera del timelock.
+- Una aprobación por activo en vez de una por persona (33 hoy).
+
+### Lo que se pierde frente a SFSP-700 (riesgos)
+
+1. **El reparto individual no se comprueba en cadena.** El contrato limita el
+   total (`S0`) y el máximo por operación, pero no verifica la prueba Merkle:
+   la llave del emisor podría acuñar a una dirección elegible que no está en el
+   padrón, o repartir distinto, siempre dentro de `S0`. Queda **detectable**
+   (cada `MintOnDemand` es público y su `paymentRef` se recalcula), pero no
+   **impedido**. Mitigaciones obligatorias: ventana corta, `maxPerOperation` =
+   mayor saldo del padrón, conciliación publicada (abajo) y revocar el cupo al
+   terminar.
+2. **Ocupa el único cupo del activo.** `SFSPIssuanceController` guarda un cupo
+   por `assetId`. Mientras dure la migración no puede haber cupo comercial para
+   ese activo, y fijar el comercial después **reinicia** `usedInPeriod`. Orden:
+   migración → `revokeMintBudget` → cupo comercial.
+3. **Un saldo = una operación.** Como `paymentRef` es único por dirección, un
+   saldo no se puede partir. `maxPerOperation` tiene que ser ≥ el mayor saldo;
+   si alguno es desproporcionado, ese va por orden `MINT` individual y se saca
+   del cupo.
+4. **Consume el tope acumulado.** Lo migrado cuenta en `cumulativeCap` y en
+   `outstandingLimit`: fijar los topes del instrumento contando `S0`.
+5. **Sin eventos de SFSP-700.** No hay `MigrationOpened/Claimed/Closed`, ni
+   conciliación `S0 = A + N + P` en cadena, ni congelación del contrato viejo
+   por el registro. El indexador y los informes de SFSP-700 no lo verán como
+   migración; hace falta enmendar SFSP-700 (§ modo «emisión por padrón»).
+6. **Política de elegibilidad.** Se evalúa la acción `MINT` del activo, no
+   `MIGRATION_CLAIM`: la política `MINT` tiene que admitir a los tenedores.
+7. **Direcciones canónicas.** La dirección y el `assetId` entran en minúsculas
+   y en hex, siempre igual: `0xAbC…` y `0xabc…` darían dos `paymentRef`
+   distintos y dos acuñaciones.
+8. **Ratio / decimales.** Si el activo nuevo no usa 18 decimales, el monto es
+   `oldUnits·ratio` truncado, y el resto se anota fuera de cadena (D09).
+
+### Procedimiento
+
+1. Congelar el padrón: bloque de corte y `migrationId` fijados (D09),
+   `construir-padron.mjs` + `verificar-padron.mjs`. Publicar la raíz y `S0`
+   (no las direcciones).
+2. Cruzar cada beneficiario con `isInternalAccount` del emisor (lectura). Una
+   coincidencia detiene el proceso: o el padrón o D25 están mal.
+3. Comprobar elegibilidad de cada beneficiario (`evaluateOperation(..., "MINT", ...)`
+   en lectura). Los no elegibles salen de esta ronda y pasan a la siguiente.
+4. Topes del instrumento con `S0` incluido (`setInstrumentLimits`, Junta).
+5. Orden `SET_MINT_BUDGET` con los valores de la tabla; proponer, aprobar,
+   esperar el timelock, ejecutar (`setMintBudget`, TECH_OPS).
+6. Emisor: un `mintOnDemand` por beneficiario, en orden de hoja, con la
+   `paymentRef` canónica. Un `OperationReplay` es «ya migrado», no un error.
+7. `revokeMintBudget(assetId, "MIGRACION_FIN")` en cuanto termine (o al vencer).
+8. Conciliación publicada: para cada evento `MintOnDemand` del activo en la
+   ventana, `(destino, monto)` tiene que ser una hoja del padrón con su prueba y
+   `paymentRef` tiene que recalcularse desde el destino; la suma tiene que ser
+   ≤ `S0`, y la diferencia = beneficiarios no elegibles aún. Cualquier evento
+   que no case es un incidente (pausa + revocación).
+9. **Las 89 claves sin dirección (ranuras/huellas).** No entran en `S0`. Cuando
+   alguien pruebe una clave (reglas de «Las ranuras sin dirección»), se paga
+   en una ronda posterior con un cupo nuevo del tamaño de lo resuelto, con la
+   MISMA `paymentRef` por (activo, dirección): si esa dirección ya cobró en la
+   ronda 1, revierte con `OperationReplay`, que es exactamente lo que impide
+   el doble derecho entre saldo por dirección y saldo por ranura.

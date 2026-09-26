@@ -300,7 +300,10 @@ contract SFSPNativeVault is SFSPAccessControl, SFSPReentrancyGuard {
     ///      sería sacar ORIGEN de la bóveda para guardarlo en otro cajón), el
     ///      destino tiene que ser elegible, y efectos antes de la transferencia.
     function _pay(address destination, uint256 amount, bytes32 operationId, bytes32 route, bytes32 evidenceRoot) internal {
-        if (destination == address(0)) revert BudgetInvalid(bytes32("DESTINATION"));
+        // REV-410 · pagarse a sí misma no es una salida: consumiría cupo y
+        // `paymentRef`, y el receive() lo contaría como absorbido, inflando
+        // totalReleased y totalAbsorbed sin que nadie reciba nada.
+        if (destination == address(0) || destination == address(this)) revert BudgetInvalid(bytes32("DESTINATION"));
         if (_internalAccount[destination]) revert ReleaseToInternalAccount(destination);
         (uint8 code, bytes32 reason,) = engine.evaluateOperation(destination, assetId, bytes32("MINT"), amount, bytes32(0));
         if (code != SFSPCodes.ALLOW) revert ReleaseRejected(code, reason);

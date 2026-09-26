@@ -46,8 +46,16 @@ export async function intentarEntrega(entrega) {
   const ahora = new Date();
   let cambios;
   try {
-    const r = await sfsp410.entregarOrigen(entrega.destino, entrega.origenWei, entrega.canonica, entrega.evidenceRoot);
-    const estado = ESTADO_DE[r.estado] || "revisar";
+    // REV-410-06 · se espera el minado. Sin esperar, 'entregada' significaba
+    // "enviada": una transaccion que se minaba revertida (otro proceso gasto el
+    // cupo en el mismo bloque) o que se caia del mempool dejaba la fila
+    // 'entregada' sin ORIGEN entregado, y 'entregada' no se reintenta nunca.
+    // Coste: la peticion espera un bloque; si pasa el plazo queda 'en-duda',
+    // que se reintenta sola y es segura por la referencia de pago.
+    const r = await sfsp410.entregarOrigen(entrega.destino, entrega.origenWei, entrega.canonica, entrega.evidenceRoot, { esperar: true });
+    // Revertida al minar sin que la referencia este gastada: no salio nada, se
+    // puede volver a intentar (si fue el cupo, el siguiente intento lo dira).
+    const estado = r.codigo === "REVERTIDA_AL_MINAR" ? "pendiente" : ESTADO_DE[r.estado] || "revisar";
     cambios = {
       estado,
       codigo: r.ok ? (r.estado === "ya-entregado" ? "YA_ENTREGADO" : null) : r.codigo || null,

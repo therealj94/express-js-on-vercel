@@ -380,9 +380,9 @@
     "_limite": "SFSPNativeVault admite hasta 64 cuentas internas (MAX_INTERNAL_ACCOUNTS).",
     "confirmadaPorActa": null,
     "_pendientesDeClasificar": {
-      "0xd894df2b1eedd017c7bb2b01d9a16391ccc4bda5": "10.007 ORIGEN; citada en pruebas (pregunta 6). NO incluida: si es interna, el circulante baja 10.007.",
-      "0x9af6971a1744ccc34f7e94b69490275c1f760b92": "999.988 IBS; sin mencion (pregunta 5).",
-      "0x6bdc87551a3d7db5dee23c76831c36f18f83cdc8": "66.150 ONDK; el censo ONDK la trata como USUARIO (pregunta 5).",
+      "0xd894df2b...": "10.007 ORIGEN; citada en pruebas (pregunta 6). NO incluida: si es interna, el circulante baja 10.007.",
+      "0x9af6971a...": "999.988 IBS; sin mencion (pregunta 5).",
+      "0x6bdc8755...": "66.150 ONDK; el censo ONDK la trata como USUARIO (pregunta 5).",
       "fuentesReparto11sep": "Las 9 billeteras de origen del reparto ONDK (0xc9a6eb5f..., 0x51996a50..., 0x439dc280..., 0xd868878e..., 0xc16d640f..., 0x12862e2a..., 0x2289a27c..., 0xa1fccbde..., 0x0caeee66...) quedaron en 0; anadirlas cuando se confirme su direccion completa."
     },
     "lista": null,

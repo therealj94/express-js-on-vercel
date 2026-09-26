@@ -167,6 +167,15 @@ function validar(P) {
   if (firmantes.some((a) => a.toLowerCase() === roles.techOps.toLowerCase() || a.toLowerCase() === roles.emisor.toLowerCase())) {
     throw new ErrorParametros("roles: TECH_OPS y ISSUER ejecutan y nunca aprueban; no pueden ser firmantes (ADR-014)");
   }
+  // REV-410-10 · separación de funciones: la llave de servicio que emite
+  // (ISSUER, caliente) no puede ser la que ejecuta órdenes de cupo y marca
+  // cuentas (TECH_OPS), ni la Junta ser una de las dos.
+  if (roles.techOps.toLowerCase() === roles.emisor.toLowerCase()) {
+    throw new ErrorParametros("roles: techOps y emisor tienen que ser direcciones distintas (separación de funciones)");
+  }
+  if ([roles.techOps, roles.emisor].some((a) => a.toLowerCase() === roles.junta.toLowerCase())) {
+    throw new ErrorParametros("roles: la Junta no puede ser techOps ni emisor");
+  }
 
   const ci = P.cuentasInternas;
   if (ci.confirmadaPorActa !== true) {
@@ -642,6 +651,12 @@ async function desplegar(o) {
     if (!ok) fallos.push(`${e.contrato}: falta ${e.rol} para ${e.cuenta}`);
   }
   if (await governance.call("isSigner", [D])) fallos.push("el desplegador es firmante de gobierno");
+  // REV-410-11 · los ejecutores tienen que poder GASTAR aprobaciones en
+  // gobierno (consumeAuthorization exige TECH_OPS); sin esto los cupos y las
+  // liberaciones revierten el primer día.
+  for (const ej of [...activos.map((a) => a.c), issuance, registry, engine, migration, vault]) {
+    if (!(await governance.call("hasRole", [R.TECH_OPS, ej.address]))) fallos.push(`governance: ${ej.nombre} sin TECH_OPS (no podrá consumir aprobaciones)`);
+  }
   for (const c of V.internas) {
     if (!(await issuance.call("isInternalAccount", [c.direccion]))) fallos.push(`issuance: ${c.direccion} no quedó interna`);
     if (!(await vault.call("isInternalAccount", [c.direccion]))) fallos.push(`vault: ${c.direccion} no quedó interna`);

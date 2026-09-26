@@ -87,10 +87,14 @@ delete process.env.SFSP410_EMISION;
 
 // ── el adaptador de verdad, espiado ─────────────────────────────────────────
 const sfsp410Real = requerir("./lib/sfsp410.js");
-const llamadas = { entregarOrigen: 0, devolverOrigen: 0 };
+const llamadas = { entregarOrigen: 0, devolverOrigen: 0, sinEsperar: 0 };
 const sfsp410 = {
   ...sfsp410Real,
-  entregarOrigen: (...a) => { llamadas.entregarOrigen++; return sfsp410Real.entregarOrigen(...a); },
+  entregarOrigen: (...a) => {
+    llamadas.entregarOrigen++;
+    if (!(a[4] && a[4].esperar === true)) llamadas.sinEsperar++;
+    return sfsp410Real.entregarOrigen(...a);
+  },
   devolverOrigen: (...a) => { llamadas.devolverOrigen++; return sfsp410Real.devolverOrigen(...a); },
 };
 
@@ -276,6 +280,7 @@ try {
     ok((await saldo(BOB)) - antes === 2n * ETH, "el usuario tiene 2 ORIGEN mas EN CADENA");
     ok(antesBoveda - (await saldo(L.vault)) === 2n * ETH, "y salen de la boveda");
     ok(dep.origenAmount === 2 && e.depositId && iguales(e.depositId, dep._id), "el historial de depositos se escribe igual, ligado a su entrega");
+    ok(llamadas.sinEsperar === 0, "REV-410-06: la entrega espera el minado ({ esperar: true }) antes de darse por entregada");
     primera = { u, e, hash: e.hash };
   }
 

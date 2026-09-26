@@ -636,6 +636,16 @@ async function entregar(ordenId) {
   // desde la caliente. Apagado, se sigue exactamente por aquí abajo.
   if (sfsp410.activo()) return entregarSfsp410(o, soltar);
 
+  // REV-410-08 · una orden que ya pasó por SFSP-410 (su motivo empieza por
+  // «SFSP410») pudo haber liberado ORIGEN de la bóveda aunque la base no lo
+  // diga (en duda, o reencolada a mano). Si el interruptor se apagó entre
+  // medias, la caliente NO la entrega: sería la segunda entrega del mismo
+  // pago. Queda en revisión hasta que una persona mire
+  // isOperationUsed(paymentRef) en la bóveda o se vuelva a encender.
+  if (String(o.motivo || '').startsWith(MOTIVO_SFSP410)) {
+    return soltar('en-revision', `${MOTIVO_SFSP410} · pasó por la bóveda y el interruptor está apagado: comprobar isOperationUsed(${referenciaDeOrden(o).paymentRef}) antes de entregar por la caliente`);
+  }
+
   /* Sin billetera de entrega la orden queda EN REVISION, no fallida.
    *
    * La diferencia importa y se aprendio el 5 de septiembre: ORDENEX_HOT_KEY
@@ -685,8 +695,15 @@ async function entregar(ordenId) {
 const MOTIVO_SFSP410 = 'SFSP410';
 const MOTIVO_COLA_GOBIERNO = `${MOTIVO_SFSP410} · cola de gobierno`;
 
-/** La referencia de pago de una orden: una por orden, para siempre. */
-const referenciaDeOrden = (o) => sfsp410.referenciaDePago('ordenex', 'compra-usdt', String(o._id));
+/** La referencia de pago de una orden: la del DEPÓSITO que la paga.
+ *
+ *  REV-410-07 · antes era el _id de la orden. Pero `depositoId` no tiene
+ *  índice único en OrdenCompra y `atender` comprueba y crea en dos pasos: si
+ *  dos procesos atienden el mismo depósito nacen dos órdenes, con dos _id, y
+ *  la cadena habría visto dos pagos distintos. El depósito sí es único
+ *  (índice {cadena, txHash, logIndex} en DepositoExterno), así que un mismo
+ *  USDT recibido no puede liberar ORIGEN dos veces, cree quien cree órdenes. */
+const referenciaDeOrden = (o) => sfsp410.referenciaDePago('ordenex', 'deposito-usdt', String(o.depositoId));
 
 /** Lo que prueba el pago de una orden, para el evidenceRoot. */
 const evidenciaDeOrden = (o) => ({
@@ -727,7 +744,11 @@ async function entregarSfsp410(o, soltar) {
 
   let r;
   try {
-    r = await sfsp410.entregarOrigen(o.aWallet, o.origenWei, referenciaDeOrden(o), evidenciaDeOrden(o));
+    // REV-410-06 · se espera el minado: sin esperar, una transacción que se
+    // mina revertida (otro proceso gastó el cupo en el mismo bloque) o que
+    // se cae del mempool dejaba la orden 'entregada' sin ORIGEN entregado.
+    // Esto corre en el ciclo de fondo, no en una petición HTTP.
+    r = await sfsp410.entregarOrigen(o.aWallet, o.origenWei, referenciaDeOrden(o), evidenciaDeOrden(o), { esperar: true });
   } catch (e) {
     // Sólo lanza ANTES de firmar (configuración, red, argumentos): no hay nada
     // en vuelo. Es un error de la CASA, así que la orden queda viva.
