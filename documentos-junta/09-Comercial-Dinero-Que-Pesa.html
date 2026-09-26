@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<title>Orden Global · Comercial «Dinero que pesa»</title>
+<link rel="stylesheet" href="recursos/estilo.css">
+<style>
+  td.bien   { color: #1F6B4F; }
+  td.riesgo { color: #8C2F26; }
+  td b      { color: var(--verde); }
+  .marco    { margin: 16px 0; page-break-inside: avoid; }
+  .marco img { width: 100%; display: block; border: 1px solid var(--linea); }
+  .tira     { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
+  .tira figure { flex: 1 1 calc(50% - 8px); margin: 0; page-break-inside: avoid; }
+  .tira img { width: 100%; display: block; border: 1px solid var(--linea); }
+  .tira figcaption { margin-top: 4px; font-size: 8pt; }
+  .vo { font-family: "JetBrains Mono", Consolas, monospace; font-size: 9pt; background: #FAF7F0;
+        border-left: 3px solid var(--oro); padding: 8px 10px; margin: 10px 0; white-space: pre-wrap; }
+</style>
+</head><body>
+<section class="portada">
+  <div>
+    <div class="sello">
+      <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="24" cy="24" r="22" fill="none" stroke="#0A3436" stroke-width="1.6"/>
+        <circle cx="24" cy="24" r="17" fill="none" stroke="#C9A961" stroke-width="1"/>
+        <path d="M24 7 L24 41" stroke="#0A3436" stroke-width="1.6"/>
+        <path d="M12 15 Q24 24 36 15" fill="none" stroke="#C9A961" stroke-width="1.6"/>
+        <path d="M12 33 Q24 24 36 33" fill="none" stroke="#C9A961" stroke-width="1.6"/>
+        <circle cx="24" cy="24" r="3.4" fill="#C9A961"/>
+      </svg>
+      <div class="marca"><b>Orden Global</b><span>Comercial · El peso</span></div>
+    </div>
+  </div>
+  <div>
+    <div class="filete"></div>
+    <h1>Dinero que pesa</h1>
+    <p class="bajada">Cuatro eras de internet prometieron y fallaron. La quinta no es una palabra nueva: es un gramo de oro partido en cincuenta y cinco, en el bolsillo de cualquiera. Concepto, guion completo, dirección de arte, storyboard y plan de producción.</p>
+  </div>
+  <div class="pie">
+    <b>Documento 9 · Junta Directiva</b><br>
+    26 de septiembre de 2026 · Encargo del fundador · Producción prevista en Honduras<br>
+    Este documento se entrega para <b>aprobar la historia</b>. Los prompts de generación son un anexo y no se ejecutan hasta que la historia esté aprobada.
+  </div>
+</section>
+
+<h2>0 · Qué se decide con este documento</h2>
+
+<p>La regla de la casa, escrita por el propio cliente en la producción anterior, es <i>«no me des prompt solo
+la historia para decidir»</i>. Así que este documento se lee en un orden: primero la idea, después la historia
+contada en prosa, y solo al final el guion técnico y los prompts. Lo que la junta aprueba es la
+<strong>historia</strong>; lo demás es ejecución.</p>
+
+<p>Se piden cuatro decisiones y nada más:</p>
+<ol>
+  <li><strong>La historia.</strong> La idea que ganó está en la sección 2 y el guion completo en la 4, tal como
+      están o con los cambios que la junta marque.</li>
+  <li><strong>El remate.</strong> «Dinero que pesa», la frase que cierra la pieza y que se va a repetir en todo
+      lo demás durante años.</li>
+  <li><strong>El reparto.</strong> Si las personas que salen son gente real de Honduras —que es lo que pidió el
+      fundador y lo que recomienda este documento— o material generado.</li>
+  <li><strong>Las tres tomas de la sección 9.1.</strong> Son las que hoy el producto no sostiene: el cobro con
+      QR, la escena de Bogotá y el cartel de «23 países». Cada una tiene dos caminos y hay que elegir.</li>
+</ol>
+
+<div class="nota riesgo">
+  <b class="t">Lo que no se pudo ver</b>
+  El fundador mandó como referencia un video de TikTok. En el contenedor donde se preparó este documento no hay
+  acceso a esa plataforma, así que <strong>la referencia no se pudo ver</strong>. Todo lo que sigue está
+  construido sobre la descripción que él dio —las eras de la web, gente real, que inspire— y sobre la referencia
+  que sí se estudió en la producción anterior. Antes de rodar hay que ver el video con él en la misma pantalla:
+  en la producción pasada, no haberlo hecho costó una entrega rechazada entera.
+</div>
+
+<h2>1 · El encargo, tal como llegó</h2>
+
+<p>Palabras del fundador: <i>«sería web 1 como era, web 2 como ha sido, cómo nos roban información, web 3 que se
+llenó de scams, y web 5 que murió; el sistema está mal y se debe crear algo para tener balance o hacer algo
+diferente. Gente real. Que inspire. Que muestre que hemos creado algo nuevo para todos.»</i></p>
+
+<p>Eso es, en realidad, una estructura de cinco actos ya resuelta, y es buena: cuatro promesas rotas y una
+alternativa. El trabajo creativo no consiste en cambiarla sino en encontrar <strong>cómo se cuenta sin que
+parezca una clase de historia</strong>, y sobre todo en que la quinta parte no suene a la quinta promesa.</p>
+
+<figure>
+<svg viewBox="0 0 960 330" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif">
+  <rect x="0" y="0" width="960" height="330" fill="#FBF9F4"/>
+  <text x="18" y="26" font-size="10" letter-spacing="1.6" fill="#9A7B2E">LA PROMESA DE CADA ERA, Y LO QUE QUEDÓ</text>
+  <line x1="18" y1="36" x2="942" y2="36" stroke="#D9E0DE"/>
+  <!-- línea de tiempo -->
+  <line x1="60" y1="150" x2="900" y2="150" stroke="#D9E0DE" stroke-width="2"/>
+  <g font-size="10.5">
+    <!-- web 1 -->
+    <circle cx="130" cy="150" r="7" fill="#9AA2B4"/>
+    <text x="130" y="76" text-anchor="middle" font-size="12" font-weight="700" fill="#0A3436">Web 1</text>
+    <text x="130" y="92" text-anchor="middle" font-size="9" fill="#5C6B68">1995 – 2004</text>
+    <text x="130" y="116" text-anchor="middle" font-size="10" fill="#16211F">«Cualquiera puede</text>
+    <text x="130" y="129" text-anchor="middle" font-size="10" fill="#16211F">publicar»</text>
+    <text x="130" y="184" text-anchor="middle" font-size="10" fill="#5C6B68">Era chiquita</text>
+    <text x="130" y="197" text-anchor="middle" font-size="10" fill="#5C6B68">y honesta.</text>
+    <!-- web 2 -->
+    <circle cx="320" cy="150" r="7" fill="#A8590F"/>
+    <text x="320" y="76" text-anchor="middle" font-size="12" font-weight="700" fill="#0A3436">Web 2</text>
+    <text x="320" y="92" text-anchor="middle" font-size="9" fill="#5C6B68">2005 – 2016</text>
+    <text x="320" y="116" text-anchor="middle" font-size="10" fill="#16211F">«Todo gratis</text>
+    <text x="320" y="129" text-anchor="middle" font-size="10" fill="#16211F">y conectado»</text>
+    <text x="320" y="184" text-anchor="middle" font-size="10" fill="#A8590F">El producto</text>
+    <text x="320" y="197" text-anchor="middle" font-size="10" fill="#A8590F">pasamos a ser</text>
+    <text x="320" y="210" text-anchor="middle" font-size="10" fill="#A8590F">nosotros.</text>
+    <!-- web 3 -->
+    <circle cx="510" cy="150" r="7" fill="#A32B22"/>
+    <text x="510" y="76" text-anchor="middle" font-size="12" font-weight="700" fill="#0A3436">Web 3</text>
+    <text x="510" y="92" text-anchor="middle" font-size="9" fill="#5C6B68">2017 – 2022</text>
+    <text x="510" y="116" text-anchor="middle" font-size="10" fill="#16211F">«Dueño de</text>
+    <text x="510" y="129" text-anchor="middle" font-size="10" fill="#16211F">lo tuyo»</text>
+    <text x="510" y="184" text-anchor="middle" font-size="10" fill="#A32B22">Se llenó de</text>
+    <text x="510" y="197" text-anchor="middle" font-size="10" fill="#A32B22">estafas y de</text>
+    <text x="510" y="210" text-anchor="middle" font-size="10" fill="#A32B22">gente quemada.</text>
+    <!-- la que murió -->
+    <circle cx="700" cy="150" r="7" fill="#9AA2B4"/>
+    <text x="700" y="76" text-anchor="middle" font-size="12" font-weight="700" fill="#5C6B68">La siguiente</text>
+    <text x="700" y="92" text-anchor="middle" font-size="9" fill="#5C6B68">2023 – 2025</text>
+    <text x="700" y="116" text-anchor="middle" font-size="10" fill="#5C6B68">«Ahora sí,</text>
+    <text x="700" y="129" text-anchor="middle" font-size="10" fill="#5C6B68">la definitiva»</text>
+    <text x="700" y="184" text-anchor="middle" font-size="10" fill="#5C6B68">Una palabra</text>
+    <text x="700" y="197" text-anchor="middle" font-size="10" fill="#5C6B68">nueva cada año.</text>
+    <text x="700" y="210" text-anchor="middle" font-size="10" fill="#5C6B68">Nada que aguante.</text>
+    <!-- ahora -->
+    <circle cx="870" cy="150" r="11" fill="#0A3436" stroke="#C9A961" stroke-width="2.5"/>
+    <text x="870" y="76" text-anchor="middle" font-size="12" font-weight="700" fill="#0A3436">Hoy</text>
+    <text x="870" y="92" text-anchor="middle" font-size="9" fill="#9A7B2E">Orden Global</text>
+    <text x="870" y="116" text-anchor="middle" font-size="10" fill="#0A3436">No una palabra</text>
+    <text x="870" y="129" text-anchor="middle" font-size="10" fill="#0A3436">nueva: metal.</text>
+    <text x="870" y="184" text-anchor="middle" font-size="10" fill="#135054">Un gramo</text>
+    <text x="870" y="197" text-anchor="middle" font-size="10" fill="#135054">en el bolsillo</text>
+    <text x="870" y="210" text-anchor="middle" font-size="10" fill="#135054">de cualquiera.</text>
+  </g>
+  <!-- la curva de la confianza -->
+  <path d="M130 258 C 240 250, 260 268, 320 272 S 460 296, 510 300 S 640 302, 700 298 C 780 292, 840 272, 870 246"
+        fill="none" stroke="#9A7B2E" stroke-width="2.2" stroke-dasharray="0"/>
+  <text x="70" y="252" font-size="9" fill="#9A7B2E">CONFIANZA</text>
+  <text x="510" y="320" text-anchor="middle" font-size="10" fill="#5C6B68" font-style="italic">Cada era prometió más y dejó menos. El comercial empieza donde termina esta curva.</text>
+</svg>
+<figcaption>Figura 1 · El arco que pidió el fundador: cuatro promesas rotas y un punto de partida distinto.</figcaption>
+</figure>
+
+
+<div class="nota">
+  <b class="t">La trampa de esta pieza, dicha de una vez</b>
+  Un comercial que dice «todos los anteriores mintieron, nosotros no» <strong>es exactamente lo que dijeron
+  todos los anteriores</strong>. Si la pieza se apoya en la afirmación, pierde. Solo gana si se apoya en algo
+  que el espectador pueda <i>ver pesar</i>: metal, trabajo, una persona de su país cobrando de verdad. Por eso
+  la mitad final del comercial casi no argumenta: muestra.
+</div>
+
+<h2 class="salto">2 · La idea que ganó: <i>El peso</i></h2>
+
+<p>Se escribieron seis conceptos distintos para este encargo y se juzgaron a ciegas desde tres lados: un
+director de cine, un estratega de marca y una persona del público al que va dirigido —alguien que ya perdió
+dinero en una aplicación—. <strong>Los tres eligieron el mismo, y por unanimidad</strong>: 9, 10 y 9 puntos
+sobre diez. Se llama <i>El peso</i>.</p>
+
+<p>La idea entera cabe en una observación del idioma que estaba ahí desde siempre y que nadie usó:
+<strong>en español el dinero se llamó «peso» porque se pesaba</strong>. De ahí sale todo. La pieza no discute
+con nadie ni acusa a nadie: pesa. Las cuatro eras de internet no se cuentan con gráficas, ni con cubos
+flotando, ni con una voz de documental; se cuentan con manos, con caras y con una balanza de mercado de dos
+platos que aparece cinco veces. En las cuatro eras, el plato no se mueve. Al final, el fiel entra al centro y
+se queda.</p>
+
+<p>La palabra que pidió el fundador —<strong>balance</strong>— no se pronuncia nunca en la pieza. Se ve.</p>
+
+<div class="cifras">
+  <div class="tarjeta"><div class="n">1:30</div><div class="et">duración de la pieza madre</div></div>
+  <div class="tarjeta"><div class="n">0:53</div><div class="et">cinco segundos de silencio total</div></div>
+  <div class="tarjeta"><div class="n">1:09</div><div class="et">la primera pantalla de todo el comercial</div></div>
+  <div class="tarjeta"><div class="n">18</div><div class="et">líneas de voz en toda la pieza</div></div>
+</div>
+
+<p>La voz no es de un locutor. Es la de <strong>Doña Blanca, vendedora de verduras del Mercado Zonal Belén de
+Tegucigalpa, 62 años, que no es actriz</strong>: la narración completa es suya, con su acento, su respiración y
+sus pausas. Que la historia de las cuatro eras la cuente una señora que pesa cosas todos los días para vivir es
+lo que hace que la pieza no suene a comercial. Es, literalmente, la autoridad moral del argumento.</p>
+
+<div class="nota bien">
+  <b class="t">El remate</b>
+  <strong>«No es una promesa. Es un peso.»</strong> Y debajo, la línea de campaña:
+  <strong>ORDEN GLOBAL — Dinero que pesa.</strong> Tres palabras que dicen a la vez que hay metal de verdad, que
+  hay moneda y que hay seriedad; que funcionan en una valla, en una camiseta y en un audio de WhatsApp; y que
+  nadie del sector puede copiar sin tener una mina. Variantes vivas con el mismo ADN: <i>«Pesa, pues.»</i> para
+  Honduras, <i>«Lo que pesa, no se cae.»</i> para retención, <i>«Nunca tuvo balanza.»</i> para la pieza de quince
+  segundos.
+</div>
+
+<h2>3 · Las tres reglas que no se rompen</h2>
+
+<p>Lo que separa una pieza premium de una cara es que la premium tiene reglas y las cumple hasta cuando duele.
+Estas son tres y un objeto. El espectador no las va a notar; las va a sentir.</p>
+
+<h3>El objeto · La balanza</h3>
+<p>Una balanza de mercado de dos platos, de latón golpeado, es el único elemento que atraviesa las cuatro eras.
+Aparece cinco veces y cada vez dice algo sin hablar: al arranque pesa un grano de oro y el fiel se mueve; en
+2008 alguien deja caer una fotocopia de cédula en el plato y el plato <strong>no</strong> se mueve; en 2017 el
+plato se voltea solo y queda colgando vacío; en 2022 los dos platos están vacíos y quietos cuatro segundos sin
+corte; al final el fiel entra al centro y se queda ahí.</p>
+
+<h3>Regla 1 · Ninguna pantalla en cuadro hasta el 1:09</h3>
+<p>Sesenta y nueve segundos sin una sola interfaz. Los monitores y los teléfonos existen solo como luz sobre una
+cara, como reflejo en un ojo, como un pulgar tocando un vidrio del que nunca vemos el contenido. La primera
+pantalla de la pieza aparece en el último tercio, y aparece en <strong>la misma mano que acaba de sostener el
+oro</strong>.</p>
+
+<h3>Regla 2 · Una mano y una cara nunca comparten encuadre</h3>
+<p>Durante las cuatro eras, la persona y lo que hace con su dinero están siempre en planos distintos: manos
+solas, caras solas, corte, corte, corte. Es el montaje de algo partido. En el bloque 8, por primera vez en toda
+la pieza, una mano y una cara entran juntas al mismo encuadre —Doña Blanca cobrando al lado de su pesa— y el
+espectador siente que algo se reunió sin saber por qué. Ese plano vale más que cualquier diagrama de
+arquitectura.</p>
+
+<h3>Regla 3 · La luz pasa de artificial a natural en noventa segundos</h3>
+<p>1998: una sola fuente fuera de cuadro y un foco de 40 W. 2008: fluorescente cenital, plano, sin sombra
+propia —nadie proyecta sombra, nadie deja huella—. 2017: contraluz duro de calle, la cara mitad en negro. 2022:
+día nublado sin dirección. Último tercio: luz de ventana real y hora dorada de verdad, boca de socavón a las
+cinco de la tarde. Ese cambio de luz <strong>es</strong> el argumento; no hace falta decirlo.</p>
+
+<h2 class="salto">4 · El guion, bloque por bloque</h2>
+
+<p>Noventa segundos, diez bloques. La columna de la derecha dice qué se oye, porque en esta pieza el sonido
+carga la mitad del peso: el módem de 1998 completo sin recortar, el audio que se rompe a mitad de palabra en
+2017, y cinco segundos de silencio absoluto en el minuto 0:53 que son el momento más caro del comercial y no se
+llenan con nada.</p>
+
+<table>
+  <thead><tr><th style="width:15%">Bloque</th><th style="width:47%">Qué se ve</th><th>Qué se oye</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><b>1 · Peso</b><br>0:00–0:07</td>
+      <td>Negro. Una balanza de latón sobre madera. Macro: un pulgar con callo pone un grano de oro del tamaño de un grano de arroz en el plato izquierdo. El plato baja. Corte a negro cuando se detiene. Cartel: «1 gramo».</td>
+      <td>Silencio de cuarto real, el tintineo del latón y una sola nota de contrabajo que queda sonando. Voz 1 y 2.</td>
+    </tr>
+    <tr>
+      <td><b>2 · 1998</b><br>0:07–0:18</td>
+      <td>Hi8 de verdad, cuadro 4:3 con negros a los lados. Manos de niño en un teclado beige. Su cara de perfil con un resplandor verdoso de fuera de cuadro. Una mano de mujer desenrolla el cable del teléfono. Al niño se le abre la boca. Cartel: «1998».</td>
+      <td>Módem de 56k completo, ocho segundos sin recortar. Ventilador de fuente de poder. Una guitarra sola, tres notas. Voz 3.</td>
+    </tr>
+    <tr>
+      <td><b>3 · 2008</b><br>0:18–0:31</td>
+      <td>Digital limpio y frío. Un pulgar toca vidrio; vemos el pulgar y el reflejo, jamás el contenido. Una mano firma un renglón. Una mano entrega una cédula y queda vacía. Caras con luz azul corriéndoles encima, sin expresión. Alguien deja caer una fotocopia en el plato y el plato no se mueve. Cartel: «2008».</td>
+      <td>Aire acondicionado. Clics secos. Un pulso electrónico estéril, como monitor de hospital. La nota del contrabajo desaparece. Voz 4 y 5.</td>
+    </tr>
+    <tr>
+      <td><b>4 · 2017</b><br>0:31–0:44</td>
+      <td>Contraluz de lámpara de sodio, negro y naranja. Manos de un muchacho de 26 contando billetes con humedad de bolsillo. Las mismas manos vacías, abriéndose y cerrándose. Su cara, mitad en negro, mirando al piso. El plato se voltea solo. Cartel: «2017».</td>
+      <td>Calle de noche, un perro, una moto. El sonido se satura y se corta a mitad de palabra, como un audio de WhatsApp roto. Dos segundos de silencio. Voz 6 y 7.</td>
+    </tr>
+    <tr>
+      <td><b>5 · 2022</b><br>0:44–0:53</td>
+      <td>Gris plano. Una mano borra con un trapo unas palabras de un vidrio empañado. Una mano apila volantes en un rincón. Una señora guarda su cuaderno de fiados y voltea el letrero de la pulpería. Tres caras quietas, respirando, esperando algo que no llega. Cartel: «2022».</td>
+      <td>Lluvia fina en lámina. Tubo fluorescente. La música baja a una nota que se desafina y se apaga. Voz 8.</td>
+    </tr>
+    <tr>
+      <td><b>6 · La balanza vacía</b><br>0:53–0:58</td>
+      <td>Los dos platos, vacíos, absolutamente quietos. Cuatro segundos sin corte. El cuadro empieza a ensancharse muy despacio.</td>
+      <td class="riesgo">Silencio real. Nada. A los cuatro segundos, la voz 9 sin música debajo.</td>
+    </tr>
+    <tr>
+      <td><b>7 · Honduras</b><br>0:58–1:09</td>
+      <td>35 mm, hora dorada. Manos con guantes rotos en roca mojada. Boca de socavón en Danlí: un minero sale y se quita el casco —primera cara con sol de toda la pieza—. Polvo de roca cayendo en la palma. Guante blanco colocando un lingote en una balanza de precisión. Un hombre de camisa arremangada pasa la mano por la misma piedra. Cartel: «Danlí · Choluteca · Honduras».</td>
+      <td>Vuelve el mundo: picos, agua goteando, respiración, chicharras. Un golpe de cuerda grave y, por primera vez, voces humanas cantando sin letra, lejos. Voz 10, 11 y 12.</td>
+    </tr>
+    <tr>
+      <td><b>8 · Un gramo entre 55</b><br>1:09–1:20</td>
+      <td>Se rompen las dos reglas a la vez. Macro: una pinza divide una línea de oro en partes iguales; cartel «1 g ÷ 55». Doña Blanca, cara y manos en el mismo cuadro por primera vez, cobra con el teléfono junto a la pesa de las verduras. La señora de la pulpería cobra y deja el cuaderno abierto al lado, no en la basura. El muchacho de 2017 vuelve, de día, y se verifica: su nombre, una sola vez. Una ingeniera apoya la mano en un rack tibio.</td>
+      <td>La percusión son las manos: el golpe de la pesa, el sello de hule, el timbre del cobro, monedas, pasos de mercado. Cuerdas que suben sin épica de tráiler. Voces reales del mercado sin doblar. Voz 13, 14 y 15.</td>
+    </tr>
+    <tr>
+      <td><b>9 · Coro de manos</b><br>1:20–1:27</td>
+      <td>Siete planos de un segundo, el mismo lente y la misma composición exacta —mano abierta hacia arriba con el teléfono, cara detrás—, cambiando piel, edad, ropa y fondo: Tegucigalpa, San Pedro Sula, Bogotá, São Paulo, Lima, San José, Ciudad de México. En el séptimo la mano se cierra. Corte al fiel entrando al centro y quedándose.</td>
+      <td>Las siete voces dicen cada una su ciudad, encimadas, casi inaudibles. Las cuerdas resuelven en la misma nota del arranque, ahora afinada. Voz 16.</td>
+    </tr>
+    <tr>
+      <td><b>10 · Remate</b><br>1:27–1:30</td>
+      <td>Negro. Cartel centrado y estático: «Dinero que pesa.» Debajo, pequeño, el logo y «Hecho en Honduras. Para toda Latinoamérica.» Aviso legal cuatro segundos en el último cuadro sostenido.</td>
+      <td>El tintineo del latón del primer plano, una sola vez. La voz susurra las líneas 17 y 18 casi sin aire. Corte a silencio, sin cola musical.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="nota">
+  <b class="t">Dos ajustes que pidió el jurado y ya están incorporados</b>
+  <strong>Uno:</strong> el dato del producto nunca se dice como cifra fría —«0,018 g» suena a poquito—, se dice
+  como gesto: <i>«a un gramo lo partimos en cincuenta y cinco»</i>, que suena a que alcanza para todos.
+  <strong>Dos:</strong> el giro llega en el segundo 53, que en un teléfono es tarde; por eso el corte de treinta
+  segundos <strong>arranca en el grano de oro cayendo al plato</strong> y salta directo del bloque 5 al 8.
+</div>
+
+<h2 class="salto">5 · La voz: dieciocho líneas y ni una más</h2>
+
+<p>Esto es todo el texto hablado del comercial. Está escrito para una señora de sesenta y dos años del mercado,
+no para un locutor: frases cortas, sin subordinadas, sin una sola palabra que ella no diría. Se graba en su
+puesto o en un cuarto con eco natural, nunca en cabina limpia, y se permite que respire y se equivoque.</p>
+
+<div class="vo"> 1.  Antes, al dinero le decíamos peso.
+ 2.  Porque se pesaba.
+ 3.  Después llegó el internet. Era chiquito, era lento… pero uno sabía quién estaba del otro lado.
+ 4.  Luego nos lo dieron todo gratis.
+ 5.  Y lo gratis lo pagamos con lo único que era nuestro: nuestro nombre, nuestra cara, nuestras horas.
+ 6.  Un día prometieron libertad.
+ 7.  A mi sobrino le quitaron en tres días lo que juntó en tres años.
+ 8.  Después, cada año, una palabra nueva. Ninguna aguantó.
+ 9.  El sistema no se rompió. Es que nunca tuvo balanza.
+10.  Nosotros no inventamos otra palabra.
+11.  Bajamos a buscar lo único que nunca fue una promesa.
+12.  Oro de nuestra tierra. Pesado, certificado, guardado.
+13.  Y a un gramo lo partimos en cincuenta y cinco, para que quepa en el bolsillo de cualquiera.
+14.  Le pusimos nombre: ORIGEN.
+15.  Con tu banco, con tu moneda, con tu nombre… verificado una vez y bueno en todas partes.
+16.  Esto no lo hicimos para unos pocos. Lo hicimos para todos, desde Honduras.
+17.  No es una promesa.
+18.  Es un peso.</div>
+
+<div class="nota bien">
+  <b class="t">Ya se puede oír</b>
+  Para que la junta no tenga que imaginárselo, la narración completa está grabada en dos lecturas y vive en el
+  repositorio, en <code>documentos-junta/recursos/voz/</code>. Son voz sintética de referencia —una lectura
+  pausada de 59 segundos y una alterna de 62— y sirven para tres cosas: aprobar el texto oyéndolo, medir los
+  tiempos reales de cada bloque antes de rodar, y darle a Doña Blanca una guía de ritmo el día de la grabación.
+  <strong>No son la voz final.</strong> La voz final es la de ella, grabada en su puesto.
+</div>
+
+<p>La línea 9 —<i>«El sistema no se rompió. Es que nunca tuvo balanza.»</i>— es la bisagra de la pieza y la única
+que se dice sin música debajo. Es también la respuesta exacta a lo que pidió el fundador: el sistema está mal y
+hace falta balance. Dicho así, no acusa a nadie y no se puede discutir.</p>
+
+<h2 class="salto">6 · La gente</h2>
+
+<p>Ocho personas, ninguna actriz profesional, todas de Honduras salvo una. Se eligen por lo que ya son, no por
+lo que puedan interpretar. Ninguna es salvada por una aplicación: Doña Blanca sigue pesando tomates y Doña Chepa
+se queda con su cuaderno. Esa es la diferencia entre retratar a alguien y usarlo de decorado.</p>
+
+<table>
+  <thead><tr><th style="width:26%">Quién</th><th style="width:34%">Qué hace en la pieza</th><th>Por qué está</th></tr></thead>
+  <tbody>
+    <tr><td><b>Doña Blanca</b>, 62<br>vendedora de verduras<br><i>y la voz de todo</i></td>
+        <td>Pesa tomates a las seis de la mañana. En el último tercio cobra desde el mismo teléfono con el que le manda audios a su hija, junto a la pesa de toda la vida.</td>
+        <td>En su puesto, pesar algo para saber cuánto vale es lo más normal del mundo. Es el puente entre el oro y la gente, y la autoridad moral del argumento.</td></tr>
+    <tr><td><b>Don Reynaldo</b>, 47<br>minero de la concesión</td>
+        <td>Sale del socavón a las cinco, se quita el casco y le da el sol en la cara: la primera cara iluminada por el sol en toda la pieza.</td>
+        <td>Sin él, «respaldado en oro» es una frase de folleto. Es la prueba física de que detrás del token hay un cuerpo, un turno y una montaña.</td></tr>
+    <tr><td><b>Kevin</b>, 26<br>sobrino de Doña Blanca</td>
+        <td>Único que aparece en dos eras: en 2017 cuenta billetes y los entrega; en el último tercio vuelve, de día, y se verifica con su nombre una sola vez.</td>
+        <td>Le da a la parte oscura una cara con nombre y cierra el círculo sin que nadie lo explique. La reparación se siente en el cuerpo, no en el argumento.</td></tr>
+    <tr><td><b>Doña Chepa</b>, 71<br>pulpería y cuaderno de fiados</td>
+        <td>En 2022 guarda el cuaderno y voltea el letrero. Al final cobra con el teléfono y deja el cuaderno abierto al lado, no en la basura.</td>
+        <td>Evita el mensaje arrogante de «lo viejo no sirve». Su cuaderno fue el primer libro contable del barrio. Es el gesto que más se va a compartir.</td></tr>
+    <tr><td><b>Josué</b>, 16<br>primer teléfono propio</td>
+        <td>Sostiene el teléfono con las dos manos, como se sostiene algo que pesa. Su nombre verificado aparece una vez y sonríe de lado.</td>
+        <td>Encarna el gramo partido en cincuenta y cinco: no hace falta ser rico para tener oro. Y a él nadie le va a robar el primer ahorro de su vida.</td></tr>
+    <tr><td><b>Karla</b>, 29<br>ingeniera de la cadena</td>
+        <td>Apoya la palma en un rack tibio y la deja ahí un segundo, como se toca un animal. No teclea: escucha.</td>
+        <td>La tecnología entra a la pieza por el tacto, no por la interfaz. Y pone a una hondureña joven donde el comercial promedio pondría a un extranjero de camisa negra.</td></tr>
+    <tr><td><b>Yenifer</b>, 34<br>madre venezolana en Bogotá</td>
+        <td>Ver la sección 9: <b>esta escena se rueda de otra manera</b> o no se rueda.</td>
+        <td class="riesgo">Era la prueba de que el sistema cruza fronteras, y es la única escena del guion que choca con lo que el producto puede sostener hoy.</td></tr>
+    <tr><td><b>Un hombre de camisa arremangada</b><br>sin presentación y sin línea</td>
+        <td>Pasa la mano sobre la misma roca donde el minero apoyó la suya. Aparece dos segundos y no se le vuelve a ver.</td>
+        <td>Es el fundador, y entra como una mano más entre las otras. Si se presenta con nombre y cargo en pantalla, la pieza se vuelve un video corporativo; así, se vuelve creíble. Su nombre y el de los cofundadores van en letra chica, al final.</td></tr>
+  </tbody>
+</table>
+
+<h2 class="salto">7 · Storyboard: los diez planos que sostienen la pieza</h2>
+
+<p>Estos diez fotogramas no son ilustraciones de apoyo: son la pieza resumida. Se generaron a 2048×1152 con el
+mismo sistema con el que se producirán las tomas, y sirven para tres cosas: aprobar el tono antes de gastar un
+día de rodaje, entregarle al director de fotografía una referencia de luz que no admite discusión, y funcionar
+como referencias normalizadas para la generación de video si se toma el camino A.</p>
+
+<p>Obsérvese lo que tienen en común las cuatro primeras y lo que cambia en las cuatro últimas: en las eras de
+internet la luz es <strong>artificial, fría y de una sola fuente</strong> —un monitor, un teléfono, un foco
+pelado, una mañana gris—; en la parte de Orden Global la luz es <strong>natural y viene de atrás</strong>. No es
+una metáfora explicada en el guion: es una regla de fotografía que el espectador siente sin nombrarla.</p>
+
+<div class="cifras" style="gap:8px">
+  <figure style="flex:1 1 44%;margin:6px 0">
+    <img src="recursos/storyboard/web/01-web1-cibercafe.jpg" alt="" style="width:100%;border:1px solid #D9E0DE;border-radius:4px">
+    <figcaption><b>1 · Web 1, como era.</b> Cibercafé en Tegucigalpa, 1999. Monitores de tubo, un ventilador, un niño solo frente a la pantalla. La luz verde del fósforo. Era chiquita y era honesta.</figcaption>
+  </figure>
+  <figure style="flex:1 1 44%;margin:6px 0">
+    <img src="recursos/storyboard/web/02-web2-madrugada.jpg" alt="" style="width:100%;border:1px solid #D9E0DE;border-radius:4px">
+    <figcaption><b>2 · Web 2, como ha sido.</b> Dos de la mañana, la cara lavada de azul, la habitación en negro. Nadie le robó nada a punta de pistola: lo entregó gratis, cansada.</figcaption>
+  </figure>
+</div>
+<div class="cifras" style="gap:8px">
+  <figure style="flex:1 1 44%;margin:6px 0">
+    <img src="recursos/storyboard/web/03-web3-ferreteria.jpg" alt="" style="width:100%;border:1px solid #D9E0DE;border-radius:4px">
+    <figcaption><b>3 · Web 3, la de las estafas.</b> Una ferretería cerrando, un foco, un hombre que acaba de entender que el dinero no está. No hay gráficos: hay una cara.</figcaption>
+  </figure>
+  <figure style="flex:1 1 44%;margin:6px 0">
+    <img src="recursos/storyboard/web/04-la-que-murio.jpg" alt="" style="width:100%;border:1px solid #D9E0DE;border-radius:4px">
+    <figcaption><b>4 · La que anunciaron y murió.</b> Oficina vacía al amanecer, la manta descolorida hasta ser ilegible. La palabra nueva de aquel año ya no se lee, y da igual cuál era.</figcaption>
+  </figure>
+</div>
+<div class="cifras" style="gap:8px">
+  <figure style="flex:1 1 44%;margin:6px 0">
+    <img src="recursos/storyboard/web/05-mina-danli.jpg" alt="" style="width:100%;border:1px solid #D9E0DE;border-radius:4px">
+    <figcaption><b>5 · El quiebre.</b> Danlí, El Paraíso, primera luz. Un minero sale del socavón. Aquí cambia todo: la luz deja de salir de una pantalla y empieza a salir del sol.</figcaption>
+  </figure>
+  <figure style="flex:1 1 44%;margin:6px 0">
+    <img src="recursos/storyboard/web/06-balanza-oro.jpg" alt="" style="width:100%;border:1px solid #D9E0DE;border-radius:4px">
+    <figcaption><b>6 · El plano firma.</b> Una barra recién fundida cae en el plato de una balanza y el plato baja. Es el único argumento del comercial que no necesita palabras: <i>pesa</i>.</figcaption>
+  </figure>
+</div>
+<div class="cifras" style="gap:8px">
+  <figure style="flex:1 1 44%;margin:6px 0">
+    <img src="recursos/storyboard/web/07-mercado-cobro.jpg" alt="" style="width:100%;border:1px solid #D9E0DE;border-radius:4px">
+    <figcaption><b>7 · Donde vive la gente.</b> Mercado de Tegucigalpa, mediodía. Dos teléfonos que se encuentran, dos personas que se conocen. El cuaderno de fiados sigue ahí, al lado.</figcaption>
+  </figure>
+  <figure style="flex:1 1 44%;margin:6px 0">
+    <img src="recursos/storyboard/web/08-azotea-abuela.jpg" alt="" style="width:100%;border:1px solid #D9E0DE;border-radius:4px">
+    <figcaption><b>8 · El cierre.</b> Azotea, hora dorada, dos generaciones y una sola mano sobre otra. Lo que se hereda no es una app: es que lo de uno siga siendo de uno.</figcaption>
+  </figure>
+</div>
+
+<div class="cifras" style="gap:8px">
+  <figure style="flex:1 1 44%;margin:6px 0">
+    <img src="recursos/storyboard/web/09-vendedora-retrato.jpg" alt="" style="width:100%;border:1px solid #D9E0DE;border-radius:4px">
+    <figcaption><b>9 · Doña Blanca.</b> La que cuenta la historia. Entre dos frases, no posando. Es el rostro que sostiene el último tercio y la voz que sostiene los noventa segundos completos.</figcaption>
+  </figure>
+  <figure style="flex:1 1 44%;margin:6px 0">
+    <img src="recursos/storyboard/web/10-barra-manos.jpg" alt="" style="width:100%;border:1px solid #D9E0DE;border-radius:4px">
+    <figcaption><b>10 · Lo que se hereda.</b> Una mano gastada suelta el metal sobre una mano joven. No hay texto posible que diga esto mejor; por eso el guion se calla aquí.</figcaption>
+  </figure>
+</div>
+
+<div class="nota bien">
+  <b class="t">Cómo usar estos diez fotogramas</b>
+  Están en el repositorio, en <code>documentos-junta/recursos/storyboard/</code>, en JPEG de 2048×1152 y en versión
+  reducida para pantalla. Si se toma el camino generado, se adjuntan como referencia de cada toma. Si se rueda, se imprimen y
+  se llevan al set: son la conversación con el director de fotografía, ya resuelta.
+</div>
+
+<h2 class="salto">8 · Luz, lente, color y música</h2>
+
+<p>Un principio rector, y de él sale todo lo demás: <strong>la cámara vive a la altura de las manos</strong>,
+entre cincuenta y noventa centímetros del suelo. Nada de drones, nada de cámara rápida, nada de gráficos
+flotando. Todo lo que se ve existe y se puede tocar.</p>
+
+<h3>8.1 · El color cuenta el tiempo</h3>
+
+<table>
+  <thead><tr><th style="width:18%">Era</th><th style="width:40%">Paleta</th><th>Luz</th></tr></thead>
+  <tbody>
+    <tr><td><b>1998</b></td><td>Beige de plástico viejo, verde fósforo de tubo, café de mueble de madera. Cálido pero sucio.</td><td>Una sola fuente fuera de cuadro —el monitor que nunca vemos— y un foco de 40 W.</td></tr>
+    <tr><td><b>2008</b></td><td>Blanco clínico, azul de pantalla que nadie ve, gris de oficina. Piel sin sangre.</td><td>Fluorescente cenital, plano, <i>sin sombra propia</i>: nadie proyecta sombra, nadie deja huella.</td></tr>
+    <tr><td><b>2017</b></td><td>Negro y naranja de lámpara de sodio. Único color saturado de toda la pieza, y es el del engaño.</td><td>Contraluz duro de calle, la cara mitad en negro.</td></tr>
+    <tr><td><b>2022</b></td><td>Gris plano, cero contraste, cero color. La imagen se ve agotada, como la gente.</td><td>Día nublado sin dirección.</td></tr>
+    <tr><td class="bien"><b>Orden Global</b></td><td class="bien">Oro 24k, negro profundo, verde de cerro hondureño, terracota de Tegucigalpa. Primera vez que hay rojo en la piel.</td><td class="bien">Luz de ventana real y hora dorada de verdad: mercado de 9 a 10 de la mañana, socavón a las 5 de la tarde. Rebote en tela blanca y nada más.</td></tr>
+  </tbody>
+</table>
+
+<h3>8.2 · Los lentes se alejan, y al final vuelven al ojo humano</h3>
+
+<p>Regla dura: las cuatro eras se abren progresivamente —40 mm, 32 mm, 25 mm, 21 mm—, de modo que
+<strong>cada era se aleja un poco más de la persona</strong>. El último tercio se rueda entero con un solo lente
+de 50 mm, el del ojo humano, a T2.8, en mano suave, sin zoom y sin estabilizador. El espectador no lo va a
+saber; lo va a sentir.</p>
+
+<h3>8.3 · La textura no se finge</h3>
+
+<p>Base de cámara digital de rango alto con ópticas antiguas. 1998 <strong>se rueda de verdad</strong> en Hi8 o
+MiniDV y se telecina —no se le pone un filtro encima—. 2008 es digital limpio y feo a propósito, con nitidez de
+cámara de vigilancia. 2017 lleva compresión real: el archivo se comprime y se descomprime hasta que aparecen los
+bloques. 2022 es digital plano, sin corrección. El último tercio lleva grano de 35 mm escaneado, halación suave
+en el oro y <strong>cero corrección de piel</strong>: poros, callos, cicatrices y uñas de trabajo.</p>
+
+<h3>8.4 · El cuadro crece con la historia</h3>
+
+<p>Máster vertical 9:16. La imagen empieza encajonada en un 4:3 con negros a los lados y se va ensanchando era
+por era, hasta llenar el cuadro vertical completo, borde a borde, justo cuando aparece el oro. El espectador
+siente el alivio antes de entenderlo. La versión de sala, en 2.39:1, hace el mismo movimiento con barras.</p>
+
+<h3>8.5 · Tipografía: solo números</h3>
+
+<p>Dos usos y ninguno más. <strong>Uno:</strong> los años y los pesos, en monoespaciada de aguja de balanza,
+blanco al 60 % sobre negro, abajo a la izquierda, pequeños y sin animación: «1998», «2008», «2017», «2022»,
+«1 g ÷ 55», «Danlí · Choluteca · Honduras», «23 países». La pieza rotula pesos, no conceptos.
+<strong>Dos:</strong> el cierre, en la serif de la marca, centrado, estático, sin brillo ni barrido:
+«Dinero que pesa.»</p>
+
+<div class="nota">
+  <b class="t">Cinco palabras que nunca aparecen en pantalla</b>
+  <strong>Web 1, Web 2, Web 3, cripto y blockchain.</strong> El público ya sabe de qué se está hablando;
+  nombrarlo lo abarata y, además, mete a la marca en la misma categoría de la que intenta salir. El encargo del
+  fundador es la estructura de la pieza, no su rotulación.
+</div>
+
+<h3>8.6 · La música: compuesta al corte, nunca de librería</h3>
+
+<p>Nada de sintetizadores de cripto, nada de arpegios, nada de bombo en cuatro por cuatro. La instrumentación es
+un contrabajo —el peso—, una guitarra de nylon tocada con uña, una marimba grave usada solo como campana (una
+nota por era), dos violas y un cello, y un coro real: doce voces de un colegio de Tegucigalpa y tres señoras que
+cantan en iglesia, grabadas en un cuarto con eco natural, sin afinación digital, vocalizando sin letra. No hay
+batería programada: <strong>la percusión del último tercio son sonidos de trabajo</strong> grabados y tocados
+como instrumento —el golpe de la pesa de latón, el sello de hule de la pulpería, monedas, el timbre del cobro,
+palmas de mercado—.</p>
+
+<table>
+  <thead><tr><th style="width:16%">Movimiento</th><th>Qué hace</th></tr></thead>
+  <tbody>
+    <tr><td><b>0:00–0:07</b></td><td>Una sola nota de contrabajo con toda su cola. El tema entero nace de ahí.</td></tr>
+    <tr><td><b>0:07–0:18</b></td><td>La guitarra sola, tres notas, imperfecta, con el ruido del módem haciendo de ritmo involuntario.</td></tr>
+    <tr><td><b>0:18–0:44</b></td><td>La música se deshumaniza: pulso electrónico estéril sin bombo, después saturación y compresión hasta cortarse a mitad de compás. La armonía nunca resuelve.</td></tr>
+    <tr><td><b>0:44–0:58</b></td><td>Muerte del tema: una nota que se desafina, se apaga, y cinco segundos de silencio absoluto sobre la balanza vacía.</td></tr>
+    <tr><td><b>0:58–1:30</b></td><td>Resurrección por acumulación: golpe de cuerda grave, el coro entrando de lejos y acercándose, las manos como percusión, y el cierre en la misma nota del arranque, ahora afinada.</td></tr>
+  </tbody>
+</table>
+
+<div class="nota riesgo">
+  <b class="t">El silencio del 0:53 no se toca</b>
+  Son cinco segundos sin música, sin voz y sin gente: solo los dos platos vacíos y quietos. Es el momento más
+  caro de la pieza y el primero que cualquier revisión va a querer rellenar. No se rellena. Ese silencio es lo
+  que hace que el oro, once segundos después, se sienta.
+</div>
+
+<h3>8.7 · Reparto y dirección</h3>
+
+<p>Cero actores y cero banco de imágenes: gente que ya hace eso todos los días, filmada haciéndolo. Nadie mira a
+cámara hasta el último tercio; cuando por fin miran, no sonríen de comercial: sostienen la mirada dos segundos y
+siguen trabajando. Ropa propia, nada de vestuario, manicura prohibida.</p>
+
+<h2 class="salto">9 · Lo que esta pieza no puede decir ni mostrar</h2>
+
+<p>Un comercial financiero se juzga por lo que promete, y lo que promete compromete a la empresa. Esta lista es
+vinculante: si una frase del guion final la contradice, la frase se cambia, no la lista.</p>
+
+<table>
+  <thead><tr><th style="width:44%">No se dice</th><th>Por qué</th></tr></thead>
+  <tbody>
+    <tr><td>«Tu dinero crece», «rendimiento», «inversión segura», cualquier cifra de retorno</td>
+        <td>Convierte la pieza en oferta de valores. ORIGEN es dinero respaldado en metal, no una promesa de ganancia.</td></tr>
+    <tr><td>«Banco», «cuenta bancaria», «depósitos asegurados»</td>
+        <td>Orden Global no es banco ni está regulada como banco. Decirlo sería falso y además regulable.</td></tr>
+    <tr><td>«Mandá remesas» como servicio vivo</td>
+        <td>Las remesas necesitan licencia por país. Hasta tenerla, en el producto son una calculadora y en el comercial no existen.</td></tr>
+    <tr><td>Cifras de onzas en bóveda, reservas o respaldo total</td>
+        <td>No hay auditoría publicable. Se puede decir <i>cuánto vale un ORIGEN</i>, que es una definición, no una cifra de tesorería.</td></tr>
+    <tr><td>Licencias de la zona de Roatán, autorizaciones o cualquier aval regulatorio</td>
+        <td>No se han obtenido. Mencionarlas mezcla a Orden Global con un litigio que no es suyo.</td></tr>
+    <tr><td>Nombres, marcas o logotipos de bancos y billeteras reales</td>
+        <td>OrdenExchange trabaja con ellos como destino de pago, no como socios. Usar sus marcas sugiere una alianza inexistente.</td></tr>
+    <tr><td>Comparaciones directas con una criptomoneda o empresa nombrada</td>
+        <td>Invita respuesta legal y, peor, mete a la marca en la misma categoría de la que intenta salir.</td></tr>
+  </tbody>
+</table>
+
+<p>Y lo que sí se puede decir, porque el producto lo sostiene hoy: que un ORIGEN es un cincuentaicincoavo de
+gramo de oro en bóveda; que el respaldo sale de concesiones propias en Danlí y Choluteca; que la red es propia
+y mover ORIGEN en ella no cuesta comisión de red; que se compra y se vende entre personas en veintitrés países
+con los bancos y billeteras que cada quien ya usa; que mientras el dinero viaja el activo queda en custodia y
+que si algo falla lo resuelve un operador; y que para operar hay que estar verificado con Genesis ID.</p>
+
+<div class="nota">
+  <b class="t">Aviso en pantalla</b>
+  Los últimos tres segundos llevan, en cuerpo pequeño pero legible: <i>«ORIGEN está respaldado por metal en
+  bóveda. No es un instrumento de inversión ni ofrece rendimiento. Orden Global no es una institución bancaria.»</i>
+  Va en las tres versiones, también en la vertical.
+</div>
+
+<h3>9.1 · Las tres tomas que hoy el producto no sostiene</h3>
+
+<p>La revisión del sistema que acompaña a este documento (Documento 8) se hizo, entre otras cosas, para esto:
+para saber qué se puede filmar sin mentir. Tres momentos del guion chocan con lo que el producto puede sostener
+hoy. No son errores del guion; son decisiones de producto que hay que tomar antes de rodar.</p>
+
+<table>
+  <thead><tr><th style="width:24%">La toma</th><th style="width:30%">El problema</th><th>Qué se hace</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><b>El cobro con QR</b><br>bloque 8 · Doña Blanca y Doña Chepa</td>
+      <td>Las pantallas de cobro de MyTokenPay todavía no mueven dinero: el pago no toca la cadena ni un banco. Filmar un cobro que no existe es exactamente lo que hicieron las cuatro eras.</td>
+      <td><b>Dos caminos.</b> El bueno: entregar el cobro real antes del rodaje —está en el plan de noventa días—. El seguro: filmar el mismo gesto como lo que sí funciona hoy, una operación entre dos personas en la casa de cambio, con el dinero llegando al banco de ella.</td>
+    </tr>
+    <tr>
+      <td><b>La remesa de Bogotá a Maracaibo</b><br>bloque 8 · Yenifer</td>
+      <td>Las remesas necesitan licencia por país; hoy son una calculadora. Una toma de alguien «mandando dinero» a otro país es una afirmación regulatoria, no una imagen.</td>
+      <td><b>Se cambia la acción, se conserva la emoción.</b> Yenifer no manda: vende y compra en su propio país, con su propio banco, y la cara de su mamá aparece en una videollamada, no como destinataria de un envío. Ni la voz ni el cartel dicen «remesa», «envío» ni «recibe».</td>
+    </tr>
+    <tr>
+      <td><b>El cartel «23 países»</b><br>bloque 9</td>
+      <td>La casa de cambio existe y está probada para veintitrés países, pero <b>hoy no está desplegada</b>: su dirección contesta 404.</td>
+      <td><b>El cartel se gana desplegando.</b> Es un despliegue, no un desarrollo. Mientras no esté en línea, el cartel se cambia por «Hecho en Honduras» y la pieza pierde su mejor remate geográfico por nada.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="nota riesgo">
+  <b class="t">La regla que manda sobre todas las demás</b>
+  <strong>No se publica un comercial que lleve a una puerta cerrada.</strong> Hoy la casa de cambio no está
+  desplegada y las tres aplicaciones no están en ninguna tienda. Una pieza así de buena, lanzada sobre un
+  producto que no se puede tocar, no solo se desperdicia: confirma exactamente la historia que la pieza está
+  criticando. El primer bloque del plan de noventa días del Documento 8 —reconciliar el código, desplegar la
+  casa de cambio, publicar las apps— <strong>es el primer bloque de este plan de producción también</strong>.
+</div>
+
+<h2 class="salto">10 · Cómo se produce, sin inventar nada nuevo</h2>
+
+<p>Orden Global ya tiene un sistema de producción de video probado, documentado en el <i>Documento 7 · Manual de
+producción de video</i>, con el que se hicieron los dos comerciales anteriores. Esta pieza se produce con el
+mismo sistema. Lo que sigue no es una propuesta: es el método que ya funciona, aplicado a este guion.</p>
+
+<h3>10.1 · La marca se compone después</h3>
+<p>El modelo genera fotografía; el contador, los rótulos, los nombres, el monograma y los avisos legales los
+dibuja <strong>Remotion</strong> encima del clip. Así una corrección de texto cuesta un render de tres minutos y
+no una generación nueva. Es el principio del que cuelgan todos los demás.</p>
+
+<h3>10.2 · Referencias normalizadas, una por cara</h3>
+<p>A un modelo de video no se le describe un logotipo ni una persona: se le entrega. Para la producción anterior
+se prepararon once referencias de 1440×1440 con el mismo encuadre, fondo y luz. Para esta pieza hay que preparar
+<strong>una referencia por personaje</strong> —la vendedora, el minero, la abuela y la nieta, el muchacho— y
+adjuntarla en <i>todas</i> las tomas donde esa persona aparece. Sin eso, la misma señora cambia de cara entre
+plano y plano y el comercial se cae.</p>
+
+<h3>10.3 · Un solo archivo con todos los números</h3>
+<p>Tiempos, textos, colores y marcas de audio viven en <code>src/guion.ts</code>. Ningún otro archivo lleva un
+número escrito a mano. Se cambia un valor, se vuelve a renderizar y sale idéntico salvo por ese cambio. En el
+anexo de este documento va el <code>guion.ts</code> de esta pieza, listo para pegar.</p>
+
+<h3>10.4 · La física manda sobre la estética</h3>
+<p>Corrección textual del cliente en la producción pasada: <i>«no se queda el ramo flores paradas cuando no se
+puede»</i>. Desde entonces cada prompt lleva reglas de física explícitas: la gravedad, el peso del mineral en la
+mano, el papel que se arruga y se queda arrugado. Una toma físicamente imposible destruye la credibilidad de
+todo lo demás, por bonita que se vea. En esta pieza la regla es doble, porque <strong>el peso es el argumento</strong>.</p>
+
+<h3>10.5 · Zonas seguras en vertical</h3>
+<p>El formato principal es 1080×1920. Las plataformas tapan el 25 % inferior con la descripción y el borde
+derecho con sus botones: los rótulos van al 62 % de altura y nada importante toca los bordes.</p>
+
+<table>
+  <thead><tr><th>Etapa</th><th>Herramienta</th><th>Qué produce</th></tr></thead>
+  <tbody>
+    <tr><td>Referencias</td><td>Seedream (imagen)</td><td>Una imagen por personaje y por logotipo, 1440×1440, encuadre idéntico</td></tr>
+    <tr><td>Tomas</td><td>Seedance (video) con las referencias adjuntas</td><td>Los planos crudos, sin texto ni marca</td></tr>
+    <tr><td>Voz</td><td>ElevenLabs, voz masculina latinoamericana</td><td>La narración en español, con las pausas marcadas</td></tr>
+    <tr><td>Sonido</td><td>Síntesis propia en numpy</td><td>Los golpes, el silencio y la nota grave del cierre</td></tr>
+    <tr><td>Montaje</td><td>Remotion 4 · React · 1080×1920 a 24 fps</td><td>Rótulos, monograma, avisos, mezcla y render</td></tr>
+    <tr><td>Render</td><td>Remotion Lambda</td><td>Menos de cinco centavos por render, sin servidor encendido</td></tr>
+  </tbody>
+</table>
+
+<h2 class="salto">11 · Plan, calendario y costos</h2>
+
+<p>Dos caminos, y conviene decidirlos a la vez porque no son excluyentes: el camino generado sirve para aprobar
+y publicar rápido; el camino rodado da la pieza que se va a usar un año. La recomendación es hacer el generado
+primero como animática aprobada, y rodar con esa animática ya bendecida en la mano.</p>
+
+<div class="comparar">
+  <div class="col antes">
+    <div class="cab">Camino A · Generado</div>
+    <ul>
+      <li>De dos a tres días de trabajo.</li>
+      <li>Costo de generación e infraestructura: decenas de dólares, no miles.</li>
+      <li>Sirve para aprobar la historia y para salir ya en redes.</li>
+      <li>Riesgo: si se nota que no es gente real, contradice el «gente real» del encargo.</li>
+    </ul>
+  </div>
+  <div class="col ahora">
+    <div class="cab">Camino B · Rodado en Honduras</div>
+    <ul>
+      <li>De tres a cuatro semanas, con dos o tres días de rodaje.</li>
+      <li>Rangos de mercado regional: dirección y producción US$3.000–8.000; equipo y cámara US$2.000–5.000; arte, casting y locaciones US$1.500–4.000; posproducción y música US$2.000–5.000.</li>
+      <li>Da caras reales de Honduras, que es el activo que ningún competidor puede copiar.</li>
+      <li>Riesgo: permisos de mina y de mercado, y clima.</li>
+    </ul>
+  </div>
+</div>
+
+<table>
+  <thead><tr><th>Semana</th><th>Qué pasa</th><th>Quién decide</th></tr></thead>
+  <tbody>
+    <tr><td>0</td><td>Ver juntos el video de referencia. Aprobar la historia y el remate.</td><td>Fundador y junta</td></tr>
+    <tr><td>1</td><td>Animática generada con voz y sonido. Se aprueba el ritmo, no la belleza.</td><td>Fundador</td></tr>
+    <tr><td>2</td><td>Casting real, permisos de la mina y del mercado, scouting en Tegucigalpa y Danlí.</td><td>Producción</td></tr>
+    <tr><td>3</td><td>Rodaje: un día en la mina, un día en Tegucigalpa, medio día de detalles y metal.</td><td>Dirección</td></tr>
+    <tr><td>4</td><td>Montaje en Remotion, música, mezcla, versiones de 30 s y vertical, avisos legales.</td><td>Posproducción</td></tr>
+    <tr><td>5</td><td>Salida: vertical en redes, 30 s en pauta, 90 s en el sitio y en presentaciones.</td><td>Mercadeo</td></tr>
+  </tbody>
+</table>
+
+<h2>12 · Versiones y dónde vive cada una</h2>
+
+<table>
+  <thead><tr><th>Versión</th><th>Formato</th><th>Dónde</th><th>Qué cambia</th></tr></thead>
+  <tbody>
+    <tr><td>Larga · 90 s</td><td>16:9</td><td>Sitio, presentaciones a junta e inversionistas, pantallas de evento</td><td>La pieza completa, con las cuatro eras desarrolladas</td></tr>
+    <tr><td>Corta · 30 s</td><td>16:9 y 1:1</td><td>Pauta en redes y televisión regional</td><td>Las eras se resumen en un solo bloque; empieza casi en el quiebre</td></tr>
+    <tr><td>Vertical · 45 s</td><td>9:16</td><td>TikTok, Reels, Shorts</td><td>Los primeros tres segundos son el gancho, no el contexto; rótulos al 62 % de altura</td></tr>
+    <tr><td>Retrato · 15 s ×4</td><td>9:16</td><td>Secuencia de anuncios</td><td>Una persona real por pieza: la vendedora, el minero, la abuela, el muchacho</td></tr>
+  </tbody>
+</table>
+
+<p>Las cuatro salen del mismo material y del mismo <code>guion.ts</code>. No se rueda material aparte para redes:
+se rueda pensando en que el plano tiene que funcionar recortado a vertical, con la acción en el tercio central.</p>
+
+<h2 class="salto">13 · Lo que hace falta de la empresa antes de rodar</h2>
+
+<table>
+  <thead><tr><th>Qué</th><th>Para qué</th><th>Quién lo tiene</th></tr></thead>
+  <tbody>
+    <tr><td>El video de referencia, visto en conjunto</td><td>Entender el mecanismo que le gustó, no la apariencia</td><td>El fundador</td></tr>
+    <tr><td>Permiso de filmación en una de las concesiones</td><td>El plano de la mina es el que sostiene todo el argumento</td><td>Operación minera</td></tr>
+    <tr><td>Acceso a la bóveda o a metal certificado para el plano de la balanza</td><td>Es el plano firma de la pieza</td><td>Orden Global</td></tr>
+    <tr><td>Logotipos en alta resolución, incluido AGKA</td><td>El actual mide 447×431 px, insuficiente para referencia</td><td>Marca</td></tr>
+    <tr><td>Descripción real de AuCorp</td><td>Sigue siendo el único texto del ecosistema escrito por suposición</td><td>El fundador</td></tr>
+    <tr><td>Cesión de imagen firmada de cada persona que aparezca</td><td>Sin eso no se puede publicar ni pautar</td><td>Producción</td></tr>
+  </tbody>
+</table>
+
+<div class="pie-doc">Documento 9 · Junta Directiva · Orden Global Corp · 26 de septiembre de 2026 · Concepto, guion, dirección de arte y plan de producción del comercial</div>
+</body></html>
