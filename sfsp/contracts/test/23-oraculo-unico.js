@@ -128,6 +128,71 @@ describe("SFSP v0.3 §10.5 · oráculo único (SFSPOracleRegistry)", function ()
     assert.equal(r.price.toString(), String(salto + 100n));
   });
 
+  it("adversario (deriva por escalones): un solo publicador no mueve el precio más allá de la tolerancia del ancla", async function () {
+    await conPrecio(x, XAU, ORO);
+    await H.increaseTime(60);
+    const t0 = BigInt((await x.o.call("latest", [XAU])).observedAt);
+    // 35 rondas de pubA, cada una +2 % sobre la anterior (dentro de tolerancia de
+    // la anterior), con observaciones ya pasadas y todas en UN mismo bloque.
+    await H.provider.send("evm_setAutomine", [false]);
+    const hashes = [];
+    let p = ORO;
+    try {
+      for (let i = 1; i <= 35; i++) {
+        p = (p * 102n) / 100n;
+        const data = x.o.iface.encodeFunctionData("publish", [XAU, String(p), String(t0 + BigInt(i))]);
+        hashes.push(await H.provider.send("eth_sendTransaction", [{ from: x.pubA, to: x.o.address, data, gas: "0x" + (300000).toString(16) }]));
+      }
+      await H.provider.send("evm_mine", []);
+    } finally {
+      await H.provider.send("evm_setAutomine", [true]);
+    }
+    let aceptadoMax = 0n;
+    for (let ronda = 3; ronda <= 37; ronda++) {
+      const r = await x.o.call("roundOf", [XAU, ronda]);
+      if (!r.quarantined && BigInt(r.price) > aceptadoMax) aceptadoMax = BigInt(r.price);
+    }
+    // Como mucho un escalón que confirma contra la ronda de pubB y otro dentro de
+    // tolerancia del ancla; nunca el ×2 que daba la deriva.
+    assert.ok(aceptadoMax <= (ORO * 102n * 102n) / 10000n, "aceptado " + aceptadoMax);
+    const r = await x.o.call("latest", [XAU]);
+    assert.equal(Number(r.status), ST.DEVIATION, "el último escalón queda en cuarentena");
+    assert.equal(r.price.toString(), "0");
+    assert.equal((await x.o.call("anchorOf", [XAU])).toString(), String((ORO * 102n) / 100n));
+    // El publicador honesto vuelve al precio real y la lectura se restablece.
+    await H.increaseTime(1);
+    await x.o.send("publish", [XAU, String(ORO), await H.now()], x.pubB);
+    const h = await x.o.call("latest", [XAU]);
+    assert.equal(Number(h.status), ST.OK);
+    assert.equal(h.price.toString(), String(ORO));
+  });
+
+  it("negativo: una observación más vieja que la edad máxima no se publica (sin relleno hacia atrás)", async function () {
+    await conPrecio(x, XAU, ORO);
+    await H.increaseTime(EDAD + 30);
+    const vieja = (await H.now()) - EDAD - 5;
+    await H.expectRevert(x.o.send("publish", [XAU, String(ORO), vieja], x.pubA), H.b32("STALE_OBSERVATION"));
+    await x.o.send("publish", [XAU, String(ORO), (await H.now()) - EDAD + 5], x.pubA);
+  });
+
+  it("positivo: un publicador solo sigue dentro de tolerancia del ancla; más allá, hace falta el segundo", async function () {
+    await conPrecio(x, XAU, ORO);
+    const paso = (ORO * 101n) / 100n; // +1 %, tolerancia de prueba 2 %
+    await H.increaseTime(1);
+    await x.o.send("publish", [XAU, String(paso), await H.now()], x.pubB);
+    assert.equal(Number((await x.o.call("latest", [XAU])).status), ST.OK);
+    assert.equal((await x.o.call("anchorOf", [XAU])).toString(), String(ORO), "un publicador no mueve el ancla");
+    await H.increaseTime(1);
+    const otro = (paso * 1015n) / 1000n; // +2,5 % sobre el ancla
+    await x.o.send("publish", [XAU, String(otro), await H.now()], x.pubB);
+    assert.equal(Number((await x.o.call("latest", [XAU])).status), ST.DEVIATION);
+    await H.increaseTime(1);
+    await x.o.send("publish", [XAU, String(otro + 100n), await H.now()], x.pubA);
+    const r = await x.o.call("latest", [XAU]);
+    assert.equal(Number(r.status), ST.OK, "dos publicadores confirman el nivel nuevo");
+    assert.equal((await x.o.call("anchorOf", [XAU])).toString(), String(otro + 100n));
+  });
+
   it("positivo: 1 onza troy = 31,1035 g = 1.710,6925 gramin, con redondeo hacia abajo", async function () {
     assert.equal((await x.o.call("goldOuncesToGramin", [String(E18)])).toString(), String(17106925n * E18 / 10000n));
     // Una unidad base de onza no da 1.710,69 unidades base de gramin: da 1.710.
