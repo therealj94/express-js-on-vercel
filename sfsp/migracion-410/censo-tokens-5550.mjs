@@ -24,8 +24,12 @@
 //   BLOQUE=<n>     bloque de lectura (por omisión, el último)
 //   INTERNAS=…     JSON {direccion: motivo} de cuentas de Orden Global (propuesta D25), fuera del repo
 //   EN_REVISION=…  JSON {direccion: motivo} de direcciones pendientes de decisión
+// Las dos listas son opcionales; si la variable está definida, el archivo tiene que
+// existir y ser {"0x…40 hex": "motivo"} (las claves se pasan a minúsculas), o se detiene.
+// Un fallo del RPC nunca se toma por un saldo cero: un saldo o un bloque que no se
+// pudo leer detiene el censo; un contrato que no se pudo leer se lista en `noLeidos`.
 import {
-  CHAIN_ID, rpc, rpcLote, bloqueFijo, balanceOf, saldoNativo, leerRanura, enParalelo, escribir, csv, norm,
+  CHAIN_ID, RUTAS, rpc, rpcLote, rpcLoteDetalle, leerListaDirecciones, comprobarSalidaFueraDelRepo, bloqueFijo, balanceOf, saldoNativo, leerRanura, enParalelo, escribir, csv, norm,
   aTexto, keccak256, defaultAbiCoder, ranuraDeSaldo, RAIZ_SFSP, Interface,
 } from "./lib/comun.mjs";
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
@@ -38,10 +42,12 @@ const MAX_P = 20; // ranuras de mapping que se prueban
 // Nunca se leen llaves de nodos ni la red de pruebas, aunque estén dentro de una fuente.
 const PROHIBIDO = /(^|\/)(llaves|testnet-5534)(\/|$)|\.tar(\.gz)?$|\.key$/i;
 const leerJson = (r, def) => (r && existsSync(r) ? JSON.parse(readFileSync(r, "utf8")) : def);
-const internas = leerJson(process.env.INTERNAS, {});
-const enRevision = leerJson(process.env.EN_REVISION, {});
+const internas = leerListaDirecciones(process.env.INTERNAS, "INTERNAS");
+const enRevision = leerListaDirecciones(process.env.EN_REVISION, "EN_REVISION");
+console.log(`INTERNAS: ${Object.keys(internas).length} direcciones · EN_REVISION: ${Object.keys(enRevision).length}`);
 const CERO = "0x" + "0".repeat(40);
 
+comprobarSalidaFueraDelRepo(RUTAS.salida); // antes de leer la red: la salida lleva datos personales
 const b = await bloqueFijo(process.env.BLOQUE);
 console.log(`bloque ${b.numero} (${new Date(b.timestamp * 1000).toISOString()})`);
 
@@ -49,17 +55,22 @@ console.log(`bloque ${b.numero} (${new Date(b.timestamp * 1000).toISOString()})`
 const inventario = Object.fromEntries(Object.entries(leerJson(RANURAS, {})).map(([c, m]) => [norm(c), Object.fromEntries(Object.entries(m).map(([k, v]) => [norm(k), v]))]));
 const ERC20 = new Interface(["function totalSupply() view returns (uint256)", "function decimals() view returns (uint8)", "function symbol() view returns (string)"]);
 const contratos = Object.keys(inventario);
-const lecturas = await rpcLote(contratos.flatMap((c) => ["totalSupply", "decimals", "symbol"].map((f) => ["eth_call", [{ to: c, data: ERC20.encodeFunctionData(f) }, b.tag]])));
-const tokens = [];
+const lecturas = await rpcLoteDetalle(contratos.flatMap((c) => ["totalSupply", "decimals", "symbol"].map((f) => ["eth_call", [{ to: c, data: ERC20.encodeFunctionData(f) }, b.tag]])));
+const tokens = [], noErc20 = [], noLeidos = [];
+const HEX = /^0x[0-9a-fA-F]+$/;
 contratos.forEach((c, i) => {
   const [ts, dec, sym] = lecturas.slice(3 * i, 3 * i + 3);
-  if (!ts || ts === "0x" || !dec || dec === "0x") return;
+  // Un fallo del RPC (no una reversión) NO dice que el contrato no sea ERC-20: se lista aparte.
+  const fallo = [ts, dec].find((x) => x.error && !x.revierte);
+  if (fallo) { noLeidos.push({ contrato: c, error: JSON.stringify(fallo.error).slice(0, 200) }); return; }
+  if (!HEX.test(ts.result ?? "") || !HEX.test(dec.result ?? "")) { noErc20.push({ contrato: c, motivo: ts.revierte || dec.revierte ? "totalSupply/decimals revierte" : "totalSupply/decimals sin datos" }); return; }
   let symbol = "?";
-  try { symbol = ERC20.decodeFunctionResult("symbol", sym)[0]; } catch {}
-  tokens.push({ contrato: c, symbol, decimals: Number(BigInt(dec)), totalSupply: BigInt(ts) });
+  try { symbol = ERC20.decodeFunctionResult("symbol", sym.result)[0]; } catch {}
+  tokens.push({ contrato: c, symbol, decimals: Number(BigInt(dec.result)), totalSupply: BigInt(ts.result) });
 });
 const conEmision = tokens.filter((t) => t.totalSupply > 0n);
-console.log(`contratos en el inventario: ${contratos.length} · ERC-20: ${tokens.length} · con emisión: ${conEmision.length}`);
+console.log(`contratos en el inventario: ${contratos.length} · ERC-20: ${tokens.length} · con emisión: ${conEmision.length} · no ERC-20: ${noErc20.length}`);
+if (noLeidos.length) console.log(`¡${noLeidos.length} contratos NO se pudieron leer (fallo del RPC, no reversión)! Quedan fuera del censo y listados en «noLeidos»: vuelve a correrlo.`);
 
 // ------------------------------------------------------------ 2. candidatas
 const candidatas = new Map(); // dir -> Set(fuente)
@@ -77,7 +88,8 @@ const rangos = [];
 for (let i = 0; i <= b.numero; i += 200) rangos.push(i);
 await enParalelo(rangos, async (desde) => {
   const bloques = await rpcLote(Array.from({ length: Math.min(200, b.numero - desde + 1) }, (_, k) => ["eth_getBlockByNumber", ["0x" + (desde + k).toString(16), true]]));
-  for (const blq of bloques) for (const tx of (blq && blq.transactions) || []) {
+  bloques.forEach((blq, k) => { if (!blq || !Array.isArray(blq.transactions)) throw new Error(`el bloque ${desde + k} no se pudo leer: sin él se pierden direcciones candidatas`); });
+  for (const blq of bloques) for (const tx of blq.transactions) {
     nTx++; anotar(tx.from, "5550 transacciones"); if (tx.to) anotar(tx.to, "5550 transacciones"); palabras((tx.input || "0x").slice(10), "5550 transacciones");
   }
 }, 6);
@@ -144,7 +156,12 @@ for (const t of conEmision) {
     const resto = dirs.filter((a) => !t.saldos.has(a)).map((address) => ({ address }));
     const res = [];
     for (let i = 0; i < resto.length; i += 200) res.push(...await rpcLote(resto.slice(i, i + 200).map((f) => ["eth_call", [{ to: t.contrato, data: "0x70a08231" + "0".repeat(24) + f.address.slice(2) }, b.tag]])));
-    resto.forEach((f, i) => { f.saldo = res[i] ? BigInt(res[i]) : 0n; f.fueraDeInventario = true; });
+    // rpcLote es estricto: un elemento con error detiene el censo. Aquí, además, un
+    // resultado sin datos tampoco es un cero: el titular se perdería en el residuo.
+    resto.forEach((f, i) => {
+      if (!HEX.test(res[i] ?? "")) throw new Error(`${t.symbol} (${t.contrato}): balanceOf sin respuesta válida para una candidata (${JSON.stringify(res[i])})`);
+      f.saldo = BigInt(res[i]); f.fueraDeInventario = true;
+    });
     for (const f of resto.filter((x) => x.saldo > 0n)) { filas.push(f); suma += f.saldo; }
   }
   const sinDir = t.sinDireccion.map((r) => ({ address: "ranura:" + r }));
@@ -156,7 +173,8 @@ for (const t of conEmision) {
   await enParalelo(t.filas, (f) => fichaDir(f.address));
 }
 
-const clase = (a) => (codigo.get(a) ? "CONTRATO" : internas[a] ? "INTERNA-OrdenGlobal" : enRevision[a] ? "EN-REVISION" : "USUARIO");
+const tiene = (o, a) => Object.prototype.hasOwnProperty.call(o, a);
+const clase = (a) => (codigo.get(a) ? "CONTRATO" : tiene(internas, a) ? "INTERNA-OrdenGlobal" : tiene(enRevision, a) ? "EN-REVISION" : "USUARIO");
 const nota = (f) => [internas[f.address] || enRevision[f.address], f.fueraDeInventario && "clave fuera del inventario del génesis"].filter(Boolean).join("; ");
 const fuente = (a) => [...(candidatas.get(a) || [])].sort().join(" | ");
 const fmt = (t, v) => aTexto(v, t.decimals);
@@ -185,6 +203,8 @@ const censo = {
   resumen: { chainId: CHAIN_ID, bloque: b.numero, hash: b.hash, timestamp: b.timestamp, candidatas: dirs.length, actividad5550: { transacciones: nTx, eventos: nEventos }, tokens: conEmision.map(resumenToken) },
   tokens: Object.fromEntries(conEmision.map((t) => [t.contrato, { symbol: t.symbol, tenedores: tenedoresDe(t), permisos: t.permisos }])),
   vacios: tokens.filter((t) => t.totalSupply === 0n).map((t) => ({ contrato: t.contrato, symbol: t.symbol })),
+  noErc20,
+  noLeidos,
 };
 escribir("censo-tokens.json", censo);
 escribir("censo-tokens.csv", csv([["token", "contrato", "direccion", "saldo", "origen", "clase", "nota"], ...conEmision.flatMap((t) => tenedoresDe(t).map((x) => [t.symbol, t.contrato, x.address, x.saldo, x.origen ?? "", x.clase, x.nota]))]));
@@ -204,3 +224,5 @@ if (tO) escribir("censo-ondk.json", {
 
 for (const t of conEmision) console.log(`${t.symbol.padEnd(10)} ${t.contrato.slice(0, 10)} tenedores ${String(t.filas.length).padStart(4)} · claves ${t.saldos.size + t.permisos.length}/${t.claves} · residuo ${fmt(t, t.residuo)}${t.incoherentes ? " · ¡INCOHERENTES " + t.incoherentes + "!" : ""}`);
 console.log(`titulares distintos (todos los tokens): ${porDir.size}`);
+const sinTitular = (o) => Object.keys(o).filter((a) => !porDir.has(a)).length;
+console.log(`INTERNAS sin saldo en ningún token: ${sinTitular(internas)} de ${Object.keys(internas).length} · EN_REVISION: ${sinTitular(enRevision)} de ${Object.keys(enRevision).length}`);

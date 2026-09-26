@@ -3,8 +3,8 @@
 // con variables de entorno. Nada aquí firma ni envía transacciones.
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { dirname, join, resolve, sep } from "node:path";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, realpathSync } from "node:fs";
 import { inflateRawSync } from "node:zlib";
 
 export const AQUI = dirname(fileURLToPath(import.meta.url));
@@ -57,24 +57,66 @@ export async function rpc(method, params) {
   }
 }
 
-/** Lote JSON-RPC (misma lista blanca). `llamadas` = [[método, params], …]; devuelve los `result` (null si falló). */
-export async function rpcLote(llamadas) {
+/** ¿El error de un elemento es una respuesta de la EVM (la ejecución revirtió o se
+ *  detuvo) y no un fallo del nodo? Una reversión es determinista: reintentar no la
+ *  cambia. Un timeout, un límite o un estado no disponible sí son fallos del RPC. */
+export function esReversion(error) {
+  if (!error || typeof error !== "object") return false;
+  const m = String(error.message || "").toLowerCase();
+  if (/timeout|timed out|aborted|busy|rate|header not found|missing trie|unavailable|not available|connection/.test(m)) return false;
+  return error.code === 3 || /revert|invalid opcode|invalid jump|bad jump|out of gas|stack underflow|stack overflow|invalid operation|exceptional halt/.test(m);
+}
+
+/** Lote JSON-RPC (misma lista blanca). `llamadas` = [[método, params], …].
+ *  Devuelve, por elemento, `{ result }`, o `{ error, revierte }` si ese elemento
+ *  trajo error. Un elemento con un error que NO es una reversión (timeout, límite,
+ *  sin respuesta) se reintenta por separado; si sigue fallando tras los intentos,
+ *  queda `{ error, revierte: false }`. Nunca convierte un error en un resultado:
+ *  quien llama decide qué hacer con él. */
+export async function rpcLoteDetalle(llamadas) {
   for (const [m] of llamadas) if (!METODOS_LECTURA.has(m)) throw new Error(`método no permitido (sólo lectura): ${m}`);
-  for (let intento = 1; ; intento++) {
+  const out = new Array(llamadas.length);
+  let pendientes = llamadas.map((_, i) => i);
+  for (let intento = 1; pendientes.length; intento++) {
+    let siguen = pendientes;
     try {
       const r = await fetch(RPC, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(llamadas.map(([method, params], i) => ({ jsonrpc: "2.0", id: i, method, params }))),
+        body: JSON.stringify(pendientes.map((i) => ({ jsonrpc: "2.0", id: i, method: llamadas[i][0], params: llamadas[i][1] }))),
       });
       const j = await r.json();
-      const porId = new Map(j.map((x) => [x.id, x]));
-      return llamadas.map((_, i) => (porId.get(i) && !porId.get(i).error ? porId.get(i).result : null));
+      if (!Array.isArray(j)) throw new Error(`lote rechazado: ${JSON.stringify((j && j.error) || j).slice(0, 200)}`);
+      const porId = new Map(j.map((x) => [x && x.id, x]));
+      siguen = [];
+      for (const i of pendientes) {
+        const x = porId.get(i);
+        if (x && !x.error && Object.prototype.hasOwnProperty.call(x, "result")) out[i] = { result: x.result };
+        else if (x && x.error && esReversion(x.error)) out[i] = { error: x.error, revierte: true };
+        else { out[i] = { error: (x && x.error) || { message: "sin respuesta para este elemento del lote" }, revierte: false }; siguen.push(i); }
+      }
     } catch (e) {
-      if (intento >= 4) throw e;
-      await new Promise((ok) => setTimeout(ok, 400 * intento));
+      for (const i of pendientes) out[i] = { error: { message: String(e && e.message || e) }, revierte: false };
     }
+    pendientes = siguen;
+    if (!pendientes.length || intento >= 4) break;
+    await new Promise((ok) => setTimeout(ok, 400 * intento));
   }
+  return out;
+}
+
+/** Lote JSON-RPC estricto: devuelve los `result` y LANZA si algún elemento trajo
+ *  error, también si revirtió. Para lecturas que tienen que responder todas
+ *  (saldos, bloques): un hueco no se puede tomar por un cero. */
+export async function rpcLote(llamadas) {
+  const r = await rpcLoteDetalle(llamadas);
+  const malos = [];
+  r.forEach((x, i) => { if (x.error) malos.push(i); });
+  if (malos.length) {
+    const i = malos[0];
+    throw new Error(`rpcLote: ${malos.length} de ${llamadas.length} lecturas sin respuesta válida (primera: ${llamadas[i][0]} ${JSON.stringify(llamadas[i][1]).slice(0, 160)} → ${JSON.stringify(r[i].error).slice(0, 200)})`);
+  }
+  return r.map((x) => x.result);
 }
 
 export async function bloqueFijo(bloque) {
@@ -203,10 +245,12 @@ export function hojaReserva(migrationId, clave, oldUnits) {
 // ------------------------------------------------------------------ ids
 /** migrationId textual `mig_` + 32 hex (CONTRATO-INTERNO §1) y su bytes32.
  *  Determinista para que el padrón sea reproducible: se deriva de la red, el
- *  contrato de origen y el bloque de corte. Se puede fijar con MIG_ID_<ACTIVO>. */
-export function idMigracion(activo, contrato, bloqueCorte) {
-  const fijo = process.env["MIG_ID_" + activo];
-  const texto = fijo || "mig_" + keccak256(toUtf8Bytes(`SFSP-700|${CHAIN_ID}|${contrato.toLowerCase()}|${bloqueCorte}|${activo}`)).slice(2, 34);
+ *  contrato de origen y el bloque de corte. Se puede fijar con el parámetro `fijo`
+ *  o, si no se pasa, con MIG_ID_<ACTIVO>. */
+export function idMigracion(activo, contrato, bloqueCorte, fijo) {
+  // `fijo` explícito (también null) manda; sin él se mira MIG_ID_<ACTIVO> del entorno.
+  const elegido = fijo === undefined ? process.env["MIG_ID_" + activo] : fijo;
+  const texto = elegido || "mig_" + keccak256(toUtf8Bytes(`SFSP-700|${CHAIN_ID}|${contrato.toLowerCase()}|${bloqueCorte}|${activo}`)).slice(2, 34);
   if (!/^mig_[0-9a-f]{32}$/.test(texto)) throw new Error(`migrationId mal formado: ${texto}`);
   // bytes32 = keccak256(utf8(texto)): el texto (36 bytes) no cabe en bytes32.
   return { texto, bytes32: keccak256(toUtf8Bytes(texto)) };
@@ -275,13 +319,65 @@ export function csv(filas) {
   const esc = (v) => { const s = v === null || v === undefined ? "" : String(v); return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
   return filas.map((f) => f.map(esc).join(",")).join("\n") + "\n";
 }
+/** Raíz del repositorio (sfsp/..). */
+export const RAIZ_REPO = join(RAIZ_SFSP, "..");
+/** La salida lleva datos personales: se niega a escribir dentro del repositorio
+ *  (salvo PERMITIR_SALIDA_EN_REPO=1). Compara rutas reales (sigue enlaces) y por
+ *  componente, no por prefijo de texto. Crea la carpeta, después de comprobarla. */
+function rutaReal(ruta) {
+  let actual = resolve(ruta);
+  const resto = [];
+  while (!existsSync(actual)) {
+    const padre = dirname(actual);
+    if (padre === actual) break;
+    resto.unshift(actual.slice(padre.length).replace(/^[\\/]+/, ""));
+    actual = padre;
+  }
+  return join(realpathSync(actual), ...resto);
+}
+export function comprobarSalidaFueraDelRepo(ruta) {
+  const real = rutaReal(ruta);
+  const repo = realpathSync(RAIZ_REPO);
+  const dentro = real === repo || real.startsWith(repo.endsWith(sep) ? repo : repo + sep);
+  if (dentro && !process.env.PERMITIR_SALIDA_EN_REPO) {
+    throw new Error(`SALIDA (${ruta}) está dentro del repositorio: son datos personales. Usa una carpeta fuera del repositorio.`);
+  }
+  mkdirSync(ruta, { recursive: true });
+  return real;
+}
 export function escribir(nombre, contenido) {
-  mkdirSync(RUTAS.salida, { recursive: true });
+  comprobarSalidaFueraDelRepo(RUTAS.salida);
   const ruta = join(RUTAS.salida, nombre);
   writeFileSync(ruta, typeof contenido === "string" ? contenido : JSON.stringify(contenido, null, 2) + "\n");
   return ruta;
 }
 export const norm = (a) => String(a).toLowerCase();
+
+/** Valida una lista `{dirección: motivo}` (INTERNAS, EN_REVISION) y la devuelve
+ *  con las claves en minúsculas. Lanza si no es un objeto, si una clave no es
+ *  0x + 40 hex, si un motivo está vacío o si una dirección se repite al normalizar:
+ *  una lista de exclusión mal escrita no puede quedarse en nada sin avisar. */
+export function validarListaDirecciones(obj, nombre = "lista") {
+  if (obj === null || typeof obj !== "object" || Array.isArray(obj)) throw new Error(`${nombre}: tiene que ser un objeto {"0x…": "motivo"}`);
+  const out = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (!/^0x[0-9a-fA-F]{40}$/.test(k)) throw new Error(`${nombre}: clave que no es una dirección (0x + 40 hex): ${JSON.stringify(k).slice(0, 60)}`);
+    if (typeof v !== "string" || !v.trim()) throw new Error(`${nombre}: la dirección ${k} no trae motivo (texto no vacío)`);
+    const n = norm(k);
+    if (Object.prototype.hasOwnProperty.call(out, n)) throw new Error(`${nombre}: dirección repetida al pasarla a minúsculas: ${n}`);
+    out[n] = v;
+  }
+  return out;
+}
+/** Lee una lista `{dirección: motivo}` de `ruta`. Sin ruta (variable no definida o
+ *  vacía) devuelve {}; con ruta, el archivo TIENE que existir y ser válido. */
+export function leerListaDirecciones(ruta, nombre = "lista") {
+  if (ruta === undefined || ruta === null || ruta === "") return {};
+  if (!existsSync(ruta)) throw new Error(`${nombre}=${ruta}: el archivo no existe (si no hay lista, no definas la variable)`);
+  let j;
+  try { j = JSON.parse(readFileSync(ruta, "utf8")); } catch (e) { throw new Error(`${nombre}=${ruta}: no es JSON válido (${e.message})`); }
+  return validarListaDirecciones(j, nombre);
+}
 
 /** Separa candidatos en beneficiarios y excluidos por ser cuenta interna / de
  *  Orden Global / contrato. `internas`: Map o Set de direcciones en minúsculas. */

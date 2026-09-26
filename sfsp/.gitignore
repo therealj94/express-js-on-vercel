@@ -28,3 +28,18 @@ evidence/corridas/
 # contracts/compilador/compilador.json, que se comprueba antes de compilar, y
 # `node contracts/compilador/preparar.mjs` lo reconstruye en un paso.
 contracts/compilador/solc-*
+
+# Salidas de migracion-410: direcciones y saldos de personas. Los scripts las
+# escriben FUERA del repositorio y se niegan a escribir dentro; esto es la segunda
+# barrera por si alguien lo fuerza con PERMITIR_SALIDA_EN_REPO. Los ejemplos
+# versionados de sintetico/ llevan otros nombres (…-sintetico.json).
+migracion-410/**/censo-tokens.json
+migracion-410/**/censo-tokens.csv
+migracion-410/**/padron-titulares.csv
+migracion-410/**/censo-ondk.json
+migracion-410/**/padron-*.json
+migracion-410/**/padron-*.csv
+migracion-410/**/raices-merkle.json
+migracion-410/**/lote-*.json
+migracion-410/**/lote-*.csv
+migracion-410/**/simulacion-*.json
