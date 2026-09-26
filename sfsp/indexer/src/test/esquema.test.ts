@@ -47,7 +47,7 @@ const DEL_160 = ['OrgDidRegistered','OrgDidControllerChanged','OrgDidKeyChanged'
 // SFSP-410 · política de suministro: cupo de emisión, cuentas internas y bóveda nativa.
 const DEL_410 = ['InternalAccountFlagged', 'MintBudgetSet', 'MintBudgetRevoked', 'MintOnDemand', 'NativeAbsorbed', 'NativeReleased', 'ReleaseBudgetSet', 'ReleaseBudgetRevoked', 'VaultInternalAccountFlagged'];
 // SFSP v0.3 fase 2 · 4, 5 y 6: oraculo unico, motor de reservas y tesoreria cotizadora.
-const DEL_FASE2 = ['OracleParametersSet', 'OracleParametersCleared', 'OraclePricePublished', 'CommodityAssetConfigured', 'CustodianRegistered', 'LicenseGateSet', 'ConcentrationLimitsSet', 'RedemptionChannelSet', 'MetalLotRegistered', 'MetalLotStateChanged', 'LotAuditVerified', 'UnitsPlaced', 'OrigenSettlementFunded', 'DeskParametersSet', 'DeskParametersCleared', 'MarketSpreadObserved', 'DeskFunded', 'DeskTradeExecuted'];
+const DEL_FASE2 = ['OracleParametersSet', 'OracleParametersCleared', 'OraclePricePublished', 'CommodityAssetConfigured', 'CustodianRegistered', 'CustodianUpdated', 'AttestationValidityLimitSet', 'LicenseGateSet', 'ConcentrationLimitsSet', 'RedemptionChannelSet', 'MetalLotRegistered', 'MetalLotStateChanged', 'LotAuditVerified', 'UnitsPlaced', 'OrigenSettlementFunded', 'DeskParametersSet', 'DeskParametersCleared', 'MarketSpreadObserved', 'DeskFunded', 'DeskTradeExecuted'];
 // SFSP v0.3 fase 2 (puntos 1-3) · eventos nuevos, todos con contrato.
 const DEL_V03 = ['LicenseRegistered', 'PlacementBasisSet', 'ExposureParamsSet', 'DbnxApprovalRecorded', 'DbnxApprovalRevoked'];
 // Del v0.2, los que la fase 2 del v0.3 ya emite desde un contrato.

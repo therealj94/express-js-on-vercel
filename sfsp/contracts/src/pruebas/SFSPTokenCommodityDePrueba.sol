@@ -13,6 +13,8 @@ contract SFSPTokenCommodityDePrueba is ISFSPCommodityToken {
     uint256 private _totalSupply;
     mapping(address => uint256) private _balances;
     mapping(address => uint256) public lockedOf;
+    /// @dev Billeteras de tesorería: sólo sacan unidades por `placementTransfer`.
+    mapping(address => bool) public isTreasury;
 
     struct Lock {
         address holder;
@@ -38,8 +40,18 @@ contract SFSPTokenCommodityDePrueba is ISFSPCommodityToken {
     /// @dev Acuñación por anticipado a tesorería (v0.3 §9.4): no exige metal.
     function mintToTreasury(address treasury, uint256 amount) external {
         require(msg.sender == owner, "prueba: solo dueno");
+        isTreasury[treasury] = true;
         _totalSupply += amount;
         _balances[treasury] += amount;
+    }
+
+    /// @dev Acuña DIRECTO a un tercero, sin pasar por la tesorería. Simula lo que
+    ///      el motor tiene que ver aunque no pase por `place()`: una migración de
+    ///      saldos o una integración que no respeta RELEASE.
+    function mintDirect(address to, uint256 amount) external {
+        require(msg.sender == owner && !isTreasury[to], "prueba: solo dueno");
+        _totalSupply += amount;
+        _balances[to] += amount;
     }
 
     function totalSupply() external view returns (uint256) {
@@ -50,8 +62,11 @@ contract SFSPTokenCommodityDePrueba is ISFSPCommodityToken {
         return _balances[a];
     }
 
-    /// @dev Transferencia entre terceros (circular). Lo bloqueado no se mueve.
+    /// @dev Transferencia entre terceros (circular). Lo bloqueado no se mueve, y
+    ///      la tesorería no transfiere: toda salida suya a un tercero es una
+    ///      colocación y pasa por RELEASE (SFSP-300 §0.2, T-300-20).
     function transfer(address to, uint256 amount) external returns (bool) {
+        require(!isTreasury[msg.sender], "prueba: tesoreria sin RELEASE");
         require(_balances[msg.sender] - lockedOf[msg.sender] >= amount, "prueba: saldo libre");
         _balances[msg.sender] -= amount;
         _balances[to] += amount;

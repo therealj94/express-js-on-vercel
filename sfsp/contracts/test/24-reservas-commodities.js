@@ -8,6 +8,7 @@ const assert = require("node:assert/strict");
 const F = require("./fixture");
 const H = require("./helpers");
 const C = require("./commodities");
+const V = require("./v03");
 
 const DIA = 86400;
 const E18 = C.E18;
@@ -21,10 +22,14 @@ const KG_MG = 1_000_000n;
 const PUREZA = 999_900n;
 const OZ_KG = (KG_MG * PUREZA * 10n ** 13n) / 311035n;
 
-async function montar() {
+// Vigencia máxima de atestación de PRUEBA (la real la fija la Junta, v0.3 §18).
+const VIGENCIA_MAX = 90 * DIA;
+
+async function montar(o) {
+  const op = o || {};
   const f = await F.deployAll();
   const acc = f.acc;
-  const x = { f, board: f.board, pubA: acc[9], pubB: acc[10], auditor: acc[12], custA: acc[13], custB: acc[14], custInt: acc[15], fondeador: acc[16] };
+  const x = { f, board: f.board, pubA: acc[9], pubB: acc[10], auditor: acc[12], custA: acc[13], custB: acc[14], custInt: acc[15], fondeador: acc[16], custA2: acc[18] };
   x.o = await C.oraculo(x.board, x.pubA, x.pubB);
   x.r = await H.deploy("SFSPReserveEngine", [x.board, f.governance.address, f.engine.address, x.o.address], x.board);
   for (const rol of ["TECH_OPS", "ISSUER"]) await x.r.send("grantRole", [await x.r.call(rol), x.board], x.board);
@@ -48,6 +53,7 @@ async function montar() {
   await x.r.send("registerCustodian", [H.b32("CUST_A"), x.custA, false, H.b32("JUR_A")], x.board);
   await x.r.send("registerCustodian", [H.b32("CUST_B"), x.custB, false, H.b32("JUR_B")], x.board);
   await x.r.send("registerCustodian", [H.b32("CUST_ORDENEX"), x.custInt, true, H.b32("JUR_PROSPERA")], x.board);
+  if (!op.sinVigenciaMaxima) await x.r.send("setAttestationValidityLimit", [VIGENCIA_MAX], x.board);
   return x;
 }
 
@@ -72,8 +78,8 @@ async function atestar(x, lotId, attestor, dias) {
 }
 
 /** Lote registrado, atestado y asignado. Fija límites de concentración de prueba si faltan. */
-async function loteListo(x, lotId, assetId, custodian, attestor, metal, cert, dias) {
-  await x.r.send("registerLot", [intake(lotId, assetId, custodian, metal || C.XAU, cert || "cert_" + lotId)], x.board);
+async function loteListo(x, lotId, assetId, custodian, attestor, metal, cert, dias, grossMg) {
+  await x.r.send("registerLot", [intake(lotId, assetId, custodian, metal || C.XAU, cert || "cert_" + lotId, grossMg)], x.board);
   await atestar(x, lotId, attestor, dias);
   const k = await x.r.call("concentrationLimits");
   if (!k.set) await x.r.send("setConcentrationLimits", [10000, 10000, 0], x.board);
@@ -178,7 +184,9 @@ describe("SFSP v0.3 §9 · motor de reservas y commodities (SFSPReserveEngine)",
       await atestar(x, "L2", x.custA);
       await H.expectRevert(x.r.send("assignLot", [H.b32("L2")], x.board), "ConcentrationExceeded");
       await loteListo(x, "L3", C.ASSET_AUKA, "CUST_B", x.custB, C.XAU, "c3");
-      assert.equal((await x.r.call("custodianAssignedOz", [H.b32("CUST_B")])).toString(), String(OZ_KG));
+      const c = await x.r.call("custodyOf", [C.ASSET_AUKA, H.b32("CUST_B")]);
+      assert.equal(c.custodianOz.toString(), String(OZ_KG));
+      assert.equal(c.totalOz.toString(), String(2n * OZ_KG));
     });
 
     it("negativo: la custodia interna exige licencia Clase G, verificación del auditor y su propio límite", async function () {
@@ -397,6 +405,258 @@ describe("SFSP v0.3 §9 · motor de reservas y commodities (SFSPReserveEngine)",
       await x.r.send("settleInOrigen", [id], x.board);
       const bruto = (4n * E18 * C.PLATA * 17106925n) / (C.ORO * 10000n);
       assert.equal((await C.saldo(f.alice)) - antes, (bruto * 9950n) / 10000n);
+    });
+  });
+  describe("revisión 26-sep · custodios, vigencia, tope de lotes, concentración, cobertura medida, compuerta y un token por activo", function () {
+    it("negativo: sin vigencia máxima de atestación fijada no se atesta (BLOCKED_DECISION)", async function () {
+      const y = await montar({ sinVigenciaMaxima: true });
+      await y.r.send("registerLot", [intake("L1", C.ASSET_AUKA, "CUST_A", C.XAU, "c1")], y.board);
+      const msg = await H.expectRevert(atestar(y, "L1", y.custA), "Blocked(9");
+      assert.ok(msg.includes(H.b32("ATTESTATION_MAX_NOT_SET")));
+      await V.revertCon(y.r.send("setAttestationValidityLimit", [VIGENCIA_MAX], f.mallory), y.r, "Unauthorized");
+      const rec = await y.r.send("setAttestationValidityLimit", [VIGENCIA_MAX], y.board);
+      assert.equal(Number(C.eventos(y.r, rec, "AttestationValidityLimitSet")[0].maxValiditySeconds), VIGENCIA_MAX);
+      await atestar(y, "L1", y.custA);
+    });
+
+    it("adversario (atestación a cien años): una vigencia mayor que el máximo se rechaza", async function () {
+      await x.r.send("registerLot", [intake("L1", C.ASSET_AUKA, "CUST_A", C.XAU, "c1")], x.board);
+      const t = await H.now();
+      const cien = t + 100 * 365 * DIA;
+      await H.expectRevert(
+        x.r.send("attestLot", [H.b32("L1"), H.b32("ev"), cien, H.b32("pol"), cien], x.custA),
+        H.b32("VALIDITY_TOO_LONG"),
+      );
+      await atestar(x, "L1", x.custA, 90);
+    });
+
+    it("adversario (custodio comprometido): la Junta lo suspende y sus lotes dejan de contar aunque estén comprometidos", async function () {
+      await loteListo(x, "L1", C.ASSET_AUKA, "CUST_A", x.custA);
+      await colocar(x, C.ASSET_AUKA, f.alice, 20n * E18, "op1");
+      await H.expectRevert(x.r.send("retireLot", [H.b32("L1"), H.b32("SALIDA")], x.board), H.b32("LOT_COMMITTED"));
+      await V.revertCon(x.r.send("updateCustodian", [H.b32("CUST_A"), x.custA, true, H.b32("INSOLVENCIA")], f.mallory), x.r, "Unauthorized");
+      const rec = await x.r.send("updateCustodian", [H.b32("CUST_A"), x.custA, true, H.b32("INSOLVENCIA")], x.board);
+      const ev = C.eventos(x.r, rec, "CustodianUpdated")[0];
+      assert.equal(ev.suspended, true);
+      assert.equal(ev.reasonCode, H.b32("INSOLVENCIA"));
+      // Sin esperar a que venza la atestación: el lote sale del cómputo en el acto.
+      assert.equal(await x.r.call("isLotValid", [H.b32("L1")]), false);
+      const cov = await x.r.call("coverage", [C.ASSET_AUKA]);
+      assert.equal(cov.coveredOz.toString(), "0");
+      assert.equal(await x.r.call("invariantHolds", [C.ASSET_AUKA]), false, "la prueba de reservas lo muestra");
+      await H.expectRevert(colocar(x, C.ASSET_AUKA, f.bob, E18, "op2"), "CoverageDeficit");
+      // Re-atestar no lo rehabilita: sólo la Junta.
+      await atestar(x, "L1", x.custA);
+      assert.equal(await x.r.call("isLotValid", [H.b32("L1")]), false);
+      await x.r.send("updateCustodian", [H.b32("CUST_A"), x.custA, false, H.b32("REHABILITADO")], x.board);
+      assert.equal(await x.r.call("isLotValid", [H.b32("L1")]), true);
+      await colocar(x, C.ASSET_AUKA, f.bob, E18, "op2");
+    });
+
+    it("positivo: la Junta rota la llave del atestador; la anterior ya no atesta ni confirma entregas", async function () {
+      await loteListo(x, "L1", C.ASSET_AUKA, "CUST_A", x.custA);
+      await x.r.send("updateCustodian", [H.b32("CUST_A"), x.custA2, false, H.b32("ROTACION_LLAVE")], x.board);
+      assert.equal((await x.r.call("custodianOf", [H.b32("CUST_A")])).attestor.toLowerCase(), x.custA2.toLowerCase());
+      await H.expectRevert(atestar(x, "L1", x.custA), "NotCustodianAttestor");
+      await atestar(x, "L1", x.custA2);
+      await colocar(x, C.ASSET_AUKA, f.alice, 5n * E18, "op1");
+      await x.r.send("setLicenseGate", [x.gate.address], x.board);
+      await x.gate.send("set", [CUSTODIA_G, true], x.board);
+      await x.r.send("setChannel", [C.ASSET_AUKA, CH.PRESENCIAL, true, String(E18), 0, H.b32("LIC_G_TEST")], x.board);
+      const { id } = await pedir(x, C.ASSET_AUKA, 2n * E18, CH.PRESENCIAL, f.alice);
+      await hastaBloqueada(x, id, "L1", (await H.now()) + DIA);
+      await H.expectRevert(x.r.send("confirmDelivery", [id], x.custA), "NotCustodianAttestor");
+      await x.r.send("confirmDelivery", [id], x.custA2);
+      await H.expectRevert(
+        x.r.send("updateCustodian", [H.b32("CUST_X"), x.custA2, false, H.b32("R")], x.board),
+        H.b32("CUSTODIAN"),
+      );
+    });
+
+    it("adversario (tope agotado por historial): un lote LIBERADO deja su hueco; el tope cuenta sólo los activos", async function () {
+      for (let i = 0; i < 64; i++) {
+        await x.r.send("registerLot", [intake("T" + i, C.ASSET_AUKA, "CUST_A", C.XAU, "t" + i)], x.board);
+      }
+      await H.expectRevert(
+        x.r.send("registerLot", [intake("NUEVO", C.ASSET_AUKA, "CUST_A", C.XAU, "nuevo")], x.board),
+        H.b32("TOO_MANY_LOTS"),
+      );
+      for (let i = 0; i < 64; i++) await x.r.send("retireLot", [H.b32("T" + i), H.b32("SALIDA")], x.board);
+      assert.equal((await x.r.call("lotsOf", [C.ASSET_AUKA])).length, 0);
+      // La historia no se pierde: el lote sigue legible y su certificado sigue usado.
+      assert.equal(Number((await x.r.call("lotOf", [H.b32("T7")])).state), LOT.LIBERADO);
+      await H.expectRevert(x.r.send("registerLot", [intake("T7B", C.ASSET_AUKA, "CUST_A", C.XAU, "t7")], x.board), H.b32("CERT_ALREADY_USED"));
+      await x.r.send("registerLot", [intake("NUEVO", C.ASSET_AUKA, "CUST_A", C.XAU, "nuevo")], x.board);
+      const activos = await x.r.call("lotsOf", [C.ASSET_AUKA]);
+      assert.equal(activos.length, 1);
+      assert.equal(activos[0], H.b32("NUEVO"));
+    });
+
+    it("adversario (metales mezclados): la plata de AGKA no diluye la cuota del custodio interno sobre el oro de AUKA", async function () {
+      await x.r.send("setLicenseGate", [x.gate.address], x.board);
+      await x.gate.send("set", [CUSTODIA_G, true], x.board);
+      // Seis lotes de plata de 30 kg para AGKA, mitad en A y mitad en B.
+      for (let i = 0; i < 3; i++) {
+        await loteListo(x, "PA" + i, C.ASSET_AGKA, "CUST_A", x.custA, C.XAG, "pa" + i, 30, 30_000_000n);
+        await loteListo(x, "PB" + i, C.ASSET_AGKA, "CUST_B", x.custB, C.XAG, "pb" + i, 30, 30_000_000n);
+      }
+      // Límites de PRUEBA: 60 % independiente, 20 % interno, desde 1 oz.
+      await x.r.send("setConcentrationLimits", [6000, 2000, String(E18)], x.board);
+      // Ordenex quiere custodiar TODO el oro de AUKA: 100 % de ese metal, no un 6 %.
+      await x.r.send("registerLot", [intake("GI", C.ASSET_AUKA, "CUST_ORDENEX", C.XAU, "gi", 12_000_000n)], x.board);
+      await atestar(x, "GI", x.custInt);
+      await x.r.send("auditVerifyLot", [H.b32("GI"), (await H.now()) + 10 * DIA], x.auditor);
+      await H.expectRevert(x.r.send("assignLot", [H.b32("GI")], x.board), "ConcentrationExceeded");
+      const plata = await x.r.call("custodyOf", [C.ASSET_AGKA, H.b32("CUST_A")]);
+      assert.equal(BigInt(plata.custodianOz) * 2n, BigInt(plata.totalOz), "A y B, mitad y mitad de la plata");
+    });
+
+    it("adversario (lote vencido en el denominador): un lote que ya no cuenta no infla el total", async function () {
+      await x.r.send("setLicenseGate", [x.gate.address], x.board);
+      await x.gate.send("set", [CUSTODIA_G, true], x.board);
+      await loteListo(x, "A1", C.ASSET_AUKA, "CUST_A", x.custA, C.XAU, "a1", 2);
+      await loteListo(x, "B1", C.ASSET_AUKA, "CUST_B", x.custB, C.XAU, "b1", 30);
+      // Límites de PRUEBA: 100 % independiente (fuera de esta prueba), 34 % interno.
+      await x.r.send("setConcentrationLimits", [10000, 3400, 0], x.board);
+      await H.increaseTime(3 * DIA); // A1 vence
+      await x.r.send("registerLot", [intake("I1", C.ASSET_AUKA, "CUST_ORDENEX", C.XAU, "i1")], x.board);
+      await atestar(x, "I1", x.custInt);
+      await x.r.send("auditVerifyLot", [H.b32("I1"), (await H.now()) + 10 * DIA], x.auditor);
+      // Con A1 en el total sería 1/3 (33 %); sobre el metal vigente es 1/2.
+      const msg = await H.expectRevert(x.r.send("assignLot", [H.b32("I1")], x.board), "ConcentrationExceeded");
+      assert.ok(msg.includes("5000"), msg);
+      const c = await x.r.call("custodyOf", [C.ASSET_AUKA, H.b32("CUST_B")]);
+      assert.equal(c.totalOz.toString(), String(OZ_KG), "sólo B1 cuenta");
+    });
+
+    it("adversario (cuota excedida después de asignar): place() no coloca contra el custodio que ya supera su límite", async function () {
+      await x.r.send("setLicenseGate", [x.gate.address], x.board);
+      await x.gate.send("set", [CUSTODIA_G, true], x.board);
+      await loteListo(x, "A1", C.ASSET_AUKA, "CUST_A", x.custA);
+      await loteListo(x, "B1", C.ASSET_AUKA, "CUST_B", x.custB);
+      await x.r.send("setConcentrationLimits", [10000, 3400, 0], x.board);
+      await x.r.send("registerLot", [intake("I1", C.ASSET_AUKA, "CUST_ORDENEX", C.XAU, "i1")], x.board);
+      await atestar(x, "I1", x.custInt);
+      await x.r.send("auditVerifyLot", [H.b32("I1"), (await H.now()) + 10 * DIA], x.auditor);
+      await x.r.send("assignLot", [H.b32("I1")], x.board); // 1/3 ≤ 34 %
+      // Sale el metal de los independientes: la custodia interna pasa al 100 %.
+      await x.r.send("retireLot", [H.b32("A1"), H.b32("SALIDA")], x.board);
+      await x.r.send("retireLot", [H.b32("B1"), H.b32("SALIDA")], x.board);
+      assert.equal(await x.r.call("invariantHolds", [C.ASSET_AUKA]), true, "el metal sigue ahí");
+      assert.equal((await x.r.call("placementCapacityOz", [C.ASSET_AUKA])).toString(), "0");
+      await H.expectRevert(colocar(x, C.ASSET_AUKA, f.alice, E18, "op1"), "PlacementCapacityExceeded");
+      // Entra metal independiente y la cuota vuelve bajo el límite.
+      await loteListo(x, "A2", C.ASSET_AUKA, "CUST_A", x.custA, C.XAU, "a2");
+      await loteListo(x, "B2", C.ASSET_AUKA, "CUST_B", x.custB, C.XAU, "b2");
+      await colocar(x, C.ASSET_AUKA, f.alice, 90n * E18, "op1");
+    });
+
+    it("T-300-20: la tesorería no transfiere a un tercero sin RELEASE (token de prueba)", async function () {
+      await H.expectRevert(x.auka.send("transfer", [f.bob, String(E18)], f.treasury), "tesoreria sin RELEASE");
+      await loteListo(x, "L1", C.ASSET_AUKA, "CUST_A", x.custA);
+      await colocar(x, C.ASSET_AUKA, f.alice, E18, "op1");
+      await x.auka.send("transfer", [f.bob, String(E18)], f.alice);
+    });
+
+    it("adversario (unidades fuera de place()): la cobertura mide la tesorería real y la capacidad no se infla", async function () {
+      await loteListo(x, "L1", C.ASSET_AUKA, "CUST_A", x.custA);
+      await colocar(x, C.ASSET_AUKA, f.alice, 20n * E18, "op1");
+      // 2 unidades llegan a un tercero sin RELEASE (migración o integración que no cumple).
+      await x.auka.send("mintDirect", [f.bob, String(2n * E18)], x.board);
+      let cov = await x.r.call("coverage", [C.ASSET_AUKA]);
+      assert.equal(cov.unitsPlaced.toString(), String(22n * E18), "medido: suministro menos tesorería");
+      assert.equal(cov.unitsInTreasury.toString(), String(980n * E18), "saldo real de la tesorería");
+      assert.equal(cov.obligationsOz.toString(), String(22n * E18));
+      assert.equal((await x.r.call("assetOf", [C.ASSET_AUKA])).unitsPlaced.toString(), String(20n * E18), "el libro del motor no lo vio");
+      assert.equal((await x.r.call("placementCapacityOz", [C.ASSET_AUKA])).toString(), String(OZ_KG - 22n * E18));
+      // Bob redime sus 2 en ORIGEN: el libro baja a 18, pero Alice sigue con 20.
+      await x.r.send("setChannel", [C.ASSET_AUKA, CH.ORIGEN, true, 0, 50, H.ZERO32], x.board);
+      await x.r.sendValue("fundOrigenSettlement", [], x.board, 3500n * E18);
+      const { id } = await pedir(x, C.ASSET_AUKA, 2n * E18, CH.ORIGEN, f.bob);
+      await hastaBloqueada(x, id);
+      await x.r.send("settleInOrigen", [id], x.board);
+      cov = await x.r.call("coverage", [C.ASSET_AUKA]);
+      assert.equal(cov.unitsPlaced.toString(), String(20n * E18));
+      assert.equal((await x.r.call("placementCapacityOz", [C.ASSET_AUKA])).toString(), String(OZ_KG - 20n * E18));
+      // Con el cómputo deducido la capacidad subía a 14,15 y 14 más dejaban 34 unidades contra 32,15 oz.
+      await H.expectRevert(colocar(x, C.ASSET_AUKA, f.bob, 14n * E18, "op2"), "PlacementCapacityExceeded");
+      await colocar(x, C.ASSET_AUKA, f.bob, 12n * E18, "op3");
+      const terceros = BigInt(await x.auka.call("balanceOf", [f.alice])) + BigInt(await x.auka.call("balanceOf", [f.bob]));
+      assert.ok(terceros * 1n <= OZ_KG, "unidades en terceros " + terceros + " contra " + OZ_KG);
+      assert.equal(await x.r.call("invariantHolds", [C.ASSET_AUKA]), true);
+    });
+
+    it("positivo: SFSPLicenseRegistry es la compuerta real; la custodia interna se habilita y la cobertura se lee", async function () {
+      await V.desplegarLicencias(f);
+      const LIC = H.b32("LIC_AU_CUSTODIA_G_SINT");
+      await V.licenciaVigente(f, LIC, V.terminos(V.TIT.AU_CORP, V.TIPO.CUSTODIA_G, { operator: V.OPER.ORDENEX }));
+      await V.declararModulo(f, V.modulo(CUSTODIA_G, [[V.TIT.AU_CORP, V.TIPO.CUSTODIA_G]], V.AV.USO_INTERNO));
+      assert.equal(await f.lic.call("isModuleEnabled", [CUSTODIA_G]), true);
+      assert.equal(await f.lic.call("isModuleEnabled", [H.b32("MOD_NO_DECLARADO")]), false);
+      await x.r.send("setLicenseGate", [f.lic.address], x.board);
+      await loteListo(x, "L1", C.ASSET_AUKA, "CUST_A", x.custA);
+      await x.r.send("registerLot", [intake("LI", C.ASSET_AUKA, "CUST_ORDENEX", C.XAU, "ci")], x.board);
+      await atestar(x, "LI", x.custInt);
+      await x.r.send("auditVerifyLot", [H.b32("LI"), (await H.now()) + 10 * DIA], x.auditor);
+      await x.r.send("assignLot", [H.b32("LI")], x.board);
+      assert.equal((await x.r.call("coverage", [C.ASSET_AUKA])).coveredOz.toString(), String(2n * OZ_KG));
+      await colocar(x, C.ASSET_AUKA, f.alice, 40n * E18, "op1");
+      await x.r.send("setChannel", [C.ASSET_AUKA, CH.ENVIO, true, String(E18), 0, H.b32("LIC_G_TEST")], x.board);
+      // La licencia se suspende: la custodia interna deja de contar, sin revertir lecturas.
+      await V.transicion(f, LIC, V.LS.VIGENTE, V.LS.SUSPENDIDA);
+      assert.equal(await x.r.call("isLotValid", [H.b32("LI")]), false);
+      assert.equal((await x.r.call("coverage", [C.ASSET_AUKA])).coveredOz.toString(), String(OZ_KG));
+      await x.r.send("publishCoverage", [C.ASSET_AUKA], f.mallory);
+    });
+
+    it("adversario: una compuerta que no implementa la interfaz cuenta como licencia no otorgada; la cobertura no revierte", async function () {
+      await x.r.send("setLicenseGate", [x.gate.address], x.board);
+      await x.gate.send("set", [CUSTODIA_G, true], x.board);
+      await loteListo(x, "L1", C.ASSET_AUKA, "CUST_A", x.custA);
+      await x.r.send("registerLot", [intake("LI", C.ASSET_AUKA, "CUST_ORDENEX", C.XAU, "ci")], x.board);
+      await atestar(x, "LI", x.custInt);
+      await x.r.send("auditVerifyLot", [H.b32("LI"), (await H.now()) + 10 * DIA], x.auditor);
+      await x.r.send("assignLot", [H.b32("LI")], x.board);
+      // La Junta apunta a un contrato sin `isModuleEnabled` (aquí, el oráculo).
+      await x.r.send("setLicenseGate", [x.o.address], x.board);
+      const cov = await x.r.call("coverage", [C.ASSET_AUKA]);
+      assert.equal(cov.coveredOz.toString(), String(OZ_KG), "sólo cuenta el lote independiente");
+      await x.r.send("publishCoverage", [C.ASSET_AUKA], f.mallory);
+      await colocar(x, C.ASSET_AUKA, f.alice, E18, "op1");
+      await H.expectRevert(
+        x.r.send("setChannel", [C.ASSET_AUKA, CH.ENVIO, true, String(E18), 0, H.b32("LIC")], x.board),
+        H.b32("LICENCIA_NO_OTORGADA"),
+      );
+    });
+
+    it("adversario (doble cómputo por configuración): un token, un activo; corregir sólo mientras el activo está vacío", async function () {
+      const OTRO = H.b32("SFSP:COM:AGKA:FISICO");
+      await H.expectRevert(
+        x.r.send("configureAsset", [OTRO, C.XAG, x.agka.address, f.treasury, String(E18), true], x.board),
+        H.b32("TOKEN_ALREADY_CONFIGURED"),
+      );
+      assert.equal(await x.r.call("assetOfToken", [x.agka.address]), C.ASSET_AGKA);
+      // Un activo nuevo mal configurado (tesorería equivocada) se corrige mientras está vacío.
+      const t3 = await H.deploy("SFSPTokenCommodityDePrueba", [], x.board);
+      const t4 = await H.deploy("SFSPTokenCommodityDePrueba", [], x.board);
+      const NUEVO = H.b32("SFSP:COM:AUKA:NUEVO");
+      await x.r.send("configureAsset", [NUEVO, C.XAU, t3.address, f.bob, String(E18), true], x.board);
+      await x.r.send("configureAsset", [NUEVO, C.XAU, t3.address, f.treasury, String(E18), true], x.board);
+      assert.equal((await x.r.call("assetOf", [NUEVO])).treasuryWallet.toLowerCase(), f.treasury.toLowerCase());
+      await x.r.send("configureAsset", [NUEVO, C.XAU, t4.address, f.treasury, String(E18), true], x.board);
+      assert.equal(await x.r.call("assetOfToken", [t3.address]), H.ZERO32, "el token anterior queda libre");
+      assert.equal(await x.r.call("assetOfToken", [t4.address]), NUEVO);
+      // Con un canal fijado o con un lote, ya no.
+      await x.r.send("setChannel", [NUEVO, CH.ORIGEN, false, 0, 0, H.ZERO32], x.board);
+      await H.expectRevert(
+        x.r.send("configureAsset", [NUEVO, C.XAU, t4.address, f.treasury, String(E18), true], x.board),
+        H.b32("ALREADY_CONFIGURED"),
+      );
+      await x.r.send("registerLot", [intake("L1", C.ASSET_AUKA, "CUST_A", C.XAU, "c1")], x.board);
+      await H.expectRevert(
+        x.r.send("configureAsset", [C.ASSET_AUKA, C.XAU, x.auka.address, f.bob, String(E18), true], x.board),
+        H.b32("ALREADY_CONFIGURED"),
+      );
     });
   });
 });

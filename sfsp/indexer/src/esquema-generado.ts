@@ -36,7 +36,7 @@ export interface EventoGenerado {
   readonly camposDeAtribucion: readonly string[];
 }
 
-/** Los 67 eventos del §3, por su nombre canonico. */
+/** Los 69 eventos del §3, por su nombre canonico. */
 export type NombreEvento =
   | "AssetRegistered"
   | "PolicyUpdated"
@@ -86,6 +86,8 @@ export type NombreEvento =
   | "OraclePricePublished"
   | "CommodityAssetConfigured"
   | "CustodianRegistered"
+  | "CustodianUpdated"
+  | "AttestationValidityLimitSet"
   | "LicenseGateSet"
   | "ConcentrationLimitsSet"
   | "RedemptionChannelSet"
@@ -944,6 +946,37 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
     cantidades: [],
     camposDeAtribucion: [],
   },
+  CustodianUpdated: {
+    nombre: "CustodianUpdated",
+    emisor: "ReserveEngine",
+    significado: "SFSP-300 §9.2 · la Junta rota la llave del atestador de un custodio y lo suspende o rehabilita. Suspendido, ninguno de sus lotes cuenta para la cobertura, la capacidad ni la concentracion, aunque su atestacion siga vigente.",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "custodianId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "attestor", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "suspended", tipo: "bool", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["custodianId", "attestor", "suspended", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  AttestationValidityLimitSet: {
+    nombre: "AttestationValidityLimitSet",
+    emisor: "ReserveEngine",
+    significado: "SFSP-300 §9.2 · vigencia maxima de una atestacion de lote, en segundos. Sin ella no se atesta ningun lote (BLOCKED_DECISION); una atestacion mas larga se rechaza.",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "maxValiditySeconds", tipo: "uint64", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["maxValiditySeconds"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
   LicenseGateSet: {
     nombre: "LicenseGateSet",
     emisor: "ReserveEngine",
@@ -1327,6 +1360,8 @@ export const EVENTOS_CONOCIDOS: Readonly<Record<NombreEvento, string>> = {
   OraclePricePublished: "OracleRegistry",
   CommodityAssetConfigured: "ReserveEngine",
   CustodianRegistered: "ReserveEngine",
+  CustodianUpdated: "ReserveEngine",
+  AttestationValidityLimitSet: "ReserveEngine",
   LicenseGateSet: "ReserveEngine",
   ConcentrationLimitsSet: "ReserveEngine",
   RedemptionChannelSet: "ReserveEngine",

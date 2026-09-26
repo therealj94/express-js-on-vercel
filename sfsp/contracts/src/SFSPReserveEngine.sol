@@ -25,6 +25,7 @@ import {SFSPOracleRegistry} from "./SFSPOracleRegistry.sol";
 ///
 ///         Parámetros no decididos → BLOCKED_DECISION:
 ///           · límites de concentración por custodio (independiente e interno);
+///           · vigencia máxima de una atestación;
 ///           · canales de redención (mínimo y diferencial de la liquidación en ORIGEN).
 ///         Los canales físicos, además, exigen la licencia de custodia Clase G
 ///         vigente en la compuerta de licencias. Sin compuerta: cerrados.
@@ -89,6 +90,7 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         bool registered;
         bool internalCustody; // Au Corp./Ordenex: licencia Clase G + auditor + límite propio
         address attestor;
+        bool suspended; // la Junta lo suspende: sus lotes dejan de contar en el acto
         bytes32 jurisdiction;
     }
 
@@ -170,9 +172,13 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
     mapping(bytes32 => Redemption) private _redemptions;
     mapping(bytes32 => mapping(uint64 => bytes32)) private _queue;
     mapping(bytes32 => bool) private _usedOperation;
-    mapping(bytes32 => uint256) public custodianAssignedOz;
-    uint256 public totalAssignedOz;
+    /// @dev Un token, un activo: el mismo token bajo dos assetId partiría su
+    ///      contabilidad y saltaría `physicalAllowed` (v0.3 §9.2, no doble cómputo).
+    mapping(address => bytes32) public assetOfToken;
     Concentration private _concentration;
+    /// @notice Vigencia máxima de una atestación, en segundos. 0 = sin decidir
+    ///         (v0.3 §18): mientras sea 0 no se atesta (BLOCKED_DECISION).
+    uint64 public maxAttestationValidity;
     uint256 private _redemptionNonce;
 
     event CommodityAssetConfigured(
@@ -184,6 +190,8 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         bool physicalAllowed
     );
     event CustodianRegistered(bytes32 indexed custodianId, address indexed attestor, bool internalCustody, bytes32 jurisdiction);
+    event CustodianUpdated(bytes32 indexed custodianId, address indexed attestor, bool suspended, bytes32 reasonCode);
+    event AttestationValidityLimitSet(uint64 maxValiditySeconds);
     event LicenseGateSet(address indexed gate, address indexed by);
     event ConcentrationLimitsSet(uint16 maxIndependentBps, uint16 maxInternalBps, uint256 minTotalOz);
     event RedemptionChannelSet(
@@ -245,7 +253,17 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         // Unidades por onza = 10^decimales, divisor exacto de 1e18: sin restos de redondeo.
         if (unitsPerOunce == 0 || OZ % unitsPerOunce != 0) revert InvalidInput("UNITS_PER_OZ");
         CommodityAsset storage a = _assets[assetId];
-        if (a.configured) revert InvalidInput("ALREADY_CONFIGURED");
+        if (a.configured) {
+            // Corregir un error de configuración sólo mientras el activo esté vacío:
+            // sin lotes, sin colocaciones y sin canal fijado (sin canal no hay redenciones).
+            if (
+                _assetLots[assetId].length != 0 || a.unitsPlaced != 0 || _channels[assetId][0].set
+                    || _channels[assetId][1].set || _channels[assetId][2].set
+            ) revert InvalidInput("ALREADY_CONFIGURED");
+            delete assetOfToken[address(a.token)];
+        }
+        if (assetOfToken[token] != bytes32(0)) revert InvalidInput("TOKEN_ALREADY_CONFIGURED");
+        assetOfToken[token] = assetId;
         a.configured = true;
         a.metal = metal;
         a.token = ISFSPCommodityToken(token);
@@ -261,8 +279,31 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
     {
         if (custodianId == bytes32(0) || attestor == address(0) || jurisdiction == bytes32(0)) revert InvalidInput("CUSTODIAN");
         if (_custodians[custodianId].registered) revert InvalidInput("ALREADY_REGISTERED");
-        _custodians[custodianId] = Custodian(true, internalCustody, attestor, jurisdiction);
+        _custodians[custodianId] = Custodian(true, internalCustody, attestor, false, jurisdiction);
         emit CustodianRegistered(custodianId, attestor, internalCustody, jurisdiction);
+    }
+
+    /// @notice Rota la llave del atestador y suspende o rehabilita al custodio.
+    ///         Suspendido, ninguno de sus lotes cuenta (cobertura, capacidad,
+    ///         concentración) aunque tenga una atestación vigente.
+    function updateCustodian(bytes32 custodianId, address attestor, bool suspended, bytes32 reasonCode)
+        external
+        onlyRole(DBNX_BOARD)
+    {
+        Custodian storage c = _custodians[custodianId];
+        if (!c.registered || attestor == address(0) || reasonCode == bytes32(0)) revert InvalidInput("CUSTODIAN");
+        c.attestor = attestor;
+        c.suspended = suspended;
+        emit CustodianUpdated(custodianId, attestor, suspended, reasonCode);
+    }
+
+    /// @notice Vigencia máxima de una atestación · v0.3 §9.2 y §18 (pendiente).
+    /// @dev Se aplica al atestar. Una atestación ya vigente y más larga sigue
+    ///      hasta vencer, salvo que la Junta suspenda al custodio.
+    function setAttestationValidityLimit(uint64 maxValiditySeconds) external onlyRole(DBNX_BOARD) {
+        if (maxValiditySeconds == 0) revert InvalidInput("VALIDITY");
+        maxAttestationValidity = maxValiditySeconds;
+        emit AttestationValidityLimitSet(maxValiditySeconds);
     }
 
     function setLicenseGate(address gate) external onlyRole(DBNX_BOARD) {
@@ -304,8 +345,15 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         emit RedemptionChannelSet(assetId, uint8(channel), open, minUnits, spreadBps, licenseRef);
     }
 
+    /// @dev Una compuerta que revierte (o que no implementa la interfaz) cuenta
+    ///      como licencia NO otorgada: cerrado, nunca una lectura de cobertura rota.
     function _custodyLicensed() internal view returns (bool) {
-        return address(licenseGate) != address(0) && licenseGate.isModuleEnabled(MODULE_CUSTODY_CLASS_G);
+        if (address(licenseGate) == address(0)) return false;
+        try licenseGate.isModuleEnabled(MODULE_CUSTODY_CLASS_G) returns (bool ok) {
+            return ok;
+        } catch {
+            return false;
+        }
     }
 
     // =============================================================== lotes
@@ -322,6 +370,8 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         if (_lots[x.lotId].state != LotState.NINGUNO) revert InvalidInput("LOT_EXISTS");
         // No doble cómputo: un certificado de ensayo, un lote, un destino.
         if (_certUsed[x.assayCertHash]) revert InvalidInput("CERT_ALREADY_USED");
+        // Tope de lotes ACTIVOS (acota el gas de las lecturas): un lote LIBERADO
+        // sale de la lista y deja su hueco; su historia queda en los eventos.
         if (_assetLots[x.assetId].length >= MAX_LOTS_PER_ASSET) revert InvalidInput("TOO_MANY_LOTS");
         _certUsed[x.assayCertHash] = true;
 
@@ -351,6 +401,10 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         if (msg.sender != _custodians[l.custodianId].attestor) revert NotCustodianAttestor(lotId, msg.sender);
         if (evidenceId == bytes32(0) || insuranceRef == bytes32(0)) revert InvalidInput("EVIDENCE");
         if (validUntil <= block.timestamp || insuranceValidUntil <= block.timestamp) revert InvalidInput("VALIDITY");
+        // Una atestación a cien años haría contar el lote para siempre.
+        uint64 maxValidity = maxAttestationValidity;
+        if (maxValidity == 0) revert Blocked(SFSPCodes.BLOCKED_DECISION, bytes32("ATTESTATION_MAX_NOT_SET"));
+        if (validUntil > block.timestamp + maxValidity) revert InvalidInput("VALIDITY_TOO_LONG");
         l.evidenceId = evidenceId;
         l.attestedAt = uint64(block.timestamp);
         l.attestationValidUntil = validUntil;
@@ -377,18 +431,9 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         Custodian memory c = _custodians[l.custodianId];
         if (c.internalCustody && !_custodyLicensed()) revert Rejected(SFSPCodes.DENY_AUTHORIZATION, R_LICENSE);
         if (!_lotValid(l)) revert Rejected(SFSPCodes.UNKNOWN_SOURCE, bytes32("ATTESTATION_NOT_VALID"));
-        Concentration memory k = _concentration;
-        if (!k.set) revert Blocked(SFSPCodes.BLOCKED_DECISION, bytes32("CONCENTRATION_NOT_SET"));
-
-        uint256 newTotal = totalAssignedOz + l.fineOz;
-        uint256 newCust = custodianAssignedOz[l.custodianId] + l.fineOz;
-        if (newTotal >= k.minTotalOz) {
-            uint16 maxBps = c.internalCustody ? k.maxInternalBps : k.maxIndependentBps;
-            uint256 share = (newCust * BPS) / newTotal;
-            if (share > maxBps) revert ConcentrationExceeded(l.custodianId, share, maxBps);
-        }
-        totalAssignedOz = newTotal;
-        custodianAssignedOz[l.custodianId] = newCust;
+        if (!_concentration.set) revert Blocked(SFSPCodes.BLOCKED_DECISION, bytes32("CONCENTRATION_NOT_SET"));
+        (uint256 share, uint16 maxBps) = _share(l.assetId, l.custodianId, l.fineOz);
+        if (share > maxBps) revert ConcentrationExceeded(l.custodianId, share, maxBps);
         l.assigned = true;
         _setLotState(lotId, l, LotState.ASIGNADO, bytes32("ASSIGNED"));
     }
@@ -399,7 +444,6 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         if (l.state == LotState.NINGUNO || l.state == LotState.LIBERADO) revert InvalidTransition(uint8(l.state));
         if (l.ozCommitted != 0 || l.ozLocked != 0 || l.ozPendingDelivery != 0) revert InvalidInput("LOT_COMMITTED");
         if (reasonCode == bytes32(0)) revert InvalidInput("REASON");
-        if (l.assigned) _unassign(l, l.fineOz - l.ozDelivered);
         l.assigned = false;
         _setLotState(lotId, l, LotState.LIBERADO, reasonCode);
     }
@@ -415,14 +459,28 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         emit ReserveExpired(lotId, l.assetId, l.attestationValidUntil);
     }
 
-    function _unassign(Lot storage l, uint256 oz) internal {
-        totalAssignedOz -= oz;
-        custodianAssignedOz[l.custodianId] -= oz;
+    /// @dev Cuota del custodio sobre el metal VIGENTE del mismo activo, con `extra`
+    ///      onzas nuevas suyas. Un solo activo por metal (AUKA oro, AGKA plata):
+    ///      nunca se suman onzas de metales distintos, y un lote vencido o de un
+    ///      custodio suspendido no infla el total. `share` = 0 si el límite aún no aplica.
+    function _share(bytes32 assetId, bytes32 custodianId, uint256 extra)
+        internal
+        view
+        returns (uint256 share, uint16 maxBps)
+    {
+        Concentration memory k = _concentration;
+        (uint256 cust, uint256 total) = custodyOf(assetId, custodianId);
+        cust += extra;
+        total += extra;
+        maxBps = _custodians[custodianId].internalCustody ? k.maxInternalBps : k.maxIndependentBps;
+        if (k.set && total != 0 && total >= k.minTotalOz) share = (cust * BPS) / total;
     }
 
     function _lotValid(Lot storage l) internal view returns (bool) {
         if (block.timestamp >= l.attestationValidUntil || block.timestamp >= l.insuranceValidUntil) return false;
-        if (_custodians[l.custodianId].internalCustody) {
+        Custodian storage c = _custodians[l.custodianId];
+        if (c.suspended) return false;
+        if (c.internalCustody) {
             if (block.timestamp >= l.auditVerifiedUntil || !_custodyLicensed()) return false;
         }
         return true;
@@ -442,6 +500,19 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         if (prev == s) return;
         l.state = s;
         emit MetalLotStateChanged(lotId, l.assetId, uint8(prev), uint8(s), reason);
+        // LIBERADO (retirado o entregado del todo) ya no cuenta para nada: sale de
+        // la lista activa y libera su hueco en el tope de lotes.
+        if (s == LotState.LIBERADO) {
+            bytes32[] storage ids = _assetLots[l.assetId];
+            uint256 n = ids.length;
+            for (uint256 i = 0; i < n; i++) {
+                if (ids[i] == lotId) {
+                    ids[i] = ids[n - 1];
+                    ids.pop();
+                    return;
+                }
+            }
+        }
     }
 
     /// @dev Estado derivado de las cantidades, para lotes ya asignados.
@@ -465,6 +536,8 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         return _lots[lotId];
     }
 
+    /// @notice Lotes ACTIVOS del activo (los LIBERADO salen de la lista; su
+    ///         historia está en `MetalLotStateChanged` y en `lotOf`).
     function lotsOf(bytes32 assetId) external view returns (bytes32[] memory) {
         return _assetLots[assetId];
     }
@@ -494,25 +567,83 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
     }
 
     /// @notice Capacidad de colocación en onzas: verificadas, asignadas, vigentes y
-    ///         no comprometidas, y nunca más que el margen de cobertura (lo
-    ///         comprometido en un lote que venció sigue siendo obligación y ya no
-    ///         lo cubre nada).
+    ///         no comprometidas, de custodios dentro de su límite de concentración, y
+    ///         nunca más que el margen de cobertura (lo comprometido en un lote que
+    ///         venció sigue siendo obligación y ya no lo cubre nada).
     function placementCapacityOz(bytes32 assetId) public view returns (uint256 cap) {
         bytes32[] storage ids = _assetLots[assetId];
+        (bytes32[] memory over, uint256 nOver) = _overConcentrated(assetId);
         for (uint256 i = 0; i < ids.length; i++) {
-            Lot storage l = _lots[ids[i]];
-            if (_lotCounts(l)) cap += _lotFree(l);
+            cap += _placeableFree(_lots[ids[i]], over, nOver);
         }
         (uint256 covered, uint256 obligations,,,) = coverage(assetId);
         uint256 margin = covered > obligations ? covered - obligations : 0;
         if (margin < cap) cap = margin;
     }
 
+    /// @dev Libre de un lote para colocar: cuenta, tiene hueco y su custodio no
+    ///      está entre los que superan su límite de concentración (v0.3 §9.2).
+    function _placeableFree(Lot storage l, bytes32[] memory over, uint256 nOver) internal view returns (uint256) {
+        if (!_lotCounts(l)) return 0;
+        for (uint256 j = 0; j < nOver; j++) {
+            if (over[j] == l.custodianId) return 0;
+        }
+        return _lotFree(l);
+    }
+
+    /// @dev Custodios del activo por encima de su límite, sobre el metal vigente.
+    ///      Se calcula UNA vez por llamada (agrupado por custodio), no por lote.
+    function _overConcentrated(bytes32 assetId) internal view returns (bytes32[] memory over, uint256 nOver) {
+        Concentration memory k = _concentration;
+        bytes32[] storage ids = _assetLots[assetId];
+        uint256 len = ids.length;
+        bytes32[] memory cust = new bytes32[](len);
+        uint256[] memory oz = new uint256[](len);
+        uint256 m;
+        uint256 total;
+        for (uint256 i = 0; i < len; i++) {
+            Lot storage l = _lots[ids[i]];
+            if (!_lotCounts(l)) continue;
+            uint256 v = l.fineOz - l.ozDelivered;
+            total += v;
+            uint256 j;
+            while (j < m && cust[j] != l.custodianId) j++;
+            if (j == m) cust[m++] = l.custodianId;
+            oz[j] += v;
+        }
+        over = cust; // se reutiliza: sólo se escriben posiciones ya leídas
+        if (!k.set || total == 0 || total < k.minTotalOz) return (over, 0);
+        for (uint256 j = 0; j < m; j++) {
+            uint16 maxBps = _custodians[cust[j]].internalCustody ? k.maxInternalBps : k.maxIndependentBps;
+            if ((oz[j] * BPS) / total > maxBps) over[nOver++] = cust[j];
+        }
+    }
+
+    /// @notice Metal vigente del activo (onzas no entregadas de los lotes que
+    ///         cuentan) en total y en manos de `custodianId`: base de la concentración.
+    function custodyOf(bytes32 assetId, bytes32 custodianId) public view returns (uint256 custodianOz, uint256 totalOz) {
+        bytes32[] storage ids = _assetLots[assetId];
+        for (uint256 i = 0; i < ids.length; i++) {
+            Lot storage l = _lots[ids[i]];
+            if (!_lotCounts(l)) continue;
+            uint256 oz = l.fineOz - l.ozDelivered;
+            totalOz += oz;
+            if (l.custodianId == custodianId) custodianOz += oz;
+        }
+    }
+
     /// @notice Cobertura contra lo COLOCADO.
+    /// @dev Lo colocado se MIDE contra el saldo real de la tesorería, no se deduce:
+    ///      una unidad fuera de la tesorería que no pasó por `place()` (una salida
+    ///      que el token no debió permitir, o una acuñación directa a un tercero)
+    ///      cuenta igual como obligación, así que reduce la capacidad y, si no hay
+    ///      metal, rompe el invariante a la vista. El contador `assetOf().unitsPlaced`
+    ///      es el libro del motor; si difiere de `unitsPlaced` aquí, hay descuadre.
     /// @return coveredOz onzas asignadas, vigentes y no entregadas.
     /// @return obligationsOz colocado en onzas + obligaciones con tokens ya quemados.
-    /// @return unitsPlaced unidades en manos de terceros.
-    /// @return unitsInTreasury acuñado sin colocar (se reporta aparte, no cuenta).
+    /// @return unitsPlaced unidades en manos de terceros: el mayor entre el libro
+    ///         del motor y lo medido (suministro − saldo de la tesorería).
+    /// @return unitsInTreasury saldo real de la tesorería (se reporta aparte, no cuenta).
     /// @return oldestAttestedAt la atestación vigente más antigua (0 si no hay).
     function coverage(bytes32 assetId)
         public
@@ -528,13 +659,11 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
             if (oldestAttestedAt == 0 || l.attestedAt < oldestAttestedAt) oldestAttestedAt = l.attestedAt;
         }
         unitsPlaced = a.unitsPlaced;
-        obligationsOz = unitsToOzSafe(a, unitsPlaced) + a.ozPendingDelivery;
-        uint256 supply = a.configured ? a.token.totalSupply() : 0;
-        unitsInTreasury = supply > unitsPlaced ? supply - unitsPlaced : 0;
-    }
-
-    function unitsToOzSafe(CommodityAsset storage a, uint256 units) internal view returns (uint256) {
-        return a.unitsPerOunce == 0 ? 0 : units * (OZ / a.unitsPerOunce);
+        if (!a.configured) return (0, 0, 0, 0, 0);
+        uint256 supply = a.token.totalSupply();
+        unitsInTreasury = a.token.balanceOf(a.treasuryWallet);
+        if (supply > unitsInTreasury && supply - unitsInTreasury > unitsPlaced) unitsPlaced = supply - unitsInTreasury;
+        obligationsOz = unitsToOz(assetId, unitsPlaced) + a.ozPendingDelivery;
     }
 
     /// @notice Invariante SFSP-300 §3 contra lo colocado.
@@ -572,10 +701,10 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         _requireCoverage(assetId, oz);
         uint256 remaining = oz;
         bytes32[] storage ids = _assetLots[assetId];
+        (bytes32[] memory over, uint256 nOver) = _overConcentrated(assetId);
         for (uint256 i = 0; i < ids.length && remaining != 0; i++) {
             Lot storage l = _lots[ids[i]];
-            if (!_lotCounts(l)) continue;
-            uint256 free = _lotFree(l);
+            uint256 free = _placeableFree(l, over, nOver);
             if (free == 0) continue;
             uint256 take = free < remaining ? free : remaining;
             l.ozCommitted += take;
@@ -785,7 +914,6 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         l.ozPendingDelivery -= r.oz;
         l.ozDelivered += r.oz;
         _assets[r.assetId].ozPendingDelivery -= r.oz;
-        _unassign(l, r.oz);
         _refreshLot(r.lotId, l);
         _move(id, r, RedemptionState.ENTREGADA);
     }

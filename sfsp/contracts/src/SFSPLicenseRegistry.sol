@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {SFSPAccessControl} from "./lib/SFSPAccessControl.sol";
 import {SFSPAuthorization} from "./lib/SFSPAuthorization.sol";
 import {ISFSPGovernanceController} from "./lib/ISFSP.sol";
+import {ILicenseGate} from "./lib/ILicenseGate.sol";
 
 /// @title Registro de licencias (SFSP v0.3 §6 · SFSP-140).
 /// @notice Cada módulo del protocolo declara de qué licencias depende y una
@@ -21,7 +22,11 @@ import {ISFSPGovernanceController} from "./lib/ISFSP.sol";
 ///         aprobada con doble control y con motivo, recalculada aquí desde los
 ///         argumentos reales y consumida (patrón de `consumeAuthorization`).
 ///      Ningún número de licencia vive en el código: entra por la orden.
-contract SFSPLicenseRegistry is SFSPAccessControl {
+///      Implementa `ILicenseGate`: es la compuerta que reciben el motor de
+///      reservas y los demás módulos. El id del módulo es el que preguntan (por
+///      ejemplo `CUSTODIA_CLASE_G` para la custodia interna y los canales físicos),
+///      y gobierno lo declara con ese mismo id.
+contract SFSPLicenseRegistry is SFSPAccessControl, ILicenseGate {
     // Apéndice A · Licencia. El orden es parte del contrato: no se reordena.
     enum LicenseState { EN_TRAMITE, OTORGADA, VIGENTE, SUSPENDIDA, VENCIDA, REVOCADA }
 
@@ -167,6 +172,13 @@ contract SFSPLicenseRegistry is SFSPAccessControl {
         Module storage m = _modules[moduleId];
         if (!m.exists || m.declared == Availability.PROXIMAMENTE) return false;
         return _allEffective(m);
+    }
+
+    /// @notice `ILicenseGate`: habilitado = disponible (declarado, no PROXIMAMENTE
+    ///         y con TODAS sus licencias otorgadas y vigentes). Un módulo no
+    ///         declarado responde false: cerrado, nunca abierto por defecto.
+    function isModuleEnabled(bytes32 moduleId) external view returns (bool) {
+        return isModuleAvailable(moduleId);
     }
 
     /// @notice Disponibilidad PÚBLICA efectiva, en la taxonomía única.

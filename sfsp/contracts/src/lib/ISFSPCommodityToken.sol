@@ -8,8 +8,13 @@ pragma solidity 0.8.28;
 ///           · colocar (salida de tesorería a un tercero) sólo con capacidad;
 ///           · bloquear las unidades del tenedor al pedir la redención;
 ///           · quemar lo bloqueado ANTES o a la vez que la entrega del metal.
+///         Requisito del token (SFSP-300 §0.2, T-300-20): una billetera de
+///         tesorería sólo saca unidades hacia un tercero por `placementTransfer`.
+///         El motor no se fía sólo de eso: mide `balanceOf(tesorería)` contra
+///         `totalSupply` y cuenta como obligación todo lo que está fuera.
 /// @dev `SFSPRegulatedAsset` todavía no implementa esta interfaz (pendiente de
-///      integrar); las pruebas usan `SFSPTokenCommodityDePrueba`.
+///      integrar); las pruebas usan `SFSPTokenCommodityDePrueba`, que cumple el
+///      requisito anterior.
 interface ISFSPCommodityToken {
     function totalSupply() external view returns (uint256);
     function balanceOf(address account) external view returns (uint256);

@@ -104,9 +104,9 @@ Eventos de `eventos.json` que no vienen del Apéndice B:
 | SFSP-160 | `OrgDidRegistered`, `OrgDidControllerChanged`, `OrgDidKeyChanged`, `OrgDidAttestorChanged`, `OrgDidDocumentChanged`, `OrgDidDeactivated` (registro `did:sfsp` de organizaciones) | ✅ `SFSPDidRegistry` |
 | SFSP-410 | `InternalAccountFlagged`, `MintBudgetSet`, `MintBudgetRevoked`, `MintOnDemand` (`SFSPIssuanceController`); `NativeAbsorbed`, `NativeReleased`, `ReleaseBudgetSet`, `ReleaseBudgetRevoked`, `VaultInternalAccountFlagged` (`SFSPNativeVault`) | ✅ |
 | v0.3 fase 2 · licencias y elegibilidad | `LicenseRegistered`, `PlacementBasisSet`, `ExposureParamsSet`, `DbnxApprovalRecorded`, `DbnxApprovalRevoked` | ✅ `SFSPLicenseRegistry`, `SFSPEligibilityEngine`, `SFSPIssuanceController` |
-| v0.3 fase 2 · oráculo, reservas y tesorería | `OracleParametersSet`, `OracleParametersCleared`, `OraclePricePublished`, `CommodityAssetConfigured`, `CustodianRegistered`, `LicenseGateSet`, `ConcentrationLimitsSet`, `RedemptionChannelSet`, `MetalLotRegistered`, `MetalLotStateChanged`, `LotAuditVerified`, `UnitsPlaced`, `OrigenSettlementFunded`, `DeskParametersSet`, `DeskParametersCleared`, `MarketSpreadObserved`, `DeskFunded`, `DeskTradeExecuted` | ✅ `SFSPOracleRegistry`, `SFSPReserveEngine`, `SFSPTreasuryDesk` |
+| v0.3 fase 2 · oráculo, reservas y tesorería | `OracleParametersSet`, `OracleParametersCleared`, `OraclePricePublished`, `CommodityAssetConfigured`, `CustodianRegistered`, `CustodianUpdated`, `AttestationValidityLimitSet`, `LicenseGateSet`, `ConcentrationLimitsSet`, `RedemptionChannelSet`, `MetalLotRegistered`, `MetalLotStateChanged`, `LotAuditVerified`, `UnitsPlaced`, `OrigenSettlementFunded`, `DeskParametersSet`, `DeskParametersCleared`, `MarketSpreadObserved`, `DeskFunded`, `DeskTradeExecuted` | ✅ `SFSPOracleRegistry`, `SFSPReserveEngine`, `SFSPTreasuryDesk` |
 
-Total en `eventos.json` (draft-0.6): **67 eventos**, 61 con contrato y 6 sin contrato. La prueba H15 de `contracts/` (`test/11-eventos-contra-spec.js`) exige la firma exacta de cada uno que tenga contrato, y la exigirá del resto en cuanto se escriba.
+Total en `eventos.json` (draft-0.6): **69 eventos**, 63 con contrato y 6 sin contrato. La prueba H15 de `contracts/` (`test/11-eventos-contra-spec.js`) exige la firma exacta de cada uno que tenga contrato, y la exigirá del resto en cuanto se escriba.
 
 ---
 
