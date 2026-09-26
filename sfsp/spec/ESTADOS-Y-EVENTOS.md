@@ -62,7 +62,7 @@ El v0.2 da al activo **un único estado en línea**. El repositorio usa **seis e
 | Evento del v0.2 | Nombre canónico | Contrato |
 |---|---|---|
 | Activo registrado | `AssetRegistered` | ✅ implementado |
-| Passport actualizado | `PassportUpdated` | nuevo, sin contrato |
+| Passport actualizado | `PassportUpdated` | ✅ `SFSPAssetRegistry` (v0.3 fase 2) |
 | Estado de activo modificado | `AssetStatusChanged` (uno por eje) | nuevo, sin contrato |
 | Supply autorizado | `SupplyAuthorized` | ✅ |
 | Ampliación declarada | `SupplyExpansionDeclared` | nuevo, sin contrato |
@@ -71,8 +71,8 @@ El v0.2 da al activo **un único estado en línea**. El repositorio usa **seis e
 | División ejecutada | `SplitExecuted` | nuevo, sin contrato |
 | Vínculo de identidad modificado | `IdentityLinkChanged` (solo la referencia del vínculo) | nuevo, sin contrato |
 | Elegibilidad evaluada | `EligibilityRecorded` (solo un compromiso; **sin identidad, dirección ni resultado**) | nuevo, sin contrato |
-| Límite de exposición registrado | `ExposureLimitRecorded` | nuevo, sin contrato |
-| Declaración del adquirente registrada | `AcquirerDeclarationRecorded` | nuevo, sin contrato |
+| Límite de exposición registrado | `ExposureLimitRecorded` | ✅ `SFSPEligibilityEngine` (v0.3 fase 2) |
+| Declaración del adquirente registrada | `AcquirerDeclarationRecorded` | ✅ `SFSPEligibilityEngine` (v0.3 fase 2; antes figuraba en el registro de activos) |
 | Reserva atestada | `ReserveAttested` | sin contrato (ya estaba) |
 | Reserva vencida | `ReserveExpired` | sin contrato (ya estaba) |
 | Cobertura publicada | `CoveragePublished` (contra lo **colocado**; tesorería aparte) | nuevo, sin contrato |
@@ -82,16 +82,17 @@ El v0.2 da al activo **un único estado en línea**. El repositorio usa **seis e
 | Operación liquidada | `TradeSettled` | ✅ |
 | Recuperación ejecutada | `RecoveryExecuted` | ✅ |
 | Migración reclamada | `MigrationClaimed` | ✅ |
-| Licencia modificada | `LicenseStatusChanged` | nuevo, sin contrato |
-| Módulo habilitado o bloqueado | `ModuleAvailabilityChanged` | nuevo, sin contrato |
-| País modificado | `CountryStatusChanged` | nuevo, sin contrato |
+| Licencia modificada | `LicenseStatusChanged` | ✅ `SFSPLicenseRegistry` (v0.3 fase 2) |
+| Módulo habilitado o bloqueado | `ModuleAvailabilityChanged` | ✅ `SFSPLicenseRegistry` (v0.3 fase 2) |
+| País modificado | `CountryStatusChanged` | ✅ `SFSPEligibilityEngine` (v0.3 fase 2) |
 | Permiso de red modificado | `NetworkPermissionChanged` | nuevo, sin contrato |
 | Acción de gobernanza | `GovernanceAction` | ✅ |
 | Conciliación registrada | `ConciliationRecorded` | nuevo, sin contrato |
 | *(del repo, no del v0.2)* | `PolicyUpdated`, `TreasuryReleased` | ✅ |
+| *(del v0.3 fase 2, no del v0.2)* | `LicenseRegistered`, `PlacementBasisSet`, `ExposureParamsSet`, `DbnxApprovalRecorded`, `DbnxApprovalRevoked` | ✅ |
 | *(de SFSP-160, no del v0.2)* | `OrgDidRegistered`, `OrgDidControllerChanged`, `OrgDidKeyChanged`, `OrgDidAttestorChanged`, `OrgDidDocumentChanged`, `OrgDidDeactivated` (registro `did:sfsp` de organizaciones) | ✅ `SFSPDidRegistry` |
 
-Total: **35 eventos**, 18 con contrato y 17 sin contrato. La prueba H15 de `contracts/` exige la firma exacta de cada uno que tenga contrato, y la exigirá del resto en cuanto se escriba.
+Total en `eventos.json` (draft-0.6): **49 eventos**, 38 con contrato y 11 sin contrato (incluye los nueve de SFSP-410, que esta tabla no lista). La prueba H15 de `contracts/` exige la firma exacta de cada uno que tenga contrato, y la exigirá del resto en cuanto se escriba.
 
 ---
 

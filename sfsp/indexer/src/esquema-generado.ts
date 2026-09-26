@@ -5,7 +5,7 @@
 // La prueba 'esquema.test.ts' falla si este archivo y el JSON divergen.
 
 /** Version de la fuente unica desde la que se genero este modulo. */
-export const VERSION_ESPEC_EVENTOS = "draft-0.5";
+export const VERSION_ESPEC_EVENTOS = "draft-0.6";
 
 /** Un campo de un evento, con todo lo que el indexador necesita saber. */
 export interface CampoEventoGenerado {
@@ -36,7 +36,7 @@ export interface EventoGenerado {
   readonly camposDeAtribucion: readonly string[];
 }
 
-/** Los 44 eventos del §3, por su nombre canonico. */
+/** Los 49 eventos del §3, por su nombre canonico. */
 export type NombreEvento =
   | "AssetRegistered"
   | "PolicyUpdated"
@@ -81,7 +81,12 @@ export type NombreEvento =
   | "NativeReleased"
   | "ReleaseBudgetSet"
   | "ReleaseBudgetRevoked"
-  | "VaultInternalAccountFlagged";
+  | "VaultInternalAccountFlagged"
+  | "LicenseRegistered"
+  | "PlacementBasisSet"
+  | "ExposureParamsSet"
+  | "DbnxApprovalRecorded"
+  | "DbnxApprovalRevoked";
 
 /** Esquema completo por evento. Generado: editar el JSON, no esto. */
 export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
@@ -357,7 +362,7 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
     significado: "Cambia un campo del Asset Passport; conserva la version anterior consultable (v0.2 §4.2, Apendice B).",
     atribucion: "POR_ACTIVO",
     afectaSuministro: "NINGUNO",
-    implementadoEnContratos: false,
+    implementadoEnContratos: true,
     campos: [
       { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
       { nombre: "previousVersion", tipo: "uint32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
@@ -463,7 +468,7 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
     significado: "Registro del regimen de limite de exposicion aplicable a una identidad (Mercado de Crecimiento). Solo la referencia de la declaracion.",
     atribucion: "GLOBAL",
     afectaSuministro: "NINGUNO",
-    implementadoEnContratos: false,
+    implementadoEnContratos: true,
     campos: [
       { nombre: "declarationRef", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
       { nombre: "regime", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
@@ -475,11 +480,11 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
   },
   AcquirerDeclarationRecorded: {
     nombre: "AcquirerDeclarationRecorded",
-    emisor: "AssetRegistry",
+    emisor: "EligibilityEngine",
     significado: "El adquirente reconoce los terminos, con la version del documento aceptado (v0.2 §8.3 bloque 7).",
     atribucion: "POR_ACTIVO",
     afectaSuministro: "NINGUNO",
-    implementadoEnContratos: false,
+    implementadoEnContratos: true,
     campos: [
       { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
       { nombre: "declarationRef", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
@@ -514,7 +519,7 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
     significado: "Transicion de estado de una licencia del registro (SFSP-140).",
     atribucion: "GLOBAL",
     afectaSuministro: "NINGUNO",
-    implementadoEnContratos: false,
+    implementadoEnContratos: true,
     campos: [
       { nombre: "licenseId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
       { nombre: "previousState", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
@@ -531,7 +536,7 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
     significado: "Un modulo se habilita o se bloquea por dependencia de licencia (SFSP-140).",
     atribucion: "GLOBAL",
     afectaSuministro: "NINGUNO",
-    implementadoEnContratos: false,
+    implementadoEnContratos: true,
     campos: [
       { nombre: "moduleId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
       { nombre: "licenseId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
@@ -548,7 +553,7 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
     significado: "Cambio de estado de un pais en la matriz de jurisdicciones (SFSP-120 §0.2).",
     atribucion: "GLOBAL",
     afectaSuministro: "NINGUNO",
-    implementadoEnContratos: false,
+    implementadoEnContratos: true,
     campos: [
       { nombre: "countryCode", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
       { nombre: "previousState", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
@@ -851,6 +856,95 @@ export const ESQUEMA_EVENTOS: Readonly<Record<NombreEvento, EventoGenerado>> = {
     cantidades: [],
     camposDeAtribucion: [],
   },
+  LicenseRegistered: {
+    nombre: "LicenseRegistered",
+    emisor: "LicenseRegistry",
+    significado: "Alta de una licencia o autorizacion limitada en el registro (SFSP-140), siempre en EN_TRAMITE. Titular, operador, jurisdiccion y tipo; nunca el numero, que llega con el otorgamiento.",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "licenseId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "holder", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "licenseType", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "operator", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "jurisdiction", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "kind", tipo: "uint8", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["licenseId", "holder", "licenseType", "operator", "jurisdiction", "kind"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
+  PlacementBasisSet: {
+    nombre: "PlacementBasisSet",
+    emisor: "EligibilityEngine",
+    significado: "Gobierno fija la licencia o autorizacion (titular, tipo) en la que se sustenta la colocacion primaria de un activo (SFSP v0.3 §6-§7). Si es la notificacion de oferta exenta, el motor limita la suscripcion a su alcance.",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "holder", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "licenseType", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["assetId", "holder", "licenseType", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: ["assetId"],
+  },
+  ExposureParamsSet: {
+    nombre: "ExposureParamsSet",
+    emisor: "EligibilityEngine",
+    significado: "Gobierno fija porcentaje, piso, techo y vigencia de la autodeclaracion del limite de exposicion del Mercado de Crecimiento (SFSP v0.3 §8.5, §18). Sin este evento el limite responde BLOCKED_DECISION.",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "digest", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "incomeBps", tipo: "uint32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "floor", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "ceiling", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "declarationTtl", tipo: "uint64", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["digest", "incomeBps", "floor", "ceiling", "declarationTtl"],
+    cantidades: ["floor", "ceiling"],
+    camposDeAtribucion: [],
+  },
+  DbnxApprovalRecorded: {
+    nombre: "DbnxApprovalRecorded",
+    emisor: "IssuanceController",
+    significado: "DBNX registra el hash de un documento de aprobacion de emision: activo, cantidad exacta y vigencia (SFSP v0.3 §5). NO es emision ni capacidad: es la pieza que la acunacion verifica en forma antes de ejecutar.",
+    atribucion: "POR_ACTIVO",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "docHash", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "assetId", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: true, esCantidad: false },
+      { nombre: "signer", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "amount", tipo: "uint256", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: true },
+      { nombre: "validFrom", tipo: "uint64", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "validUntil", tipo: "uint64", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["docHash", "assetId", "signer", "amount", "validFrom", "validUntil"],
+    cantidades: ["amount"],
+    camposDeAtribucion: ["assetId"],
+  },
+  DbnxApprovalRevoked: {
+    nombre: "DbnxApprovalRevoked",
+    emisor: "IssuanceController",
+    significado: "DBNX retira un documento de aprobacion no usado (SFSP v0.3 §5).",
+    atribucion: "GLOBAL",
+    afectaSuministro: "NINGUNO",
+    implementadoEnContratos: true,
+    campos: [
+      { nombre: "docHash", tipo: "bytes32", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "by", tipo: "address", indexado: true, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+      { nombre: "reasonCode", tipo: "bytes32", indexado: false, obligatorio: true, atribuyeActivo: false, esCantidad: false },
+    ],
+    requeridos: ["docHash", "by", "reasonCode"],
+    cantidades: [],
+    camposDeAtribucion: [],
+  },
 };
 
 /** Nombre de evento -> emisor declarado. Compatibilidad con el §3. */
@@ -877,7 +971,7 @@ export const EVENTOS_CONOCIDOS: Readonly<Record<NombreEvento, string>> = {
   IdentityLinkChanged: "IdentityAdapter",
   EligibilityRecorded: "EligibilityEngine",
   ExposureLimitRecorded: "EligibilityEngine",
-  AcquirerDeclarationRecorded: "AssetRegistry",
+  AcquirerDeclarationRecorded: "EligibilityEngine",
   CoveragePublished: "CommodityEngine",
   LicenseStatusChanged: "LicenseRegistry",
   ModuleAvailabilityChanged: "LicenseRegistry",
@@ -899,6 +993,11 @@ export const EVENTOS_CONOCIDOS: Readonly<Record<NombreEvento, string>> = {
   ReleaseBudgetSet: "NativeVault",
   ReleaseBudgetRevoked: "NativeVault",
   VaultInternalAccountFlagged: "NativeVault",
+  LicenseRegistered: "LicenseRegistry",
+  PlacementBasisSet: "EligibilityEngine",
+  ExposureParamsSet: "EligibilityEngine",
+  DbnxApprovalRecorded: "IssuanceController",
+  DbnxApprovalRevoked: "IssuanceController",
 };
 
 /**

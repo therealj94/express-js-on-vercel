@@ -37,6 +37,12 @@ contract SFSPAssetRegistry is SFSPAccessControl {
     // quedarse con el activo viejo descongelado y el nuevo ya emitido, es decir,
     // con doble circulación. Esto se declara una vez y no se deshace nunca.
     event PermanentExclusionDeclared(bytes32 indexed assetId, bytes32 evidenceRoot, uint64 declaredAt);
+    /// @dev v0.3 §4.2 · toda modificación de los campos v0.3 del pasaporte o de
+    ///      su identificador jerárquico sube la versión y deja la anterior
+    ///      consultable (`passportDetailsAt`), con fecha y motivo.
+    event PassportUpdated(
+        bytes32 indexed assetId, uint32 previousVersion, uint32 newVersion, bytes32 passportHash, bytes32 reasonCode
+    );
 
     error AlreadyRegistered(bytes32 assetId);
     error NotRegistered(bytes32 assetId);
@@ -49,6 +55,12 @@ contract SFSPAssetRegistry is SFSPAccessControl {
     error AuthorizationActionMismatch(bytes32 expected, bytes32 got);
     error PolicyVersionMismatch(uint32 expected, uint32 got);
     error PolicyContentMismatch(bytes32 expected, bytes32 got);
+    // v0.3 §4.2 · pasaporte ampliado e identificador jerárquico.
+    error PassportFieldInvalid(uint8 field, bytes32 reason);
+    error PassportNotAuthorized(bytes32 digest);
+    error HierarchicalIdInvalid(bytes32 reason);
+    error HierarchicalIdAlreadyAssigned(bytes32 assetId);
+    error ReasonRequired();
 
     mapping(bytes32 => SFSPTypes.Passport) private _passports;
     mapping(bytes32 => bool) private _registered;
@@ -67,6 +79,27 @@ contract SFSPAssetRegistry is SFSPAccessControl {
     ///      esta política de la del motor de elegibilidad: una aprobación de una
     ///      no sirve para la otra aunque coincidieran activo y versiones.
     bytes32 public constant POLICY_SCOPE = bytes32("SFSP:GOV:PASSPORT_POLICY");
+
+    // ------------------------------------------------ v0.3 §4.2 · pasaporte ampliado
+
+    /// @dev Alcance del contenido de una actualización de los campos v0.3.
+    bytes32 public constant PASSPORT_SCOPE = bytes32("SFSP:GOV:PASSPORT_UPDATE");
+    bytes32 public constant ACTION_PASSPORT_UPDATE = bytes32("PASSPORT_UPDATE");
+    bytes32 public constant REASON_ID_ASSIGNED = bytes32("ID_JERARQUICO_ASIGNADO");
+
+    /// @dev Metadatos de cada versión: cuándo, por qué y la huella de lo vigente.
+    struct PassportVersion {
+        uint64 at;
+        bytes32 reasonCode;
+        bytes32 passportHash;
+    }
+
+    mapping(bytes32 => uint32) private _passportVersion;                                   // assetId => versión
+    mapping(bytes32 => mapping(uint32 => SFSPTypes.PassportDetails)) private _detailsAt;   // historia
+    mapping(bytes32 => mapping(uint32 => PassportVersion)) private _versionMeta;
+    mapping(bytes32 => SFSPTypes.HierarchicalId) private _hid;                             // assetId => id
+    mapping(bytes32 => bytes32) private _assetByHid;                                       // hash(id) => assetId
+    mapping(bytes32 => uint32) private _lastSerial;                                        // hash(clase, autoridad) => último
 
     constructor(address board) SFSPAccessControl(board) {}
 
@@ -101,6 +134,14 @@ contract SFSPAssetRegistry is SFSPAccessControl {
         _registered[p.assetId] = true;
         _policyVersion[p.assetId] = 1;
         _assetIndex.push(p.assetId);
+        // v0.3 §4.2 · el pasaporte nace en la versión 1, con los campos v0.3 sin
+        // declarar. Declararlos es una actualización versionada con motivo.
+        _passportVersion[p.assetId] = 1;
+        _versionMeta[p.assetId][1] = PassportVersion({
+            at: uint64(block.timestamp),
+            reasonCode: bytes32("REGISTRO"),
+            passportHash: _passportHash(p.assetId, 1)
+        });
 
         emit AssetRegistered(p.assetId, p.issuerId, uint8(p.implementationProfile));
     }
@@ -315,5 +356,256 @@ contract SFSPAssetRegistry is SFSPAccessControl {
         r.methodologyVersion = methodologyVersion;
         r.evaluatedAt = uint64(block.timestamp);
         emit RiskChanged(assetId, previous, uint8(level), methodologyVersion, msg.sender);
+    }
+
+    // ======================================================================
+    // v0.3 §4.2 · campos fechados, versionado e identificador jerárquico
+    // ======================================================================
+
+    function passportVersionOf(bytes32 assetId) external view returns (uint32) {
+        return _passportVersion[assetId];
+    }
+
+    /// @notice Campos v0.3 en bruto de la versión vigente.
+    /// @dev Para auditoría. Una interfaz NO debe presentar estos valores sin
+    ///      pasar por `passportFieldStatus`: un campo vencido se muestra como
+    ///      vencido y no como el último valor conocido.
+    function passportDetailsOf(bytes32 assetId) external view returns (SFSPTypes.PassportDetails memory) {
+        if (!_registered[assetId]) revert NotRegistered(assetId);
+        return _detailsAt[assetId][_passportVersion[assetId]];
+    }
+
+    /// @notice Una versión anterior, tal como estaba: un adquirente tiene que
+    ///         poder acreditar bajo qué condiciones adquirió.
+    function passportDetailsAt(bytes32 assetId, uint32 version)
+        external
+        view
+        returns (SFSPTypes.PassportDetails memory details, PassportVersion memory meta)
+    {
+        if (!_registered[assetId]) revert NotRegistered(assetId);
+        if (version == 0 || version > _passportVersion[assetId]) revert InvalidPassport(bytes32("VERSION_UNKNOWN"));
+        return (_detailsAt[assetId][version], _versionMeta[assetId][version]);
+    }
+
+    /// @notice Lectura de UN campo fechado con su estado.
+    /// @param field 0 auditor, 1 valuador, 2 custodio/fiduciario, 3 segmento,
+    ///        4 cobertura (valor = ratio en puntos básicos), 5 calendario de
+    ///        liberación, 6 condiciones de redención, 7 licencias, 8 raíz documental.
+    /// @return status NO_DECLARADO, VIGENTE o VENCIDO.
+    /// @return value el valor SOLO si está vigente; vencido devuelve 0, porque
+    ///         presentar un dato caduco sin advertencia induce a error (§4.2).
+    /// @return asOf fecha del dato.
+    /// @return validUntil fin de la vigencia.
+    function passportFieldStatus(bytes32 assetId, uint8 field)
+        public
+        view
+        returns (SFSPTypes.FieldStatus status, bytes32 value, uint64 asOf, uint64 validUntil)
+    {
+        if (!_registered[assetId]) revert NotRegistered(assetId);
+        SFSPTypes.PassportDetails storage d = _detailsAt[assetId][_passportVersion[assetId]];
+        if (field == 4) {
+            SFSPTypes.DatedRatio storage r = d.coverage;
+            if (r.asOf == 0) return (SFSPTypes.FieldStatus.NO_DECLARADO, bytes32(0), 0, 0);
+            if (block.timestamp >= r.validUntil) {
+                return (SFSPTypes.FieldStatus.VENCIDO, bytes32(0), r.asOf, r.validUntil);
+            }
+            return (SFSPTypes.FieldStatus.VIGENTE, bytes32(uint256(r.ratioBps)), r.asOf, r.validUntil);
+        }
+        SFSPTypes.DatedField storage f = _datedField(d, field);
+        if (f.value == bytes32(0)) return (SFSPTypes.FieldStatus.NO_DECLARADO, bytes32(0), 0, 0);
+        if (block.timestamp >= f.validUntil) return (SFSPTypes.FieldStatus.VENCIDO, bytes32(0), f.asOf, f.validUntil);
+        return (SFSPTypes.FieldStatus.VIGENTE, f.value, f.asOf, f.validUntil);
+    }
+
+    /// @notice Segmento vigente del activo. `inForce == false` si no está
+    ///         declarado o venció: el motor de elegibilidad no lo adivina.
+    function segmentOf(bytes32 assetId) external view returns (bytes32 segment, bool inForce) {
+        if (!_registered[assetId]) return (bytes32(0), false);
+        (SFSPTypes.FieldStatus st, bytes32 v,,) = passportFieldStatus(assetId, 3);
+        return (v, st == SFSPTypes.FieldStatus.VIGENTE);
+    }
+
+    function _datedField(SFSPTypes.PassportDetails storage d, uint8 field)
+        internal
+        view
+        returns (SFSPTypes.DatedField storage)
+    {
+        if (field == 0) return d.auditor;
+        if (field == 1) return d.valuator;
+        if (field == 2) return d.custodian;
+        if (field == 3) return d.segment;
+        if (field == 5) return d.releaseSchedule;
+        if (field == 6) return d.redemptionTerms;
+        if (field == 7) return d.licenses;
+        if (field == 8) return d.documentRoot;
+        revert InvalidPassport(bytes32("UNKNOWN_FIELD"));
+    }
+
+    /// @notice Compromiso del contenido de una actualización del pasaporte.
+    function passportUpdateContent(bytes32 assetId, SFSPTypes.PassportDetails calldata d, bytes32 reasonCode)
+        public
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encode(PASSPORT_SCOPE, assetId, d, reasonCode));
+    }
+
+    /// @notice Declara o modifica los campos v0.3 del pasaporte con una orden
+    ///         de gobierno y motivo. Sube la versión y conserva la anterior.
+    /// @dev Payload del §12.1: `assetId` el activo, `amount` la versión anterior,
+    ///      `amountSecondary` la nueva y `evidenceRoot` = `passportUpdateContent`.
+    ///      El rol TECH_OPS EJECUTA; la autorización es la orden.
+    function updatePassportDetails(
+        bytes32 assetId,
+        SFSPTypes.PassportDetails calldata d,
+        bytes32 reasonCode,
+        SFSPAuthorization.Payload calldata auth,
+        bytes32 approvedDigest
+    ) external onlyRole(TECH_OPS) {
+        if (!_registered[assetId]) revert NotRegistered(assetId);
+        if (reasonCode == bytes32(0)) revert ReasonRequired();
+        _validateDetails(d);
+        uint32 previous = _passportVersion[assetId];
+        _authorizePassportUpdate(assetId, previous, passportUpdateContent(assetId, d, reasonCode), auth, approvedDigest);
+        _detailsAt[assetId][previous + 1] = d;
+        _bumpVersion(assetId, previous, previous + 1, reasonCode);
+    }
+
+    /// @dev Separado para mantener el marco de pila dentro de lo que admite Paris.
+    function _authorizePassportUpdate(
+        bytes32 assetId,
+        uint32 previous,
+        bytes32 contenido,
+        SFSPAuthorization.Payload calldata auth,
+        bytes32 approvedDigest
+    ) internal {
+        if (address(governance) == address(0)) revert GovernanceNotWired();
+        if (auth.action != ACTION_PASSPORT_UPDATE) {
+            revert AuthorizationActionMismatch(ACTION_PASSPORT_UPDATE, auth.action);
+        }
+        if (auth.assetId != assetId) revert AuthorizationActionMismatch(assetId, auth.assetId);
+        if (auth.amount != previous) revert PolicyVersionMismatch(previous, uint32(auth.amount));
+        if (auth.amountSecondary != previous + 1) {
+            revert PolicyVersionMismatch(previous + 1, uint32(auth.amountSecondary));
+        }
+        if (auth.evidenceRoot != contenido) revert PolicyContentMismatch(contenido, auth.evidenceRoot);
+        bytes32 label = governance.authorizationActionOf(approvedDigest);
+        if (label != ACTION_PASSPORT_UPDATE) revert AuthorizationActionMismatch(ACTION_PASSPORT_UPDATE, label);
+        if (!governance.isAuthorizationApproved(approvedDigest)) revert PassportNotAuthorized(approvedDigest);
+        SFSPAuthorization.Payload memory m = auth;
+        SFSPAuthorization.authorize(m, approvedDigest);
+        governance.consumeAuthorization(approvedDigest);
+    }
+
+    function _bumpVersion(bytes32 assetId, uint32 previous, uint32 next, bytes32 reasonCode) internal {
+        _passportVersion[assetId] = next;
+        bytes32 h = _passportHash(assetId, next);
+        _versionMeta[assetId][next] = PassportVersion({at: uint64(block.timestamp), reasonCode: reasonCode, passportHash: h});
+        emit PassportUpdated(assetId, previous, next, h, reasonCode);
+    }
+
+    /// @dev Huella de lo que describe la versión: campos v0.3 + id jerárquico.
+    function _passportHash(bytes32 assetId, uint32 version) internal view returns (bytes32) {
+        return keccak256(abi.encode(assetId, version, _detailsAt[assetId][version], _hid[assetId]));
+    }
+
+    /// @dev Cada campo fechado: sin valor, sin fechas; con valor, fecha no
+    ///      futura y vigencia posterior a la fecha.
+    function _validateDetails(SFSPTypes.PassportDetails calldata d) internal view {
+        _validateField(0, d.auditor);
+        _validateField(1, d.valuator);
+        _validateField(2, d.custodian);
+        _validateField(3, d.segment);
+        if (
+            d.segment.value != bytes32(0) && d.segment.value != SFSPTypes.SEGMENT_PRINCIPAL
+                && d.segment.value != SFSPTypes.SEGMENT_CRECIMIENTO
+        ) {
+            revert PassportFieldInvalid(3, bytes32("SEGMENT_UNKNOWN"));
+        }
+        if (d.coverage.asOf == 0) {
+            if (d.coverage.ratioBps != 0 || d.coverage.validUntil != 0) {
+                revert PassportFieldInvalid(4, bytes32("UNDECLARED_WITH_DATA"));
+            }
+        } else {
+            if (d.coverage.asOf > block.timestamp) revert PassportFieldInvalid(4, bytes32("DATE_IN_FUTURE"));
+            if (d.coverage.validUntil <= d.coverage.asOf) revert PassportFieldInvalid(4, bytes32("WINDOW"));
+        }
+        _validateField(5, d.releaseSchedule);
+        _validateField(6, d.redemptionTerms);
+        _validateField(7, d.licenses);
+        _validateField(8, d.documentRoot);
+    }
+
+    function _validateField(uint8 idx, SFSPTypes.DatedField calldata f) internal view {
+        if (f.value == bytes32(0)) {
+            if (f.asOf != 0 || f.validUntil != 0) revert PassportFieldInvalid(idx, bytes32("UNDECLARED_WITH_DATA"));
+            return;
+        }
+        if (f.asOf == 0) revert PassportFieldInvalid(idx, bytes32("DATE_REQUIRED"));
+        if (f.asOf > block.timestamp) revert PassportFieldInvalid(idx, bytes32("DATE_IN_FUTURE"));
+        if (f.validUntil <= f.asOf) revert PassportFieldInvalid(idx, bytes32("WINDOW"));
+    }
+
+    // ------------------------------------------------ identificador jerárquico
+
+    function hierarchicalIdOf(bytes32 assetId) external view returns (SFSPTypes.HierarchicalId memory) {
+        return _hid[assetId];
+    }
+
+    function assetByHierarchicalId(bytes32 assetClass, bytes32 authority, uint32 serial)
+        external
+        view
+        returns (bytes32)
+    {
+        return _assetByHid[keccak256(abi.encode(assetClass, authority, serial))];
+    }
+
+    /// @notice Asigna el identificador jerárquico estable (clase / autoridad /
+    ///         correlativo). Una sola vez: después no cambia, aunque cambie el
+    ///         contrato del activo, porque no se deriva de su dirección.
+    /// @dev El correlativo NO lo elige el llamador: es el siguiente de
+    ///      (clase, autoridad), así que no hay huecos ni repetidos.
+    function assignHierarchicalId(bytes32 assetId, bytes32 assetClass, bytes32 authority)
+        external
+        onlyRole(TECH_OPS)
+        returns (uint32 serial)
+    {
+        if (!_registered[assetId]) revert NotRegistered(assetId);
+        if (_hid[assetId].serial != 0) revert HierarchicalIdAlreadyAssigned(assetId);
+        if (
+            assetClass != bytes32("SECURITY") && assetClass != bytes32("COMMODITY")
+                && assetClass != bytes32("MONETARY") && assetClass != bytes32("UTILITY")
+        ) {
+            revert HierarchicalIdInvalid(bytes32("CLASS"));
+        }
+        _validateAuthority(authority);
+        bytes32 pair = keccak256(abi.encode(assetClass, authority));
+        serial = _lastSerial[pair] + 1;
+        _lastSerial[pair] = serial;
+        _hid[assetId] = SFSPTypes.HierarchicalId({assetClass: assetClass, authority: authority, serial: serial});
+        _assetByHid[keccak256(abi.encode(assetClass, authority, serial))] = assetId;
+
+        uint32 previous = _passportVersion[assetId];
+        _detailsAt[assetId][previous + 1] = _detailsAt[assetId][previous];
+        _bumpVersion(assetId, previous, previous + 1, REASON_ID_ASSIGNED);
+    }
+
+    /// @dev Autoridad: 1 a 16 caracteres [A-Z0-9_], alineados a la izquierda y
+    ///      sin bytes nulos intermedios. Así «DBNX» no tiene dos codificaciones.
+    function _validateAuthority(bytes32 a) internal pure {
+        bool ended;
+        uint256 len;
+        for (uint256 i = 0; i < 32; i++) {
+            bytes1 c = a[i];
+            if (c == 0) {
+                ended = true;
+                continue;
+            }
+            if (ended || i >= 16) revert HierarchicalIdInvalid(bytes32("AUTHORITY_FORMAT"));
+            bool ok = (c >= 0x41 && c <= 0x5A) || (c >= 0x30 && c <= 0x39) || c == 0x5F;
+            if (!ok) revert HierarchicalIdInvalid(bytes32("AUTHORITY_CHARSET"));
+            len++;
+        }
+        if (len == 0) revert HierarchicalIdInvalid(bytes32("AUTHORITY_EMPTY"));
     }
 }

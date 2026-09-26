@@ -9,9 +9,10 @@
     "contratos se comprueban contra el mismo archivo (ver PENDIENTE-CONTRATOS-EVENTOS.md).",
     "Nada aqui contiene direcciones reales ni valores economicos.",
     "draft-0.4: se anaden los eventos del Apendice B del borrador SFSP v0.2 que faltaban, todos sin contrato todavia (implementadoEnContratos: false). La correspondencia con el Apendice B esta en spec/ESTADOS-Y-EVENTOS.md.",
-    "draft-0.5: SFSP-410 (politica de suministro: circulante = usuarios). Se anaden los eventos del cupo de emision, de las cuentas internas y de la boveda nativa de ORIGEN."
+    "draft-0.5: SFSP-410 (politica de suministro: circulante = usuarios). Se anaden los eventos del cupo de emision, de las cuentas internas y de la boveda nativa de ORIGEN.",
+    "draft-0.6: SFSP v0.3 fase 2 (puntos 1-3). Tienen contrato LicenseStatusChanged y ModuleAvailabilityChanged (SFSPLicenseRegistry), CountryStatusChanged, ExposureLimitRecorded y AcquirerDeclarationRecorded (SFSPEligibilityEngine; esta ultima cambia de emisor: la declaracion del adquirente se registra donde se exige, en el motor) y PassportUpdated (SFSPAssetRegistry). Se anaden LicenseRegistered, PlacementBasisSet, ExposureParamsSet, DbnxApprovalRecorded y DbnxApprovalRevoked."
   ],
-  "version": "draft-0.5",
+  "version": "draft-0.6",
   "reglas": [
     "El nombre canonico de un evento es el de este archivo. Un nombre retirado no se reutiliza: se declara en 'aliasesRetirados' y se sigue decodificando al canonico.",
     "Todo evento que cambie el suministro lleva 'assetId'. Sin 'assetId' el evento no se puede atribuir y el suministro del activo sale DESCONOCIDO.",
@@ -751,7 +752,7 @@
       "significado": "Cambia un campo del Asset Passport; conserva la version anterior consultable (v0.2 §4.2, Apendice B).",
       "atribucion": "POR_ACTIVO",
       "afectaSuministro": "NINGUNO",
-      "implementadoEnContratos": false,
+      "implementadoEnContratos": true,
       "campos": [
         {
           "nombre": "assetId",
@@ -1035,7 +1036,7 @@
       "significado": "Registro del regimen de limite de exposicion aplicable a una identidad (Mercado de Crecimiento). Solo la referencia de la declaracion.",
       "atribucion": "GLOBAL",
       "afectaSuministro": "NINGUNO",
-      "implementadoEnContratos": false,
+      "implementadoEnContratos": true,
       "campos": [
         {
           "nombre": "declarationRef",
@@ -1065,11 +1066,11 @@
     },
     {
       "nombre": "AcquirerDeclarationRecorded",
-      "emisor": "AssetRegistry",
+      "emisor": "EligibilityEngine",
       "significado": "El adquirente reconoce los terminos, con la version del documento aceptado (v0.2 §8.3 bloque 7).",
       "atribucion": "POR_ACTIVO",
       "afectaSuministro": "NINGUNO",
-      "implementadoEnContratos": false,
+      "implementadoEnContratos": true,
       "campos": [
         {
           "nombre": "assetId",
@@ -1161,7 +1162,7 @@
       "significado": "Transicion de estado de una licencia del registro (SFSP-140).",
       "atribucion": "GLOBAL",
       "afectaSuministro": "NINGUNO",
-      "implementadoEnContratos": false,
+      "implementadoEnContratos": true,
       "campos": [
         {
           "nombre": "licenseId",
@@ -1203,7 +1204,7 @@
       "significado": "Un modulo se habilita o se bloquea por dependencia de licencia (SFSP-140).",
       "atribucion": "GLOBAL",
       "afectaSuministro": "NINGUNO",
-      "implementadoEnContratos": false,
+      "implementadoEnContratos": true,
       "campos": [
         {
           "nombre": "moduleId",
@@ -1245,7 +1246,7 @@
       "significado": "Cambio de estado de un pais en la matriz de jurisdicciones (SFSP-120 §0.2).",
       "atribucion": "GLOBAL",
       "afectaSuministro": "NINGUNO",
-      "implementadoEnContratos": false,
+      "implementadoEnContratos": true,
       "campos": [
         {
           "nombre": "countryCode",
@@ -1997,6 +1998,248 @@
           "nombre": "internalAccount",
           "tipo": "bool",
           "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "by",
+          "tipo": "address",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "reasonCode",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "LicenseRegistered",
+      "emisor": "LicenseRegistry",
+      "significado": "Alta de una licencia o autorizacion limitada en el registro (SFSP-140), siempre en EN_TRAMITE. Titular, operador, jurisdiccion y tipo; nunca el numero, que llega con el otorgamiento.",
+      "atribucion": "GLOBAL",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        {
+          "nombre": "licenseId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "holder",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "licenseType",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "operator",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "jurisdiction",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "kind",
+          "tipo": "uint8",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "PlacementBasisSet",
+      "emisor": "EligibilityEngine",
+      "significado": "Gobierno fija la licencia o autorizacion (titular, tipo) en la que se sustenta la colocacion primaria de un activo (SFSP v0.3 §6-§7). Si es la notificacion de oferta exenta, el motor limita la suscripcion a su alcance.",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "holder",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "licenseType",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "reasonCode",
+          "tipo": "bytes32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "ExposureParamsSet",
+      "emisor": "EligibilityEngine",
+      "significado": "Gobierno fija porcentaje, piso, techo y vigencia de la autodeclaracion del limite de exposicion del Mercado de Crecimiento (SFSP v0.3 §8.5, §18). Sin este evento el limite responde BLOCKED_DECISION.",
+      "atribucion": "GLOBAL",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        {
+          "nombre": "digest",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "incomeBps",
+          "tipo": "uint32",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "floor",
+          "tipo": "uint256",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": true
+        },
+        {
+          "nombre": "ceiling",
+          "tipo": "uint256",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": true
+        },
+        {
+          "nombre": "declarationTtl",
+          "tipo": "uint64",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "DbnxApprovalRecorded",
+      "emisor": "IssuanceController",
+      "significado": "DBNX registra el hash de un documento de aprobacion de emision: activo, cantidad exacta y vigencia (SFSP v0.3 §5). NO es emision ni capacidad: es la pieza que la acunacion verifica en forma antes de ejecutar.",
+      "atribucion": "POR_ACTIVO",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        {
+          "nombre": "docHash",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "assetId",
+          "tipo": "bytes32",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": true,
+          "esCantidad": false
+        },
+        {
+          "nombre": "signer",
+          "tipo": "address",
+          "indexado": true,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "amount",
+          "tipo": "uint256",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": true
+        },
+        {
+          "nombre": "validFrom",
+          "tipo": "uint64",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        },
+        {
+          "nombre": "validUntil",
+          "tipo": "uint64",
+          "indexado": false,
+          "obligatorio": true,
+          "atribuyeActivo": false,
+          "esCantidad": false
+        }
+      ]
+    },
+    {
+      "nombre": "DbnxApprovalRevoked",
+      "emisor": "IssuanceController",
+      "significado": "DBNX retira un documento de aprobacion no usado (SFSP v0.3 §5).",
+      "atribucion": "GLOBAL",
+      "afectaSuministro": "NINGUNO",
+      "implementadoEnContratos": true,
+      "campos": [
+        {
+          "nombre": "docHash",
+          "tipo": "bytes32",
+          "indexado": true,
           "obligatorio": true,
           "atribuyeActivo": false,
           "esCantidad": false

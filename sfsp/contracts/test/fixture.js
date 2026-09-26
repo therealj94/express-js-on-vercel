@@ -217,6 +217,9 @@ async function deployAll() {
   const alice = acc[5];
   const bob = acc[6];
   const mallory = acc[7]; // sin alta en ningún propósito: fuente desconocida, no "denegado por política"
+  // v0.3 §5 · DBNX registra los documentos de aprobación de emisión. Es una
+  // cuenta DISTINTA del emisor: DBNX autoriza, Orden Global ejecuta.
+  const dbnx = acc[9];
 
   const registry = await H.deploy("SFSPAssetRegistry", [board], board);
   const governance = await H.deploy(
@@ -256,6 +259,7 @@ async function deployAll() {
   await identity.send("grantRole", [await identity.call("ATTESTOR"), board], board);
   await engine.send("grantRole", [await engine.call("TECH_OPS"), board], board);
   await issuance.send("grantRole", [await issuance.call("ISSUER"), board], board);
+  await issuance.send("grantRole", [await issuance.call("DBNX"), dbnx], board);
   await settlement.send("grantRole", [await settlement.call("TECH_OPS"), board], board);
   await migration.send("grantRole", [await migration.call("ATTESTOR"), board], board);
   for (const a of [assetNew, assetOld]) {
@@ -315,7 +319,7 @@ async function deployAll() {
   await settlement.send("registerCanonicalAsset", [ASSET_NEW, assetNew.address], board);
 
   return {
-    acc, board, signers, treasury, alice, bob, mallory,
+    acc, board, signers, treasury, alice, bob, mallory, dbnx,
     registry, governance, identity, engine, assetNew, assetOld,
     SUBJ, SALT, PURPOSE_BASE,
     issuance, vault, settlement, migration, fee,

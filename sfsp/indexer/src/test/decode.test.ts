@@ -14,9 +14,15 @@ const DEL_160 = ['OrgDidRegistered','OrgDidControllerChanged','OrgDidKeyChanged'
 // SFSP-410 · política de suministro: cupo de emisión, cuentas internas y bóveda nativa.
 const DEL_410 = ['InternalAccountFlagged', 'MintBudgetSet', 'MintBudgetRevoked', 'MintOnDemand', 'NativeAbsorbed', 'NativeReleased', 'ReleaseBudgetSet', 'ReleaseBudgetRevoked', 'VaultInternalAccountFlagged'] as const;
 
-test('los quince eventos del §3, los catorce del v0.2 los seis de SFSP-160 y los nueve de SFSP-410 estan registrados', () => {
-  for (const n of [...DEL_TRES, ...DEL_V02, ...DEL_160, ...DEL_410]) assert.ok(n in EVENTOS_CONOCIDOS, 'falta ' + n);
-  assert.equal(Object.keys(EVENTOS_CONOCIDOS).length, DEL_TRES.length + DEL_V02.length + DEL_160.length + DEL_410.length);
+// SFSP v0.3 fase 2 · licencias, base de colocación, exposición y aprobación DBNX.
+const DEL_V03 = ['LicenseRegistered', 'PlacementBasisSet', 'ExposureParamsSet', 'DbnxApprovalRecorded', 'DbnxApprovalRevoked'] as const;
+
+test('los quince eventos del §3, los catorce del v0.2, los seis de SFSP-160, los nueve de SFSP-410 y los cinco del v0.3 estan registrados', () => {
+  const todos = [...DEL_TRES, ...DEL_V02, ...DEL_160, ...DEL_410, ...DEL_V03];
+  for (const n of todos) assert.ok(n in EVENTOS_CONOCIDOS, 'falta ' + n);
+  assert.equal(Object.keys(EVENTOS_CONOCIDOS).length, todos.length);
+  assert.equal(EVENTOS_CONOCIDOS.AcquirerDeclarationRecorded, 'EligibilityEngine');
+  assert.equal(EVENTOS_CONOCIDOS.LicenseStatusChanged, 'LicenseRegistry');
   assert.equal(EVENTOS_CONOCIDOS.MintExecuted, 'IssuanceController');
   assert.equal(EVENTOS_CONOCIDOS.RiskChanged, 'AssetRegistry');
 });
