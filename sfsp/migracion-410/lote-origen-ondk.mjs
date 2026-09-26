@@ -22,17 +22,20 @@ import {
   aTexto, E18, keccak256, defaultAbiCoder, toUtf8Bytes, Interface, arbol, prueba, hexZeroPad,
 } from "./lib/comun.mjs";
 import { clasificar } from "./lib/clasificacion.mjs";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { AQUI, RAIZ_SFSP } from "./lib/comun.mjs";
 
 const OBJETIVO = BigInt(process.env.OBJETIVO_WEI || E18.toString()); // 1 ORIGEN
-const tenedores = JSON.parse(readFileSync(RUTAS.tenedores, "utf8"));
+// La foto clasificada y la hoja de aceptación son opcionales: sin hoja nadie es
+// «firme» (todo el lote queda para decisión) y la clase sale del censo.
+const tenedores = existsSync(RUTAS.tenedores) ? JSON.parse(readFileSync(RUTAS.tenedores, "utf8")) : { activos: [] };
 const censo = JSON.parse(readFileSync(RUTAS.censoOndk, "utf8"));
-const hojas = leerXlsx(RUTAS.aceptacion);
+const hojas = existsSync(RUTAS.aceptacion) ? leerXlsx(RUTAS.aceptacion) : {};
+if (!existsSync(RUTAS.aceptacion)) console.log("sin hoja de aceptación: ningún envío es firme; la clase sale del censo");
 const { internas, mencionesPrueba, contratos } = clasificar(tenedores, censo, hojas);
-const ONDK = contratos.ONDK;
+const ONDK = contratos.ONDK || norm(censo.resumen.contrato);
 
 // Estado de cada dirección en la hoja de aceptación, para ONDK y para ORIGEN.
 const estadoHoja = (asset, addr) => {
@@ -41,7 +44,8 @@ const estadoHoja = (asset, addr) => {
   const r = (hojas["En revisión"] || []).find((f) => f[0] === asset && norm(f[1] || "") === k);
   if (r) return "EN_REVISION(" + (String(r[4] || "").trim() || "pendiente") + ")";
   if ((hojas["Se elimina"] || []).some((f) => f[0] === asset && norm(f[1] || "") === k)) return "SE_ELIMINA";
-  return "AUSENTE";
+  const c = censo.tenedores.find((t) => norm(t.address) === k);
+  return c ? "SIN_HOJA(censo: " + c.clase + ")" : "AUSENTE";
 };
 
 const b = await bloqueFijo(process.env.BLOQUE);

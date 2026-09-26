@@ -16,6 +16,7 @@ Nada de lo que hay aquí firma ni envía transacciones. El cliente RPC
 |---|---|
 | `construir-padron.mjs` | Padrón por activo (ONDK, AUKA, IBS, HARV): beneficiarios, árbol de Merkle, pruebas, pendientes, excluidos, conflictos y reserva por ranura. |
 | `verificar-padron.mjs` | Verificación independiente, sin red, de los padrones ya construidos. |
+| `censo-ondk-5550.mjs` | Censo de ONDK en la 5550: resuelve cada clave de saldo del contrato a su dirección cruzando fuentes (respaldo de la 8532, Veta, Genesis ID, eventos), relee en vivo y concilia contra `totalSupply()`. Produce el `censo-ondk.json` de los otros dos. |
 | `lote-origen-ondk.mjs` | Lote «todo tenedor de ONDK con dirección llega a ≥ 1 ORIGEN», sin firmar, en dos formatos. `--simular` lo ejecuta en hardhat local. |
 | `simular-lote-origen.cjs` | Simulacro del lote en la cadena hardhat en memoria (chainId 31337). |
 | `lib/comun.mjs` | RPC de sólo lectura, Merkle idéntico al contrato, ids, lector xlsx mínimo, CSV. |
@@ -32,6 +33,47 @@ Nada de lo que hay aquí firma ni envía transacciones. El cliente RPC
 | `SALIDA` | Carpeta de salida de datos. |
 | `RPC` | Nodo de la 5550 (lectura). Detrás del proxy del entorno: `NODE_USE_ENV_PROXY=1`. |
 
+## Censo de ONDK en la 5550 (26-sep-2026)
+
+```bash
+NODE_USE_ENV_PROXY=1 SALIDA=… BLOQUE=<n> \
+FUENTES=<copia del respaldo S3 sin llaves/ ni testnet-5534/>:<exportación Veta>:<exportación Genesis ID> \
+INTERNAS=<internas.json fuera del repo> EN_REVISION=<en-revision.json fuera del repo> \
+node censo-ondk-5550.mjs
+```
+
+- El script **se niega a leer** cualquier ruta con `llaves/`, `testnet-5534/`, `.tar`/`.tar.gz` o `.key`, aunque esté dentro de una fuente.
+- Una clave `R` del inventario es de `A` si `keccak256(abi.encode(A, 0)) == R`
+  (saldo). Si no, se prueba como permiso: `keccak256(abi.encode(S, keccak256(abi.encode(A, 1))))`.
+- Se comprueba `balanceOf(A) == ranura(R)` para cada tenedor. Si no coincide, se aborta.
+- Además se hace un barrido de `balanceOf` sobre todas las candidatas: la 8532 se
+  movió después de la foto del 10-ago, así que el inventario del génesis no es la
+  última palabra.
+- Sin la hoja de aceptación, la clase sale del censo:
+  - `INTERNAS` → `INTERNA-OrdenGlobal`;
+  - `EN_REVISION` → `EN-REVISION`;
+  - con código → `CONTRATO`;
+  - el resto → `USUARIO`.
+
+  Sin la hoja, además, ningún envío del lote es «firme».
+
+**Resultado en el bloque 273.383** (datos fuera del repositorio):
+
+| | |
+|---|---|
+| Claves de mapping de ONDK en el inventario | 139 (+5 fijas) |
+| Resueltas a dirección | **139 / 139**: 138 saldos y 1 permiso. 87 sólo aparecen en `traspaso/` del respaldo S3 |
+| Tenedores con saldo | 134: 121 usuarios, 3 en revisión, 9 internas (propuesta D25), 1 contrato |
+| `totalSupply` | 555.000.000 ONDK |
+| Suma con dirección | 554.999.195,5 |
+| **Residuo sin clave conocida** | **804,5 ONDK** |
+
+El residuo tiene una explicación. En la 8532, entre la foto del 10-ago y el corte,
+cuatro billeteras movieron ONDK sin dejar evento en la 5550. El destino de 804,5
+ONDK no aparece en ninguna fuente disponible. Puede estar en Veta o Genesis ID. En
+la 5550 no se puede enumerar el almacenamiento: Bonsai no sirve `debug_storageRangeAt`.
+No entra en `S0` ni en el lote.
+
 ## Reconstruir
 
 ```bash
@@ -39,6 +81,7 @@ cd sfsp/migracion-410
 export NODE_USE_ENV_PROXY=1
 BLOQUE_CORTE=<bloque> node construir-padron.mjs   # padron-<ACTIVO>.json/.csv + raices-merkle.json
 node verificar-padron.mjs                          # recalcula hojas, raíces, pruebas y S0
+node censo-ondk-5550.mjs                           # censo-ondk.json/.csv (CENSO_ONDK de los siguientes)
 node lote-origen-ondk.mjs --simular                # lote-origen-ondk.* + simulacion-lote-origen.json
 cd ../contracts && npx hardhat test                # incluye 18-migracion-padron.js
 ```
