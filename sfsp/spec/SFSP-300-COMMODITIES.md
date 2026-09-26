@@ -101,7 +101,21 @@ Esto **sustituye** el `null` de «mínimo de redención física» en §5 por los
 
 ### 0.5 Diferencia con el código actual
 
-No hay código de esta serie: ni lotes, ni capacidad de colocación, ni redención, ni el parámetro de canales. Los eventos `ReserveAttested`, `ReserveExpired`, `CoveragePublished` y `RedemptionUpdated` están en `eventos.json` sin contrato. `SFSPIssuanceController` aplica hoy R1 a toda clase, también a `COM` (ver §0.2). Todo es el punto 5 de la fase 2 del plan v0.3.
+**Estado del código (26-sep-2026, plan v0.3 fase 2 punto 5, sin desplegar):** `contracts/src/SFSPReserveEngine.sol` implementa:
+- lotes con los estados del Apéndice A del v0.3;
+- atestaciones que vencen solas;
+- capacidad de colocación y cobertura contra lo colocado;
+- no doble cómputo por certificado;
+- límite de concentración por custodio (`BLOCKED_DECISION` hasta que la Junta lo fije);
+- redención con quema anterior o simultánea a la entrega.
+
+La liquidación en ORIGEN pasa por `SFSPOracleRegistry`: AUKA por denominación y AGKA por el ratio oro/plata. Los canales físicos quedan cerrados sin licencia Clase G (interfaz `ILicenseGate`). Pruebas: `contracts/test/24-reservas-commodities.js`.
+
+El motor aplica el v0.3: acuña a tesorería sin metal y coloca solo con capacidad. Es lo mismo que dice esta serie desde el draft-0.5, donde la enmienda SFSP-410 quedó revertida para commodities. `SFSPIssuanceController` todavía aplica R1 a `COM`, y hay que alinearlo.
+
+Pendientes:
+- el token de AUKA/AGKA aún no implementa `ISFSPCommodityToken`;
+- **por decidir:** el contrato usa 1 AUKA = 1.710,6925 ORIGEN (31,1035 g × 55) y el v0.3 fija 1.710,69.
 
 ### 0.6 Pruebas de aceptación nuevas
 

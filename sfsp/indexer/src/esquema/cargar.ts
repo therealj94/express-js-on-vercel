@@ -60,6 +60,9 @@ const TIPOS_ADMITIDOS = new Set([
   'uint256',
   'uint64',
   'uint32',
+  // Puntos básicos (diferenciales, tolerancias, límites) del oráculo, las
+  // reservas y la tesorería (SFSP v0.3 fase 2).
+  'uint16',
   'uint8',
   'bool',
   'string',

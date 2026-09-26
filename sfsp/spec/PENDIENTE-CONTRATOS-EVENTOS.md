@@ -114,11 +114,14 @@ la única forma de leer una fracción sin inventar el denominador.
 
 ## 5 · Eventos del §3 todavía sin contrato
 
-`ReserveAttested`, `ReserveExpired` (emisor `ReserveEngine`) y
-`RedemptionUpdated` (emisor `CommodityEngine`) están en el §3 del contrato interno
-y en `spec/eventos.json`, con `implementadoEnContratos: false`. No existe contrato
-que los emita. Cuando se escriban, la firma tiene que ser exactamente la del JSON,
-incluidos `assetId` obligatorio e indexado.
+**Resuelto en la fase 2 del plan v0.3 (26-sep-2026).** `ReserveAttested`,
+`ReserveExpired` (emisor `ReserveEngine`), `RedemptionUpdated` y
+`CoveragePublished` (emisor `CommodityEngine`) los emite `SFSPReserveEngine`, un
+solo contrato para los dos módulos lógicos, con la firma exacta del JSON
+(`implementadoEnContratos: true`, comprobado por `test/11-eventos-contra-spec.js`).
+Los eventos nuevos del oráculo único (`SFSPOracleRegistry`), del motor de
+reservas y de la tesorería cotizadora (`SFSPTreasuryDesk`) también están en
+`spec/eventos.json`.
 
 ## 6 · Eventos que los contratos emiten y el §3 no lista
 
