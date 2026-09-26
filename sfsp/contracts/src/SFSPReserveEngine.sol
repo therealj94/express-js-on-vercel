@@ -493,13 +493,19 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         return units * (OZ / _assets[assetId].unitsPerOunce);
     }
 
-    /// @notice Capacidad de colocación en onzas: verificadas, asignadas, vigentes y no comprometidas.
+    /// @notice Capacidad de colocación en onzas: verificadas, asignadas, vigentes y
+    ///         no comprometidas, y nunca más que el margen de cobertura (lo
+    ///         comprometido en un lote que venció sigue siendo obligación y ya no
+    ///         lo cubre nada).
     function placementCapacityOz(bytes32 assetId) public view returns (uint256 cap) {
         bytes32[] storage ids = _assetLots[assetId];
         for (uint256 i = 0; i < ids.length; i++) {
             Lot storage l = _lots[ids[i]];
             if (_lotCounts(l)) cap += _lotFree(l);
         }
+        (uint256 covered, uint256 obligations,,,) = coverage(assetId);
+        uint256 margin = covered > obligations ? covered - obligations : 0;
+        if (margin < cap) cap = margin;
     }
 
     /// @notice Cobertura contra lo COLOCADO.
@@ -562,11 +568,8 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         (uint8 code, bytes32 reason,) = eligibility.evaluateOperation(to, assetId, bytes32("RELEASE"), units, bytes32(0));
         if (code != SFSPCodes.ALLOW) revert Rejected(code, reason);
 
-        // Un descuadre (p. ej. un lote comprometido que venció) detiene toda colocación.
-        (uint256 covered, uint256 obligations,,,) = coverage(assetId);
-        if (covered < obligations) revert CoverageDeficit(covered, obligations);
-
         uint256 oz = unitsToOz(assetId, units);
+        _requireCoverage(assetId, oz);
         uint256 remaining = oz;
         bytes32[] storage ids = _assetLots[assetId];
         for (uint256 i = 0; i < ids.length && remaining != 0; i++) {
@@ -584,6 +587,16 @@ contract SFSPReserveEngine is SFSPAccessControl, SFSPReentrancyGuard {
         a.unitsPlaced += units;
         emit UnitsPlaced(assetId, to, operationId, units, oz);
         a.token.placementTransfer(a.treasuryWallet, to, units, operationId);
+    }
+
+    /// @dev Un descuadre (p. ej. un lote comprometido que venció) detiene toda
+    ///      colocación. Y la colocación NUEVA también cuenta: lo comprometido en un
+    ///      lote vencido sigue siendo obligación, así que el libre de los lotes
+    ///      vigentes no basta; lo colocado nunca supera lo cubierto (v0.3 §9.4).
+    function _requireCoverage(bytes32 assetId, uint256 oz) internal view {
+        (uint256 covered, uint256 obligations,,,) = coverage(assetId);
+        if (covered < obligations) revert CoverageDeficit(covered, obligations);
+        if (oz > covered - obligations) revert PlacementCapacityExceeded(covered - obligations, oz);
     }
 
     /// @dev Libera `oz` de compromisos, empezando por los lotes que ya NO cuentan

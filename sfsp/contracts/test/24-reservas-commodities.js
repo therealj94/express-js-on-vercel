@@ -212,6 +212,23 @@ describe("SFSP v0.3 §9 · motor de reservas y commodities (SFSPReserveEngine)",
       await H.expectRevert(colocar(x, C.ASSET_AUKA, f.bob, E18, "op2"), "PlacementCapacityExceeded");
     });
 
+    it("adversario (lote comprometido vencido + lote nuevo): la colocación no supera lo cubierto menos lo colocado", async function () {
+      await loteListo(x, "L1", C.ASSET_AUKA, "CUST_A", x.custA, C.XAU, "c1", 2);
+      await colocar(x, C.ASSET_AUKA, f.alice, 20n * E18, "op1");
+      await H.increaseTime(3 * DIA); // L1 vence con 20 oz comprometidas
+      await loteListo(x, "L2", C.ASSET_AUKA, "CUST_B", x.custB, C.XAU, "c2", 30);
+      const cov = await x.r.call("coverage", [C.ASSET_AUKA]);
+      assert.equal(cov.coveredOz.toString(), String(OZ_KG));
+      assert.equal(cov.obligationsOz.toString(), String(20n * E18));
+      // El libre de L2 son 32,15 oz, pero sólo 12,15 quedan sin obligación.
+      const margen = OZ_KG - 20n * E18;
+      assert.equal((await x.r.call("placementCapacityOz", [C.ASSET_AUKA])).toString(), String(margen));
+      await H.expectRevert(colocar(x, C.ASSET_AUKA, f.bob, 32n * E18, "op2"), "PlacementCapacityExceeded");
+      await H.expectRevert(colocar(x, C.ASSET_AUKA, f.bob, 13n * E18, "op3"), "PlacementCapacityExceeded");
+      await colocar(x, C.ASSET_AUKA, f.bob, 12n * E18, "op4");
+      assert.equal(await x.r.call("invariantHolds", [C.ASSET_AUKA]), true, "lo colocado nunca excede lo verificado");
+    });
+
     it("negativo: no se coloca a la propia tesorería, a un sujeto sin alta, ni se repite la operación", async function () {
       await loteListo(x, "L1", C.ASSET_AUKA, "CUST_A", x.custA);
       await H.expectRevert(colocar(x, C.ASSET_AUKA, f.treasury, E18, "op1"), "InvalidInput");
