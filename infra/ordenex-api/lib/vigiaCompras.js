@@ -154,14 +154,34 @@ function pagador() {
   return new ethers.Wallet(llave, p);
 }
 
+/* Cuánto puede tener, como mucho, la lectura del oro que se sella en el
+   contrato. VentaOrigen.sol cuenta la caducidad del precio
+   (maxAntiguedadPrecio, 30 min) desde que se le PONE, no desde que se leyó el
+   oro; y el oráculo sirve la última lectura buena hasta 10 min para la
+   pantalla. Re-sellar cada minuto una lectura de 9 min la presentaría como
+   nueva y alargaría la venta con el precio viejo de 30 a ~40 min.
+   90 s = la caché del oráculo (30 s) + una vuelta (60 s): con el feed sano la
+   lectura nunca pasa de ~30 s, un fallo suelto no cierra la venta y dos
+   seguidos sí. NO es la «tolerancia de frescura» de tesorería (v0.3 §10.4,
+   pendiente): sólo hace que los 30 min del contrato midan la edad real. */
+const EDAD_MAXIMA_SELLO_MS = 90_000;
+
 /** El precio del gramín, medido: gramo de oro entre 55. Sin precio no se
  *  refresca el contrato — se deja con el que tenía, y si caduca deja de vender
- *  solo. Nunca se inventa uno para que la venta siga abierta.
+ *  solo. Nunca se inventa uno para que la venta siga abierta, y nunca se
+ *  re-sella como nuevo un precio viejo (EDAD_MAXIMA_SELLO_MS).
  *  Sale del oráculo único (lib/oraculo.js): el mismo gramin que /mercados y
  *  que la wallet, no una lectura propia de CoinGecko. */
 async function precioOrigen() {
-  const gramin = await require('./oraculo').precioOrigenUsd();
+  const oraculo = require('./oraculo');
+  const m = await oraculo.metales();
+  const gramin = m ? oraculo.graminDeOnza(m.oro) : null;
   if (!(gramin > 0)) throw new Error('el oráculo no tiene precio fresco del oro');
+  // La hora del ORO, que es lo que se vende; `en` por si faltara.
+  const edad = Date.now() - (m.enOro ?? m.en);
+  if (!(edad <= EDAD_MAXIMA_SELLO_MS)) {
+    throw new Error(`la lectura del oro tiene ${Math.round(edad / 1000)} s (máximo ${EDAD_MAXIMA_SELLO_MS / 1000} s para sellarla): no se re-sella un precio viejo como nuevo`);
+  }
   return ethers.parseUnits(gramin.toFixed(18), 18);
 }
 
@@ -353,5 +373,5 @@ function parar() { if (reloj) { clearInterval(reloj); reloj = null; } }
 
 module.exports = {
   arrancar, parar, vuelta, cupoPara, precioOrigen,
-  REDES, GAS_APARTADO, CompraUsdt,
+  REDES, GAS_APARTADO, EDAD_MAXIMA_SELLO_MS, CompraUsdt,
 };

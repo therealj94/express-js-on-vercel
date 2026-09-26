@@ -13,6 +13,8 @@
  *    nunca el numero viejo.
  *  - El respaldo: si la principal no llega, o llega con una pata, el respaldo
  *    completa.
+ *  - Una lectura a medias no borra la pata buena de la lectura anterior: cada
+ *    pata se sirve con su hora mientras tenga menos de 10 min.
  *  - El historial en memoria.
  *  - referencia.js ya no lee feeds propios: consume el oraculo.
  */
@@ -167,6 +169,60 @@ decir('el respaldo');
   guion.principal = { oro: 0, plata: NaN };
   guion.respaldo = { oro: -3, plata: 'x' };
   comprobar((await o.metales()) === null, 'precios torcidos (cero, negativo, NaN) son falta de dato: null');
+}
+
+decir('una lectura a medias no borra la pata buena');
+{
+  /* t=0 lectura completa. t=31 s: la principal no trae nada y el respaldo
+     solo trae la plata. Antes la lectura a medias SUSTITUIA la cache entera y
+     el oro de hace 31 s desaparecia: 30 s sin precio de ORIGEN (depositos,
+     canjes y compras bloqueados) aunque habia un oro bueno. Una caida TOTAL
+     conservaba el oro; una a medias lo tiraba. */
+  const { o, reloj, guion } = banco();
+  guion.principal = { oro: 4400, plata: 52 };
+  await o.metales();
+  reloj.avanzar(31_000);
+  guion.principal = null;
+  guion.respaldo = { oro: null, plata: 53 };
+  const m = await o.metales();
+  comprobar(m?.oro === 4400 && m?.plata === 53, 'el oro de hace 31 s se conserva y la plata se renueva', JSON.stringify(m));
+  comprobar(m?.enOro === 1_000_000 && m?.enPlata === 1_031_000, 'cada pata con su propia hora', JSON.stringify(m));
+  comprobar(m?.en === 1_000_000, '`en` es la hora de la pata MAS VIEJA que se sirve', JSON.stringify(m));
+  comprobar(m?.fuente === 'principal+respaldo', 'la fuente nombra de donde salio cada pata', m?.fuente);
+  comprobar(cerca(await o.precioOrigenUsd(), 4400 / 1710.6925), 'y el precio de ORIGEN sigue ahi, no null');
+  const c = await o.cotizacion();
+  comprobar(c?.en === 1_000_000 && c?.enOro === 1_000_000 && c?.enPlata === 1_031_000, 'la cotizacion lleva las mismas horas', JSON.stringify(c));
+  const h = o.historial();
+  comprobar(h.length === 2 && h[1].oro === null && h[1].plata === 53 && h[1].en === 1_031_000,
+    'el historial apunta la lectura tal como llego, sin rellenar', JSON.stringify(h));
+
+  // El oro conservado caduca a los 10 min de SU lectura, no de la de la plata.
+  reloj.avanzar(10 * 60_000 - 31_000);
+  const m2 = await o.metales();
+  comprobar(m2?.oro === null && m2?.plata === 53, 'a los 10 min del oro: el oro es null (guion) y la plata nueva sigue', JSON.stringify(m2));
+  comprobar(m2?.enOro === null && m2?.en === m2?.enPlata, 'y `en` ya es la de la plata', JSON.stringify(m2));
+  comprobar((await o.precioOrigenUsd()) === null, 'sin oro vigente no hay precio de ORIGEN');
+}
+{
+  // Al reves: llega el oro solo y la plata de hace 31 s se conserva.
+  const { o, reloj, guion } = banco();
+  guion.principal = { oro: 4400, plata: 52 };
+  await o.metales();
+  reloj.avanzar(31_000);
+  guion.principal = { oro: 4410, plata: null };
+  guion.respaldo = new Error('caido');
+  const m = await o.metales();
+  comprobar(m?.oro === 4410 && m?.plata === 52, 'el oro se renueva y la plata de hace 31 s se conserva', JSON.stringify(m));
+  comprobar(m?.enOro === 1_031_000 && m?.enPlata === 1_000_000 && m?.en === 1_000_000, 'con sus horas, y `en` la mas vieja', JSON.stringify(m));
+  comprobar(m?.fuente === 'principal', 'las dos patas vienen de la principal', m?.fuente);
+}
+{
+  // Sin nada previo, una lectura a medias es lo que hay: la pata que falta es null.
+  const { o, guion } = banco();
+  guion.principal = { oro: null, plata: 52 };
+  const m = await o.metales();
+  comprobar(m?.oro === null && m?.plata === 52 && m?.enOro === null && m?.enPlata === 1_000_000,
+    'sin lectura anterior no se inventa la pata que falta', JSON.stringify(m));
 }
 
 decir('el historial en memoria');

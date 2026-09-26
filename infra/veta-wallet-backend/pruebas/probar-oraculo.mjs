@@ -76,6 +76,28 @@ test("caché de 30 s, edad máxima de 10 min y después null", async () => {
   assert.equal(o.historial().length, 1);
 });
 
+test("una lectura con una sola pata no borra el oro bueno de hace segundos", async () => {
+  // Antes la lectura a medias sustituía la caché entera: sin oro 30 s y la
+  // wallet contestaba PRECIO_NO_DISPONIBLE en depósitos y canjes.
+  let t = 0;
+  let resp = { oro: 4400, plata: 52 };
+  const o = oraculo.crearOraculo({ fuentes: [{ nombre: "f", leer: async () => resp }], ahora: () => t });
+  await o.metales();
+  t += 31_000;
+  resp = { oro: null, plata: 53 };
+  const m = await o.metales();
+  assert.equal(m.oro, 4400);
+  assert.equal(m.plata, 53);
+  assert.equal(m.enOro, 0);
+  assert.equal(m.enPlata, 31_000);
+  assert.equal(m.en, 0, "`en` es la hora de la pata más vieja que se sirve");
+  assert.ok(Math.abs((await o.precioOrigenUsd()) - 4400 / 31.1035 / 55) < 1e-12);
+  // El oro conservado caduca a los 10 min de SU lectura.
+  t = 10 * 60_000;
+  assert.equal((await o.metales()).oro, null);
+  assert.equal(await o.precioOrigenUsd(), null);
+});
+
 test("origenPrice por omisión: el gramin que da el oráculo", () => {
   const out = correr(
     `${fetchFingido({ "pax-gold": { usd: 4400 }, "kinesis-silver": { usd: 52 } }, null)}
