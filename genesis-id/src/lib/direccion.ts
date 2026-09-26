@@ -18,6 +18,8 @@ import { keccak_256 } from '@noble/hashes/sha3'
 export const CODIGOS_VINCULO = {
   SIN_DIRECCION: 'VINCULO_SIN_DIRECCION',
   DIRECCION_INVALIDA: 'VINCULO_DIRECCION_INVALIDA',
+  /** La dirección ya está atada a OTRA identidad (409). Solo de Genesis ID. */
+  DIRECCION_DE_OTRO: 'VINCULO_DIRECCION_DE_OTRO',
 } as const
 
 /** La dirección en minúsculas, o `null` si no es una dirección válida. */

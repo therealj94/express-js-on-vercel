@@ -260,6 +260,7 @@ const TEXTOS: Record<string, Texto> = {
     devuelve: '`{ ok: true }`',
     errores: {
       '403': 'El correo no es el de esa identidad',
+      '409': '`VINCULO_DIRECCION_DE_OTRO`: esa dirección ya está atada a otra identidad',
       '422': '`VINCULO_SIN_DIRECCION` o `VINCULO_DIRECCION_INVALIDA`',
     },
   },
@@ -275,7 +276,8 @@ const TEXTOS: Record<string, Texto> = {
   },
   'GET /api/v1/direccion/:direccion': {
     resumen: '¿Hay identidad verificada detrás de esta dirección on-chain?',
-    devuelve: '`{ verificada, gid }`. Nunca 404: una dirección desconocida devuelve `false`.',
+    devuelve: '`{ verificada, gid }`. Nunca 404: una dirección desconocida devuelve `false`. '
+      + 'Una dirección atada a más de una identidad (datos antiguos) devuelve `{ verificada: false, gid: null, ambigua: true }`.',
   },
   'GET /api/v1/tamiz/direccion/:direccion': {
     resumen: 'Tamizar una dirección contra listas de sanciones',
