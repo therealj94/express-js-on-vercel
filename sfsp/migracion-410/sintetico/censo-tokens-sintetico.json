@@ -14,9 +14,10 @@
         "symbol": "SINTA",
         "decimals": 18,
         "ranuraSaldos": 0,
-        "totalSupply": "997.5",
+        "totalSupply": "990",
         "conDireccion": "987.5",
-        "residuoSinTitular": "7.5",
+        "residuoSinTitular": "0",
+        "incoherentes": 0,
         "tenedores": 7
       },
       {
@@ -27,6 +28,7 @@
         "totalSupply": "30.000000000000000123",
         "conDireccion": "30.000000000000000123",
         "residuoSinTitular": "0",
+        "incoherentes": 0,
         "tenedores": 2
       },
       {
@@ -37,6 +39,7 @@
         "totalSupply": "5",
         "conDireccion": "5",
         "residuoSinTitular": "0",
+        "incoherentes": 0,
         "tenedores": 1
       }
     ]
