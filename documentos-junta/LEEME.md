@@ -26,6 +26,11 @@ Seis de los siete documentos anteriores describen la cadena **8532**, que está 
 es la **5550**. Está explicado en la sección 6.7 del Documento 8, y actualizar esos documentos es una tarea del
 último bloque del plan.
 
+## El animatic
+
+La previsualización de 2:00 del tráiler está en `recursos/animatic/Pesalo-animatic-v1.mp4`, con los tiempos
+exactos del guion. No es la pieza final: las imágenes son referencias y las voces van como subtítulo.
+
 ## Cómo se generan
 
 Los PDF se arman desde HTML con `recursos/generar.py`. Los materiales —fotogramas de referencia, pruebas de
