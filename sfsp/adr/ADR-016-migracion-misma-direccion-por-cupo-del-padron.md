@@ -20,8 +20,8 @@ Además, la revisión adversaria encontró que la ruta del registro acuña direc
 
    | Campo del cupo | Valor |
    |---|---|
-   | Monto por periodo | `S0` del padrón (suma de los saldos con dirección; las claves sin dirección no entran) |
-   | Máximo por operación | El mayor saldo del padrón |
+   | Monto por periodo | `S0_cupo` = Σ `floor(oldUnits·num/den)` de los tenedores con dirección, en unidades del activo nuevo (las claves sin dirección no entran). Con ratio 1/1 coincide con el `S0` del padrón, Σ `oldUnits` |
+   | Máximo por operación | El mayor monto del padrón, `floor(oldUnits·num/den)` |
    | Periodo | Tan largo que toda la ventana cae en un solo periodo |
    | Vigencia | Fin de la ventana de migración (días, no meses) |
    | `termsDocRoot` | Raíz de Merkle del padrón |
@@ -29,9 +29,11 @@ Además, la revisión adversaria encontró que la ruta del registro acuña direc
    | `evidenceRoot` | La misma raíz del padrón |
 
 2. **El heredado se bloquea con el filtro de transacciones** desde el bloque de corte (SFSP-150). La emisión por padrón es la ejecución del modo `FROZEN_SNAPSHOT`: congelación eficaz antes de acuñar e instantánea final.
-3. **Cierre obligatorio:** `revokeMintBudget(assetId, "MIGRACION_FIN")` al terminar o al vencer, y **conciliación publicada**: cada `MintOnDemand` de la ventana casa con una hoja del padrón y su prueba, `paymentRef` se recalcula desde el destino, la suma es ≤ `S0`. Un evento que no case es incidente (pausa y revocación).
+3. **Cierre obligatorio:** `revokeMintBudget(assetId, "MIGRACION_FIN")` al terminar o al vencer, y **conciliación publicada**: para cada `MintOnDemand` de la ventana existe una hoja `(migrationId, destino, oldUnits)` del padrón con prueba válida y `monto == floor(oldUnits·num/den)` (la hoja compromete `oldUnits`, no el monto), `paymentRef` se recalcula desde el destino y la suma es ≤ `S0_cupo`. Un evento que no case es incidente (pausa y revocación).
+
+   Dos totales, que no se mezclan: el **`S0` del padrón** = Σ `oldUnits` (unidades del heredado; es lo que compromete la raíz) y el **`S0_cupo`** = Σ `floor(oldUnits·num/den)` (unidades del activo nuevo; es el `amount` de `SET_MIGRATION_BUDGET`). Con un ratio distinto de 1/1, fijar el cupo con el `S0` del padrón lo agrandaría en el factor del ratio.
 4. **El registro por reclamo queda como excepción**, para lo que no puede asignarse a la misma dirección: claves sin dirección, direcciones que son contratos con otro beneficiario, y direcciones cuyo control se perdió (SFSP-700 §0.3).
-5. **Precondiciones por activo:** conciliación del supply no ubicado cerrada para AUKA (9.823,01) y ONDK (804,5) (SFSP-700 §0.5); topes del instrumento fijados contando `S0`; cada beneficiario cruzado contra las cuentas internas y contra la política `MINT` del activo nuevo.
+5. **Precondiciones por activo:** conciliación del supply no ubicado cerrada para AUKA (9.823,01) y ONDK (804,5) (SFSP-700 §0.5); topes del instrumento fijados contando `S0_cupo`; cada beneficiario cruzado contra las cuentas internas y contra la política `MINT` del activo nuevo.
 
 ## 3. Alternativas consideradas y su coste
 
@@ -53,10 +55,10 @@ A favor:
 
 En contra, con su mitigación:
 
-1. **El reparto individual no se verifica en cadena.** El contrato limita el total y el máximo por operación, no la prueba de Merkle. Queda detectable, no impedido. Mitigación: ventana corta, máximo por operación igual al mayor saldo, conciliación publicada y revocación al terminar.
+1. **El reparto individual no se verifica en cadena.** El contrato limita el total y el máximo por operación, no la prueba de Merkle. Queda detectable, no impedido. Mitigación: ventana corta, máximo por operación igual al mayor monto, conciliación publicada y revocación al terminar.
 2. **Ocupa el único cupo del activo**, y fijar el comercial después reinicia el consumo del periodo. Orden fijo: migración, revocación, cupo comercial.
 3. **Un saldo es una operación**: un saldo desproporcionado va por orden `MINT` individual.
-4. **Consume el tope acumulado**: los topes del instrumento se fijan contando `S0`.
+4. **Consume el tope acumulado**: los topes del instrumento se fijan contando `S0_cupo`.
 5. **No emite los eventos de migración de SFSP-700** (`MigrationClaimed`). El indexador tiene que reconocer la migración por la `paymentRef` con prefijo `MIGRACION` y registrar la conciliación con `ConciliationRecorded` (fase 2, punto 8 del plan v0.3).
 6. **Se evalúa la política `MINT`**, no `MIGRATE_CLAIM`: la política `MINT` del activo nuevo tiene que admitir a los tenedores del padrón.
 7. **El inventario interno no se migra por este camino** (R1). Si un activo conforme de la serie 300 necesita tesorería (SFSP-300 §0.2), se acuña aparte, por orden de gobierno, con su propia aprobación. Esto es parte de D26.

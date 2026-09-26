@@ -44,14 +44,16 @@ Flujo por activo:
 |---|---|---|---|
 | 1 | Desplegar el contrato conforme con su Asset Passport | SFSP-100 | `AssetRegistered` |
 | 2 | Anunciar un **bloque de corte** reproducible y fijar `migrationId` | Gobernanza (D09) | `GovernanceAction` |
-| 3 | **Padrón**: instantánea de saldos a ese bloque, raíz de Merkle y total `S0` publicados (sin publicar direcciones) | `migracion-410/construir-padron.mjs`, `verificar-padron.mjs` | Raíz y `S0` |
+| 3 | **Padrón**: instantánea de saldos a ese bloque, raíz de Merkle y total `S0` del padrón (Σ `oldUnits`) publicados (sin publicar direcciones) | `migracion-410/construir-padron.mjs`, `verificar-padron.mjs` | Raíz y `S0` |
 | 4 | **Bloquear el heredado** con el filtro de transacciones desde el bloque de corte. Sustituye la pausa o la quema que los heredados no tienen | SFSP-150 | `NetworkPermissionChanged`, código `CORTE_MIGRACION` |
-| 5 | Topes del instrumento fijados contando `S0` | `setInstrumentLimits` (Junta) | `GovernanceAction` |
-| 6 | **Un** cupo por activo: `SET_MIGRATION_BUDGET` (cupo de migración, SFSP-410 R13) con monto por periodo = `S0`, máximo por operación = mayor saldo del padrón, vigencia de días, `termsDocRoot` = raíz del padrón. Quórum, espera y consumo único | `setMintBudget` (SFSP-410 R5) | `MintBudgetSet` |
+| 5 | Topes del instrumento fijados contando `S0_cupo` | `setInstrumentLimits` (Junta) | `GovernanceAction` |
+| 6 | **Un** cupo por activo: `SET_MIGRATION_BUDGET` (cupo de migración, SFSP-410 R13) con monto por periodo = `S0_cupo`, máximo por operación = mayor monto del padrón, vigencia de días, `termsDocRoot` = raíz del padrón. Quórum, espera y consumo único | `setMintBudget` (SFSP-410 R5) | `MintBudgetSet` |
 | 7 | **Acuñar a cada tenedor su saldo equivalente en la misma dirección**: un `mintOnDemand` por hoja, con `paymentRef = keccak256("MIGRACION\|<assetId>\|<dirección>")` en hex y minúsculas, y `evidenceRoot` = raíz del padrón | `mintOnDemand` | `MintExecuted` + `MintOnDemand` |
 | 8 | Cerrar el cupo al terminar o al vencer | `revokeMintBudget(assetId, "MIGRACION_FIN")` | `MintBudgetRevoked` |
-| 9 | **Conciliación publicada**: cada `MintOnDemand` de la ventana casa con una hoja del padrón y su prueba; `paymentRef` se recalcula desde el destino; la suma es ≤ `S0` y la diferencia son los pendientes (§3). Un evento que no case es incidente: pausa y revocación | Indexador | `ConciliationRecorded` |
+| 9 | **Conciliación publicada**: para cada `MintOnDemand` de la ventana existe una hoja `(migrationId, destino, oldUnits)` del padrón con prueba válida y `monto == floor(oldUnits·num/den)`; `paymentRef` se recalcula desde el destino; la suma es ≤ `S0_cupo` y la diferencia son los pendientes (§3). Un evento que no case es incidente: pausa y revocación | Indexador | `ConciliationRecorded` |
 | 10 | Cierre con historia consultable | — | — |
+
+**Dos totales, que no se mezclan.** El **`S0` del padrón** es Σ `oldUnits` de las hojas, en unidades del contrato heredado: es lo que compromete la raíz y lo que usa la conciliación de §3. El **`S0_cupo`** es Σ `floor(oldUnits·num/den)`, en unidades del activo nuevo: es el `amount` de `SET_MIGRATION_BUDGET`. Con ratio 1/1 coinciden. Con otro ratio, fijar el cupo con el `S0` del padrón lo agrandaría en el factor del ratio, y una conciliación que buscara `(destino, monto)` como hoja marcaría como incidente cada acuñación correcta.
 
 Por qué este camino:
 
@@ -63,10 +65,10 @@ Lo que se pierde y cómo se mitiga (detalle en ADR-016 §4):
 
 | Riesgo | Mitigación obligatoria |
 |---|---|
-| El reparto individual **no se comprueba en cadena**: dentro de `S0`, la llave del emisor podría acuñar a una dirección elegible fuera del padrón | Ventana corta; máximo por operación = mayor saldo; conciliación publicada del paso 9; revocación al terminar. Queda **detectable**, no impedido |
+| El reparto individual **no se comprueba en cadena**: dentro de `S0_cupo`, la llave del emisor podría acuñar a una dirección elegible fuera del padrón | Ventana corta; máximo por operación = mayor monto; conciliación publicada del paso 9; revocación al terminar. Queda **detectable**, no impedido |
 | Ocupa el único cupo del activo | Orden fijo: migración → `revokeMintBudget` → cupo comercial |
 | Un saldo = una operación | Un saldo desproporcionado va por orden `MINT` individual, fuera del cupo |
-| Consume el tope acumulado | Fijar los topes del instrumento contando `S0` (paso 5) |
+| Consume el tope acumulado | Fijar los topes del instrumento contando `S0_cupo` (paso 5) |
 | No emite los eventos de migración de esta serie | El indexador reconoce la migración por `paymentRef` con prefijo `MIGRACION` (§0.6) |
 | Se evalúa la política `MINT`, no `MIGRATE_CLAIM` | La política `MINT` del activo nuevo tiene que admitir a los tenedores del padrón |
 
@@ -151,10 +153,10 @@ Método: `../migracion-410/censo-tokens-5550.mjs` (saldos de la 5550 a la fecha;
 
 ### 0.7 Pruebas de aceptación nuevas
 
-1. **T-700-21**: Un `mintOnDemand` a una dirección que no está en el padrón, dentro de `S0`, aparece como incidente en la conciliación publicada.
+1. **T-700-21**: Un `mintOnDemand` a una dirección que no está en el padrón, dentro de `S0_cupo`, aparece como incidente en la conciliación publicada.
 2. **T-700-22**: Una segunda acuñación del mismo activo a la misma dirección con la `paymentRef` canónica revierte con `OperationReplay`, también en una ronda posterior.
 3. **T-700-23**: Una hoja del padrón que es cuenta interna revierte con `MintToInternalAccount`.
-4. **T-700-24**: La suma de lo acuñado en la ventana es ≤ `S0`, y la diferencia coincide con los beneficiarios no elegibles aún más las claves sin dirección.
+4. **T-700-24**: La suma de lo acuñado en la ventana es ≤ `S0_cupo`, y la diferencia coincide con los beneficiarios no elegibles aún más las claves sin dirección.
 5. **T-700-25**: Mientras la conciliación de 804,5 ONDK y 9.823,01 AUKA siga abierta, el cupo de migración de ONDK o AUKA no se puede aprobar.
 6. **T-700-26**: Un contrato fuera del catálogo no puede operar con el filtro de transacciones activo, y su constancia de inactivación es consultable.
 7. **T-700-27**: No se puede fijar el cupo comercial de un activo mientras el cupo de migración siga vigente sin `revokeMintBudget`.
