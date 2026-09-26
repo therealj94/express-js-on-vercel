@@ -77,10 +77,9 @@ precio de `lib/origenPrice.js` en nanodólares ·10⁹. Trunca: nunca de más.
    llave, cuentas internas declaradas (incluido `TREASURY_OG_ADDRESS`).
 3. **Destinos elegibles**: cada `user.address` tiene que estar dado de alta en
    `SFSPIdentityAdapter`; si no, `ReleaseRejected` y la entrega queda en `revisar`.
-4. **Precio**: `lib/origenPrice.js` usa 0,01 USD fijos; Ordenex usa el oro
-   (≈2,6 USD). Con el interruptor encendido esa diferencia se convierte en
-   emisión real en cadena (100 USDT = 10.000 ORIGEN aquí, ≈38 en Ordenex).
-   **Hay que resolverlo antes de encender.**
+4. **Precio** (resuelto 26-sep-2026, decisión de la dirección): 1 ORIGEN = gramo de oro / 55,
+   igual que Ordenex, y es el modo por omisión de `lib/origenPrice.js`. Los 0,01 USD son la
+   **comisión** por transacción (`OG_COMISION_USD=0.01`, `lib/comision.js`), no el precio.
 
 ## Revisión del 26-sep (REV-410-06)
 

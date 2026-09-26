@@ -25,7 +25,7 @@ distinta de quien ejecuta.
 - [ ] **D25** acta: las 6 billeteras del 14-sep, las 9 del 11-sep y las demás de la lista propuesta son de Orden Global y se declaran internas. Resolver `0xd894…`, `0x9af6…`, `0x6bdc…`.
 - [ ] **D26** migrar sólo usuarios; modo de migración (SFSP-700 por reclamo, o cupo único por activo con el padrón como evidencia: ver `migracion-410/LEEME.md` y REV-17).
 - [ ] **D27** llaves: multifirma con billeteras de hardware; **una llave de emisor por sistema** en KMS (REV-03); nada en variables de entorno.
-- [ ] **D01 · REV-01 (crítico)** un solo precio de ORIGEN para Veta y Ordenex. Hoy Veta usa 0,01 USD fijo y Ordenex ~2,6 USD (oro): encender Veta así permitiría comprar barato en Veta y vender caro en Ordenex.
+- [x] **D01 · REV-01** precio único: 1 ORIGEN = gramo de oro / 55 en Veta y Ordenex (decidido por la dirección el 26-sep; falta el acta). **D02** comisión = 0,01 USD por transacción, cobrada en ORIGEN.
 - [ ] SÍ/NO de las direcciones "En revisión" del padrón y confirmación del único usuario de HARV y del contrato correcto de IBS.
 
 ## Compuerta 2 · Datos completos (rojo)

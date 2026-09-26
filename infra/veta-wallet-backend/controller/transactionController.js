@@ -14,7 +14,7 @@ import Tx from "../models/Tx";
 import jwt from "../lib/sesion";
 import abi from "../ABI/abi.json";
 import { precioDeGas, limiteDeGas, LIMITE_POR_OMISION_TOKEN } from "../lib/gas";
-import { cobrarComision, comisionEnOrigen } from "../lib/comision";
+import { cobrarComision } from "../lib/comision";
 import { reportarEnvio } from "../lib/reporteAml";
 import { tamizarDestino, negativaPorSancion } from "../lib/tamizDestino";
 import { validarEnvio } from "../lib/validarEnvio";
@@ -186,7 +186,8 @@ export const send = async (req, res) => {
     // La comision de 0,01 ORIGEN, en una transaccion aparte y DESPUES del
     // envio: si fallara, preferimos perderla a haberle cobrado por un envio
     // que no salio. Ver lib/comision.js.
-    const hashComision = await cobrarComision(wallet, nonce + 1);
+    const cobro = await cobrarComision(wallet, nonce + 1);
+    const hashComision = cobro ? cobro.hash : null;
 
     // NO se espera el minado.
     //
@@ -231,7 +232,7 @@ export const send = async (req, res) => {
       chain_id,
       coin: chain.name,
       status: "pending",
-      comision: comisionEnOrigen(),
+      comision: cobro ? cobro.origen : 0,
       hashComision,
     };
     // Se guarda la respuesta para devolver EXACTAMENTE esta si el mismo sello
@@ -361,7 +362,8 @@ export const sendToken = async (req, res) => {
     });
 
     // La misma comision, en ORIGEN, aunque lo enviado sea un token: es fija.
-    const hashComision = await cobrarComision(wallet, nonce + 1);
+    const cobro = await cobrarComision(wallet, nonce + 1);
+    const hashComision = cobro ? cobro.hash : null;
 
 
     // Mismo criterio que en send(): no se espera el minado. Ademas, antes se
@@ -397,7 +399,7 @@ export const sendToken = async (req, res) => {
       chain_id,
       contract: tokenContractAddress,
       status: "pending",
-      comision: comisionEnOrigen(),
+      comision: cobro ? cobro.origen : 0,
       hashComision,
     };
     if (sello) await completar(sello, quien, salida);

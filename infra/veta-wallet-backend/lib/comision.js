@@ -1,8 +1,17 @@
 import { parseEther } from "ethers";
 import { precioDeGas } from "./gas";
+import { getOrigenPriceUsd } from "./origenPrice";
 
 // ============================================================
-// La comision de Orden Global: 0,001 ORIGEN fijos por transaccion.
+// La comision de Orden Global.
+//
+// DECIDIDO POR LA DIRECCION EL 26-SEP-2026 (José): la comision es de 0,01 USD
+// por transaccion, en todo el ecosistema, cobrada en ORIGEN al precio del
+// momento (1 ORIGEN = gramo de oro / 55). Con OG_COMISION_USD=0.01 se cotiza
+// asi; el viejo modo en ORIGEN fijos (OG_COMISION_ORIGEN) queda solo como
+// respaldo. Sin ninguna de las dos variables NO se cobra nada.
+//
+// Lo que sigue describe el modo anterior (0,001 ORIGEN fijos).
 //
 // QUE ES Y QUE NO ES
 //
@@ -63,6 +72,31 @@ export function comisionEnWei() {
 }
 
 /**
+ * La comision de ESTA transaccion en wei. Con OG_COMISION_USD se convierte al
+ * precio del momento; si el precio no esta disponible no se cobra (0n): nunca
+ * se inventa un precio para cobrar.
+ */
+export async function comisionActualEnWei() {
+  const usd = Number((process.env.OG_COMISION_USD || "").trim());
+  if (isFinite(usd) && usd > 0) {
+    // Tope de cordura: la decision es 0,01 USD; mas de 1 USD es un dedazo.
+    if (usd > 1) {
+      console.error(`[comision] OG_COMISION_USD=${usd} es demasiado alta; se ignora`);
+      return 0n;
+    }
+    try {
+      const precio = await getOrigenPriceUsd();
+      if (!(precio > 0)) return 0n;
+      return parseEther((usd / precio).toFixed(18));
+    } catch (e) {
+      console.error(`[comision] sin precio de ORIGEN: no se cobra (${e?.code || e?.message || e})`);
+      return 0n;
+    }
+  }
+  return comisionEnWei();
+}
+
+/**
  * Cobra la comision. Se llama DESPUES de que el envio del usuario ya salio.
  *
  * No lanza nunca: si falla, se anota y se sigue. Un fallo aqui no debe
@@ -70,10 +104,10 @@ export function comisionEnWei() {
  *
  * @param wallet  el Wallet de ethers del usuario, ya conectado al proveedor
  * @param nonce   el nonce siguiente al del envio
- * @returns el hash del cobro, o null si no se cobro
+ * @returns { hash, origen } del cobro, o null si no se cobro
  */
 export async function cobrarComision(wallet, nonce) {
-  const importe = comisionEnWei();
+  const importe = await comisionActualEnWei();
   if (importe === 0n) return null;
 
   const destino = DESTINO();
@@ -91,7 +125,7 @@ export async function cobrarComision(wallet, nonce) {
       gasPrice: await precioDeGas(wallet.provider),
       nonce,
     });
-    return tx.hash;
+    return { hash: tx.hash, origen: Number(importe) / 1e18 };
   } catch (e) {
     // Lo mas probable es que no le alcance para la comision despues del envio.
     // Se anota con el usuario para poder reclamarla o perdonarla, y ya.
