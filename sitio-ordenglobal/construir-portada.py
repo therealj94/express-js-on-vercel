@@ -105,15 +105,15 @@ CASAS = {"es": [
     ], ("Open the explorer", "https://ordenscan.com"), None, None),
 ]}
 
-ETIQUETA = {"es": {"beta": "Beta", "pronto": "Próximamente"},
-            "en": {"beta": "Beta", "pronto": "Coming soon"}}
+ETIQUETA = {"es": {"beta": "En beta", "pronto": "Próximamente"},
+            "en": {"beta": "In beta", "pronto": "Coming soon"}}
 
 
 # Un video de la campaña. Sin JavaScript es un <video> con sus controles; con
 # JavaScript, el póster lleva un botón propio y los controles aparecen al darle.
 def pieza(base, boton, dura, pie):
     # (el idioma no cambia nada aquí: todo el texto llega como argumento)
-    return (f'<figure class="pieza"><div class="marco">'
+    return (f'<figure class="pieza"><div class="marco-v">'
             f'<video controls preload="none" playsinline poster="/assets/medios/{base}.jpg" width="720" height="1280">'
             f'<source src="/assets/medios/{base}.mp4" type="video/mp4"></video>'
             f'<button class="reproducir" type="button" hidden>{e(boton)} <span class="dato">{e(dura)}</span></button>'
@@ -123,11 +123,11 @@ def pieza(base, boton, dura, pie):
 def casa(nombre, que, puntos, enlace, video, estado, lang="es"):
     lis = "".join(f"<li>{e(p)}</li>" for p in puntos)
     vid = pieza(*video) if video else ""
-    etq = (f'<span class="etq etq-{estado}">{ETIQUETA[lang][estado]}</span>' if estado else "")
+    etq = (f'<span class="etq {estado}">{ETIQUETA[lang][estado]}</span>' if estado else "")
     enl = f'<a class="enlace" href="{e(enlace[1])}">{e(enlace[0])}</a>' if enlace else ""
-    return (f'    <details class="casa"><summary><h3>{e(nombre)}{etq}</h3>'
-            f'<span class="que">{e(que)}</span><span class="mas" aria-hidden="true"></span></summary>'
-            f'<div class="dentro"><div><ul>{lis}</ul>{vid}{enl}</div></div></details>')
+    return (f'      <article class="casa"><h3>{e(nombre)}</h3>{etq}'
+            f'<p class="que">{e(que)}</p><ul>{lis}</ul>{vid}'
+            f'<div class="pie-casa">{enl}</div></article>')
 
 
 # ── LA PRUEBA ───────────────────────────────────────────────────────────────
@@ -196,9 +196,10 @@ def disco(lang="es"):
               f'<text x="{tx}" y="{ty}">1 ORIGEN</text>')
     return (f'<svg class="disco" viewBox="-6 -24 412 430" role="img" aria-labelledby="disco-t">'
             f'<title id="disco-t">{TXT[lang]["disco"]}</title>'
-            f'<g fill="none" stroke="currentColor" stroke-width=".8" opacity=".62">'
-            f'<circle cx="{C}" cy="{C}" r="{R}"/><circle cx="{C}" cy="{C}" r="{r}"/>'
-            f'<path d="{radios}"/></g><path d="{cuna}" fill="#F5E4AB"/>{rotulo}</svg>')
+            f'<g class="radios" fill="none" stroke="currentColor" stroke-width=".8" opacity=".62">'
+            f'<circle cx="{C}" cy="{C}" r="{R}" pathLength="1"/><circle cx="{C}" cy="{C}" r="{r}" pathLength="1"/>'
+            f'<path d="{radios}" pathLength="1"/></g><path class="cuna" d="{cuna}" fill="#F5E4AB"/>'
+            f'<g class="rotulo">{rotulo}</g></svg>')
 
 
 # Cada idioma: su plantilla, su JSON-LD y a dónde se escribe.

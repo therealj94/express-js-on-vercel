@@ -20,10 +20,14 @@ python3 desplegar.py /tmp/ogsite  # la sube a Amplify
 - `portada.plantilla.html` y `portada.plantilla.en.html`: el texto de cada idioma.
 - `construir-portada.py`: las siete casas, las cinco pruebas y el disco de las
   55 porciones, en los dos idiomas. Una casa nueva es una fila más ahí.
-- `assets/og26.css` y `assets/og26.js`: todo el estilo y todo el código.
-  El JS hace cuatro cosas: el logo que se ordena solo (sobre el trazado de
-  `assets/og-vector.js`), el precio del ORIGEN y el último bloque en vivo,
-  copiar los códigos, y el botón propio de los videos.
+- `assets/og27.css` y `assets/og27.js`: todo el estilo y todo el código de la
+  portada. El JS hace la apertura (el enredo cobrizo que se ordena en el OG a
+  pantalla completa y vuela a la cabecera, una vez por visita, sobre el
+  trazado de `assets/og-vector.js`), las escenas del scroll (el manifiesto
+  palabra por palabra, el descenso por las seis capas y la galería de las
+  casas), la cadena latiendo en vivo, copiar códigos y los videos. Con
+  movimiento reducido no hay escenas: la página se lee de corrido.
+  `og26.css` queda solo para la 404.
 - `assets/medios/`: el tráiler de ORIGEN y el spot de Ordenex con sus pósteres.
 
 Tres reglas que conviene no romper:

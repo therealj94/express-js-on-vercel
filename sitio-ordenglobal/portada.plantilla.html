@@ -24,13 +24,24 @@
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 <link rel="preload" href="/assets/fuentes/fraunces-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fuentes/manrope-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/og26.css?v={{V}}">
+<link rel="stylesheet" href="/assets/og27.css?v={{V}}">
+<script>
+/* Con movimiento reducido no hay escenas: la página se lee de corrido. Si el
+   JavaScript de la portada no llega, a los tres segundos se quita todo. */
+(function(d){if(!window.matchMedia||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+d.classList.add('anima');setTimeout(function(){if(!window.OG27)d.classList.remove('anima')},3000)})(document.documentElement);
+</script>
 {{LD}}
 </head>
 <body>
 <a class="saltar" href="#contenido">Ir al contenido</a>
 
-<header class="techo env">
+<div class="apertura" aria-hidden="true">
+  <canvas></canvas>
+  <button type="button" tabindex="-1">Saltar</button>
+</div>
+
+<header class="techo">
   <a class="marca" href="/" aria-label="Orden Global, inicio">
     <img src="/assets/og.svg" alt="" width="49" height="26"><span>ORDEN GLOBAL</span>
   </a>
@@ -49,64 +60,68 @@
 
 <main id="contenido">
 
-<section class="env" aria-labelledby="t-portada">
-  <div class="portada">
-    <div>
-      <p class="sello dato">Orden Global · Sistema Financiero Social</p>
-      <h1 id="t-portada">Tu dinero, medido en <em>oro</em>.</h1>
-      <p class="bajada">Somos Orden Global. Construimos un sistema financiero entero: una cadena de bloques propia, una moneda que sigue al oro y las aplicaciones para guardar, mandar y cobrar desde el teléfono. Cada movimiento queda a la vista de cualquiera.</p>
-      <div class="acciones">
-        <a class="boton" href="https://app.vetawallet.com">Abrir cuenta</a>
-        <a class="enlace" href="#sistema">Ver el sistema completo</a>
+<section class="portada marco" aria-labelledby="t-portada">
+  <h1 id="t-portada"><span class="l l1"><span>Tu dinero,</span></span><span class="l l2"><span>medido en <em>oro</em>.</span></span></h1>
+  <div>
+    <div class="portada-pie">
+      <p>Orden Global construyó un sistema financiero completo, con su propia cadena de bloques. Su moneda, ORIGEN, sigue el precio del oro: un gramo dividido entre 55.</p>
+      <div>
+        <div class="acciones">
+          <a class="boton" href="https://app.vetawallet.com">Abrir cuenta</a>
+          <a class="enlace" href="#sistema">Recorrer el sistema</a>
+        </div>
       </div>
     </div>
-    <figure class="marca-viva" aria-label="El logo de Orden Global: seis líneas paralelas que forman las letras O y G, con 93 puntos entre ellas">
-      <img src="/assets/og.svg" alt="" width="1180" height="631">
-      <canvas aria-hidden="true"></canvas>
-    </figure>
+    <p class="tira dato" aria-live="off">
+      <span>1 ORIGEN <b data-origen>USD —</b></span>
+      <span>1 gramo de oro <b data-gramo>USD —</b></span>
+      <span><i class="pulso"></i>cadena 5550 · bloque <b data-bloque>—</b> <span data-hace></span></span>
+    </p>
   </div>
-  <p class="vivo-tira dato" aria-live="off">
-    <span>1 ORIGEN <b data-origen>USD —</b></span>
-    <span>1 gramo de oro <b data-gramo>USD —</b></span>
-    <span>cadena 5550 · bloque <b data-bloque>—</b> <span data-hace></span></span>
-  </p>
 </section>
 
-<section class="env desorden" aria-labelledby="t-desorden">
-  <div>
-    <h2 id="t-desorden" class="oculto">Por qué existe Orden Global</h2>
+<section class="manifiesto marco" aria-labelledby="t-manifiesto">
+  <div class="escena">
+    <h2 id="t-manifiesto" class="oculto">Por qué existe Orden Global</h2>
     <p>Tu abuela ahorró toda la vida, y un día alguien decidió que ese ahorro <span class="roto">valía la mitad</span>.</p>
     <p>Tu hijo te manda plata desde afuera. Tarda días, y en cada frontera <span class="roto">se queda un pedazo</span>.</p>
     <p>Y cuando preguntás dónde está, <span class="roto">te piden que confíes</span>.</p>
   </div>
-  {{TRAILER}}
 </section>
 
-<div class="env"><div class="regla" role="presentation"></div></div>
-
-<section class="env respuesta" aria-labelledby="t-respuesta">
-  <h2 class="titulo" id="t-respuesta">Por eso construimos otro sistema. <em>Entero.</em></h2>
-  <p class="intro">No una app encima del banco de siempre. Desde la cadena donde se registra cada peso hasta el teléfono donde lo usás, cada pieza es nuestra y cada regla es pública.</p>
+<section class="seccion marco" aria-labelledby="t-respuesta">
+  <div class="respuesta">
+    <div class="aparece">
+      <h2 class="medio" id="t-respuesta">Así que hicimos el sistema entero, desde la cadena hasta tu teléfono, con cada regla a la <em>vista</em>.</h2>
+      <p class="texto">No es una app montada sobre el banco de siempre. Cada pieza es nuestra, y lo que pasa en ella lo puede comprobar cualquiera.</p>
+    </div>
+    {{TRAILER}}
+  </div>
 </section>
 
-<section class="env" id="sistema" aria-labelledby="t-sistema">
-  <h2 class="titulo" id="t-sistema">El sistema, capa por capa.</h2>
-  <p class="intro">De tu teléfono hasta la roca. Arriba lo que usás todos los días; abajo, lo que lo sostiene.</p>
-  <ol class="estratos">
-    <li><span class="capa dato">Capa 5</span><div><h3>Lo que usás</h3><p>Tu cuenta, tu chat, tu asistente y el explorador donde comprobás todo.</p></div><p class="piezas dato">Veta Wallet · PULSE2CHAT · AU-RA · OrdenScan</p></li>
-    <li><span class="capa dato">Capa 4</span><div><h3>Mercado y pagos</h3><p>Donde se cobra en un comercio y donde se cambia una moneda por otra.</p></div><p class="piezas dato">MyTokenPay · Ordenex</p></li>
-    <li><span class="capa dato">Capa 3</span><div><h3>Confianza</h3><p>Quién sos, verificado una vez. Quién puede emitir, admitido y supervisado.</p></div><p class="piezas dato">Genesis ID · DBNX</p></li>
-    <li><span class="capa dato">Capa 2</span><div><h3>Las reglas</h3><p>El protocolo que dice cómo nace, se mueve y se audita cada activo.</p></div><p class="piezas dato">SFSP</p></li>
-    <li><span class="capa dato">Capa 1</span><div><h3>La cadena</h3><p>El registro donde queda cada movimiento, para siempre y a la vista.</p></div><p class="piezas dato">Cadena 5550 · Hyperledger Besu</p></li>
-    <li><span class="capa dato">Capa 0</span><div><h3>La roca</h3><p>Los validadores que firman cada bloque, uno cada diez segundos, sin parar.</p></div><p class="piezas dato">7 validadores · consenso QBFT</p></li>
-  </ol>
+<section class="descenso seccion marco" id="sistema" aria-labelledby="t-sistema">
+  <div class="escena">
+    <h2 class="titulo-fijo medio" id="t-sistema">Seis capas, de tu teléfono a la roca</h2>
+    <ol class="capas-lista">
+      <li><h3>Lo que usás</h3><p>Tu cuenta, tu chat, tu asistente y el explorador donde comprobás todo.</p><p class="piezas">Veta Wallet · PULSE2CHAT · AU-RA · OrdenScan</p></li>
+      <li><h3>Mercado y pagos</h3><p>Donde un comercio cobra y donde se cambia una moneda por otra.</p><p class="piezas">MyTokenPay · Ordenex</p></li>
+      <li><h3>Confianza</h3><p>Quién sos, verificado una vez. Quién puede emitir, admitido y supervisado.</p><p class="piezas">Genesis ID · DBNX</p></li>
+      <li><h3>Las reglas</h3><p>El protocolo que dice cómo nace, se mueve y se audita cada activo.</p><p class="piezas">SFSP</p></li>
+      <li><h3>La cadena</h3><p>El registro donde queda cada movimiento, para siempre y a la vista.</p><p class="piezas">Cadena 5550 · Hyperledger Besu</p></li>
+      <li><h3>La roca</h3><p>Siete validadores que firman un bloque cada diez segundos, sin parar.</p><p class="piezas">Consenso QBFT</p></li>
+    </ol>
+    <div class="sonda" aria-hidden="true">
+      <span style="top:0">tu teléfono</span><span style="top:20%"></span><span style="top:40%"></span><span style="top:60%"></span><span style="top:80%"></span><span style="top:100%">la roca</span>
+      <i></i>
+    </div>
+  </div>
 </section>
 
-<section class="env" id="origen" aria-labelledby="t-origen">
-  <div class="origen-a">
-    <div>
-      <h2 class="titulo" id="t-origen">Un gramo de oro, partido en 55.</h2>
-      <p class="intro">Cada porción es un ORIGEN, la moneda del sistema. La fórmula es pública: con el precio del oro de hoy y una calculadora llegás al mismo número que nosotros. Si el oro sube, sube.</p>
+<section class="seccion marco" id="origen" aria-labelledby="t-origen">
+  <div class="origen">
+    <div class="aparece">
+      <h2 class="grande" id="t-origen">Un gramo de oro, partido en 55</h2>
+      <p class="texto">Cada porción es un ORIGEN. La fórmula es pública: con el precio del oro de hoy y una calculadora llegás al mismo número que nosotros.</p>
       <div class="cuenta dato">
         <div><span>1 gramo de oro</span><span data-gramo>USD —</span></div>
         <div><span>dividido entre</span><span>55</span></div>
@@ -116,96 +131,97 @@
     </div>
     {{DISCO}}
   </div>
-  <div class="origen-b">
-    <div>
-      <h3 class="oculto">Las monedas de la cadena</h3>
-      <p class="intro">ORIGEN no está sola en la 5550.</p>
-      <dl class="monedas">
-        <div><dt>ORIGEN</dt><dd>La moneda del sistema. Sigue al gramo de oro, con una emisión fija de un billón de unidades.</dd></div>
-        <div><dt>AUKA</dt><dd>Oro físico, onza por onza. Llega con la primera bóveda.</dd></div>
-        <div><dt>AGKA</dt><dd>Plata física, onza por onza. Llega con la primera bóveda.</dd></div>
-        <div><dt>ONDK</dt><dd>La moneda con la que se vota el gobierno del ecosistema.</dd></div>
-      </dl>
+  <dl class="monedas aparece">
+    <div><dt>ORIGEN</dt><dd>La moneda del sistema. Sigue al gramo de oro, con una emisión fija de un billón de unidades.</dd></div>
+    <div><dt>AUKA</dt><dd>Oro físico, onza por onza. Llega con la primera bóveda.</dd></div>
+    <div><dt>AGKA</dt><dd>Plata física, onza por onza. Llega con la primera bóveda.</dd></div>
+    <div><dt>ONDK</dt><dd>Con ella se vota cómo se gobierna el ecosistema.</dd></div>
+  </dl>
+</section>
+
+<section class="casas seccion" id="casas" aria-labelledby="t-casas">
+  <div class="escena">
+    <div class="casas-cabeza marco">
+      <h2 class="grande" id="t-casas">Siete casas, una sola cuenta</h2>
+      <p class="texto">Te verificás una vez, con tu documento y tu cara, y esa identidad te abre todas.</p>
+    </div>
+    <div class="pista">
+{{CASAS}}
     </div>
   </div>
 </section>
+<p class="aura marco">En todas está AU-RA, el asistente. Te explica cómo funciona cada cosa y te deja el pago listo para que lo firmes vos. Contesta por WhatsApp a cualquier hora y nunca te pide contraseñas. <a class="enlace" href="https://wa.me/50432136457">Escribirle a AU-RA</a></p>
 
-<section class="env" id="casas" aria-labelledby="t-casas">
-  <h2 class="titulo" id="t-casas">Siete casas, una sola cuenta.</h2>
-  <p class="intro">Entrás con tu correo y te verificás una vez, con tu documento y tu cara. Esa misma identidad te abre cada casa del sistema.</p>
-  <div class="casas-lista">
-{{CASAS}}
-  </div>
-  <p class="intro">Y en todas está AU-RA, el asistente: te explica cómo funciona cada cosa y te deja el pago listo para que lo firmes vos. Contesta por WhatsApp a cualquier hora y nunca te pide contraseñas. <a class="enlace" href="https://wa.me/50432136457">Escribirle a AU-RA</a></p>
+<section class="cadena seccion marco" id="cadena" aria-labelledby="t-cadena">
+  <h2 class="medio aparece" id="t-cadena">La cadena 5550 va por el bloque</h2>
+  <p class="numero" data-bloque aria-live="off">—</p>
+  <div class="latido" aria-hidden="true"><i></i></div>
+  <div class="cadena-pie"><span>último bloque · <span data-hace>esperando la cadena</span></span><a class="enlace" href="https://ordenscan.com">Buscarlo en OrdenScan</a></div>
+  <p class="texto aparece">Es nuestra. Corre sobre Hyperledger Besu con consenso QBFT, y desde el 25 de agosto de 2026 siete validadores firman un bloque cada diez segundos. Cada uno, desde el primero, está en OrdenScan.</p>
 </section>
 
-<section class="env cadena" id="cadena" aria-labelledby="t-cadena">
-  <div>
-    <h2 class="titulo" id="t-cadena">La cadena 5550.</h2>
-    <p class="intro">Es nuestra. Corre sobre Hyperledger Besu con consenso QBFT: un bloque cada diez segundos, firmado por siete validadores. Arrancó el 25 de agosto de 2026, y cada bloque desde el primero se puede buscar en OrdenScan.</p>
+<section class="seccion marco" id="sfsp" aria-labelledby="t-sfsp">
+  <h2 class="grande aparece" id="t-sfsp">SFSP: las reglas viven dentro del dinero</h2>
+  <p class="texto aparece">SFSP, Social Financial System Protocol, es el protocolo de activos del Sistema Financiero Social. En un token común, las reglas viven afuera, en una app o en un contrato de papel. En SFSP el activo nace sabiendo quién lo emite, qué lo respalda, quién puede tenerlo y cuánto riesgo tiene. En la 5550 no va a operar ningún contrato que no lo cumpla.</p>
+  <div class="sfsp-cuerpo">
+    <div class="pasaporte">
+      <h3>Pasaporte del activo</h3>
+      <p class="sub">Así se presenta cada activo antes de que alguien pueda comprarlo.</p>
+      <dl>
+        <div><dt>Emisor</dt><dd>Su nombre legal y su Genesis ID</dd></div>
+        <div><dt>Qué lo respalda</dt><dd>Cada activo detrás, uno por uno</dd></div>
+        <div><dt>Auditor y valuador</dt><dd>Con nombre, fecha y vigencia</dd></div>
+        <div><dt>Riesgo</dt><dd><span class="riesgo"><span>R1</span><span>R2</span><span class="es">R3</span><span>R4</span><span>R5</span></span></dd></div>
+        <div><dt>Quién puede tenerlo</dt><dd>Escrito como regla: si no cumple, la cadena rechaza la transferencia</dd></div>
+        <div><dt>Versión</dt><dd>Cada cambio deja la anterior a la vista</dd></div>
+      </dl>
+      <div class="sello" aria-hidden="true">EN LA<br>CADENA<br>5550</div>
+    </div>
+    <ul class="principios aparece">
+      <li><b>Tu identidad, sin tus datos</b><span>Genesis ID comprueba quién sos y la cadena guarda solo la prueba. Tus documentos y tus saldos no quedan en el registro público.</span></li>
+      <li><b>Todo deja su huella</b><span>Cada emisión, quema o cambio de estado queda como un evento público, con su motivo.</span></li>
+      <li><b>Ninguna llave manda sola</b><span>Crear moneda, tocar las reservas o mover un saldo ajeno pide varias firmas, un motivo escrito y un tiempo de espera.</span></li>
+    </ul>
   </div>
-  <div class="lectura">
-    <div class="n" data-bloque>—</div>
-    <p>último bloque · <span data-hace>esperando la cadena</span></p>
-    <p class="dato hash" data-hash></p>
-    <p><a class="enlace" href="https://ordenscan.com">Buscarlo en OrdenScan</a></p>
+  <div class="pilares">
+    <div class="aparece"><h3>Orden Global</h3><p>Opera la red, emite y ejecuta lo que se autoriza. No opera mercados donde se negocian sus propias monedas.</p></div>
+    <div class="aparece"><h3>DBNX</h3><p>Admite, clasifica y supervisa a quien quiere emitir. No emite ni valúa.</p></div>
+    <div class="aparece"><h3>Au Corp.</h3><p>Opera el mercado del sistema, Ordenex. No emite.</p></div>
   </div>
+  <p class="llaves aparece">Tres pilares con funciones separadas, para que quien emite no sea quien pone el precio.</p>
 </section>
 
-<section class="env" id="sfsp" aria-labelledby="t-sfsp">
-  <h2 class="titulo" id="t-sfsp">SFSP: las reglas viven dentro del dinero.</h2>
-  <p class="intro">SFSP, Social Financial System Protocol, es el protocolo de activos del Sistema Financiero Social. En un token común, el cumplimiento vive afuera, en una app o en un contrato de papel. En SFSP el activo nace sabiendo quién lo emite, qué lo respalda, quién puede tenerlo y cuánto riesgo tiene. En la cadena 5550 no va a operar ningún contrato que no lo cumpla.</p>
-
-  <h3 class="sfsp-sub">Cómo funciona</h3>
-  <dl class="sfsp-lista">
-    <div><dt>Cada activo nace con su pasaporte</dt><dd>Antes de que alguien pueda comprarlo, queda escrito en la cadena quién lo emite, qué lo respalda, quién lo auditó y lo valuó, y su nivel de riesgo, de R1 a R5. Cada cambio deja la versión anterior a la vista.</dd></div>
-    <div><dt>La regla va dentro del activo</dt><dd>Quién puede tenerlo y a quién se puede pasar no es una advertencia en un documento: si una transferencia no cumple, la cadena la rechaza.</dd></div>
-    <div><dt>Una identidad, sin exponer tus datos</dt><dd>Genesis ID comprueba quién sos y la cadena guarda solo la prueba. Tus documentos y tus saldos no quedan en el registro público.</dd></div>
-    <div><dt>Todo deja su huella</dt><dd>Cada emisión, quema o cambio de estado emite un evento público con su motivo. Lo que no deja evento no pasó.</dd></div>
-  </dl>
-
-  <h3 class="sfsp-sub">Un sistema, tres pilares</h3>
-  <dl class="sfsp-roles">
-    <div><dt>Orden Global</dt><dd>Opera la red, emite y ejecuta lo que se autoriza. No opera mercados donde se negocian sus propias monedas.</dd></div>
-    <div><dt>DBNX</dt><dd>Admite, clasifica y supervisa a quien quiere emitir. No emite ni valúa.</dd></div>
-    <div><dt>Au Corp.</dt><dd>Opera el mercado del sistema, Ordenex. No emite.</dd></div>
-  </dl>
-  <p class="intro">Ninguna llave sola puede crear moneda, tocar las reservas ni mover un saldo ajeno: lo que importa pide varias firmas, un motivo escrito y un tiempo de espera.</p>
+<section class="seccion marco" aria-labelledby="t-viene">
+  <h2 class="grande aparece" id="t-viene">Lo que estamos encendiendo</h2>
+  <ul class="encendiendo">
+    <li class="aparece"><h3>Oro y plata en bóveda</h3><p>AUKA y AGKA respaldadas por metal físico, asignado y separado, en bóvedas de custodios independientes. Cada onza con una sola función, y la prueba de reservas publicada en la cadena.</p></li>
+    <li class="aparece"><h3>El Mercado de Valores Inclusivo</h3><p>Empresas de la región emitiendo en la 5550, cada una con su pasaporte y su riesgo a la vista. Para invertir no se va a pedir patrimonio mínimo: hay un límite a cuánto arriesgás, para cuidarte.</p></li>
+    <li class="aparece"><h3>Tu moneda local, conectada</h3><p>Entrar y salir del sistema con el dinero de todos los días, a través de Ordenex y Au Corp.</p></li>
+  </ul>
 </section>
 
-<section class="env viene" aria-labelledby="t-viene">
-  <h2 class="titulo" id="t-viene">Lo que viene.</h2>
-  <p class="intro">El sistema crece por partes, y cada parte nueva se enciende con sus reglas ya escritas.</p>
-  <div class="viene-lista">
-    <article><h3>Oro y plata en bóveda</h3><p>AUKA y AGKA respaldadas por metal físico, asignado y separado, en bóvedas de custodios independientes. Cada onza con una sola función, y la prueba de reservas publicada en la cadena.</p></article>
-    <article><h3>El Mercado de Valores Inclusivo</h3><p>Empresas de la región emitiendo en la 5550, cada una con su pasaporte y su riesgo a la vista. Para invertir no se va a pedir patrimonio mínimo: se pone un límite a cuánto arriesgás, para cuidarte.</p></article>
-    <article><h3>Tu moneda local, conectada</h3><p>Entrar y salir del sistema con el dinero de todos los días, a través de Ordenex y Au Corp.</p></article>
-  </div>
-</section>
-
-<section class="env prueba" id="prueba" aria-labelledby="t-prueba">
-  <h2 class="titulo" id="t-prueba">Cinco cosas que podés comprobar sin nosotros.</h2>
-  <p class="intro">Cada una está en un sitio que no controlamos. Copiá el código, pegalo allá y mirá qué sale.</p>
+<section class="seccion marco" id="prueba" aria-labelledby="t-prueba">
+  <h2 class="grande aparece" id="t-prueba">Cinco cosas que podés comprobar sin nosotros</h2>
+  <p class="texto aparece">Cada una está en un sitio que no controlamos. Copiá el código, pegalo allá y mirá qué sale.</p>
   <div class="pruebas">
 {{PRUEBAS}}
   </div>
   <p class="nota-lei">Un LEI es el código con el que se identifica a una sociedad en el sistema financiero internacional. No es una licencia: prueba que la empresa existe, quién es y dónde está registrada.</p>
 </section>
 
-<section class="env cierre" aria-labelledby="t-cierre">
-  <h2 class="titulo" id="t-cierre">Entrá al sistema en un minuto.</h2>
-  <p class="intro">Con tu correo. La verificación, con tu documento y tu cara, la hacés una sola vez y te sirve en todo el sistema.</p>
-  <div class="acciones">
-    <a class="boton" href="https://app.vetawallet.com">Abrir cuenta</a>
+<section class="seccion marco" aria-labelledby="t-cierre">
+  <h2 class="oculto" id="t-cierre">Abrí tu cuenta</h2>
+  <a class="invitacion" href="https://app.vetawallet.com">Abrí tu cuenta <span aria-hidden="true">→</span></a>
+  <div class="cierre-pie">
     <a class="enlace" href="https://app.vetawallet.com/instalar">Descargar para Android</a>
+    <a class="enlace" href="/historia/">La historia, del oro a una cadena propia</a>
   </div>
-  <p class="intro">Si tenés cinco minutos: <a class="enlace" href="/historia/">la historia, del oro a una cadena propia</a>, con sonido.</p>
   <p class="legal">Antes de abrir: Veta Wallet es una billetera custodia, o sea que guardamos tu llave cifrada por vos. No somos un banco y tus saldos no están cubiertos por ningún seguro de depósitos. El oro sube, pero también baja, y ORIGEN baja con él. ORIGEN está referenciado al oro, no respaldado: no te da derecho a canjearlo por metal. Lo que se anuncia como próximo todavía no está disponible. Está todo en los <a href="https://app.vetawallet.com/terminos">términos</a>, escrito para entenderse.</p>
 </section>
 
 </main>
 
-<footer class="pie env">
+<footer class="pie marco">
   <div class="pie-a">
     <div>
       <img src="/assets/og.svg" alt="Orden Global" width="41" height="22">
@@ -238,6 +254,6 @@
 </footer>
 
 <script src="/assets/og-vector.js?v={{V}}" defer></script>
-<script src="/assets/og26.js?v={{V}}" defer></script>
+<script src="/assets/og27.js?v={{V}}" defer></script>
 </body>
 </html>
