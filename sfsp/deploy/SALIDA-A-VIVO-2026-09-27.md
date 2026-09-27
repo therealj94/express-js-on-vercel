@@ -58,26 +58,76 @@ La rama de producción `claude/veta-wallet-phantom-design-7syah8` avanzó de
 
 En genesis-id no se tocó ninguna variable. `GENESIS_VENCER_AUTO` sigue ausente.
 
-## Lo que falta (sesión nueva, con la llave de Heroku)
+## Heroku (segunda sesión, 27-sep)
 
-El entorno carga las credenciales nuevas solo al abrir otra sesión. En esta,
-Heroku respondió 401. Orden de los pasos:
+Con la llave de Heroku en el entorno. José aprobó cada app, una por una. Las
+tres subieron del mismo commit, `01f159f` de `claude/sfsp410-ondk-saldos-ox2fba`.
 
-1. **Leer** releases y banderas de `ordenex-api`, `vetawallet` y `mytokenpay-api`,
-   sin imprimir secretos, y anotar el release al que se vuelve.
-2. **Ordenex:** `node infra/ordenex-api/bin/desplegar.mjs`.
-   - Deben quedar como están `SFSP410_EMISION` (ausente), `COMPRAS`, `VENTAS` y `BARRIDO`.
-   - Comprobar `/salud` y un SSO.
-3. **Veta:** `node infra/veta-wallet-backend/bin/desplegar.mjs`.
-   - Precio de Londres (sin `OG_PRECIO_MODO=fijo`).
-   - `SFSP410_EMISION` ausente.
-   - Comprobar `/salud` y una cotización de depósito.
-4. **MyTokenPay:** build desde `git archive` (no tiene guion propio).
-   - **Inmediatamente después**, José cambia `ADMIN_PASSWORD`.
-   - Decidir `MTP_OCULTAR_TOKEN_RESETEO`.
-5. Sigue abierto en producción, desde antes de este trabajo, el puente de Veta sin
-   exigir el correo confirmado (`GENESIS_PUENTE_EXIGE_CORREO_CONFIRMADO`). Se
-   recomienda activarlo tras medir cuántos usuarios no lo tienen confirmado.
+### Antes de subir
+
+- Pruebas locales, con los contratos compilados antes:
+  - Ordenex: «Todo en orden».
+  - Veta: 92/93. Solo falla `probar-carta`, que ya fallaba antes.
+  - MyTokenPay: 55/55.
+- MyTokenPay, la comprobación de `PROCEDENCIA.md` (se bajó el slug vivo, v28, y
+  se compararon las rutas). Las 50 rutas del slug están en el repositorio. Las
+  9 de `/genesis/*` pasaron al módulo compartido `src/lib/genesisPuente.js`.
+  El despliegue no quita ninguna ruta.
+
+### Lo que salió a vivo
+
+| App | Antes → ahora | Comprobación | Cómo revertir |
+|---|---|---|---|
+| `ordenex-api` | v44 → **v45** | `/salud`: ok, cadena, mongo, entrega y venta, igual que antes. SSO con un token falso: 401 `SSO_INVALIDO`, así que Genesis contesta. `/compras` y `/portafolio` existen | Roll back a **v44** |
+| `vetawallet` | v121 → **v122** | `/salud`: ok, mongo y cadena. Precio en un dyno puntual con el código desplegado: ORIGEN = **2,5055 USD** (gramo 137,80 USD / 55), fuente `oro`, es decir, Londres | Roll back a **v121** |
+| `mytokenpay-api` | v28 → **v29** | `/healthz` ok (mongo). `web.1` corre v29. `/genesis/*`, `/api/companies` y `/api/admin` responden 401 sin sesión | Roll back a **v28** |
+
+Roll back: en el dashboard de la app, *Activity → Roll back*, o por la API con
+`POST /apps/<app>/releases {"release": "<id de la versión>"}`.
+
+### Banderas (ninguna se tocó)
+
+| App | Bandera | Valor |
+|---|---|---|
+| ordenex-api | `SFSP410_EMISION` | ausente |
+| ordenex-api | `COMPRAS`, `VENTAS`, `BARRIDO` | `1`, como estaban antes |
+| vetawallet | `SFSP410_EMISION` | ausente |
+| vetawallet | `OG_PRECIO_MODO` | `oro`, el modo por omisión (Londres). No había `fijo` que quitar |
+| vetawallet | `GENESIS_PUENTE_EXIGE_CORREO_CONFIRMADO` | ausente |
+| mytokenpay-api | `MTP_VINCULO_GENESIS`, `MTP_OCULTAR_TOKEN_RESETEO` | ausentes |
+
+Ojo: al terminar, `ordenex-api/bin/desplegar.mjs` imprime «El barrido y la
+entrega siguen APAGADOS». En producción, `BARRIDO=1` y `COMPRAS=1` ya estaban
+puestas desde antes. Ese mensaje no mira las variables.
+
+### Medición: correo confirmado en Veta (solo cuentas)
+
+Se hizo con un dyno puntual en `vetawallet`. Solo se contaron documentos, sin
+datos personales.
+
+| | |
+|---|---|
+| Usuarios | 481 |
+| Con `isVerified = true` | **4** |
+| Sin confirmar | **477** (99 %) |
+| Sin confirmar, con la carta de Genesis enviada | 418 |
+| Sin confirmar, activos en los últimos 30 días | 92 |
+| Sin confirmar, creados en los últimos 30 días | 23 |
+
+**Recomendación: no activar `GENESIS_PUENTE_EXIGE_CORREO_CONFIRMADO` todavía.**
+Activarla deja sin puente ni SSO de Ordenex a casi todos. Con 4 confirmados de
+481, lo más probable es que el flujo de confirmación no esté marcando
+`isVerified`, más que la gente no confirme. Primero hay que revisar ese flujo,
+después pedir la confirmación desde la app, y activar la bandera cuando la
+mayoría de los activos la tenga.
+
+## Pendiente
+
+1. **José:** cambiar `ADMIN_PASSWORD` en `mytokenpay-api` y comprobar que la
+   vieja ya no entra. Se avisó justo al terminar la v29.
+2. **José:** decidir `MTP_OCULTAR_TOKEN_RESETEO=si`. Cierra la toma de cuentas
+   por «olvidé mi contraseña», pero rompe el reseteo desde la app.
+3. Revisar por qué solo 4 cuentas de Veta tienen el correo confirmado (ver arriba).
 
 Contratos SFSP en la 5550: nada que desplegar. Siguen en `BLOCKED_DECISION`
 hasta D07 (firmantes), D24–D27 y las llaves en KMS.
