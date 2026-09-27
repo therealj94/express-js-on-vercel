@@ -121,13 +121,45 @@ Activarla deja sin puente ni SSO de Ordenex a casi todos. Con 4 confirmados de
 después pedir la confirmación desde la app, y activar la bandera cuando la
 mayoría de los activos la tenga.
 
+### Por qué solo hay 4 confirmados
+
+Revisado el mismo día. Solo se contaron cuentas, sin leer correos.
+
+1. **Hasta agosto de 2026 nadie podía confirmar.** El enlace apuntaba a
+   `api.vetawallet.com`, que no existe en DNS, y además nunca se metía en el
+   correo. Se corrigió en `f28096d` (15-ago). Por mes de alta: de 2023-06 a
+   2026-07, **0 confirmados de 398**; 2026-08, 2 de 56; 2026-09, 2 de 23.
+2. **La llave de SES de `vetawallet` ya no vale.** `GET /v2/email/account`,
+   firmado con `SES_LLAVE`/`SES_SECRETO`, responde 403 «The security token
+   included in the request is invalid». Es el error de una llave que ya no
+   existe en IAM; una firma mal hecha daría otro error, y un permiso que falta
+   también. Si es así, hoy no sale ningún correo de Veta: ni la confirmación, ni
+   la recuperación de contraseña, ni la bienvenida. `enviarCorreo` no lanza y
+   el alta sigue, así que el fallo es silencioso. No se pudo confirmar con un
+   envío real: la prueba contra el simulador de SES quedó bloqueada por los
+   permisos de la sesión.
+3. **No hay forma de volver a pedir el correo.** El código dice que se puede
+   («lo puede volver a pedir»), pero no existe ninguna ruta de reenvío.
+4. Los 477 sin confirmar conservan su `verificationToken`. En cuanto el correo
+   funcione, se les puede mandar el enlace otra vez sin tocar la base.
+
+Qué hacer, en orden:
+
+1. **José:** crear una llave IAM nueva con permiso `ses:SendEmail` y ponerla en
+   `SES_LLAVE`/`SES_SECRETO` de `vetawallet`. Mirar en CloudTrail quién borró
+   o desactivó la anterior, y cuándo.
+2. **Código:** añadir `POST /auth/reenviarConfirmacion`, con límite de envíos,
+   y su botón en la app.
+3. Reenviar la confirmación a los 92 activos de los últimos 30 días.
+4. Activar `GENESIS_PUENTE_EXIGE_CORREO_CONFIRMADO` solo cuando la mayoría de
+   los activos esté confirmada.
+
 ## Pendiente
 
-1. **José:** cambiar `ADMIN_PASSWORD` en `mytokenpay-api` y comprobar que la
-   vieja ya no entra. Se avisó justo al terminar la v29.
+1. ~~Cambiar `ADMIN_PASSWORD` en `mytokenpay-api`~~: hecho por José el 27-sep.
 2. **José:** decidir `MTP_OCULTAR_TOKEN_RESETEO=si`. Cierra la toma de cuentas
    por «olvidé mi contraseña», pero rompe el reseteo desde la app.
-3. Revisar por qué solo 4 cuentas de Veta tienen el correo confirmado (ver arriba).
+3. La llave de SES de Veta y el reenvío de la confirmación (ver arriba).
 
 Contratos SFSP en la 5550: nada que desplegar. Siguen en `BLOCKED_DECISION`
 hasta D07 (firmantes), D24–D27 y las llaves en KMS.
