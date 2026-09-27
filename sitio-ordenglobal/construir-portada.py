@@ -12,7 +12,7 @@
 import html, math, os, re, sys
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
-VERSION = "20260926"
+VERSION = "20260927"
 
 
 def e(t):
@@ -20,89 +20,93 @@ def e(t):
 
 
 # ── LAS SIETE CASAS ─────────────────────────────────────────────────────────
-# Lo de Ordenex sale del código en vivo de ordenexchange.link (cadena.js e
-# i18n.js), no de la ficha vieja: hoy son cinco mercados y no dos.
+# Cada casa: nombre, qué es, puntos, enlace, video y estado. El estado sale de
+# la revisión en vivo del 27 de septiembre de 2026: None = disponible (no
+# lleva sello), "beta" = abierta en prueba, "pronto" = todavía no se usa.
+# Regla de SFSP (sección 6): nada que dependa de una licencia no otorgada se
+# presenta como disponible. Por eso Ordenex no promete lempiras ni dólares.
 CASAS = {"es": [
-    ("Veta Wallet", "Tu cuenta: guardás, mandás y cobrás desde el teléfono.", [
-        "Ahorrás en ORIGEN, que sigue al oro y no a la moneda de tu país.",
-        "Mandás a un contacto o a otro país en tres toques, y llega en segundos.",
+    ("Veta Wallet", "Tu cuenta en ORIGEN, en el teléfono.", [
+        "Guardás en ORIGEN, que sigue al oro y no a la moneda de tu país.",
+        "Mandás ORIGEN a cualquier contacto en tres toques, y llega en segundos.",
         "Cobrás con un código que ya lleva el monto puesto.",
-        "Cada movimiento te deja un comprobante con su número en la cadena.",
-    ], ("Abrir Veta Wallet", "https://app.vetawallet.com"), None),
-    ("PULSE2CHAT", "Un chat cifrado donde también se paga.", [
+        "Cada movimiento te deja su comprobante en la cadena.",
+    ], ("Abrir Veta Wallet", "https://app.vetawallet.com"), None, None),
+    ("Genesis ID", "Te verificás una vez y te sirve en todo el sistema.", [
+        "Documento, prueba de vida y cotejo contra las listas internacionales de sanciones.",
+        "Cada verificación la aprueba una persona, no una máquina.",
+        "Tus documentos quedan cifrados y fuera de la cadena: ahí solo va la prueba.",
+    ], ("Conocer Genesis ID", "https://app.vetawallet.com/genesis-id"), None, "beta"),
+    ("PULSE2CHAT", "Hablás y pagás en la misma conversación.", [
+        "Solo entra gente verificada con Genesis ID.",
         "Le pedís a alguien lo que te debe y te lo manda ahí mismo.",
-        "El comprobante queda en la conversación, comprobado contra la cadena.",
-        "La llave vive en tu teléfono: nadie más lee lo que escribís, tampoco nosotros.",
-        "Solo con gente verificada.",
-    ], ("Abrir el chat", "https://app.vetawallet.com"), None),
-    ("Genesis ID", "Tu identidad, verificada una sola vez para todo.", [
-        "Lectura del documento, prueba de vida y cotejo contra las listas internacionales de sanciones.",
-        "Lo hacés una vez y no repetís papeleo en ninguna casa.",
-        "Te queda una credencial que cualquiera puede comprobar sin ver tus datos.",
-    ], ("Verificarte", "https://app.vetawallet.com"), None),
+        "El comprobante queda en el chat, comprobado contra la cadena.",
+        "Llamadas de voz y video, dentro de Veta Wallet.",
+    ], ("Abrir el chat", "https://app.vetawallet.com"), None, "beta"),
+    ("Ordenex", "El mercado del sistema.", [
+        "Cinco mercados de la cadena, cada uno contra ORIGEN.",
+        "Libro de órdenes de verdad, y velas que solo pintan tratos reales.",
+        "Entrás con tu cuenta de Veta Wallet: Ordenex no guarda contraseñas.",
+    ], ("Abrir Ordenex", "https://ordenexchange.link"),
+        ("ordenex-spot", "Ver el spot", "0:32", "El spot de Ordenex, con sonido."), "beta"),
+    ("AuCorp", "Tus cuentas, conectadas al sistema.", [
+        "Cuentas con libro contable de partida doble detrás.",
+        "Comprobante de cada movimiento y extracto que cuadra, para tu contador.",
+        "Entrás con el mismo Genesis ID: no hay otra contraseña que recordar.",
+    ], ("Conocer Au Corp", "https://www.aucorp.io"), None, "beta"),
     ("MyTokenPay", "Para cobrar en tu negocio con un código, sin terminal.", [
         "Generás un código con el monto y tu cliente lo escanea.",
-        "Te llega al instante: no hay terminal que alquilar ni dos días de espera.",
-        "Cada cobro queda con su comprobante, y llevás la cuenta sin cuaderno.",
-    ], ("Ver cómo funciona", "https://app.vetawallet.com"), None),
+        "Sin terminal que alquilar.",
+        "Cada cobro queda con su comprobante en la cadena, y llevás la cuenta sin cuaderno.",
+    ], None, None, "pronto"),
     ("OrdenScan", "El explorador público de la cadena, sin cuenta y sin permiso.", [
         "Pegás el número de tu movimiento y ves cuándo entró, en qué bloque y a dónde fue.",
         "Sirve para probarle a alguien que le pagaste, sin depender de nuestra palabra.",
         "Están a la vista los contratos de cada moneda y quién firma cada bloque.",
-    ], ("Abrir el explorador", "https://ordenscan.com"), None),
-    ("Ordenex", "La casa de cambio: cinco mercados de la cadena, cada uno contra ORIGEN.", [
-        "Libro de órdenes de verdad, y velas que solo pintan tratos reales.",
-        "Cambiás ORIGEN por AUKA, AGKA, ONDK, IBS Energy o Harvi.",
-        "Entrás y salís en lempiras o en dólares, con agentes verificados.",
-        "Entrás con tu cuenta de Veta Wallet: Ordenex no guarda contraseñas.",
-    ], ("Abrir Ordenex", "https://ordenexchange.link"),
-        ("ordenex-spot", "Ver el spot", "0:32", "El spot de Ordenex, con sonido.")),
-    ("AuCorp", "Cuentas en moneda local, con extracto para tu contador.", [
-        "Cuentas en moneda local, con libro contable de partida doble detrás.",
-        "Comprobante de cada movimiento y extracto mensual que cuadra, para tu contador o tu banco.",
-        "Entrás con el mismo Genesis ID: no hay otra contraseña que recordar.",
-    ], ("Abrir desde tu cuenta", "https://app.vetawallet.com"), None),
+    ], ("Abrir el explorador", "https://ordenscan.com"), None, None),
 ], "en": [
-    ("Veta Wallet", "Your account: save, send and get paid from your phone.", [
+    ("Veta Wallet", "Your ORIGEN account, on your phone.", [
         "You save in ORIGEN, which follows gold and not your country's currency.",
-        "You send to a contact or to another country in three taps, and it arrives in seconds.",
+        "You send ORIGEN to any contact in three taps, and it arrives in seconds.",
         "You get paid with a code that already carries the amount.",
-        "Every movement leaves you a receipt with its number on the chain.",
-    ], ("Open Veta Wallet", "https://app.vetawallet.com"), None),
-    ("PULSE2CHAT", "An encrypted chat where you can also pay.", [
-        "You ask someone for what they owe you and they send it right there.",
-        "The receipt stays in the conversation, checked against the chain.",
-        "The key lives on your phone: nobody else reads what you write, us included.",
-        "Only with verified people.",
-    ], ("Open the chat", "https://app.vetawallet.com"), None),
-    ("Genesis ID", "Your identity, verified once for everything.", [
+        "Every movement leaves you its receipt on the chain.",
+    ], ("Open Veta Wallet", "https://app.vetawallet.com"), None, None),
+    ("Genesis ID", "Get verified once and it works across the whole system.", [
         "Document check, liveness test and screening against international sanctions lists.",
-        "You do it once and never repeat the paperwork in any other product.",
-        "You get a credential anyone can verify without seeing your data.",
-    ], ("Get verified", "https://app.vetawallet.com"), None),
+        "Every verification is approved by a person, not a machine.",
+        "Your documents stay encrypted and off the chain: only the proof goes there.",
+    ], ("About Genesis ID", "https://app.vetawallet.com/genesis-id"), None, "beta"),
+    ("PULSE2CHAT", "Talk and pay in the same conversation.", [
+        "Only people verified with Genesis ID get in.",
+        "You ask someone for what they owe you and they send it right there.",
+        "The receipt stays in the chat, checked against the chain.",
+        "Voice and video calls, inside Veta Wallet.",
+    ], ("Open the chat", "https://app.vetawallet.com"), None, "beta"),
+    ("Ordenex", "The system's market.", [
+        "Five markets on the chain, each one against ORIGEN.",
+        "A real order book, and candles drawn only from real trades.",
+        "Sign in with your Veta Wallet account: Ordenex stores no passwords.",
+    ], ("Open Ordenex", "https://ordenexchange.link"),
+        ("ordenex-spot", "Watch the spot", "0:32", "The Ordenex spot, in Spanish, with sound."), "beta"),
+    ("AuCorp", "Your accounts, connected to the system.", [
+        "Accounts with double-entry bookkeeping behind them.",
+        "A receipt for every movement and a statement that adds up, for your accountant.",
+        "You sign in with the same Genesis ID: no other password to remember.",
+    ], ("About Au Corp", "https://www.aucorp.io"), None, "beta"),
     ("MyTokenPay", "Take payments at your business with a code, no terminal.", [
         "You create a code with the amount and your customer scans it.",
-        "It arrives instantly: no terminal to rent and no two-day wait.",
-        "Every payment comes with its receipt, so the books keep themselves.",
-    ], ("See how it works", "https://app.vetawallet.com"), None),
+        "No terminal to rent.",
+        "Every payment keeps its receipt on the chain, so the books keep themselves.",
+    ], None, None, "pronto"),
     ("OrdenScan", "The chain's public explorer, no account and no permission needed.", [
         "Paste your movement's number and see when it went in, in which block and where it went.",
         "Use it to prove to someone that you paid them, without relying on our word.",
         "Every currency's contract is in plain view, and so is who signs each block.",
-    ], ("Open the explorer", "https://ordenscan.com"), None),
-    ("Ordenex", "The exchange: five markets on the chain, each one against ORIGEN.", [
-        "A real order book, and candles drawn only from real trades.",
-        "Swap ORIGEN for AUKA, AGKA, ONDK, IBS Energy or Harvi.",
-        "Cash in and out in lempiras or dollars, through verified agents.",
-        "Sign in with your Veta Wallet account: Ordenex stores no passwords.",
-    ], ("Open Ordenex", "https://ordenexchange.link"),
-        ("ordenex-spot", "Watch the spot", "0:32", "The Ordenex spot, in Spanish, with sound.")),
-    ("AuCorp", "Local-currency accounts, with statements for your accountant.", [
-        "Accounts in local currency, with double-entry bookkeeping behind them.",
-        "A receipt for every movement and a monthly statement that adds up, for your accountant or your bank.",
-        "You sign in with the same Genesis ID: no other password to remember.",
-    ], ("Open from your account", "https://app.vetawallet.com"), None),
+    ], ("Open the explorer", "https://ordenscan.com"), None, None),
 ]}
+
+ETIQUETA = {"es": {"beta": "Beta", "pronto": "Próximamente"},
+            "en": {"beta": "Beta", "pronto": "Coming soon"}}
 
 
 # Un video de la campaña. Sin JavaScript es un <video> con sus controles; con
@@ -116,13 +120,14 @@ def pieza(base, boton, dura, pie):
             f'</div><figcaption>{e(pie)}</figcaption></figure>')
 
 
-def casa(nombre, que, puntos, enlace, video, lang="es"):
+def casa(nombre, que, puntos, enlace, video, estado, lang="es"):
     lis = "".join(f"<li>{e(p)}</li>" for p in puntos)
     vid = pieza(*video) if video else ""
-    return (f'    <details class="casa"><summary><h3>{e(nombre)}</h3>'
+    etq = (f'<span class="etq etq-{estado}">{ETIQUETA[lang][estado]}</span>' if estado else "")
+    enl = f'<a class="enlace" href="{e(enlace[1])}">{e(enlace[0])}</a>' if enlace else ""
+    return (f'    <details class="casa"><summary><h3>{e(nombre)}{etq}</h3>'
             f'<span class="que">{e(que)}</span><span class="mas" aria-hidden="true"></span></summary>'
-            f'<div class="dentro"><div><ul>{lis}</ul>{vid}'
-            f'<a class="enlace" href="{e(enlace[1])}">{e(enlace[0])}</a></div></div></details>')
+            f'<div class="dentro"><div><ul>{lis}</ul>{vid}{enl}</div></div></details>')
 
 
 # ── LA PRUEBA ───────────────────────────────────────────────────────────────

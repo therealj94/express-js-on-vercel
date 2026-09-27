@@ -33,8 +33,13 @@ Tres reglas que conviene no romper:
 - **Nada inventado se mueve.** Si el precio o la cadena no contestan, el dato
   no aparece (arriba) o queda su guion (en la fórmula). Nunca un número de
   relleno.
-- **SFSP se presenta como lo que es**: en construcción y sin nada encendido.
-  El día que se encienda, se cambia el sello y se añade su fila de prueba.
+- **Se vende lo que es, y lo que viene se dice como lo que viene.** La
+  portada es marketing: el sistema completo, capa por capa. Pero nada que
+  dependa de una licencia no otorgada se presenta como disponible (SFSP v0.3,
+  sección 6). Cada casa lleva su sello en `construir-portada.py`: sin sello si
+  está disponible, "Beta" o "Próximamente" si no. Lo que falta va en "Lo que
+  viene", nunca en presente. ORIGEN es referenciado, no respaldado; AUKA y
+  AGKA, respaldadas cuando haya metal: las dos cosas siempre por separado.
 
 Los planetas en WebGL de la portada anterior siguen en `assets/` y en el
 historial de git (`sistema.js`, `constelacion.js`, `portada.css`, `portada.js`),
