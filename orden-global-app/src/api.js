@@ -610,39 +610,40 @@ export async function erc20Decimals(provider, contract) {
   } catch (e) { return null; }
 }
 
-// ---------- precios (CoinGecko, igual que la web) ----------
-// AUKA sigue el oro (PAXG = 1 oz oro) y AGKA la plata (KAG = 1 oz plata).
-// ORIGEN = 1/55 de un gramo de oro. Fallback: gold-api.com.
+// ---------- precios: el oro y la plata de LONDRES ----------
+// Decisión de la dirección (27-sep-2026): el precio es el spot de Londres
+// (XAU/XAG en gold-api.com), el mismo que usan los backends (lib/oraculo.js).
+// AUKA = 1 oz de oro, AGKA = 1 oz de plata, ORIGEN = 1/55 de gramo de oro.
+// CoinGecko (PAXG/KAG) ya NO da el precio: son tokens que cotizan con prima o
+// descuento sobre el metal. Sólo se usa para el % de cambio en 24 h y para
+// las velas, que no mueven dinero. Sin Londres, precio null: la pantalla
+// enseña un guion.
 const COINGECKO = (process.env.EXPO_PUBLIC_PRICES_API || 'https://api.coingecko.com/api/v3').replace(/\/$/, '');
+const LONDRES = 'https://api.gold-api.com/price/';
 const OZ_GRAMS = 31.1035;
 
 export async function fetchMetalPrices() {
-  // 1) CoinGecko (la misma fuente que usa la billetera web)
-  try {
-    const r = await fetch(`${COINGECKO}/simple/price?ids=pax-gold,kinesis-silver&vs_currencies=usd&include_24hr_change=true`);
-    const d = await r.json();
-    const gold = Number(d?.['pax-gold']?.usd);
-    const silver = Number(d?.['kinesis-silver']?.usd);
-    if (gold > 0) {
-      return {
-        goldOz: gold,
-        silverOz: silver > 0 ? silver : null,
-        goldChg: Number(d?.['pax-gold']?.usd_24h_change) || null,
-        silverChg: Number(d?.['kinesis-silver']?.usd_24h_change) || null,
-      };
-    }
-  } catch (e) {}
-  // 2) Respaldo: gold-api.com (sin API key)
-  const one = async (sym) => {
+  const spot = async (sym) => {
     try {
-      const r = await fetch(`https://api.gold-api.com/price/${sym}`);
+      const r = await fetch(`${LONDRES}${sym}`);
       const d = await r.json().catch(() => ({}));
       const p = Number(d?.price);
       return p > 0 ? p : null;
     } catch (e) { return null; }
   };
-  const [goldOz, silverOz] = await Promise.all([one('XAU'), one('XAG')]);
-  return { goldOz, silverOz, goldChg: null, silverChg: null };
+  // El % de cambio en 24 h es sólo un indicador: si CoinGecko no contesta, null.
+  const cambio = async () => {
+    try {
+      const r = await fetch(`${COINGECKO}/simple/price?ids=pax-gold,kinesis-silver&vs_currencies=usd&include_24hr_change=true`);
+      const d = await r.json();
+      return {
+        goldChg: Number(d?.['pax-gold']?.usd_24h_change) || null,
+        silverChg: Number(d?.['kinesis-silver']?.usd_24h_change) || null,
+      };
+    } catch (e) { return { goldChg: null, silverChg: null }; }
+  };
+  const [goldOz, silverOz, chg] = await Promise.all([spot('XAU'), spot('XAG'), cambio()]);
+  return { goldOz, silverOz, goldChg: goldOz ? chg.goldChg : null, silverChg: silverOz ? chg.silverChg : null };
 }
 
 // ---------- velas japonesas (histórico OHLC real) ----------

@@ -238,7 +238,9 @@ const CADENA = (() => {
   // ── precios ───────────────────────────────────────────────────────────────
 
   async function metales() {
-    // Respaldo sin clave. Solo trae el precio, no la variacion.
+    // El precio es el de LONDRES (decisión de la dirección, 27-sep-2026): spot
+    // XAU/XAG de gold-api, el mismo que usan los backends (lib/oraculo.js).
+    // CoinGecko (PAXG/KAG) sólo da el % de cambio en 24 h, que no mueve dinero.
     const uno = async sim => {
       try {
         const r = await fetch(`https://api.gold-api.com/price/${sim}`);
@@ -246,25 +248,18 @@ const CADENA = (() => {
         return p > 0 ? p : null;
       } catch { return null; }
     };
-    try {
-      const r = await fetch(`${COINGECKO}/simple/price?ids=pax-gold,kinesis-silver&vs_currencies=usd&include_24hr_change=true`);
-      const d = await r.json();
-      const oro = Number(d?.['pax-gold']?.usd);
-      const plata = Number(d?.['kinesis-silver']?.usd);
-      if (oro > 0) {
-        // Cada pata tiene su respaldo (SFSP v0.3 §10.5: «la plata sigue el
-        // mismo esquema»): si CoinGecko trae el oro sin la plata, la plata se
-        // pide a gold-api, como hace lib/oraculo.js en los backends.
-        if (plata > 0) return {
-          oro, plata,
+    const cambio = async () => {
+      try {
+        const r = await fetch(`${COINGECKO}/simple/price?ids=pax-gold,kinesis-silver&vs_currencies=usd&include_24hr_change=true`);
+        const d = await r.json();
+        return {
           oroChg: Number(d?.['pax-gold']?.usd_24h_change) || null,
           plataChg: Number(d?.['kinesis-silver']?.usd_24h_change) || null,
         };
-        return { oro, plata: await uno('XAG'), oroChg: Number(d?.['pax-gold']?.usd_24h_change) || null, plataChg: null };
-      }
-    } catch {}
-    const [oro, plata] = await Promise.all([uno('XAU'), uno('XAG')]);
-    return { oro, plata, oroChg: null, plataChg: null };
+      } catch { return { oroChg: null, plataChg: null }; }
+    };
+    const [oro, plata, chg] = await Promise.all([uno('XAU'), uno('XAG'), cambio()]);
+    return { oro, plata, oroChg: oro ? chg.oroChg : null, plataChg: plata ? chg.plataChg : null };
   }
 
   // AUKA sigue la onza de oro, AGKA la de plata, y ORIGEN es un gramin:

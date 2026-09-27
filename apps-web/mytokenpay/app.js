@@ -14,7 +14,7 @@ const MTP = (() => {
 
   const API = null;                     // sin backend publicado todavía
   /* EL PRECIO DE ORIGEN: 1 ORIGEN = 1 gramin = gramo de oro / 55, leído del
-     oro en vivo (CoinGecko pax-gold; respaldo gold-api XAU), con las reglas
+     oro en vivo de Londres (spot XAU, gold-api), con las reglas
      del oráculo único de la casa (plan SFSP v0.3, C5): caché de 30 s y edad
      máxima de 10 min. Sin dato fresco, guion. Aquí hubo un 2,35 USD fijo que
      se enseñaba como si fuera el precio del día. Los cobros van en ORIGEN, no
@@ -87,17 +87,12 @@ const MTP = (() => {
     if (Date.now() - precio.pedido < PRECIO_FRESCO_MS) return;
     precio.pedido = Date.now();
     const plazo = () => (typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined);
+    // El precio de Londres (spot XAU, gold-api), como los backends. Sin Londres, guion.
     let onza = null;
     try {
-      const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd', { signal: plazo() });
-      if (r.ok) onza = Number((await r.json())?.['pax-gold']?.usd);
+      const r = await fetch('https://api.gold-api.com/price/XAU', { signal: plazo() });
+      if (r.ok) onza = Number((await r.json())?.price);
     } catch {}
-    if (!(onza > 0)) {
-      try {
-        const r = await fetch('https://api.gold-api.com/price/XAU', { signal: plazo() });
-        if (r.ok) onza = Number((await r.json())?.price);
-      } catch {}
-    }
     if (onza > 0) precio = { ...precio, usd: onza / ONZA_EN_GRAMOS / 55, en: Date.now() };
     /* Se repinta SOLO si cambió lo que se ve: otro precio, o uno que caducó y
        pasa a guion. Y sin volver arriba: antes, cada minuto la página saltaba

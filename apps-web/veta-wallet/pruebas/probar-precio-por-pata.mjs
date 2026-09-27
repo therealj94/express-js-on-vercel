@@ -132,8 +132,10 @@ const r5 = await pg2.evaluate(async (src) => {
   const CADENA = (0, eval)(src + '\n;CADENA')
   return CADENA.precios()
 }, fuente)
-decir(r5.p.AUKA === 4000, 'CoinGecko con oro: AUKA sale de CoinGecko', `AUKA ${r5.p.AUKA}`)
-decir(r5.p.AGKA === 31.5, 'CoinGecko sin plata: AGKA sale del respaldo de gold-api', `AGKA ${r5.p.AGKA}`)
+// Desde el 27-sep el precio es el de Londres (spot XAU/XAG de gold-api):
+// PAXG de CoinGecko (4000) ya no manda, sólo da el % de cambio en 24 h.
+decir(r5.p.AUKA === 3990, 'AUKA sale del spot de Londres (XAU), no de PAXG', `AUKA ${r5.p.AUKA}`)
+decir(r5.p.AGKA === 31.5, 'AGKA sale del spot de Londres (XAG)', `AGKA ${r5.p.AGKA}`)
 
 await nav.close()
 sv.close()

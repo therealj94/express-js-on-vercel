@@ -56,13 +56,13 @@ const pg = await nav.newPage({ viewport: { width: 360, height: 560 }, locale: 'e
 const errores = []
 pg.on('pageerror', (e) => errores.push(e.message))
 
-// El feed: CoinGecko contesta lo que diga `onza`; gold-api no contesta.
+// El feed: el spot de Londres (gold-api XAU) contesta lo que diga `onza`.
 let onza = 4000
 await pg.route('**/*', (r) => {
   const url = r.request().url()
   if (url.startsWith(ORIGEN)) return r.continue()
-  if (url.includes('api.coingecko.com')) {
-    return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ 'pax-gold': { usd: onza } }) })
+  if (url.includes('api.gold-api.com')) {
+    return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ price: onza }) })
   }
   return r.abort()
 })

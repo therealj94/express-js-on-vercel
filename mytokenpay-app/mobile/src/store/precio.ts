@@ -4,8 +4,8 @@ import { create } from 'zustand'
 // El precio de ORIGEN en USD, leído del oro en vivo.
 //
 // 1 ORIGEN = 1 gramin = gramo de oro / 55 (decisión de la dirección del
-// 26-sep-2026). Fuente principal CoinGecko (pax-gold), respaldo gold-api (XAU),
-// con las reglas del oráculo único de la casa (plan SFSP v0.3, C5): caché de
+// 26-sep-2026), con el precio de LONDRES (27-sep-2026): spot XAU de gold-api,
+// el mismo que usan los backends, con las reglas del oráculo único de la casa (plan SFSP v0.3, C5): caché de
 // 30 s y edad máxima de 10 min. Sin dato fresco el precio es null: la pantalla
 // enseña «—» y lo que dependa del precio (convertir un menú en USD a ORIGEN)
 // se bloquea con un mensaje. Aquí hubo un ORIGEN_USD = 2,35 fijo que se usaba
@@ -45,13 +45,6 @@ async function leerJson(url: string): Promise<unknown> {
 }
 
 async function onzaDeOro(): Promise<number | null> {
-  try {
-    const d = (await leerJson('https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd')) as
-      | { 'pax-gold'?: { usd?: number } }
-      | null
-    const oz = Number(d?.['pax-gold']?.usd)
-    if (oz > 0) return oz
-  } catch {}
   try {
     const d = (await leerJson('https://api.gold-api.com/price/XAU')) as { price?: number } | null
     const oz = Number(d?.price)
