@@ -21,7 +21,7 @@ es: {
      casa abre mercado a cinco. Tres cifras para lo mismo, ninguna coincidía, y
      la que veía el cliente era la única que no se podía comprobar mirando la
      pantalla — abajo se contaban las filas y no daban quince. */
-  'pt.p': 'Los {mercados} mercados de la cadena 5550, cada uno contra ORIGEN. Libro de órdenes de verdad y velas que solo pintan tratos reales. La entrada y salida en lempiras o dólares, de persona a persona con agentes verificados, llega pronto.',
+  'pt.p': 'Los {mercados} mercados de la cadena 5550, cada uno contra ORIGEN. Libro de órdenes de verdad y velas que solo pintan tratos reales. La entrada y salida en lempiras o dólares es de persona a persona, con los agentes verificados que da de alta la casa.',
   'pt.entrar': 'Entrar con mi cuenta Veta Wallet',
   // La nota del botón: acá no se inventa una contraseña nueva. La cuenta es
   // la misma de todo el ecosistema, y decirlo quita el miedo a «otra cuenta».
@@ -89,7 +89,7 @@ es: {
 en: {
   'pt.sello': 'A HOUSE OF AUCORP · ORDEN GLOBAL ECOSYSTEM',
   'pt.t1': 'THE HOUSE', 'pt.t2': 'MARKET.',
-  'pt.p': 'The {mercados} markets of chain 5550, each against ORIGEN. A real order book and candles drawn only from real trades. Cash in and out in lempiras or dollars, person to person through verified agents, is coming soon.',
+  'pt.p': 'The {mercados} markets of chain 5550, each against ORIGEN. A real order book and candles drawn only from real trades. Cash in and out in lempiras or dollars is person to person, through the verified agents the house onboards.',
   'pt.entrar': 'Sign in with my Veta Wallet account',
   'pt.nota': 'Your account is the same one across the ecosystem: we send you to your Veta Wallet, you confirm there, and you come back inside. Ordenex stores no passwords.',
   'pt.vivos': 'The market, right now',
