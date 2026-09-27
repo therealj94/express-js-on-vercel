@@ -73,6 +73,7 @@ main > section + section{margin-top:clamp(104px,13vw,184px)}
 .techo nav{display:flex;align-items:center;gap:clamp(14px,2.2vw,30px);font-size:.9375rem}
 .techo nav a{text-decoration:none;color:var(--gris);transition:color .2s}
 .techo nav a:hover{color:var(--crema)}
+.techo nav .secciones{display:contents}
 .techo nav a.idioma{font-family:var(--f-dato);font-size:.75rem;letter-spacing:.08em}
 .techo nav a.boton{padding:11px 16px;font-size:.875rem;color:var(--negro);white-space:nowrap}
 .techo nav a.boton:hover{color:var(--negro)}
@@ -80,6 +81,7 @@ main > section + section{margin-top:clamp(104px,13vw,184px)}
 /* ── Portada ───────────────────────────────────────────────────────────────── */
 .portada{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.02fr);align-items:center;
   gap:clamp(24px,4vw,64px);min-height:min(calc(100svh - 72px),860px);padding-block:clamp(24px,5vw,56px) clamp(32px,4vw,48px)}
+.portada .sello{margin:0 0 18px;font-size:.75rem;letter-spacing:.16em;text-transform:uppercase;color:var(--oro-hondo)}
 .portada h1{font-size:clamp(3.1rem,7.6vw,7.4rem);line-height:.94}
 .portada .bajada{max-width:34em;margin-top:clamp(20px,2.6vw,32px);color:rgba(244,239,228,.84);font-size:1.125rem}
 .portada .acciones{display:flex;flex-wrap:wrap;align-items:center;gap:22px 30px;margin-top:32px}
@@ -163,6 +165,22 @@ main > section + section{margin-top:clamp(104px,13vw,184px)}
 
 /* ── SFSP ──────────────────────────────────────────────────────────────────── */
 .estado{display:inline-block;margin-top:24px;padding:8px 12px;border:1px solid var(--linea);color:var(--ambar)}
+.casa .nombre{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.etq{font:500 .6875rem/1 var(--f-dato);letter-spacing:.1em;text-transform:uppercase;padding:5px 8px;border:1px solid currentColor;border-radius:2px;white-space:nowrap}
+.etq-si{color:var(--oro-hondo)}
+.etq-prueba{color:var(--ambar)}
+.etq-pronto{color:var(--gris)}
+.casas-leyenda{margin-top:18px;color:var(--gris);font-size:.9375rem}
+.casa .dentro .enlace{display:inline-block;padding-block:10px}
+.sfsp-sub{margin-top:clamp(44px,6vw,64px);font:400 .8125rem/1 var(--f-dato);letter-spacing:.16em;text-transform:uppercase;color:var(--oro-hondo)}
+.sfsp-sub + .sfsp-lista,.sfsp-sub + .sfsp-roles,.sfsp-sub + .sfsp-estado{margin-top:20px}
+.sfsp-roles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin:0;border-top:1px solid var(--linea);padding-top:22px}
+.sfsp-roles dt{font:400 1.3rem/1.3 var(--f-disp);font-variation-settings:'opsz' 36;margin-bottom:8px}
+.sfsp-roles dd{margin:0;color:rgba(244,239,228,.8)}
+.sfsp-estado{margin:0;border-top:1px solid var(--linea)}
+.sfsp-estado div{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.6fr);gap:4px 24px;padding:14px 0;border-bottom:1px solid var(--linea)}
+.sfsp-estado dt{color:var(--crema)}
+.sfsp-estado dd{margin:0;font:400 .875rem/1.5 var(--f-dato);color:var(--gris)}
 .sfsp-lista{margin:clamp(36px,5vw,56px) 0 0;border-top:1px solid var(--linea)}
 .sfsp-lista div{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.6fr);gap:6px 24px;padding:20px 0;border-bottom:1px solid var(--linea)}
 .sfsp-lista dt{font:400 1.3rem/1.3 var(--f-disp);font-variation-settings:'opsz' 36}
@@ -183,7 +201,7 @@ main > section + section{margin-top:clamp(104px,13vw,184px)}
 
 /* ── Cierre y pie ──────────────────────────────────────────────────────────── */
 .cierre .acciones{display:flex;flex-wrap:wrap;align-items:center;gap:22px 30px;margin-top:32px}
-.legal{margin-top:40px;max-width:46em;color:var(--gris);font-size:.875rem}
+.legal{margin-top:40px;max-width:46em;color:rgba(244,239,228,.72);font-size:.9375rem}
 .legal a{color:var(--crema)}
 .pie{margin-top:clamp(80px,10vw,140px);padding-block:0 40px;color:var(--gris);font-size:.875rem}
 .pie-a{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:32px;padding-top:48px;border-top:1px solid var(--linea)}
@@ -197,11 +215,18 @@ main > section + section{margin-top:clamp(104px,13vw,184px)}
 
 /* ── Teléfono ──────────────────────────────────────────────────────────────── */
 @media (max-width:900px){
-  .techo nav a:not(.idioma):not(.boton){display:none}
+  .techo{flex-wrap:wrap;row-gap:6px}
+  .techo nav{display:contents}
+  .techo nav a.idioma{order:1;margin-left:auto;padding:12px 4px}
+  .techo nav a.boton{order:2}
+  .techo nav .secciones{order:3;flex-basis:100%;display:flex;gap:22px;overflow-x:auto;scrollbar-width:none;
+    border-top:1px solid var(--linea);margin-top:8px}
+  .techo nav .secciones::-webkit-scrollbar{display:none}
+  .techo nav .secciones a{padding:12px 0;white-space:nowrap}
   .techo .marca span{display:none}
   .techo nav a.boton{padding:10px 14px}
   .portada{grid-template-columns:1fr;min-height:0}
-  .marca-viva{order:-1;max-width:520px}
+  .marca-viva{max-width:420px}
   .origen-a,.cadena,.desorden{grid-template-columns:1fr}
   .desorden .pieza{max-width:300px}
   .disco{max-width:320px;margin:0}
@@ -210,7 +235,8 @@ main > section + section{margin-top:clamp(104px,13vw,184px)}
   .casa summary .mas{grid-column:2;grid-row:1/3}
   .casa .dentro{grid-template-columns:1fr}
   .casa .dentro > div{grid-column:1}
-  .sfsp-lista div{grid-template-columns:1fr}
+  .sfsp-lista div,.sfsp-estado div{grid-template-columns:1fr}
+  .sfsp-roles{grid-template-columns:1fr}
   .prueba-fila{grid-template-columns:1fr;gap:12px}
   .pie-a{grid-template-columns:1fr 1fr}
   .pie-a > div:first-child{grid-column:1/-1}

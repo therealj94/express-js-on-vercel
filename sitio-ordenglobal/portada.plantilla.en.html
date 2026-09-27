@@ -35,11 +35,13 @@
     <img src="/assets/og.svg" alt="" width="49" height="26"><span>ORDEN GLOBAL</span>
   </a>
   <nav aria-label="Main">
-    <a href="#origen">ORIGEN</a>
-    <a href="#casas">Products</a>
-    <a href="#cadena">The chain</a>
-    <a href="#sfsp">SFSP</a>
-    <a href="#prueba">Check it</a>
+    <span class="secciones">
+      <a href="#origen">ORIGEN</a>
+      <a href="#casas">Products</a>
+      <a href="#cadena">The chain</a>
+      <a href="#sfsp">SFSP</a>
+      <a href="#prueba">Check it</a>
+    </span>
     <a class="idioma" href="/" hreflang="es" lang="es">ES</a>
     <a class="boton" href="https://app.vetawallet.com">Open an account</a>
   </nav>
@@ -50,8 +52,9 @@
 <section class="env" aria-labelledby="t-portada">
   <div class="portada">
     <div>
+      <p class="sello dato">Orden Global · from Roatán Próspera</p>
       <h1 id="t-portada">Your money, measured in <em>gold</em>.</h1>
-      <p class="bajada">ORIGEN is worth one gram of gold divided by 55. You save it, send it abroad and get paid in it from your phone, and every movement lands on a chain of our own that anyone can look through.</p>
+      <p class="bajada">We are Orden Global: we built our own blockchain and the financial apps that run on it. Its currency, ORIGEN, follows the price of one gram of gold divided by 55. You save it, send it and get paid in it from your phone, and every movement is open for anyone to see.</p>
       <div class="acciones">
         <a class="boton" href="https://app.vetawallet.com">Open an account</a>
         <a class="enlace" href="#prueba">Check it before you open one</a>
@@ -90,7 +93,7 @@
         <div><span>1 gram of gold</span><span data-gramo>USD —</span></div>
         <div><span>divided by</span><span>55</span></div>
         <div class="res"><b>1 ORIGEN</b><b data-origen>USD —</b></div>
-        <small>Gold price from gold-api.com, read at <span data-leido>—</span>. It is a reference: ORIGEN is not a receipt for stored metal and promises no returns.</small>
+        <small>Gold price from gold-api.com, read at <span data-leido>—</span>. It is a reference: ORIGEN is referenced to gold, not backed by it. It cannot be exchanged for metal and promises no returns.</small>
       </div>
     </div>
     {{DISCO}}
@@ -100,9 +103,9 @@
       <h3 class="oculto">The chain's currencies</h3>
       <p class="intro">ORIGEN is not alone on the 5550.</p>
       <dl class="monedas">
-        <div><dt>ORIGEN</dt><dd>The chain's currency. It follows the gram of gold.</dd></div>
-        <div><dt>AUKA</dt><dd>Referenced to the ounce of gold.</dd></div>
-        <div><dt>AGKA</dt><dd>Referenced to the ounce of silver.</dd></div>
+        <div><dt>ORIGEN</dt><dd>The chain's currency. It follows the gram of gold. Fixed supply of one trillion units.</dd></div>
+        <div><dt>AUKA</dt><dd>Designed to be backed by physical gold, ounce for ounce. Not offered until there is metal in custody.</dd></div>
+        <div><dt>AGKA</dt><dd>Designed to be backed by physical silver, ounce for ounce. Not offered until there is metal in custody.</dd></div>
         <div><dt>ONDK</dt><dd>The currency used to vote on how the ecosystem is run.</dd></div>
       </dl>
     </div>
@@ -133,15 +136,36 @@
 
 <section class="env" id="sfsp" aria-labelledby="t-sfsp">
   <h2 class="titulo" id="t-sfsp">SFSP: the rules, written before they are switched on.</h2>
-  <p class="estado dato">Under construction · nothing live on the 5550</p>
-  <p class="intro">SFSP, the Social Financial System Protocol, will set the rules for everything issued, exchanged and settled on the 5550 chain. We are writing and testing it before switching it on, so that when it runs, exactly what it does is already known.</p>
+  <p class="estado dato">Draft v0.3 · nothing live on the 5550</p>
+  <p class="intro">SFSP, the Social Financial System Protocol, is the asset protocol of the Social Financial System. It defines how every asset on the 5550 chain is created, authorised, transferred, suspended and audited. Once it is switched on, no contract will be able to run on the network without complying with it.</p>
+
+  <h3 class="sfsp-sub">How it works</h3>
   <dl class="sfsp-lista">
-    <div><dt>Every asset, with its passport</dt><dd>Who issues it, what backs it and what risk it carries, written on the chain before anyone can buy it.</dd></div>
-    <div><dt>Every movement, with its public record</dt><dd>Anyone can check that it happened. Your personal data stays out of sight.</dd></div>
-    <div><dt>Your account, with a number and an owner</dt><dd>An account number like a bank's, and an identity where you decide what to show and to whom.</dd></div>
-    <div><dt>Only people's ORIGEN circulates</dt><dd>It leaves a vault on the chain when someone buys it and goes back when they sell. Both are recorded.</dd></div>
+    <div><dt>Every asset is born with its passport</dt><dd>Before anyone can buy it, the chain records who issues it, what backs it, who audited and valued it, and its risk level, from R1 to R5. Every change keeps the previous version in view.</dd></div>
+    <div><dt>The rule lives inside the asset</dt><dd>Who may hold it and who it may go to is not a warning in a document: if a transfer does not comply, the chain rejects it.</dd></div>
+    <div><dt>One identity, without exposing your data</dt><dd>Genesis ID checks who you are and the chain keeps only the proof. Your documents and balances stay out of the public record.</dd></div>
+    <div><dt>Everything leaves a trace</dt><dd>Every issuance, burn or change of status emits a public event with its reason. What leaves no event did not happen.</dd></div>
   </dl>
-  <p class="aviso-sfsp">None of this is running yet. When it is switched on, you will be able to check it like everything else: on the chain.</p>
+
+  <h3 class="sfsp-sub">Who does what</h3>
+  <dl class="sfsp-roles">
+    <div><dt>Orden Global</dt><dd>Runs the network, issues and executes what is authorised. It runs no market where its own currencies trade.</dd></div>
+    <div><dt>DBNX</dt><dd>Admits, classifies and supervises whoever wants to issue. It neither issues nor values.</dd></div>
+    <div><dt>Au Corp.</dt><dd>Runs the system's market, Ordenex. It does not issue.</dd></div>
+  </dl>
+  <p class="intro">No single key can create money, touch the reserves or move someone else's balance: anything that matters needs several signatures, a written reason and a waiting period.</p>
+
+  <h3 class="sfsp-sub">Where it stands</h3>
+  <dl class="sfsp-estado">
+    <div><dt>Identity</dt><dd>Running: Genesis ID, approved by a person</dd></div>
+    <div><dt>ORIGEN</dt><dd>Rules defined</dd></div>
+    <div><dt>Gold and silver: AUKA and AGKA</dt><dd>Rules defined · no metal in custody yet</dd></div>
+    <div><dt>Market: Ordenex</dt><dd>Rules defined · five markets open, no trades</dd></div>
+    <div><dt>Company issuances</dt><dd>In design</dd></div>
+    <div><dt>Privacy</dt><dd>Principles defined</dd></div>
+    <div><dt>Governance and operations</dt><dd>Pending</dd></div>
+  </dl>
+  <p class="aviso-sfsp">None of this is live on the chain yet. As each part is switched on, you will be able to check it like everything else: on the chain.</p>
 </section>
 
 <section class="env prueba" id="prueba" aria-labelledby="t-prueba">
@@ -161,7 +185,7 @@
     <a class="enlace" href="https://app.vetawallet.com/instalar">Download for Android</a>
   </div>
   <p class="intro">If you have five minutes: <a class="enlace" href="/historia/">the story, from gold to a chain of our own</a>, in Spanish, with sound.</p>
-  <p class="legal">Before you open one: Veta Wallet is a custodial wallet, which means we keep your encrypted key for you. We are not a bank and your balances are not covered by any deposit insurance. Gold goes up, but it also goes down, and ORIGEN goes down with it. It is all in the <a href="https://app.vetawallet.com/terminos">terms</a>, written to be understood.</p>
+  <p class="legal">Before you open one: Veta Wallet is a custodial wallet, which means we keep your encrypted key for you. We are not a bank and your balances are not covered by any deposit insurance. Gold goes up, but it also goes down, and ORIGEN goes down with it. ORIGEN is referenced to gold, not backed by it: it gives you no right to exchange it for metal. It is all in the <a href="https://app.vetawallet.com/terminos">terms</a>, written to be understood.</p>
 </section>
 
 </main>
@@ -170,7 +194,7 @@
   <div class="pie-a">
     <div>
       <img src="/assets/og.svg" alt="Orden Global" width="41" height="22">
-      <p>Orden Global Corp. Roatán, Honduras.<br><a href="mailto:info@ordenglobal.org">info@ordenglobal.org</a></p>
+      <p>Orden Global Corp. Headquartered in British Columbia, Canada.<br>Operations in Roatán Próspera, Honduras.<br><a href="mailto:info@ordenglobal.org">info@ordenglobal.org</a></p>
     </div>
     <div>
       <h2>Products</h2>

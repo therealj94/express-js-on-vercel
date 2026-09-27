@@ -35,11 +35,13 @@
     <img src="/assets/og.svg" alt="" width="49" height="26"><span>ORDEN GLOBAL</span>
   </a>
   <nav aria-label="Principal">
-    <a href="#origen">ORIGEN</a>
-    <a href="#casas">Casas</a>
-    <a href="#cadena">La cadena</a>
-    <a href="#sfsp">SFSP</a>
-    <a href="#prueba">Comprobalo</a>
+    <span class="secciones">
+      <a href="#origen">ORIGEN</a>
+      <a href="#casas">Casas</a>
+      <a href="#cadena">La cadena</a>
+      <a href="#sfsp">SFSP</a>
+      <a href="#prueba">Comprobalo</a>
+    </span>
     <a class="idioma" href="/en/" hreflang="en" lang="en">EN</a>
     <a class="boton" href="https://app.vetawallet.com">Abrir cuenta</a>
   </nav>
@@ -50,8 +52,9 @@
 <section class="env" aria-labelledby="t-portada">
   <div class="portada">
     <div>
+      <p class="sello dato">Orden Global · desde Roatán Próspera</p>
       <h1 id="t-portada">Tu dinero, medido en <em>oro</em>.</h1>
-      <p class="bajada">ORIGEN vale un gramo de oro dividido entre 55. Lo guardás, lo mandás a otro país y cobrás con él desde el teléfono, y cada movimiento queda en una cadena propia que cualquiera puede revisar.</p>
+      <p class="bajada">Somos Orden Global: construimos una cadena de bloques propia y las aplicaciones financieras que corren sobre ella. Su moneda, ORIGEN, sigue el precio de un gramo de oro dividido entre 55. La guardás, la mandás y cobrás con ella desde el teléfono, y cada movimiento queda a la vista de cualquiera.</p>
       <div class="acciones">
         <a class="boton" href="https://app.vetawallet.com">Abrir cuenta</a>
         <a class="enlace" href="#prueba">Comprobalo antes de abrirla</a>
@@ -90,7 +93,7 @@
         <div><span>1 gramo de oro</span><span data-gramo>USD —</span></div>
         <div><span>dividido entre</span><span>55</span></div>
         <div class="res"><b>1 ORIGEN</b><b data-origen>USD —</b></div>
-        <small>Precio del oro de gold-api.com, leído a las <span data-leido>—</span>. Es una referencia: ORIGEN no es un recibo de metal guardado y no promete ganancias.</small>
+        <small>Precio del oro de gold-api.com, leído a las <span data-leido>—</span>. Es una referencia: ORIGEN está referenciado al oro, no respaldado. No se canjea por metal y no promete ganancias.</small>
       </div>
     </div>
     {{DISCO}}
@@ -100,9 +103,9 @@
       <h3 class="oculto">Las monedas de la cadena</h3>
       <p class="intro">ORIGEN no está sola en la 5550.</p>
       <dl class="monedas">
-        <div><dt>ORIGEN</dt><dd>La moneda de la cadena. Sigue al gramo de oro.</dd></div>
-        <div><dt>AUKA</dt><dd>Referenciada a la onza de oro.</dd></div>
-        <div><dt>AGKA</dt><dd>Referenciada a la onza de plata.</dd></div>
+        <div><dt>ORIGEN</dt><dd>La moneda de la cadena. Sigue al gramo de oro. Emisión fija de un billón de unidades.</dd></div>
+        <div><dt>AUKA</dt><dd>Pensada para estar respaldada por oro físico, onza por onza. No se ofrece hasta que haya metal en custodia.</dd></div>
+        <div><dt>AGKA</dt><dd>Pensada para estar respaldada por plata física, onza por onza. No se ofrece hasta que haya metal en custodia.</dd></div>
         <div><dt>ONDK</dt><dd>La moneda con la que se vota el gobierno del ecosistema.</dd></div>
       </dl>
     </div>
@@ -133,15 +136,36 @@
 
 <section class="env" id="sfsp" aria-labelledby="t-sfsp">
   <h2 class="titulo" id="t-sfsp">SFSP: las reglas, escritas antes de encenderlas.</h2>
-  <p class="estado dato">En construcción · nada encendido en la 5550</p>
-  <p class="intro">SFSP, Social Financial System Protocol, es el protocolo que va a ordenar todo lo que se emite, se cambia y se liquida en la cadena 5550. Lo estamos escribiendo y probando antes de encenderlo, para que cuando funcione ya se sepa exactamente qué hace.</p>
+  <p class="estado dato">Borrador v0.3 · nada encendido en la 5550</p>
+  <p class="intro">SFSP, Social Financial System Protocol, es el protocolo de activos del Sistema Financiero Social. Define cómo se crea, se autoriza, se transfiere, se suspende y se audita cada activo de la cadena 5550. Cuando se encienda, ningún contrato va a poder operar en la red sin cumplirlo.</p>
+
+  <h3 class="sfsp-sub">Cómo funciona</h3>
   <dl class="sfsp-lista">
-    <div><dt>Cada activo, con su pasaporte</dt><dd>Quién lo emite, qué lo respalda y qué riesgo tiene, escrito en la cadena antes de que alguien pueda comprarlo.</dd></div>
-    <div><dt>Cada movimiento, con su registro público</dt><dd>Cualquiera puede comprobar que pasó. Tus datos personales no quedan a la vista.</dd></div>
-    <div><dt>Tu cuenta, con número y con dueño</dt><dd>Un número de cuenta como el de un banco, y una identidad donde vos decidís qué mostrar y a quién.</dd></div>
-    <div><dt>Circula solo el ORIGEN de la gente</dt><dd>Sale de una bóveda en la cadena cuando alguien lo compra y vuelve cuando lo vende. Las dos cosas quedan registradas.</dd></div>
+    <div><dt>Cada activo nace con su pasaporte</dt><dd>Antes de que alguien pueda comprarlo, queda escrito en la cadena quién lo emite, qué lo respalda, quién lo auditó y lo valuó, y su nivel de riesgo, de R1 a R5. Cada cambio deja la versión anterior a la vista.</dd></div>
+    <div><dt>La regla va dentro del activo</dt><dd>Quién puede tenerlo y a quién se puede pasar no es una advertencia en un documento: si una transferencia no cumple, la cadena la rechaza.</dd></div>
+    <div><dt>Una identidad, sin exponer tus datos</dt><dd>Genesis ID comprueba quién sos y la cadena guarda solo la prueba. Tus documentos y tus saldos no quedan en el registro público.</dd></div>
+    <div><dt>Todo deja su huella</dt><dd>Cada emisión, quema o cambio de estado emite un evento público con su motivo. Lo que no deja evento no pasó.</dd></div>
   </dl>
-  <p class="aviso-sfsp">Nada de esto está funcionando todavía. Cuando se encienda, se va a poder comprobar igual que lo demás: en la cadena.</p>
+
+  <h3 class="sfsp-sub">Quién hace qué</h3>
+  <dl class="sfsp-roles">
+    <div><dt>Orden Global</dt><dd>Opera la red, emite y ejecuta lo que se autoriza. No opera mercados donde se negocian sus propias monedas.</dd></div>
+    <div><dt>DBNX</dt><dd>Admite, clasifica y supervisa a quien quiere emitir. No emite ni valúa.</dd></div>
+    <div><dt>Au Corp.</dt><dd>Opera el mercado del sistema, Ordenex. No emite.</dd></div>
+  </dl>
+  <p class="intro">Ninguna llave sola puede crear moneda, tocar las reservas ni mover un saldo ajeno: lo que importa pide varias firmas, un motivo escrito y un tiempo de espera.</p>
+
+  <h3 class="sfsp-sub">En qué punto está</h3>
+  <dl class="sfsp-estado">
+    <div><dt>Identidad</dt><dd>En marcha: Genesis ID, con aprobación de una persona</dd></div>
+    <div><dt>ORIGEN</dt><dd>Reglas definidas</dd></div>
+    <div><dt>Oro y plata: AUKA y AGKA</dt><dd>Reglas definidas · sin metal en custodia todavía</dd></div>
+    <div><dt>Mercado: Ordenex</dt><dd>Reglas definidas · cinco mercados abiertos, sin operaciones</dd></div>
+    <div><dt>Emisiones de empresas</dt><dd>En diseño</dd></div>
+    <div><dt>Privacidad</dt><dd>Principios definidos</dd></div>
+    <div><dt>Gobierno y operación</dt><dd>Pendiente</dd></div>
+  </dl>
+  <p class="aviso-sfsp">Nada de esto está encendido en la cadena todavía. Cuando se encienda cada parte, se va a poder comprobar igual que lo demás: en la cadena.</p>
 </section>
 
 <section class="env prueba" id="prueba" aria-labelledby="t-prueba">
@@ -161,7 +185,7 @@
     <a class="enlace" href="https://app.vetawallet.com/instalar">Descargar para Android</a>
   </div>
   <p class="intro">Si tenés cinco minutos: <a class="enlace" href="/historia/">la historia, del oro a una cadena propia</a>, con sonido.</p>
-  <p class="legal">Antes de abrir: Veta Wallet es una billetera custodia, o sea que guardamos tu llave cifrada por vos. No somos un banco y tus saldos no están cubiertos por ningún seguro de depósitos. El oro sube, pero también baja, y ORIGEN baja con él. Está todo en los <a href="https://app.vetawallet.com/terminos">términos</a>, escrito para entenderse.</p>
+  <p class="legal">Antes de abrir: Veta Wallet es una billetera custodia, o sea que guardamos tu llave cifrada por vos. No somos un banco y tus saldos no están cubiertos por ningún seguro de depósitos. El oro sube, pero también baja, y ORIGEN baja con él. ORIGEN está referenciado al oro, no respaldado: no te da derecho a canjearlo por metal. Está todo en los <a href="https://app.vetawallet.com/terminos">términos</a>, escrito para entenderse.</p>
 </section>
 
 </main>
@@ -170,7 +194,7 @@
   <div class="pie-a">
     <div>
       <img src="/assets/og.svg" alt="Orden Global" width="41" height="22">
-      <p>Orden Global Corp. Roatán, Honduras.<br><a href="mailto:info@ordenglobal.org">info@ordenglobal.org</a></p>
+      <p>Orden Global Corp. Sede en British Columbia, Canadá.<br>Operación en Roatán Próspera, Honduras.<br><a href="mailto:info@ordenglobal.org">info@ordenglobal.org</a></p>
     </div>
     <div>
       <h2>Productos</h2>
