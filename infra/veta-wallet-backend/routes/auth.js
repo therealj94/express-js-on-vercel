@@ -1,6 +1,6 @@
 var express = require('express');
 var router = express.Router();
-var {login, registerUserWallet, updateUserAdmin, updateAdminUser, verifyMail, recuperarPassword,resetPassword, refresh, cerrarSesion} = require("../controller/authController")
+var {login, registerUserWallet, updateUserAdmin, updateAdminUser, verifyMail, recuperarPassword,resetPassword, refresh, cerrarSesion, reenviarConfirmacion} = require("../controller/authController")
 var {socialLogin} = require("../controller/socialController")
 var {retoLlave, entrarConLlave} = require("../controller/llaveController")
 var {importarBilletera} = require("../controller/importarController")
@@ -13,6 +13,9 @@ var validateForms = require("../middleware/validateForms")
 
 router.get('/verifyMail', verifyMail);
 router.post('/recuperarPassword', recuperarPassword);
+// Volver a pedir el correo de confirmacion. Con sesion: va siempre a la
+// direccion de la cuenta. Ver authController.reenviarConfirmacion.
+router.post('/reenviarConfirmacion', verifyTokenUser, reenviarConfirmacion);
 router.post('/resetPassword', resetPassword);
 router.post('/login',validateForms, login);
 router.post('/refresh', refresh);

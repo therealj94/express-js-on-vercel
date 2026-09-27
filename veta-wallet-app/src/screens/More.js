@@ -8,7 +8,7 @@ import * as Clipboard from 'expo-clipboard';
 import { C, G } from '../theme';
 import { Header, Button3D, ListRow, Toggle, Glass, useToast, useAccount, hap } from '../ui';
 import { money, qtyFmt } from '../data';
-import { getPrivateKey } from '../api';
+import { getPrivateKey, apiReenviarConfirmacion } from '../api';
 import PedirClave from '../PedirClave';
 import { genesis } from '../genesis';
 import { setPassport } from '../accounts';
@@ -164,8 +164,32 @@ export function Settings({ nav }) {
   const toast = useToast();
   const t = useT();
   const { lang, setLang } = useLang();
-  const { account, logout } = useAccount();
+  const { account, logout, login } = useAccount();
   const acc = account || { name: 'Cuenta', email: '', initials: 'VW', addr: '', genesisUid: null };
+  // Correo sin confirmar: solo cuentas del servidor (no las de solo mirar).
+  const sinConfirmar = !!(acc.fromApi && acc.email && acc.verify === false);
+  const [reenviando, setReenviando] = useState(false);
+  async function reenviarConfirmacion() {
+    if (reenviando) return;
+    setReenviando(true);
+    try {
+      const r = await apiReenviarConfirmacion();
+      if (r?.confirmado) {
+        // Ya estaba confirmada: el dato de la sesión venía viejo.
+        const actualizada = await updateAccount(acc.email, { verify: true });
+        if (actualizada) login(actualizada);
+        toast(t('set.mailYa'));
+      } else {
+        toast(t('set.mailSent', { a: r?.a || acc.email }));
+      }
+    } catch (e) {
+      if (e?.motivo === 'ESPERA') toast(t('set.mailWait'), 'error');
+      else if (e?.motivo === 'TOPE_DIARIO') toast(t('set.mailTope'), 'error');
+      else toast(t('set.mailErr'), 'error');
+    } finally {
+      setReenviando(false);
+    }
+  }
   return (
     <View style={{ flex: 1, paddingTop: 6 }}>
       <Header title={t('set.title')} onBack={() => nav.go('home')} />
@@ -185,6 +209,21 @@ export function Settings({ nav }) {
             <View style={styles.kycBadge}><Icon name="checkmark-circle" size={12} color={C.up} /><Text style={styles.kycTxt}>Genesis</Text></View>
           ) : null}
         </LinearGradient>
+
+        {sinConfirmar ? (
+          <>
+            <Text style={styles.grpTitle}>{t('set.mailGrp')}</Text>
+            <Glass style={styles.group}>
+              <ListRow
+                first
+                icon="mail"
+                title={reenviando ? t('set.mailSending') : t('set.mailResend')}
+                sub={t('set.mailResendSub', { a: acc.email })}
+                onPress={reenviarConfirmacion}
+              />
+            </Glass>
+          </>
+        ) : null}
 
         <Text style={styles.grpTitle}>{t('set.genesis')}</Text>
         <Glass style={styles.group}>

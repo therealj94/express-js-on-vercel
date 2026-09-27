@@ -466,6 +466,11 @@ const S = {
     // notifications
     'notif.title': 'Notificaciones', 'notif.emptyT': 'Todo al día', 'notif.emptyP': 'Aquí verás avisos de transacciones recibidas y novedades de tu cuenta.',
     // settings
+    'set.mailGrp': 'CORREO SIN CONFIRMAR', 'set.mailResend': 'Reenviar correo de confirmación', 'set.mailSending': 'Enviando…',
+    'set.mailResendSub': 'Te lo mandamos a {a}. Abrí el enlace del correo para confirmar tu cuenta.',
+    'set.mailSent': 'Listo: revisá {a}, también en spam.', 'set.mailYa': 'Tu correo ya está confirmado.',
+    'set.mailWait': 'Esperá dos minutos antes de pedirlo otra vez.', 'set.mailTope': 'Ya te mandamos varios hoy. Probá mañana.',
+    'set.mailErr': 'No pudimos mandar el correo. Probá más tarde.',
     'set.title': 'Ajustes', 'set.genesis': 'GENESIS ID', 'set.privacyGrp': 'PRIVACIDAD', 'set.account': 'CUENTA', 'set.security': 'SEGURIDAD', 'set.general': 'GENERAL',
     'set.passport': 'Mi pasaporte Genesis ID', 'set.reverify': 'Reverificar identidad', 'set.reverifySub': 'Vuelve a pasar la verificación',
     'set.link': 'Vincular con Genesis ID', 'set.linkSub': 'Identidad del ecosistema · opcional, no se requiere para usar la app',
@@ -1260,6 +1265,11 @@ const S = {
     'act.emptyT': 'No transactions yet', 'act.emptyP': 'When you send or receive tokens, your real transactions will appear here.',
     'act.from': 'From', 'act.to': 'To', 'act.pending': 'Pending network confirmation',
     'notif.title': 'Notifications', 'notif.emptyT': 'All caught up', 'notif.emptyP': 'Alerts about received transactions and account news will appear here.',
+    'set.mailGrp': 'EMAIL NOT CONFIRMED', 'set.mailResend': 'Resend confirmation email', 'set.mailSending': 'Sending…',
+    'set.mailResendSub': 'We will send it to {a}. Open the link in the email to confirm your account.',
+    'set.mailSent': 'Done: check {a}, including spam.', 'set.mailYa': 'Your email is already confirmed.',
+    'set.mailWait': 'Wait two minutes before asking again.', 'set.mailTope': 'We already sent several today. Try tomorrow.',
+    'set.mailErr': 'We could not send the email. Try again later.',
     'set.title': 'Settings', 'set.genesis': 'GENESIS ID', 'set.privacyGrp': 'PRIVACY', 'set.account': 'ACCOUNT', 'set.security': 'SECURITY', 'set.general': 'GENERAL',
     'set.passport': 'My Genesis ID passport', 'set.reverify': 'Re-verify identity', 'set.reverifySub': 'Go through verification again',
     'set.link': 'Link with Genesis ID', 'set.linkSub': 'Ecosystem identity · optional, not required to use the app',

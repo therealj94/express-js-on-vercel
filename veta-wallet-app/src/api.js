@@ -532,6 +532,14 @@ export async function apiSocialLogin(provider, idToken) {
 // primero y, si responde 404 (no existe), otras variantes comunes: si alguna
 // devuelve algo distinto de 404, ya es la buena. Si TODAS dan 404, el
 // mensaje dice qué probamos, en vez de un genérico.
+// Volver a pedir el correo de confirmación. Va siempre a la dirección de la
+// cuenta (el servidor no acepta otra). Devuelve { confirmado } si ya estaba
+// confirmada, o { enviado, a } con la dirección tapada. Errores con `motivo`:
+// ESPERA (+ status 429), TOPE_DIARIO, CORREO_NO_SALIO.
+export async function apiReenviarConfirmacion() {
+  return req('/auth/reenviarConfirmacion', { method: 'POST' });
+}
+
 export async function apiRegister({ name, email, password }) {
   const body = { name, email, password, fullName: name };
   const rutas = [PATHS.register, '/auth/signup', '/register', '/signup', '/users/register', '/api/auth/register', '/api/register'];

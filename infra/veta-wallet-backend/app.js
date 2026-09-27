@@ -308,6 +308,7 @@ app.use("/auth/importar", authLimiter);
 app.use("/auth/entrar-con-llave", authLimiter);
 app.use("/auth/reto-llave", authLimiter);
 app.use("/auth/recuperarPassword", authLimiter);
+app.use("/auth/reenviarConfirmacion", authLimiter);
 app.use("/auth/resetPassword", authLimiter);
 app.use("/auth/refresh", authLimiter);
 

@@ -160,6 +160,18 @@ const Users = new Schema(
             type: Date,
         },
 
+        /* El freno de «volver a mandar el correo de confirmación»: cuándo
+         * salió el último y cuántos van hoy. Ver lib/reenvioConfirmacion.js. */
+        confirmacionEnviadaEn: {
+            type: Date,
+        },
+        confirmacionEnviosDia: {
+            type: String,
+        },
+        confirmacionEnviosCuenta: {
+            type: Number,
+        },
+
         /* Cuando se le mando la carta del Genesis ID y la cadena 5550.
          *
          * ESTE CAMPO FALTABA, Y COSTO CARO. El 26-ago-2026 salieron los 419

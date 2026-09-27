@@ -12,6 +12,7 @@ import crypto from "crypto";
 import { enviarCorreo, marco, botonCorreo } from "../lib/correo";
 import { cartaBienvenida } from "../lib/cartaBienvenida.js";
 import { v4 as uuidv4 } from "uuid";
+import { decidirReenvio, correoConfirmacion, correoTapado } from "../lib/reenvioConfirmacion.js";
 require("dotenv").config();
 
 // Credenciales de correo: solo desde el entorno, sin respaldo literal.
@@ -61,22 +62,7 @@ export const registerUserWallet = async (req, res) => {
        reciba el correo lo puede volver a pedir. */
     const rAlta = await enviarCorreo({
       para: email,
-      asunto: "Confirmá tu cuenta de Veta Wallet",
-      texto: `Bienvenido a Veta Wallet.
-
-Para confirmar tu cuenta, entrá en este enlace:
-${verificationLink}
-
-Si no creaste esta cuenta, no hagas nada: sin confirmar, el enlace caduca solo.
-
---
-Orden Global Corp
-Nunca te vamos a pedir por correo tu contraseña ni tu frase de respaldo.`,
-      html: marco("Confirmá tu cuenta", `
-        <h1 style="margin:0 0 6px;font:700 24px/1.2 Georgia,serif;color:#F3ECD9;">Bienvenido a Veta Wallet</h1>
-        <p style="margin:14px 0 0;">Falta un paso: confirmá que este correo es tuyo.</p>
-        ${botonCorreo("Confirmar mi cuenta", verificationLink)}
-        <p style="margin:12px 0 0;font-size:13px;">Si no creaste esta cuenta, no hace falta que hagas nada: sin confirmar, el enlace caduca solo.</p>`),
+      ...correoConfirmacion(verificationLink, { marco, botonCorreo }),
     });
     if (!rAlta.ok) console.error("[registro] el correo de confirmación no salió:", rAlta.motivo);
     const mnemonic = bip39.generateMnemonic();
@@ -175,6 +161,58 @@ export const verifyMail = async (req, res) => {
     return res.send("Email verified successfully");
   } catch (error) {
     console.log(error);
+  }
+};
+
+/* POST /auth/reenviarConfirmacion — con sesion.
+ *
+ * Vuelve a mandar el enlace de confirmacion a la direccion de la cuenta. No se
+ * puede elegir otra direccion: el correo va a la que ya esta guardada, asi que
+ * la ruta no sirve para mandar correos a terceros. Freno: uno cada dos minutos
+ * y cinco por dia (lib/reenvioConfirmacion.js), ademas del limitador por IP.
+ *
+ * Respuestas, con `code` para que la app no tenga que leer textos:
+ *   200 { confirmado: true }                     ya estaba confirmada
+ *   200 { enviado: true, a: "jo***@gmail.com" }  salio
+ *   429 { code: "ESPERA", reintentarEn }         segundos que faltan
+ *   429 { code: "TOPE_DIARIO" }
+ *   503 { code: "CORREO_NO_SALIO" }              SES no lo acepto; se dice, no se finge */
+export const reenviarConfirmacion = async (req, res) => {
+  try {
+    const decodedToken = jwt.verify(
+      req.headers.authorization.split(" ")[1],
+      process.env.PASS_TOKEN,
+      { algorithms: ["HS256"] }
+    );
+    const user = await User.findOne({ _id: decodedToken.userId });
+    if (!user || !user.email) {
+      return res.status(400).json({ message: "La cuenta no tiene correo.", code: "SIN_CORREO" });
+    }
+
+    const d = decidirReenvio(user, new Date());
+    if (d.estado === "ya_confirmado") return res.json({ confirmado: true });
+    if (d.estado === "espera") {
+      return res.status(429).json({ message: "Esperá un momento antes de pedirlo otra vez.", code: "ESPERA", reintentarEn: d.reintentarEn });
+    }
+    if (d.estado === "tope_diario") {
+      return res.status(429).json({ message: "Ya se mandaron varios correos hoy. Probá mañana.", code: "TOPE_DIARIO" });
+    }
+
+    // El intento se anota ANTES de mandar: si SES falla, cuenta igual.
+    Object.assign(user, d.cambios);
+    if (d.tokenNuevo) user.verificationToken = uuidv4();
+    await user.save();
+
+    const enlace = `${URL_BACKEND}/auth/verifyMail?token=${user.verificationToken}`;
+    const r = await enviarCorreo({ para: user.email, ...correoConfirmacion(enlace, { marco, botonCorreo }) });
+    if (!r.ok) {
+      console.error("[reenvio] el correo de confirmación no salió:", r.motivo);
+      return res.status(503).json({ message: "No pudimos mandar el correo. Probá más tarde.", code: "CORREO_NO_SALIO" });
+    }
+    return res.json({ enviado: true, a: correoTapado(user.email) });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
