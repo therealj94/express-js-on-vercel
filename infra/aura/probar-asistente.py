@@ -218,6 +218,9 @@ def main():
     datos = carpeta / 'aura'
     datos.mkdir()
     shutil.copy(AQUI / 'PROMPT-AURA.md', datos / 'PROMPT-AURA.md')
+    # La cabecera de la casa vive al lado del prompt desde el 7-sep (el
+    # asistente la antepone a cada prompt); sin ella no arranca ni saluda.
+    shutil.copy(AQUI / 'cabecera-de-la-casa.md', datos / 'cabecera-de-la-casa.md')
     shutil.copy(RAIZ / 'infra' / 'cerebro' / 'conocimiento' / 'saber.json',
                 datos / 'saber.json')
     (datos / 'probadores.txt').write_text('# lista de prueba\nana@prueba.local\n')

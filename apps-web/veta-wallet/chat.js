@@ -7,8 +7,18 @@
  * Aqui no hay pantalla: solo hablar con el relevo. Las vistas viven en app.js,
  * igual que cadena.js no sabe dibujar una moneda.
  *
- * NO hay cifrado de punta a punta en esta version, y no se promete en ningun
- * texto de la interfaz. Decirlo aqui es mas barato que descubrirlo despues.
+ * CIFRADO DE PUNTA A PUNTA (al 27-sep-2026). Aquí decía que no lo había, y
+ * ya no es cierto. El texto, las fotos, los videos, los archivos y las notas
+ * de voz de una conversación se cierran con el candado del aparato
+ * (candado.js), y la llave de cada archivo viaja DENTRO del mensaje cifrado.
+ *
+ * Lo que sale en claro lo marca cada mensaje con `e2e:false`, y la burbuja lo
+ * dice:
+ *   · cuando quien recibe todavía no tiene ningún aparato con llave;
+ *   · cuando este navegador no tiene candado (navegación privada con el cajón
+ *     bloqueado).
+ *
+ * Los estados y la foto de perfil son públicos y van en claro a propósito.
  */
 const CHAT = (() => {
   'use strict';
@@ -248,9 +258,14 @@ const CHAT = (() => {
        `cha.fueEnClaro`) y era código muerto: ningún mensaje del historial
        traía la marca, así que ni quien lo mandó la veía al recargar ni quien
        lo recibió la vio nunca. Se calcula igual en las dos puntas. */
+    /* Sin candado (navegación privada con el cajón bloqueado) un mensaje con
+       sobre no se puede ni intentar abrir: cuenta como CERRADO, igual que uno
+       que llegó para otro aparato. Antes pasaba tal cual, sin la marca, y la
+       burbuja pintaba su adjunto con los bytes cerrados del relevo. Cuarta
+       revisión de Codex en #31. */
     if (!CANDADO?.hay()) {
       return Promise.all(msgs.map(async m => ({
-        ...(m.cif ? m : { ...m, e2e: false }),
+        ...(m.cif ? { ...m, texto: '', cerrado: true, e2e: true } : { ...m, e2e: false }),
         ...(m.reacciones ? { reacciones: await abrirReacciones(m.reacciones, {}) } : {}),
       })));
     }
@@ -365,6 +380,45 @@ const CHAT = (() => {
     catch { return { motivo: 'sin-llave-propia' }; }
   }
 
+  /* ¿Hay a quién cerrarle un ADJUNTO? Se pregunta ANTES de subir: un archivo
+     se cierra al subir, pero su llave viaja después, dentro del mensaje. Si
+     quien recibe no tiene ningún aparato con llave, el mensaje sale en claro
+     y sin la llave, y un archivo cerrado quedaría imposible de abrir para
+     siempre. En ese caso se sube en claro, igual que el texto, y la burbuja
+     lo marca sin cifrar. Cualquier otra duda (la red) cuenta como «sí»: el
+     envío después falla de verdad en vez de bajar a claro por un tropiezo. */
+  async function hayAparatosPara(para) {
+    if (!para || !CANDADO?.hay()) return !!CANDADO?.hay();
+    try {
+      const quienes = await destinatarios(para);
+      if (!quienes.length) return true;
+      const aparatos = await llavesDe(quienes);
+      const mia = await CANDADO.miLlave().catch(() => null);
+      return aparatos.some((x) => !mia || x.id !== mia.id);
+    } catch { return true; }
+  }
+
+  /* ¿Va cerrado lo que se escriba en ESTE hilo? Lo pregunta el sello de
+     abajo del chat ANTES de que la persona escriba: si dijera «punta a punta»
+     y el texto saliera en claro (sin candado en este navegador, o nadie del
+     otro lado con llave todavía), el aviso de la burbuja llegaría tarde, con
+     lo escrito ya mandado. Hallazgo de Codex en el PR #31.
+     'si' · 'sin-candado' · 'sin-aparatos' · null (no se pudo saber).
+     No reutiliza la duda de `hayAparatosPara`, que ante un fallo de red dice
+     «sí» para no bajar un adjunto a claro: aquí un «sí» por duda sería un
+     sello prometiendo lo que no se comprobó. Si falla, se queda sin saber y
+     el sello no promete nada. Segunda revisión de Codex en el PR #31. */
+  async function cifraCon(para) {
+    if (!CANDADO?.hay()) return 'sin-candado';
+    try {
+      const quienes = await destinatarios(para);
+      if (!quienes.length) return null;
+      const aparatos = await llavesDe(quienes);
+      const mia = await CANDADO.miLlave().catch(() => null);
+      return aparatos.some((x) => !mia || x.id !== mia.id) ? 'si' : 'sin-aparatos';
+    } catch { return null; }
+  }
+
   /**
    * Reaccionar, CERRADO. `para` es el hilo (correo o grupo): hace falta para
    * saber a qué aparatos cerrarle el sobre, igual que en `enviar`. Sin
@@ -426,7 +480,7 @@ const CHAT = (() => {
    * conversaciones tiene que poder decir «📷 Imagen» sin abrir nada, y el
    * relevo necesita el tipo para servir el archivo. Es metadato, no contenido
    * — y los metadatos ya estaban declarados como lo que el servidor ve. */
-  async function subir(fichero, { publico = false } = {}) {
+  async function subir(fichero, { publico = false, para = null } = {}) {
     if (fichero.size > TOPE) { const e = new Error('más de 8MB'); e.code = 413; throw e; }
     const crudos = new Uint8Array(await fichero.arrayBuffer());
     const tipo = tipoDe(fichero.type);
@@ -443,7 +497,7 @@ const CHAT = (() => {
        directorio va abierto, cada uno con su nombre. */
     if (publico) {
       datos = aB64Simple(crudos);
-    } else if (CANDADO?.hay()) {
+    } else if (CANDADO?.hay() && await hayAparatosPara(para)) {
       const c = await CANDADO.cerrarBytes(crudos);
       datos = aB64Simple(c.bytes);
       llave = c.llave;
@@ -479,7 +533,26 @@ const CHAT = (() => {
      antes de este cambio, que están en claro y se siguen viendo. */
   const abiertos = new Map();     // id → blob: URL ya resuelta
 
-  async function archivoAbierto(id, llaveB64, ivB64) {
+  /* El TIPO del archivo abierto, leído de sus primeros bytes. Un blob sin
+     tipo lo adivina Chrome, pero Safari no siempre reproduce un audio así, y
+     desde que las notas de voz van cerradas TODAS pasan por aquí: las del
+     teléfono son m4a y las de esta web, webm. El mensaje no trae el tipo, así
+     que se mira la firma del formato, que es lo que haría el navegador. */
+  function tipoPorBytes(b, pista = '') {
+    // WebM y MP4 no dicen por su firma si son audio o video: lo dice la
+    // etiqueta que los va a mostrar (`pista`).
+    const medio = pista === 'video' ? 'video' : 'audio';
+    const ascii = (i, n) => String.fromCharCode(...b.subarray(i, i + n));
+    if (b.length > 12 && ascii(4, 4) === 'ftyp') return pista ? `${medio}/mp4` : (/^M4A|^M4B/.test(ascii(8, 4)) ? 'audio/mp4' : 'video/mp4');
+    if (b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3) return `${medio}/webm`;
+    if (ascii(0, 4) === 'OggS') return 'audio/ogg';
+    if (b[0] === 0xff && b[1] === 0xd8) return 'image/jpeg';
+    if (b[0] === 0x89 && ascii(1, 3) === 'PNG') return 'image/png';
+    if (ascii(0, 4) === 'RIFF' && ascii(8, 4) === 'WEBP') return 'image/webp';
+    return '';
+  }
+
+  async function archivoAbierto(id, llaveB64, ivB64, pista = '') {
     if (!llaveB64 || !ivB64 || !CANDADO?.hay()) return urlArchivo(id);
     const ya = abiertos.get(id);
     if (ya) return ya;
@@ -488,7 +561,7 @@ const CHAT = (() => {
       if (!r.ok) throw new Error('no está');
       const cerrados = new Uint8Array(await r.arrayBuffer());
       const claros = await CANDADO.abrirBytes(cerrados, llaveB64, ivB64);
-      const url = URL.createObjectURL(new Blob([claros]));
+      const url = URL.createObjectURL(new Blob([claros], { type: tipoPorBytes(claros, pista) }));
       abiertos.set(id, url);
       return url;
     } catch {
@@ -590,14 +663,26 @@ const CHAT = (() => {
   }
 
   /** Sube la nota y devuelve su adjunto, con la duración en segundos. */
-  async function subirVoz(trozo, segundos) {
+  async function subirVoz(trozo, segundos, para = null) {
     if (trozo.size > TOPE) { const e = new Error('más de 8MB'); e.code = 413; throw e; }
-    const datos = await new Promise((ok, mal) => {
-      const l = new FileReader();
-      l.onload = () => ok(String(l.result).split(',')[1] || '');
-      l.onerror = () => mal(new Error('no se pudo leer la nota'));
-      l.readAsDataURL(trozo);
-    });
+    /* LA NOTA DE VOZ TAMBIÉN SE CIERRA, igual que una foto (ver `subir`). Se
+       subía en claro: `enviarAdjunto` no encontraba llave, el mensaje salía
+       marcado sin cifrar, y el relevo guardaba la voz de la persona tal cual.
+       Era la única parte de una conversación que desmentía «cada latido,
+       cifrado de punta a punta». Los dos lados que reciben —esta web y el
+       teléfono— ya abrían una nota con su llave; faltaba cerrarla al subir. */
+    const crudos = new Uint8Array(await trozo.arrayBuffer());
+    let datos, llave = null, iv = null;
+    if (CANDADO?.hay() && await hayAparatosPara(para)) {
+      const c = await CANDADO.cerrarBytes(crudos);
+      datos = aB64Simple(c.bytes);
+      llave = c.llave;
+      iv = c.iv;
+    } else {
+      // Sin candado, o sin nadie a quien cerrarle la llave, se sube en claro
+      // y el mensaje sale marcado sin cifrar.
+      datos = aB64Simple(crudos);
+    }
     /* La duración viaja en el NOMBRE porque el relevo no tiene un campo para
        ella y añadirle uno obligaría a desplegar los dos lados a la vez. Es
        fea pero es honesta: se lee al pintar y si falta, se enseña sin ella. */
@@ -605,7 +690,7 @@ const CHAT = (() => {
       tipo: 'voz', datos, mime: trozo.type || 'audio/webm',
       nombre: `voz-${Math.max(1, Math.round(segundos))}s`,
     }), 120000);
-    return { id: d.id, tipo: 'voz', nombre: `voz-${Math.max(1, Math.round(segundos))}s` };
+    return { id: d.id, tipo: 'voz', nombre: `voz-${Math.max(1, Math.round(segundos))}s`, llave, iv };
   }
 
   /** Los segundos que dice el nombre de la nota, o null si no se sabe. */
@@ -806,8 +891,19 @@ const CHAT = (() => {
     }
     /* Sin poder cerrar, la llave del archivo NO se manda: iría en claro al
        lado de los bytes cifrados, que es exactamente lo mismo que no cifrar
-       pero con más pasos y aparentando lo contrario. El archivo se queda
-       ilegible y el mensaje sale marcado sin cifrar. */
+       pero con más pasos y aparentando lo contrario.
+
+       Y un archivo que ya subió CERRADO tampoco se manda así: el mensaje
+       apuntaría a bytes que nadie puede abrir. Pasa si entre la subida y este
+       envío cambió lo que se sabe de los aparatos del otro lado (la consulta
+       de antes falló y se asumió que sí había). Se corta con error, que la
+       pantalla enseña, y al reintentar la subida ya sale en claro y se puede
+       abrir. Revisión de Codex en #31. */
+    if (adj.llave) {
+      const e = new Error('no se pudo cifrar: el archivo subió cerrado y no hay a quién darle la llave');
+      e.motivo = 'sin-aparatos';
+      throw e;
+    }
     await pedir('/enviar', firmado({ ...meta, texto: texto || '' }));
     return { ok: true, e2e: false };
   }
@@ -1042,7 +1138,7 @@ const CHAT = (() => {
            publicarMiLlave, codigoCon,
            grupoCrear, grupoInfo, grupoEditar, grupoInvitar, grupoSalir, grupoUnirse,
            esGrupo, urlArchivo, vozEnVivo, oir,
-           puedeGrabar, grabarInicio, grabarFin, subirVoz, segundosDeVoz,
+           puedeGrabar, grabarInicio, grabarFin, subirVoz, segundosDeVoz, cifraCon,
            escuchar, dejarDeEscuchar, senalar, turno,
            reaccionar, escribiendo,
            puedeAvisar, iphoneSinInstalar, registrarObrero, pedirAvisos, llaveAvisos };

@@ -195,7 +195,10 @@ console.log('\n── la red de seguridad: sin bundle, el cerebro clásico ─�
   await q.addInitScript("localStorage.setItem('veta.genesis.visto','1')");
   q.on('pageerror', () => {});
   await q.route('**/herokuapp.com/**', (r) => r.fulfill({ status: 200, json: {} }));
-  await q.route('**/aetherion/**', (r) => r.abort());     // el bundle "no existe"
+  /* El motor se llamó Aetherion y vive en augalaxy/ desde septiembre: bloquear
+     la ruta vieja no bloqueaba nada, el motor cargaba igual y el cerebro
+     clásico nunca tenía por qué aparecer. */
+  await q.route('**/augalaxy/**', (r) => r.abort());      // el bundle "no existe"
   await q.goto(`http://127.0.0.1:${PUERTO}/index.html`, { waitUntil: 'domcontentloaded' });
   await q.waitForTimeout(1500);
   await q.evaluate(() => {

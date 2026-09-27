@@ -364,7 +364,10 @@ const ONX = (() => {
       /* Sin feed, guion — y la verdad en la nota. Si ya había precios
          pintados se dejan quietos: un dato viejo y honesto vale más que una
          tabla parpadeando a vacío por un tropiezo de red. */
-      if (!vivosPintados) cuerpo.innerHTML = '';
+      /* Y si todavía no se había pintado nada, se pintan los mercados con
+         guion en vez de dejar la tabla vacía: una casa de cambio sin mercados
+         en la portada parece cerrada. */
+      if (!vivosPintados) pintarFilas([]);
       nota.textContent = t('pt.mvSinFeed');
       return;
     }
@@ -376,7 +379,21 @@ const ONX = (() => {
        vista de mercados si filtraba; la portada no. Un exchange que muestra
        nueve mesas vacias que no existen parece muerto, que es peor que
        parecer chico. */
-    const publicados = (lista || []).filter(m => CADENA.PARES.includes(m.mercado));
+    pintarFilas(lista || []);
+    vivosPintados = true;
+    pintarCinta(lista);
+  }
+
+  /* LA TABLA SE ITERA DESDE CADENA.PARES, no desde lo que devolvió el API.
+     El título promete «los N mercados de la cadena» y la lista de mercados
+     que hubo hasta el 8-sep los enseñaba SIEMPRE, con guion donde el dato no
+     llegó. La portada heredó la tabla pero no la regla: pintaba solo los que
+     el API traía, y con el feed a medias salían dos de cinco. */
+  function pintarFilas(lista) {
+    const cuerpo = $('#mv-cuerpo');
+    if (!cuerpo) return;
+    const porPar = new Map((lista || []).map(m => [m.mercado, m]));
+    const publicados = CADENA.PARES.map(par => porPar.get(par) || { mercado: par });
     cuerpo.innerHTML = publicados.map(m => {
       const base = CADENA.baseDe(m.mercado) || m.mercado;
       const pf = precioFila(m);
@@ -404,8 +421,6 @@ const ONX = (() => {
           <td class="mono mv-num soloAncho">${esc(deWei(m.vol24h) ?? '—')}</td>
         </tr>`;
     }).join('');
-    vivosPintados = true;
-    pintarCinta(lista);
   }
 
   /* ── la cinta de precios ───────────────────────────────────────────────────

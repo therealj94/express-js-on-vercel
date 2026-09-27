@@ -14,7 +14,10 @@ export function Overlays() {
 
   return (
     <div className="ae-hud" style={{ pointerEvents: 'none' }}>
-      <AnimatePresence>{selectedId && !activeId && <WhisperCard key="w" />}</AnimatePresence>
+      {/* Tocar un planeta lo elige Y arranca el vuelo en el mismo gesto: la
+          ficha no tiene nada que ofrecer mientras se viaja, y asomaba medio
+          segundo con un ENTRAR que ya no hacía falta. */}
+      <AnimatePresence>{selectedId && !activeId && !transit.active && <WhisperCard key="w" />}</AnimatePresence>
       <TearMenu />
       <AnimatePresence>{pulsoOpen && <Pulso key="p" />}</AnimatePresence>
       <AnimatePresence>{activeId && <DimensionPanel key={activeId} />}</AnimatePresence>

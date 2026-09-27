@@ -62,7 +62,7 @@ const nav = await chromium.launch({
 const montar = async (movimiento) => {
   const p = await nav.newPage({ viewport: { width: 1280, height: 900 },
                                 reducedMotion: movimiento, bypassCSP: true });
-  await p.route('**/aetherion/assets/aetherion.js*', (r) => r.abort());
+  await p.route('**/augalaxy/assets/augalaxy.js*', (r) => r.abort());
   await p.goto(BASE);
   await p.waitForTimeout(800);
   await p.evaluate(() => {

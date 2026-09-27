@@ -85,7 +85,7 @@ let recibosPedidos = 0;
 
 await pag.route('**/*', async (route) => {
   const u = route.request().url();
-  if (u.includes('/aetherion/')) return route.abort();           // la puerta 3D no es lo que se prueba
+  if (u.includes('/augalaxy/')) return route.abort();           // la puerta 3D no es lo que se prueba
   if (u.startsWith(BASE)) return route.continue();
   const json = (status, body) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 

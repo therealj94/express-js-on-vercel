@@ -6278,10 +6278,17 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = 'a685349818';
-  const VETA_FECHA = '2026-09-24';
+  const VETA_V = '330f568ed8';
+  const VETA_FECHA = '2026-09-27';
 
-  const AET_V = 'fc53e9b8bf';
+  const AET_V = '2e498490b7';
+
+  /* MEDIAPIPE, UNA SOLA COPIA EN EL SITIO. La casa ya sirve el modelo de manos
+     y su WASM en /vendor/vision/ para su propio AirTouch. El motor traia los
+     mismos bytes otra vez —43 MB repetidos, subidos en cada despliegue—; con
+     esto usa los de aqui. Si algun dia el motor corre fuera de esta casa, cae
+     solo a los suyos. */
+  window.__AE_VISION = { wasm: '/vendor/vision/wasm/', modelo: '/vendor/vision/hand_landmarker.task' };
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -8625,6 +8632,16 @@ const VETA = (() => {
     chatSt.gente = null;
     chatSt.busca = '';
     chatSt.verCodigo = false;
+    // Si lo que se escriba aquí va cerrado se sabe tras preguntar por las
+    // llaves del otro lado; mientras tanto el sello no promete nada.
+    // Va con el id del hilo: otro camino que abra un hilo sin pasar por aquí
+    // no hereda lo que se supo del anterior.
+    chatSt.cifra = { id, v: null };
+    CHAT.cifraCon(id).then((v) => {
+      if (chatSt.con?.id === id && chatSt.cifra?.id === id && chatSt.cifra.v !== v) {
+        chatSt.cifra = { id, v }; pintarChat();
+      }
+    }).catch(() => {});
     pintarChat();
     await chatCargarMsgs();
     CHAT.leido(id);
@@ -9995,7 +10012,7 @@ const VETA = (() => {
       chatSt.subiendo = true;
       pintarChat();
       try {
-        const adj = await CHAT.subirVoz(trozo, segundos);
+        const adj = await CHAT.subirVoz(trozo, segundos, chatSt.con.id);
         await CHAT.enviarAdjunto(chatSt.con.id, adj, '');
         await chatCargarMsgs();
         chatCargarConvs();
@@ -10036,7 +10053,7 @@ const VETA = (() => {
     chatSt.subiendo = true;
     pintarChat();
     try {
-      const adj = await CHAT.subir(f);
+      const adj = await CHAT.subir(f, { para: chatSt.con.id });
       await CHAT.enviarAdjunto(chatSt.con.id, adj, '');
       await chatCargarMsgs();
       chatCargarConvs();
@@ -10761,7 +10778,10 @@ const VETA = (() => {
       const k = el.getAttribute('data-k');
       const iv = el.getAttribute('data-iv');
       el.removeAttribute('data-cif');
-      CHAT.archivoAbierto(id, k, iv).then((url) => {
+      // Qué etiqueta lo va a mostrar: WebM y MP4 sirven para audio y video.
+      const tag = el.tagName === 'A' ? el.querySelector?.('img, video, audio')?.tagName : el.tagName;
+      const pista = tag === 'VIDEO' ? 'video' : tag === 'AUDIO' ? 'audio' : '';
+      CHAT.archivoAbierto(id, k, iv, pista).then((url) => {
         if (!url) {
           /* No se pudo abrir: se dice, en vez de dejar el hueco para siempre o
              —peor— pintar los bytes cifrados y enseñar una imagen rota. */
@@ -12806,15 +12826,30 @@ const VETA = (() => {
             este hilo lo procesa nuestro servidor para poder contestar, y del
             otro lado no hay una persona—, y un sello que miente enseña a
             ignorar todos los sellos. */''}
-      <div class="cha-sello${esAura(c) ? ' cha-sello-aura' : ''}">
+      ${/* Y con una persona, «punta a punta» sólo cuando este hilo de verdad
+            se cierra (CHAT.cifraCon). Sin candado en este navegador, o sin
+            nadie con llave del otro lado, se dice ANTES de escribir, no en la
+            burbuja cuando ya salió. Mientras se pregunta, no se promete. */''}
+      ${(() => {
+        const cifra = chatSt.cifra?.id === c.id ? chatSt.cifra.v : null;
+        const claro = !esAura(c) && (cifra === 'sin-candado' || cifra === 'sin-aparatos');
+        const titulo = esAura(c) ? 'au.chSello'
+          : cifra === 'si' ? 'cha.e2eLlamadas'
+          : cifra === 'sin-candado' ? 'cha.selloSinCandado'
+          : cifra === 'sin-aparatos' ? 'cha.selloSinLlave' : '';
+        return `
+      <div class="cha-sello${esAura(c) ? ' cha-sello-aura' : ''}${claro ? ' cha-sello-claro' : ''}">
         <svg viewBox="0 0 24 24">${esAura(c)
           ? '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>'
+          : claro
+          ? '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 7.5-2"/>'
           : '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>'}</svg>
         <div>
-          <b>${t(esAura(c) ? 'au.chSello' : 'cha.e2eLlamadas')}</b>
+          ${titulo ? `<b>${t(titulo)}</b>` : ''}
           <span>${t(esAura(c) ? 'au.chSelloP' : 'cha.e2eIdentidad')}</span>
         </div>
-      </div>
+      </div>`;
+      })()}
       ${/* El renglon de «las fotos y los videos todavia no» se fue de aqui.
             Debajo de la caja de escribir, en cada pantalla y para siempre, un
             parrafo de letra chica sobre lo que NO esta cifrado le quita el
@@ -13109,6 +13144,12 @@ const VETA = (() => {
                ${segs ? `<span class="cha-voz-t">${segs}s</span>` : ''}
              </div>`;
     }
+
+    /* Un mensaje que este aparato no pudo abrir (o que se borró) no trae la
+       llave de su archivo: pintar el adjunto con la dirección del relevo
+       enseñaría bytes cerrados como una imagen o un audio roto, al lado del
+       aviso que ya explica qué pasó. Revisión de Codex en #31. */
+    if (m.cerrado || m.borrado) adj = '';
 
     // En un grupo hace falta saber quien habla; en un cara a cara sobra.
     const firma = (!mio && chatSt.con?.esGrupo)

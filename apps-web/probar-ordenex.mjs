@@ -338,8 +338,13 @@ await p.waitForTimeout(500);
 // ── 1 · la portada: el mercado respirando y una sola puerta ────────────────
 console.log('\n── la portada ────────────────────────────────────────────────');
 {
+  /* El título dice «los {mercados} mercados», contando CADENA.PARES: la tabla
+     tiene que traer ESOS, aunque el API fingido solo mande dos (los demás van
+     con guion). Antes se exigían las dos filas del API, y el título y la tabla
+     se contradecían en la primera pantalla. */
   const filas = await p.evaluate(() => document.querySelectorAll('#mv-cuerpo tr').length);
-  decir(filas === 2, 'la tabla viva pinta los dos mercados del API fingido', `filas: ${filas}`);
+  const pares = await p.evaluate(() => CADENA.PARES.length);
+  decir(filas === pares && filas > 0, 'la tabla viva trae los mercados que promete el título', `filas: ${filas} de ${pares}`);
 
   const fila1 = await p.evaluate(() => {
     const tr = document.querySelector('#mv-cuerpo tr');
@@ -363,54 +368,33 @@ console.log('\n── la portada ───────────────�
   decir(/contraseñas/.test(nota), 'y al lado dice la verdad: Ordenex no guarda contraseñas');
 }
 
-// ── 2 · a los mercados sin sesión: todo lo público se ve ───────────────────
-console.log('\n── mercados, sin sesión ──────────────────────────────────────');
+// ── 2 · los mercados, en la portada y sin sesión ──────────────────────────
+/* Desde el 8-sep NO hay una sección «mercados» aparte (ver leerRuta en
+   ordenex/app.js: un enlace viejo a #mercados lleva al portafolio). Los
+   mercados en vivo se enseñan en la tabla de la PORTADA (#mv-cuerpo), sin
+   cuenta, y cada fila abre su mercado. Esta sección buscaba el botón «ver los
+   mercados» y la lista con la columna de puntas del libro, que ya no existen
+   en ninguna pantalla; comprueba ahora lo que la portada promete. */
+console.log('\n── mercados en la portada, sin sesión ────────────────────────');
 {
-  await p.click('button[data-t="pt.ver"]');
-  await p.waitForTimeout(900);
-  const dentro = await p.evaluate(() => ({
-    app: !document.querySelector('#app').classList.contains('oculto'),
-    portada: document.querySelector('#portada').classList.contains('oculto'),
-  }));
-  decir(dentro.app && dentro.portada, '«ver los mercados» entra sin pedir cuenta');
-
-  /* Contra CADENA.PARES y no contra un numero escrito aqui: esta prueba
-     esperaba catorce, la tabla pinta cinco, y el numero a mano llevaba tanto
-     tiempo mal que ya no delataba nada. La lista es el contrato; la prueba
-     comprueba que la pantalla lo cumple, no que coincida con un recuerdo. */
-  const filas = await p.evaluate(() => document.querySelectorAll('#ms-cuerpo .ms-fila').length);
+  await p.waitForFunction(() => document.querySelectorAll('#mv-cuerpo tr').length > 0, null, { timeout: 8000 }).catch(() => {});
+  /* Contra CADENA.PARES y no contra un numero escrito aqui: la lista es el
+     contrato; la prueba comprueba que la pantalla lo cumple. */
+  const filas = await p.evaluate(() => document.querySelectorAll('#mv-cuerpo tr').length);
   const pares = await p.evaluate(() => CADENA.PARES.length);
   decir(filas === pares && filas > 0,
-    'todos los mercados publicados están SIEMPRE en pantalla, con guion donde no hay dato',
+    'la portada enseña todos los mercados publicados, y solo esos',
     `filas: ${filas} de ${pares} pares`);
-  const auka = await p.evaluate(() => document.querySelector('#ms-cuerpo .ms-fila')?.textContent || '');
-  decir(/AUKA/.test(auka) && /\b111\b/.test(auka) && /222 AUKA/.test(auka), 'la fila de AUKA trae último 111 y volumen 222', auka);
-
-  /* LAS DOS PUNTAS EN LA LISTA, y los TRES estados distintos.
-
-     El 4-sep la casa tenia UNA sola orden viva —una venta de AUKA— y en la
-     lista ese mercado se veia igual que los cuatro vacios: guion en ultimo y
-     cero de volumen. El guion era correcto (nadie habia pagado nada) y la
-     pantalla mentia por omision: para enterarse de que habia con quien operar
-     habia que entrar par por par. Esta prueba existe para que no vuelva a
-     pasar, y exige que los tres estados se distingan — porque «vacio» donde
-     en realidad es «no lo se» es la misma mentira con otra letra. */
-  const puntas = await p.evaluate(() => {
-    // La columna del libro es .ms-libro dentro de cada fila de la rejilla.
-    const fila = (i) => document.querySelectorAll('#ms-cuerpo .ms-fila')[i];
-    const celda = (i) => fila(i)?.querySelector('.ms-libro')?.innerText.replace(/\s+/g, ' ').trim() ?? null;
-    return { auka: celda(0), agka: celda(1), otro: celda(2) };
-  });
-  decir(/venta/i.test(puntas.auka) && /112/.test(puntas.auka) && /compra/i.test(puntas.auka) && /110/.test(puntas.auka),
-    'con libro, la lista dice las dos puntas: venta 112 y compra 110', puntas.auka);
-  decir(/vac[ií]o/i.test(puntas.agka), 'con las puntas en null, dice «vacío»: es un hecho, no una falla', puntas.agka);
-  decir(puntas.otro === '—', 'y cuando el API no manda las puntas dice «—», no «vacío»', puntas.otro);
+  const auka = await p.evaluate(() => document.querySelector('#mv-cuerpo tr')?.textContent || '');
+  decir(/AUKA/.test(auka) && /\b111\b/.test(auka), 'la fila de AUKA trae su último, 111', auka.replace(/\s+/g, ' ').trim());
+  decir(await p.evaluate(() => !!document.querySelector('#mv-cuerpo tr[onclick*="abrirPar"]')),
+    'y cada fila abre su mercado');
 }
 
 // ── 3 · un mercado abierto: velas pintadas, libro con filas, invitación ────
 console.log('\n── AUKA-ORIGEN abierto, sin sesión ───────────────────────────');
 {
-  await p.click('#ms-cuerpo .ms-fila');
+  await p.click('#mv-cuerpo tr');
   await p.waitForTimeout(1200);
   decir(await p.evaluate(() => location.hash) === '#mercado/AUKA-ORIGEN', 'la barra de direcciones nombra el mercado');
   decir(/\b111\b/.test(await p.evaluate(() => document.querySelector('#vm-ultimo')?.textContent || '')), 'la cabecera dice el último: 111');
@@ -724,14 +708,15 @@ console.log('\n── cambiar a inglés ─────────────�
 {
   await p.evaluate(() => ONX.idioma('en'));
   await p.waitForTimeout(500);
-  for (const v of ['mercados', 'mercado', 'portafolio', 'fiat', 'actividad']) {
+  // «mercados» ya no es una vista (8-sep): los mercados están en la portada.
+  for (const v of ['mercado', 'portafolio', 'fiat', 'actividad']) {
     await p.evaluate(cual => ONX.vista(cual), v);
     await p.waitForTimeout(600);
     const sueltas = await clavesSueltas();
     decir(sueltas.length === 0, `en «${v}» no queda ninguna clave sin traducir`, sueltas.join(' · '));
   }
-  const mercadosEn = await p.evaluate(() => { ONX.vista('mercados'); return document.querySelector('#lienzo')?.innerText || ''; });
-  decir(/Markets|Market/.test(mercadosEn), 'y la vista de mercados habla inglés de verdad');
+  const mercadoEn = await p.evaluate(() => { ONX.vista('mercado'); return document.querySelector('#lienzo')?.innerText || ''; });
+  decir(/Order book|Buy|Sell/.test(mercadoEn), 'y la vista de un mercado habla inglés de verdad');
 
   await p.evaluate(() => ONX.salir());
   await p.waitForTimeout(600);
@@ -1056,14 +1041,15 @@ console.log('\n── EL BACKEND CAIDO: LOS MERCADOS SIGUEN EN PANTALLA ──�
     window.ONX_API = 'http://127.0.0.1:1';
     window.ONX_WALLET = origen;
   }, ORIGEN_LOCAL);
-  await pg.goto(BASE + '#mercados', { waitUntil: 'domcontentloaded' });
+  // Los mercados viven en la portada desde el 8-sep (ver la sección 2).
+  await pg.goto(BASE, { waitUntil: 'domcontentloaded' });
   await pg.waitForTimeout(3000);
 
   const est = await pg.evaluate(() => ({
-    filas: document.querySelectorAll('#ms-cuerpo .ms-fila').length,
+    filas: document.querySelectorAll('#mv-cuerpo tr').length,
     pares: CADENA.PARES.length,
-    guiones: (document.querySelector('#ms-cuerpo')?.innerText.match(/—/g) || []).length,
-    nota: document.querySelector('#ms-nota')?.textContent || '',
+    guiones: (document.querySelector('#mv-cuerpo')?.innerText.match(/—/g) || []).length,
+    nota: document.querySelector('#mv-nota')?.textContent || '',
   }));
   decir(est.filas === est.pares && est.filas > 0,
     'sin backend, la tabla sigue trayendo todos los mercados', `${est.filas} de ${est.pares}`);

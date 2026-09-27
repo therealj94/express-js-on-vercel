@@ -24,8 +24,8 @@
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval';
-  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-  font-src 'self' data: https://fonts.gstatic.com;
+  style-src 'self' 'unsafe-inline';
+  font-src 'self' data:;
   img-src 'self' data: blob: https://cerebro.ordenscan.com;
   media-src 'self' blob: https://cerebro.ordenscan.com;
   connect-src 'self'
@@ -65,11 +65,13 @@
 <meta property="og:title" content="Orden Global">
 <meta property="og:description" content="Un ecosistema entero, en una sola cuenta.">
 <meta property="og:image" content="https://app.vetawallet.com/assets/veta.png">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- Tipografias propias. Antes se pedian a fonts.googleapis.com en cada visita:
+     bloqueaba el primer pintado, metia a un tercero en el camino de una app
+     financiera y le contaba quien entra. Ahora viajan con el sitio. -->
+<link rel="preload" href="assets/fonts/archivo-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/fonts/tipografias.css?v=330f568ed8">
 
 <style>
-
 /* ═══════════════════════════════════════════════════════════════════════════
    Veta Wallet · web
 
@@ -252,6 +254,9 @@ body.en-visor[data-visor=carton] #visor-capa .vs-pista{display:none}
   /* Y el saludo se aparta: con la tarjeta puesta eran dos bloques de texto
      peleándose el mismo rincón. */
   body.hay-ficha #ae-saludo{opacity:0;transition:opacity .3s ease}
+  /* Y la mano de AirTouch, el orbe de AU-RA y el timón también: caían justo
+     encima de ENTRAR. Vuelven solos al cerrarse la tarjeta. */
+  body.hay-ficha #at-boton,body.hay-ficha #aura-orbe,body.hay-ficha .ae-timon{opacity:0;pointer-events:none}
 }
 
 /* EL TOUR GÉNESIS · las palabras de la historia. La Palabra va grande y al
@@ -3029,6 +3034,9 @@ body.en-p2c .cha-puerta p{color:var(--p2c-bruma)}
   stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .cha-sello b{display:block;font:600 12.5px/1.45 var(--sans);color:var(--crema)}
 .cha-sello span{display:block;margin-top:3px;font-size:11.5px;line-height:1.5;color:var(--bruma)}
+/* Un hilo que va en claro no lleva el candado cerrado ni el color de «seguro». */
+.cha-sello.cha-sello-claro{background:rgba(232,168,56,.08);border-color:rgba(232,168,56,.28)}
+.cha-sello.cha-sello-claro svg{stroke:#e8a838}
 .cha-aviso{padding:0 14px 12px;font-size:11.5px;line-height:1.55;color:var(--humo)}
 
 .cha-puerta{margin:auto;padding:30px 24px;text-align:center;max-width:420px;
@@ -4837,9 +4845,9 @@ body.en-ventana .lienzo::before{
 
 <!-- El saber publico que Genesis dejo salir. Lo genera
      infra/cerebro/publicar-saber.mjs; no se edita a mano. -->
-<script src="saber.js?v=a685349818"></script>
-<script src="telemetria.js?v=a685349818"></script>
-<script src="qr.js?v=a685349818"></script>
+<script src="saber.js?v=330f568ed8"></script>
+<script src="telemetria.js?v=330f568ed8"></script>
+<script src="qr.js?v=330f568ed8"></script>
 <!-- La cripto para entrar con la frase semilla. Se carga aparte y no dentro
      de app.js porque son 13 KB que solo hacen falta si alguien elige ese
      camino, y porque asi se puede probar sola (pruebas/probar-llaves.mjs). -->
@@ -4991,24 +4999,24 @@ body.en-ventana .lienzo::before{
   </div>
 </div>
 
-<script src="vendor/cripto-llaves.js?v=a685349818"></script>
-<script src="llaves.js?v=a685349818"></script>
-<script src="tono.js?v=a685349818"></script>
-<script src="llamada.js?v=a685349818"></script>
-<script src="llamadaGrupo.js?v=a685349818"></script>
-<script src="velas.js?v=a685349818"></script>
-<script src="cadena.js?v=a685349818"></script>
-<script src="datos.js?v=a685349818"></script>
-<script src="aura.js?v=a685349818"></script>
-<script src="candado.js?v=a685349818"></script>
-<script src="chat.js?v=a685349818"></script>
-<script src="i18n.js?v=a685349818"></script>
-<script src="galaxia.js?v=a685349818"></script>
+<script src="vendor/cripto-llaves.js?v=330f568ed8"></script>
+<script src="llaves.js?v=330f568ed8"></script>
+<script src="tono.js?v=330f568ed8"></script>
+<script src="llamada.js?v=330f568ed8"></script>
+<script src="llamadaGrupo.js?v=330f568ed8"></script>
+<script src="velas.js?v=330f568ed8"></script>
+<script src="cadena.js?v=330f568ed8"></script>
+<script src="datos.js?v=330f568ed8"></script>
+<script src="aura.js?v=330f568ed8"></script>
+<script src="candado.js?v=330f568ed8"></script>
+<script src="chat.js?v=330f568ed8"></script>
+<script src="i18n.js?v=330f568ed8"></script>
+<script src="galaxia.js?v=330f568ed8"></script>
 <!-- GENESIS CORE: el cerebro del ecosistema, el mismo volumen que se proyecta
      en la sala de Genesis ID. Solo lo usa su vista. -->
-<script src="cerebro-og.js?v=a685349818"></script>
+<script src="cerebro-og.js?v=330f568ed8"></script>
 <!-- MODO VISOR: la casa dentro de un visor (WebXR, cartón o 360 en pantalla). -->
-<script src="visor.js?v=a685349818"></script>
-<script src="musica.js?v=a685349818"></script>
-<script src="airtouch.js?v=a685349818"></script>
-<script src="app.js?v=a685349818"></script>
+<script src="visor.js?v=330f568ed8"></script>
+<script src="musica.js?v=330f568ed8"></script>
+<script src="airtouch.js?v=330f568ed8"></script>
+<script src="app.js?v=330f568ed8"></script>

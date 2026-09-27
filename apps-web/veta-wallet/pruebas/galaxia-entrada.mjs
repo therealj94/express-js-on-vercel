@@ -50,7 +50,9 @@ async function abrir({ reducido = false, ancho = 1360, alto = 900 } = {}) {
      bundle 3D a propósito y la puerta 2D de siempre tiene que estar entera —
      velo, cielo de estrellas, hipersalto y teléfono. El camino 3D tiene su
      propia prueba (puerta-continua.mjs). */
-  await pag.route('**/aetherion/**', (r) => r.abort());
+  // augalaxy/ y no aetherion/: con la ruta vieja el bundle 3D cargaba igual,
+  // la puerta 2D no llegaba a dibujarse y la prueba miraba un lienzo sin tamaño.
+  await pag.route('**/augalaxy/**', (r) => r.abort());
   pag.errores = [];
   pag.on('pageerror', (e) => pag.errores.push(String(e)));
   await pag.route('**/auth/login', (r) => r.fulfill({ json: {

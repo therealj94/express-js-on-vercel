@@ -145,9 +145,13 @@ canvas {
   border: 1px solid var(--ae-line);
 }
 
+/* Centrada con márgenes y NO con translateX(-50%): la tarjeta entra con
+   framer-motion, que escribe su propio transform y borraba ese centrado. En
+   un teléfono quedaba empezando en la mitad y el botón ENTRAR se salía. */
 .ae-whisper {
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  margin-inline: auto;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 44px);
   width: min(88vw, 360px);
   border-radius: 20px;
