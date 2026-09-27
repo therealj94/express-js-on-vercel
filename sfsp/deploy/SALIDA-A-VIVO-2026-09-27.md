@@ -195,6 +195,19 @@ Qué hacer, en orden:
 | App Veta (EAS `preview`) | Actions #100 → **#101** (`eedfe4d`) | En verde | Volver a lanzar `veta-preview.yml` desde `ceb41d5` |
 | `mytokenpay-api` | v29 (Heroku-24, Node 20) → **v30** (Heroku-26, Node 22) | `/healthz` ok (mongo). `web.1` corre v30. `/genesis/*`, `/api/companies` y `/api/admin` responden 401 sin sesión | Roll back a **v29**; si el stack no vuelve, `PATCH build_stack heroku-24` |
 
+### Las tres apps en Heroku-26 (27-sep)
+
+Antes, Veta y Ordenex quedaron fijados a Node `24.x`, el que ya corrían:
+`>=18.x` y `>=20` dejaban que Heroku eligiera el Node más nuevo sin avisar.
+Las suites pasan con Node 24 (Veta 117/117, Ordenex «Todo en orden»).
+Commit `7a738a9`.
+
+| App | Antes → ahora | Comprobación | Cómo revertir |
+|---|---|---|---|
+| `vetawallet` | v124 (Heroku-24) → **v125** (Heroku-26, Node 24.21.0) | El guion corrió 117 pruebas. `/salud` ok. Las rutas con sesión responden 401. Precio de Londres en un dyno puntual: 2,5055 USD, igual que antes | Roll back a **v124**; si el stack no vuelve, `PATCH build_stack heroku-24` |
+| `ordenex-api` | v45 (Heroku-24) → **v46** (Heroku-26) | `/salud` ok (cadena, mongo, entrega, venta). `/compras` y `/portafolio` existen. SSO falso: 401 `SSO_INVALIDO`. Banderas sin tocar: BARRIDO, COMPRAS y VENTAS en 1; `SFSP410_EMISION` ausente | Roll back a **v45**; ídem |
+| `mytokenpay-api` | ya en Heroku-26 (v30) | | |
+
 ## Pendiente
 
 1. ~~Cambiar `ADMIN_PASSWORD` en `mytokenpay-api`~~: hecho por José el 27-sep.
