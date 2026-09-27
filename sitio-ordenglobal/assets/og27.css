@@ -334,6 +334,22 @@ em{font-style:italic;color:var(--oro)}
 }
 
 
+/* ── ORIGEN en 3D: la explicación del tráiler ──────────────────────────────── */
+.origen3d{display:none}
+.con3d .origen3d{display:block;position:relative;height:540vh}
+.origen3d .escena{position:sticky;top:0;height:100svh;overflow:hidden;
+  background:radial-gradient(46% 42% at 50% 44%,rgba(217,180,95,.16),rgba(217,180,95,0) 70%)}
+.origen3d canvas{position:absolute;inset:0;width:100%;height:100%}
+.origen3d .frases{position:absolute;left:var(--margen);right:var(--margen);bottom:clamp(64px,12vh,120px);height:7.5em;text-align:center}
+.origen3d .frase{position:absolute;inset:auto 0 0;font:italic 300 clamp(1.8rem,3.6vw,3.3rem)/1.15 var(--f-disp);font-variation-settings:'opsz' 144;
+  letter-spacing:-.02em;color:var(--crema);text-shadow:0 2px 28px rgba(6,5,5,.9);opacity:0;transform:translateY(18px);transition:opacity .6s,transform .9s var(--entra)}
+.origen3d .frase.aqui{opacity:1;transform:none}
+.origen3d .frase .dato{display:block;margin-top:14px;font-style:normal;font-size:.875rem;letter-spacing:.02em;color:var(--gris)}
+.origen3d .frase .dato b{font-weight:400;color:var(--oro)}
+.origen3d .nota3d{position:absolute;left:0;right:0;bottom:22px;text-align:center;font-size:.8125rem;color:var(--gris-2)}
+.con3d #origen .disco{display:none}
+.con3d #origen .origen{grid-template-columns:minmax(0,1fr)}
+
 /* La cabecera espera a que el logo llegue volando. */
 .anima .techo{opacity:0}
 .anima.listo .techo{opacity:1;transition:opacity .6s .5s,transform .5s var(--entra),background .4s}
