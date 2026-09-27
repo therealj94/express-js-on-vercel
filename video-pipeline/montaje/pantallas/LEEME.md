@@ -37,14 +37,15 @@ No hay login: la sesión es un token de mentira sembrado en `localStorage`.
 ORIGEN 612.40 a $2.50 (oro mock = 2.50 × 31.1035 × 55), ONDK 250 (precio
 declarado mock con acta JD-2026-08-16, oculto en la captura), AUKA/AGKA 0.
 Direcciones inventadas. Hora falsa por pantalla con `page.clock`, zona
-`America/Tegucigalpa`, día 27/09/2026.
+`America/El_Salvador`, día 27/09/2026. La historia pasa en San Salvador:
+moneda local = dólar, 1 ORIGEN = $2.50 (tasa local 1:1).
 
 | PNG | estado |
 |---|---|
 | `A_enviar` | comprobante de 80 ORIGEN, confirmado en cadena, 06:41 |
 | `B_tarjeta` | Visa virtual + «Boleto aéreo» (06:43, reloj a 06:45 → «hace 2 min») |
-| `C_pagar` | MyTokenPay «Pagar una cuenta», Floristería El Girasol L 450, pagada |
-| `E_dividir` | Comedor Doña Tere dividida en 4: 3 pagadas + la suya (L 385) tomada, a punto de pagar |
+| `C_pagar` | MyTokenPay «Pagar una cuenta», Floristería El Girasol $18.00 (7.20 ORIGEN), pagada |
+| `E_dividir` | Comedor Doña Tere dividida en 4: total $62.00, 3 pagadas + la suya ($15.50 = 6.20 ORIGEN) tomada, a punto de pagar |
 | `E_dividir_pagado` | la misma cuenta después de pagar: «ya está pagada» |
 | `G_comprobante` | comprobante a Textiles del Valle, 120 ORIGEN, 15:42, con «Ver en OrdenScan» |
 | `H_actividad` | actividad del día (reloj 15:46) |
@@ -60,3 +61,9 @@ Variantes extra: `B_tarjeta_arriba`, `C_pagar_revision`, `E_dividir_arriba`.
 - A y G: en `index.html` la clase `.comp` choca con la de la página
   `#comprobar` (`padding:110px…`), y el recibo sale con un hueco enorme arriba.
   Se le devuelve el relleno normal de `.bloque`. Es un fallo real de la web.
+- **Moneda (MyTokenPay)**: la web real solo sabe lempiras — `mtpHnl()` en
+  `app.js` escribe `'L '` fijo delante de todo monto de un cobro. No hay dato
+  que lo cambie. Los montos del mock van en dólares (en los campos `montoHnl`,
+  `tasaHnlPorOrigen` = 2.50) y un script inyectado reescribe en pantalla cada
+  «L 12.34» como «$12.34». Cada foto se revisa: si queda «L 1…», «lempira» o
+  «HNL» visible, la consola lo avisa con `!!`.

@@ -58,6 +58,9 @@ class Tipos:
         self.frase = ImageFont.truetype(str(d / "Fraunces.ttf"), 68)
         self.url = ImageFont.truetype(str(d / "JetBrainsMono.ttf"), 44)
         self.msg = ImageFont.truetype(str(d / "Manrope.ttf"), 48)
+        self.cita = ImageFont.truetype(str(d / "FrauncesItalic.ttf"), 50)
+        self.chat = ImageFont.truetype(str(d / "ManropeMedium.ttf"), 44)
+        self.hora_chat = ImageFont.truetype(str(d / "ManropeMedium.ttf"), 28)
 
 
 def lienzo() -> Image.Image:
@@ -223,6 +226,103 @@ def tink(sr: int = 48000) -> np.ndarray:
     return np.stack([s, s], 1)
 
 
+def timbre(sr: int = 48000) -> np.ndarray:
+    """Un teléfono que suena: dos tonos alternos, dos veces, algo lejano."""
+    out = []
+    for _ in range(2):
+        t = np.arange(int(sr * 0.9)) / sr
+        tono = np.where((t * 12).astype(int) % 2 == 0, np.sin(2 * np.pi * 880 * t), np.sin(2 * np.pi * 1109 * t))
+        env = np.clip(t * 60, 0, 1) * np.clip((0.9 - t) * 60, 0, 1)
+        out += [tono * env * 0.07, np.zeros(int(sr * 0.5))]
+    s = np.concatenate(out)
+    return np.stack([s, s], 1)
+
+
+COLORES = {"Sofía": (214, 186, 112), "Textiles del Valle": (110, 200, 150),
+           "amiga": (232, 140, 110), "amigo": (150, 175, 210), "Lucía": (243, 236, 217)}
+
+
+def onda_de(wav: Path, barras: int = 44) -> list[float]:
+    """Alturas de la onda sacadas de la voz de verdad, no dibujadas a ojo."""
+    x, _ = sf.read(str(wav), always_2d=True)
+    x = np.abs(x.mean(1))
+    trozos = np.array_split(x, barras)
+    r = np.array([np.sqrt((t ** 2).mean()) if len(t) else 0 for t in trozos])
+    r = r / (r.max() or 1)
+    return list(0.12 + 0.88 * r ** 0.7)
+
+
+def png_onda(alturas, etiqueta: str | None, T, dst: Path, y: int = 470) -> None:
+    img = lienzo()
+    d = ImageDraw.Draw(img)
+    paso, ancho = 13, 5
+    x0 = (W - paso * len(alturas)) / 2
+    s = lienzo(); ds = ImageDraw.Draw(s)
+    for i, h in enumerate(alturas):
+        hh = 8 + 170 * h
+        caja = [x0 + i * paso, y - hh / 2, x0 + i * paso + ancho, y + hh / 2]
+        ds.rounded_rectangle(caja, 3, fill=(0, 0, 0, 170))
+        d.rounded_rectangle(caja, 3, fill=(255, 255, 255, 235))
+    img = Image.alpha_composite(s.filter(ImageFilter.GaussianBlur(8)), img)
+    if etiqueta:
+        d = ImageDraw.Draw(img)
+        e = etiqueta.upper()
+        tw = ancho_esp(d, e, T.pie, 5)
+        espaciado(d, ((W - tw) / 2, y - 150), e, T.pie, CREMA + (230,), 5)
+    img.save(dst)
+
+
+def png_cita(texto: str, quien: str | None, fila: int, T, dst: Path, y0: int = 640) -> None:
+    """Una línea de lo que se dice, flotando, con el punto de quien habla."""
+    img = lienzo()
+    d = ImageDraw.Draw(img)
+    tw = d.textlength(texto, font=T.cita)
+    y = y0 + fila * 74
+    x = (W - tw) / 2 + (18 if quien else 0)
+    s = lienzo()
+    ImageDraw.Draw(s).text((x, y + 2), texto, font=T.cita, fill=(0, 0, 0, 230))
+    img = Image.alpha_composite(img, s.filter(ImageFilter.GaussianBlur(7)))
+    d = ImageDraw.Draw(img)
+    if quien:
+        c = COLORES.get(quien, CREMA)
+        d.ellipse([x - 40, y + 12, x - 14, y + 38], fill=c + (255,))
+    d.text((x, y), texto, font=T.cita, fill=(255, 255, 255, 250))
+    img.save(dst)
+
+
+def png_burbuja(texto: str, lado: str, hora: str, fila: int, T, dst: Path, y0: int = 560) -> None:
+    """Globo de chat flotando: entra a la izquierda (blanco), sale a la
+    derecha (crema dorada) con doble check."""
+    img = lienzo()
+    d = ImageDraw.Draw(img)
+    lineas = textwrap.wrap(texto, 26)
+    tw = max(d.textlength(l, font=T.chat) for l in lineas)
+    bw, bh = tw + 76, len(lineas) * 58 + 88
+    y = y0 + fila * 30 + (0 if fila == 0 else 160)
+    x = 80 if lado == "entra" else W - 80 - bw
+    fondo = (250, 250, 247) if lado == "entra" else (236, 222, 180)
+    img = sombra_de(img, [x, y, x + bw, y + bh], 30, 120, 18)
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle([x, y, x + bw, y + bh], 30, fill=fondo + (250,))
+    for i, l in enumerate(lineas):
+        d.text((x + 38, y + 24 + i * 58), l, font=T.chat, fill=(28, 30, 34, 255))
+    marca = hora + ("  ✓✓" if lado == "sale" else "")
+    mw = d.textlength(marca, font=T.hora_chat)
+    d.text((x + bw - mw - 30, y + bh - 50), marca, font=T.hora_chat, fill=(110, 118, 124, 255))
+    img.save(dst)
+
+
+def repartir(texto: str, dur: float, ancho: int = 30) -> list[tuple[str, float]]:
+    """Parte el texto en líneas y le da a cada una su momento, según su largo."""
+    lineas = textwrap.wrap(texto, ancho)
+    tot = sum(len(l) for l in lineas)
+    t, out = 0.15, []
+    for l in lineas:
+        out.append((l, t))
+        t += (dur - 0.6) * len(l) / tot
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--plan", default=str(RAIZ / "prompts/pelicula3_montaje.json"))
@@ -282,6 +382,24 @@ def main() -> int:
             capas.append({"png": p, "t": b["t"] + 0.25, "dur": min(2.2, b["dur"] - 0.4), "desliza": False})
     for c in plan.get("capas", []):
         p = tmp / f"capa_{len(capas)}.png"
+        if c["tipo"] in ("nota", "llamada", "dialogo"):
+            # onda con la voz real (nota y llamada) y las frases apareciendo
+            if c["tipo"] != "dialogo":
+                png_onda(onda_de(Path(a.voces) / f"{c['voz']}.wav"),
+                         f"Nota de voz · {c['quien']}" if c["tipo"] == "nota" else f"Llamada · {c['quien']}", T, p)
+                capas.append({"png": p, "t": c["t"], "dur": c["dur"], "desliza": False})
+            y0 = 640 if c["tipo"] != "dialogo" else 1330
+            for i, (l, off) in enumerate(repartir(c["texto"], c["dur"])):
+                q = tmp / f"capa_{len(capas)}.png"
+                png_cita(f"«{l}»" if len(repartir(c['texto'], c['dur'])) == 1 else l, c.get("quien") if i == 0 else None, i, T, q, y0)
+                capas.append({"png": q, "t": c["t"] + off, "dur": c["dur"] - off, "desliza": False})
+            continue
+        if c["tipo"] == "chat":
+            for i, b in enumerate(c["burbujas"]):
+                q = tmp / f"capa_{len(capas)}.png"
+                png_burbuja(b["texto"], b["lado"], b["hora"], i, T, q)
+                capas.append({"png": q, "t": c["t"] + b["t"], "dur": c["dur"] - b["t"], "desliza": True})
+            continue
         if c["tipo"] == "tarjeta":
             png_tarjeta(Path(a.pantallas) / c["pantalla"], c["recortes"], c.get("pie"), T, p)
         elif c["tipo"] == "nota":
@@ -319,10 +437,25 @@ def main() -> int:
             x = np.repeat(x, 2, 1) if x.shape[1] == 1 else x
             i = int(max(0, c["t"]) * sr)
             voz[i:i + len(x)] += x[: len(voz) - i]
+    # Planos con diálogo a la vista: su audio sale del propio clip (voz y boca
+    # generadas juntas). Se toma el mismo tramo que la imagen.
+    for b in bloques:
+        if b.get("audio_clip"):
+            wav = tmp / f"clip_{b['plano']}.wav"
+            ff("-ss", str(b.get("desde", 0.4)), "-t", f"{b['dur']}", "-i",
+               str(Path(a.clips) / tomas[b["plano"]]), "-vn", "-ac", "2", "-ar", str(sr), str(wav))
+            x, _ = sf.read(str(wav), always_2d=True)
+            x = x * float(b["audio_clip"])
+            i = int(b["t"] * sr)
+            voz[i:i + len(x)] += x[: len(voz) - i]
     fx = np.zeros_like(voz)
     for c in plan.get("capas", []):
         if c["tipo"] == "tarjeta":
             s = tink(sr); i = int(c["t"] * sr)
+            fx[i:i + len(s)] += s
+    for e in plan.get("efectos", []):
+        if e["tipo"] == "timbre":
+            s = timbre(sr); i = int(e["t"] * sr)
             fx[i:i + len(s)] += s
     sf.write(str(tmp / "voz.wav"), voz, sr)
     sf.write(str(tmp / "fx.wav"), fx, sr)
