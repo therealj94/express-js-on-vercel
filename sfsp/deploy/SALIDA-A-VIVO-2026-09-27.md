@@ -162,7 +162,10 @@ Qué hacer, en orden:
   `/salud` ok; la ruta responde 401 sin sesión. **Cómo revertir:** roll back
   a **v122**.
 - App Veta: botón «Reenviar correo de confirmación» en Ajustes, visible solo
-  si la cuenta no está confirmada. **Falta publicarlo** (EAS `preview`).
+  si la cuenta no está confirmada. **Publicado** por aire en el canal `preview`
+  con GitHub Actions (`veta-preview.yml`, ejecución #100, desde `ceb41d5`, en
+  verde). Solo añade el botón. **Cómo revertir:** `eas update:republish` del
+  grupo anterior, o volver a lanzar el workflow desde `a313895`.
 - `scripts/reenviar-confirmacion.js`: la tanda para los activos sin
   confirmar. Por omisión es un ensayo y no manda nada; `--a=` manda uno solo;
   `--de-verdad --tope=30` manda una tanda. Salta los dominios de la casa, a
@@ -178,8 +181,8 @@ Qué hacer, en orden:
 2. **José:** decidir `MTP_OCULTAR_TOKEN_RESETEO=si`. Cierra la toma de cuentas
    por «olvidé mi contraseña», pero rompe el reseteo desde la app.
 3. **José:** poner la llave nueva de SES en `vetawallet` (`SES_LLAVE`/`SES_SECRETO`).
-   Después: comprobarla, probar con una cuenta propia, publicar la app y
-   mandar la tanda en partes cortas.
+   Después: comprobarla, probar con una cuenta propia y mandar la tanda en
+   partes cortas.
 
 Contratos SFSP en la 5550: nada que desplegar. Siguen en `BLOCKED_DECISION`
 hasta D07 (firmantes), D24–D27 y las llaves en KMS.
