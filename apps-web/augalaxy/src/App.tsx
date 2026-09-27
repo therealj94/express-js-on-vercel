@@ -15,6 +15,7 @@ import { TransitRunner } from './transit/TransitRunner'
 import { GestureLayer } from './gesture/useGestures'
 import { Hud } from './hud/Hud'
 import { Overlays } from './hud/Overlays'
+import { Rotulos } from './hud/Rotulos'
 import { Espacial } from './audio/Espacial'
 import { sim } from './kernel/sim'
 import { useUiStore } from './state/uiStore'
@@ -101,6 +102,7 @@ export default function App() {
         <Espacial />
         <GestureLayer />
       </Canvas>
+      <Rotulos />
       <Hud />
       <Overlays />
     </div>

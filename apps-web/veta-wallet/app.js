@@ -6281,7 +6281,7 @@ const VETA = (() => {
   const VETA_V = '330f568ed8';
   const VETA_FECHA = '2026-09-27';
 
-  const AET_V = '2e498490b7';
+  const AET_V = 'c26081c3cd';
 
   /* MEDIAPIPE, UNA SOLA COPIA EN EL SITIO. La casa ya sirve el modelo de manos
      y su WASM en /vendor/vision/ para su propio AirTouch. El motor traia los

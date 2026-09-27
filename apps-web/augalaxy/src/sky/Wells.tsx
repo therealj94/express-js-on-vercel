@@ -8,6 +8,7 @@ import { atmosphereFragment, atmosphereVertex, SOMBRA_ANILLO, SOMBRA_PLANETA } f
 import { getRingTexture } from './textures'
 import { emblemaTextura, letreroTextura, planetaTextura, nubesTextura, anilloTextura, lucesTextura } from './emblema'
 import type { Galaxy } from './lattice'
+import { capa, rotulos } from './rotulos'
 
 export type Archetype = 'pulsar' | 'binary' | 'memory' | 'torus' | 'sentinel'
 
@@ -909,7 +910,18 @@ function WellView({ def }: { def: WellDef }) {
 
       const op = puerta * cineL * (1 - sim.noche)
         * (alBorde ? Math.min(0.12, lejania) : selected ? 1 : lejania * libre)
-      ;(letrero.current.material as THREE.SpriteMaterial).opacity = op
+      /* FUERA DEL VISOR EL NOMBRE LO PONE LA CAPA HTML (ver `rotulos.ts`):
+         aquí solo se dice dónde cae el planeta y si el cielo permite nombres
+         ahora —puerta, película, tiniebla—. El letrero 3D se apaga. Dentro
+         del visor no hay HTML, y el letrero sigue con su regla de siempre. */
+      capa.xr = state.gl.xr.isPresenting
+      rotulos.set(def.key, { x: miX, y: miY, r: R * porMundo, d, nombre: def.name,
+        vis: puerta * cineL * (1 - sim.noche), sel: selected, frente: tmpP.z < 1 })
+      ;(letrero.current.material as THREE.SpriteMaterial).opacity = capa.xr ? op : 0
+      ;(w.__AE_ROTULO_TXT ||= {})[def.key] = def.name
+      ;(w.__AE_ROTULO_D ||= {})[def.key] = d
+      if (!capa.xr) cajasNombre.set(def.key, { x: cx, y: cy, w: wpx, h: hpx, d, op: 0 })
+      else {
       /* Para que una prueba pueda ver lo que una foto no distingue: un
          rótulo apagado y uno fuera de cuadro se ven igual. */
       ;(w.__AE_ROTULO_OP ||= {})[def.key] = op
@@ -922,6 +934,7 @@ function WellView({ def }: { def: WellDef }) {
       ;(w.__AE_ROTULO_D ||= {})[def.key] = d
       ;(w.__AE_ROTULO_CAJA ||= {})[def.key] = { x: cx, y: cy, w: wpx, h: hpx, op }
       cajasNombre.set(def.key, { x: cx, y: cy, w: wpx, h: hpx, d, op })
+      }
     }
 
     if (halo.current) {

@@ -5,6 +5,7 @@ import { sim } from '../kernel/sim'
 import { atmosphereFragment, atmosphereVertex } from '../shaders/shared'
 import { getFlareTexture } from './textures'
 import { letreroTextura } from './emblema'
+import { capa, sol } from './rotulos'
 
 /* AU-RA ES EL SOL.
  *
@@ -148,6 +149,7 @@ function discoTextura(): THREE.Texture {
 }
 
 const R_SOL = 1.75
+const solP = new THREE.Vector3()
 
 export function Core() {
   const group = useRef<THREE.Group>(null)
@@ -345,8 +347,22 @@ export function Core() {
       /* En el umbral el sistema se mira en silencio: el nombre llega al
          entrar. Y en la tiniebla del Génesis TAMPOCO: no se le pone nombre a
          algo que todavía no fue dicho. */
-      ;(letrero.current.material as THREE.SpriteMaterial).opacity =
-        (window as any).__AE_PUERTA ? 0 : 0.92 * (1 - sim.noche)
+      const vis = (window as any).__AE_PUERTA ? 0 : 0.92 * (1 - sim.noche)
+      ;(letrero.current.material as THREE.SpriteMaterial).opacity = capa.xr ? vis : 0
+      /* Fuera del visor el nombre lo pone la capa HTML, DEBAJO del resplandor
+         y no dentro: crema sobre el blanco del sol no se leía. El disco que
+         se publica es el del halo visible, no el de la esfera. */
+      if (group.current) {
+        group.current.getWorldPosition(solP)
+        solP.project(state.camera)
+        const px = state.size.height
+          / (2 * Math.tan((state.camera as THREE.PerspectiveCamera).fov * Math.PI / 360) * Math.max(0.001, d))
+        sol.x = (solP.x * 0.5 + 0.5) * state.size.width
+        sol.y = (-solP.y * 0.5 + 0.5) * state.size.height
+        sol.r = R_SOL * px * 1.6
+        sol.vis = vis > 0 ? 1 : 0
+        sol.frente = solP.z < 1
+      }
     }
   })
 
