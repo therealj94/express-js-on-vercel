@@ -12,6 +12,8 @@ const ctx = await nav.newContext({ locale:'es-HN', viewport:{width:430,height:90
 const pag = await ctx.newPage()
 const err=[]; pag.on('pageerror', e=>err.push(String(e)))
 const subidas = []
+// Lo que contesta el relevo a /bandeja: una prueba lo cambia para meter un mensaje.
+let bandejaFalsa = null
 await pag.route('**/*', async (route) => {
   const req = route.request(), u = req.url()
   if (u.startsWith('http://127.0.0.1:8791')) return route.continue()
@@ -23,7 +25,7 @@ await pag.route('**/*', async (route) => {
     return j({ id: 'arch1' })
   }
   if (u === CEREBRO + '/enviar') { subidas.push({ enviado: JSON.parse(req.postData()||'{}') }); return j({ ok:true }) }
-  if (u === CEREBRO + '/bandeja') return j({ mensajes: [] })
+  if (u === CEREBRO + '/bandeja') return j(bandejaFalsa || { mensajes: [] })
   if (u === CEREBRO + '/conversaciones') return j({ conversaciones: [] })
   return j({})
 })
@@ -130,6 +132,7 @@ ok('un adjunto cerrado sin nadie a quien darle la llave no se manda', corte.lanz
 // dirección del relevo, que serían bytes cerrados como una imagen rota.
 // Tercera revisión de Codex en el PR #31.
 const sinAbrir = await pag.evaluate(async () => {
+  window.__bandejaOrig = CHAT.bandeja
   CHAT.bandeja = async () => ({ mensajes: [{ id: 'mx1', de: 'ana@ordenglobal.link', para: 'jose@ordenglobal.link',
     cuando: Date.now(), tipo: 'imagen', archivo: 'arch7', nombre: 'foto.jpg', cerrado: true, e2e: true, texto: '' }],
     enLinea: false, leidoHasta: 0 })
@@ -141,6 +144,26 @@ const sinAbrir = await pag.evaluate(async () => {
     roto: !!document.querySelector('img[src*="arch7"], a[href*="arch7"], video[src*="arch7"], audio[src*="arch7"]') }
 })
 ok('un adjunto que este aparato no pudo abrir se avisa y no se pinta roto', sinAbrir.aviso && !sinAbrir.roto, JSON.stringify(sinAbrir))
+
+// Y SIN CANDADO (navegación privada con el cajón bloqueado): un mensaje con
+// sobre no se puede ni intentar abrir. Tiene que avisarse igual y no pintar su
+// adjunto con los bytes cerrados. Cuarta revisión de Codex en el PR #31.
+bandejaFalsa = { mensajes: [{ id: 'mx2', de: 'ana@ordenglobal.link', para: 'jose@ordenglobal.link',
+  cuando: Date.now(), tipo: 'imagen', archivo: 'arch8', nombre: 'foto.jpg', cif: { v: 1 } }] }
+const sinCandado = await pag.evaluate(async () => {
+  // Por el camino de verdad: el relevo contesta y `bandeja` pasa por abrirTodos.
+  CHAT.bandeja = window.__bandejaOrig
+  const hayAntes = CANDADO.hay
+  CANDADO.hay = () => false
+  try {
+    await VETA.chatAbrir('ana@ordenglobal.link')
+    await new Promise(r => setTimeout(r, 800))
+    return { aviso: !!document.querySelector('.cha-cerrado'),
+      roto: !!document.querySelector('img[src*="arch8"], a[href*="arch8"], video[src*="arch8"], audio[src*="arch8"]') }
+  } finally { CANDADO.hay = hayAntes }
+})
+bandejaFalsa = null
+ok('sin candado, un adjunto cerrado se avisa y no se pinta roto', sinCandado.aviso && !sinCandado.roto, JSON.stringify(sinCandado))
 
 ok('sin errores de javascript', err.length===0)
 if(err.length) console.log(err.slice(0,3))

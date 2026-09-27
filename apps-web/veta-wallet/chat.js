@@ -258,9 +258,14 @@ const CHAT = (() => {
        `cha.fueEnClaro`) y era código muerto: ningún mensaje del historial
        traía la marca, así que ni quien lo mandó la veía al recargar ni quien
        lo recibió la vio nunca. Se calcula igual en las dos puntas. */
+    /* Sin candado (navegación privada con el cajón bloqueado) un mensaje con
+       sobre no se puede ni intentar abrir: cuenta como CERRADO, igual que uno
+       que llegó para otro aparato. Antes pasaba tal cual, sin la marca, y la
+       burbuja pintaba su adjunto con los bytes cerrados del relevo. Cuarta
+       revisión de Codex en #31. */
     if (!CANDADO?.hay()) {
       return Promise.all(msgs.map(async m => ({
-        ...(m.cif ? m : { ...m, e2e: false }),
+        ...(m.cif ? { ...m, texto: '', cerrado: true, e2e: true } : { ...m, e2e: false }),
         ...(m.reacciones ? { reacciones: await abrirReacciones(m.reacciones, {}) } : {}),
       })));
     }
