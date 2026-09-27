@@ -19,7 +19,7 @@ import argparse, json, re, sys
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
-CLAVE = {"02_cocina_nota", "11_un_qr_cada_uno", "15_llamada", "22_lucia_sonrie"}
+CLAVE = {"02_cocina_nota", "11_un_qr_cada_uno", "15_llamada", "22_lucia_sonrie", "23b_abrazo"}
 
 
 def leer_picks(texto: str, ids: list[str]) -> dict[str, int]:

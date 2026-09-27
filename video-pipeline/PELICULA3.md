@@ -27,23 +27,34 @@ al revés.
 noche con otra. Todo lo de en medio —la floristería, el almuerzo, el
 proveedor— es la vida que pasa entre esas dos notas.
 
-### Las cinco horas del día
+### Versión 2 (27-sep, tras la crítica)
 
-| Hora | Qué pasa | Qué se usa (pantalla real) |
+Qué cambió y por qué:
+- **Arranca en negro con la voz de la hija («Ma…»).** La ciudad al amanecer no
+  enganchaba: en redes se abandona antes del segundo 10.
+- **Un hilo que lo une todo: traerla en diciembre.** Lo que pasa en el día es la
+  vida que ocurre mientras tanto, y el final lo paga.
+- **7 pantallas en vez de 10, de 2,5 s y con una palabra encima:** ENVIAR.
+  COMPRAR. PAGAR. LO SUYO. DIVIDIR. COMPROBAR. A 1,5 s nadie las leía.
+- **Lucía solo usa Veta.** Menos marcas en pantalla («ocupo un diccionario»).
+- **Fuera:** la toma de la ciudad, el camión saliendo (repetía al proveedor) y
+  el cierre del florista (queda para un corte de comercios).
+- **Final en el aeropuerto el 18 de diciembre.** La única escena sin teléfono.
+
+| Hora | Qué pasa | Palabra en pantalla |
 |---|---|---|
-| **6:40** | La hija manda una nota de voz: le cobraron la renta, y fijate que los vuelos de diciembre están baratos. Lucía, con el café, le manda el dinero y compra el boleto para que vuelva en diciembre. | Veta Wallet: envío a otro país · Tarjeta Visa virtual en línea |
-| **10:15** | Pasa por la floristería del barrio por girasoles para el cumpleaños de una amiga. Paga con el teléfono; al florista le suena el suyo y asiente. | MyTokenPay: pagar con QR · panel del comercio: cobro recibido |
-| **12:10** | Pausa en el taller: mango con sal, el teléfono, y la mirada a su propio taller. Tiene su ONDK y el acta que lo respalda. | Veta Wallet: ONDK |
-| **13:30** | Almuerzo de cumpleaños, cuatro amigos, risa. Llega la cuenta y cuatro manos saltan a la vez. Cada uno paga su parte con su QR. «¡Ya no hay “te lo paso luego”!». El amigo que nunca lo ha usado pregunta, fuera de cuadro: «¿Y cómo sé que le llegó?». Lucía le gira el teléfono con el comprobante, y el dueño levanta dos dedos desde la caja. | MyTokenPay: dividir cuenta, un QR por persona · cobro completo |
-| **15:40** | En el taller, entre rollos de tela, llama el proveedor de otro país: el camión sale a las cuatro; si no le entra el pago hoy, la tela llega hasta la otra semana. Lucía paga ahí mismo. Corte a la bodega: el proveedor no confía, **mira**: *«…Aquí lo estoy viendo. Ya me cayó. ¡Súbanla!»*. El camión sale. | Veta Wallet: pago al proveedor; comprobante con hora |
-| **18:30** | El florista baja la cortina del local y, bajo el alero, pasa lo del día a su cuenta en lempiras. Nadie lo dice: se ve. | MyTokenPay: retiro a moneda local |
-| **21:10** | Sofá, zapatos fuera. Nota de voz de la hija, en su cuarto con una fecha marcada en el calendario: *«Ya pagué la renta. ¡Llego el dieciocho! ¿Cómo te fue hoy?»*. Lucía abre el historial: el día entero en cinco líneas. Escribe: **«Bien, mija. Un martes.»** | Historial del día |
+| — | Negro. La voz de la hija: *«Ma, buen día… ya me cobraron la renta. Y fijate que los vuelos de diciembre todavía están baratos.»* | — |
+| **6:40** | Cocina, café al fuego. Le manda lo de la renta y compra el boleto. | ENVIAR. · COMPRAR. |
+| **10:15** | Floristería del barrio, girasoles para una amiga. Paga; al florista le suena el teléfono y asiente. | PAGAR. |
+| **12:10** | Pausa en la puerta del taller: mango con sal, su ONDK y el acta abierta, y la mirada a su propio taller. | LO SUYO. |
+| **13:30** | Almuerzo de cumpleaños. Cuatro manos a la cuenta; cada uno paga su parte. *«¡Ya no hay “te lo paso luego”!»* El escéptico: *«¿Y cómo sé que le llegó?»*. Ella le gira el teléfono; el dueño levanta dos dedos. | DIVIDIR. |
+| **15:40** | El proveedor de otro país: el camión sale a las cuatro. Ella paga desde el taller; él **mira** y confirma: *«Aquí lo estoy viendo. Ya me cayó. ¡Súbanla!»* | COMPROBAR. |
+| **21:10** | Sofá. La hija: *«Ya pagué la renta. ¡Llego el dieciocho! ¿Cómo te fue hoy?»*. Lucía ve el día en cinco líneas y escribe **«Bien, mija. Un martes.»** | — |
+| **18 de diciembre** | Aeropuerto. La hija cruza las puertas, la ve, suelta la maleta y corre. El abrazo. | — |
 
-**Cierre:** *Orden Global. Un sistema financiero que se puede comprobar.* ·
-`ordenscan.com`
+**Cierre:** *Orden Global. Un sistema financiero que se puede comprobar.* · **ordenglobal.org**
 
-**Duración:** ~90 s en vertical 9:16 (plan de tiempos en `prompts/pelicula3_montaje.json`). De ahí sale un corte de 30 s para
-anuncios, con el almuerzo y la llamada.
+**Duración:** ~83 s en vertical 9:16 (`prompts/pelicula3_montaje.json`). El corte de 30 s sale del almuerzo y la llamada.
 
 ### Por qué el escéptico y el florista
 
@@ -264,14 +275,18 @@ GPU (`montaje/animatica.py`). Más largo que los 80 s previstos porque las
 notas de voz necesitan su tiempo; el corte de 30 s para anuncios sale del
 almuerzo y la llamada.
 
-## 7. Lo que falta, y quién lo hace
+## 7. Lo que falta antes de encender (27-sep)
 
-| | Quién | Bloquea |
+| | Quién | Estado |
 |---|---|---|
-| Cupo Spot en Mumbai (pedido 27-sep, en revisión manual de AWS) | AWS | Sesión 1 (o se hace On-Demand) |
-| `HF_TOKEN` con escritura | José | Sesión 1 |
-| ¿D02 aprobada? ¿La comisión se puede enseñar? | José | Solo el inserto G |
-| El envío a otro país existe como transferencia de ORIGEN, pero **nadie puede pasarlo a moneda local fuera de Honduras** (y el retiro es manual, solo lempiras). ¿Cuándo? | José | Publicar 6:40 y 15:40 |
-| Capturas A–J de las apps reales | aquí, sin GPU, **cuando cada pantalla funcione de verdad** | Montaje |
-| Que cada escena sea verdad para gente real | el equipo | **Publicar** (ver `ECOSISTEMA_MERCADEO.md` §5) |
-| Voces y música | aquí, sin GPU | Montaje |
+| Cupo Spot en Mumbai | AWS | ✅ aprobado, 16 vCPU, ~$2.07/h |
+| Llave de Hugging Face de **Therealjose54** (escritura) | José | pendiente. La recibida es de Therealjoseone54 y no ve la carpeta de siempre |
+| Cuenta de prueba de Veta con algo de ORIGEN y ONDK, para las capturas | José | pendiente |
+| Logo de Orden Global en SVG o PNG ≥2000 px (el de 603×414 se ve borroso en el cierre) | José | pendiente |
+| Logo de Veta en alta (el actual es de 256×174) | José | pendiente |
+| Aprobar el guion v2 y la animática | José | pendiente |
+| Voces con ElevenLabs (gasta créditos) | José da el OK | pendiente |
+
+Sesión 2 recomendada: 1 toma por plano y 2 en los clave (02, 11, 15, 22,
+23b) si gana i2v, repartida en **dos máquinas a la vez**: ~2,5 h de reloj y
+~$10.

@@ -1,20 +1,34 @@
 {
- "_nota": "Montaje de «Un martes»: plan de tiempos antes de generar. Corte seco, velocidad natural; cada clip dura 5,17 s y se usa un tramo desde 'desde'. Las pantallas (una letra) son capturas reales; el cierre se compone en local.",
+ "_nota": "Montaje de «Un martes» v2: arranca en negro con la voz de la hija, 6 pantallas legibles (2,5 s) con una palabra encima, final en el aeropuerto. Corte seco, velocidad natural; clips de 5,17 s usados desde 'desde'.",
+ "cierre": {
+  "frase": "Orden Global. Un sistema financiero que se puede comprobar.",
+  "direccion": "ordenglobal.org"
+ },
  "salida": {
   "ancho": 1080,
   "alto": 1920,
   "fps": 30,
-  "dur_s": 91.7
+  "dur_s": 83.4
  },
  "bloques": [
   {
-   "plano": "01_ciudad_amanece",
-   "t": 0.0,
-   "dur": 3.0,
+   "plano": "negro",
+   "t": 0,
+   "dur": 2.0,
+   "tipo": "negro",
+   "voz": {
+    "id": "hija_1",
+    "linea": "Nota de voz de la hija: «Ma, buen día… ya me cobraron la renta de este mes. Y fijate que los vuelos de diciembre todavía están baratos.»"
+   }
+  },
+  {
+   "plano": "02_cocina_nota",
+   "t": 2.0,
+   "dur": 3.6,
    "desde": 0.4,
    "rotulos": [
     {
-     "t": 0.3,
+     "t": 2.3,
      "dur": 1.8,
      "texto": "6:40",
      "tipo": "dato"
@@ -22,47 +36,53 @@
    ]
   },
   {
-   "plano": "02_cocina_nota",
-   "t": 3.0,
-   "dur": 4.5,
-   "desde": 0.4,
-   "voz": {
-    "id": "hija_1",
-    "linea": "Nota de voz de la hija: «Ma, buen día… ya me cobraron la renta de este mes. Y fijate que los vuelos de diciembre todavía están baratos.»"
-   }
-  },
-  {
    "plano": "03_manos_enviar",
-   "t": 7.5,
+   "t": 5.6,
    "dur": 2.0,
    "desde": 0.4
   },
   {
    "plano": "A",
-   "t": 9.5,
-   "dur": 2.2,
-   "tipo": "pantalla"
+   "t": 7.6,
+   "dur": 2.5,
+   "tipo": "pantalla",
+   "rotulos": [
+    {
+     "t": 7.8,
+     "dur": 2.1,
+     "texto": "ENVIAR.",
+     "tipo": "titular"
+    }
+   ]
   },
   {
    "plano": "04_mesa_boleto",
-   "t": 11.7,
-   "dur": 3.0,
+   "t": 10.1,
+   "dur": 2.6,
    "desde": 0.4
   },
   {
    "plano": "B",
-   "t": 14.7,
-   "dur": 2.0,
-   "tipo": "pantalla"
+   "t": 12.7,
+   "dur": 2.5,
+   "tipo": "pantalla",
+   "rotulos": [
+    {
+     "t": 12.9,
+     "dur": 2.1,
+     "texto": "COMPRAR.",
+     "tipo": "titular"
+    }
+   ]
   },
   {
    "plano": "05_calle_floristeria",
-   "t": 16.7,
-   "dur": 2.8,
+   "t": 15.2,
+   "dur": 2.6,
    "desde": 0.4,
    "rotulos": [
     {
-     "t": 17.0,
+     "t": 15.5,
      "dur": 1.8,
      "texto": "10:15",
      "tipo": "dato"
@@ -71,42 +91,44 @@
   },
   {
    "plano": "06_florista_ramo",
-   "t": 19.5,
-   "dur": 2.2,
+   "t": 17.8,
+   "dur": 2.0,
    "desde": 0.4
   },
   {
    "plano": "07_qr_mostrador",
-   "t": 21.7,
-   "dur": 1.8,
+   "t": 19.8,
+   "dur": 1.6,
    "desde": 0.4
   },
   {
    "plano": "C",
-   "t": 23.5,
-   "dur": 1.8,
-   "tipo": "pantalla"
+   "t": 21.4,
+   "dur": 2.5,
+   "tipo": "pantalla",
+   "rotulos": [
+    {
+     "t": 21.6,
+     "dur": 2.1,
+     "texto": "PAGAR.",
+     "tipo": "titular"
+    }
+   ]
   },
   {
    "plano": "08_florista_cobra",
-   "t": 25.3,
-   "dur": 2.2,
+   "t": 23.9,
+   "dur": 2.0,
    "desde": 0.4
   },
   {
-   "plano": "D",
-   "t": 27.5,
-   "dur": 1.6,
-   "tipo": "pantalla"
-  },
-  {
    "plano": "08b_taller_pausa",
-   "t": 29.1,
-   "dur": 3.6,
+   "t": 25.9,
+   "dur": 3.2,
    "desde": 0.4,
    "rotulos": [
     {
-     "t": 29.4,
+     "t": 26.2,
      "dur": 1.8,
      "texto": "12:10",
      "tipo": "dato"
@@ -115,18 +137,26 @@
   },
   {
    "plano": "J",
-   "t": 32.7,
-   "dur": 2.0,
-   "tipo": "pantalla"
+   "t": 29.1,
+   "dur": 2.5,
+   "tipo": "pantalla",
+   "rotulos": [
+    {
+     "t": 29.3,
+     "dur": 2.1,
+     "texto": "LO SUYO.",
+     "tipo": "titular"
+    }
+   ]
   },
   {
    "plano": "09_almuerzo_mesa",
-   "t": 34.7,
-   "dur": 3.0,
+   "t": 31.6,
+   "dur": 2.6,
    "desde": 0.4,
    "rotulos": [
     {
-     "t": 35.0,
+     "t": 31.9,
      "dur": 1.8,
      "texto": "13:30",
      "tipo": "dato"
@@ -135,26 +165,34 @@
   },
   {
    "plano": "10_llega_cuenta",
-   "t": 37.7,
-   "dur": 2.2,
+   "t": 34.2,
+   "dur": 2.0,
    "desde": 0.4
   },
   {
    "plano": "11_un_qr_cada_uno",
-   "t": 39.9,
-   "dur": 3.2,
+   "t": 36.2,
+   "dur": 2.6,
    "desde": 0.4
   },
   {
    "plano": "E",
-   "t": 43.1,
-   "dur": 1.8,
-   "tipo": "pantalla"
+   "t": 38.8,
+   "dur": 2.5,
+   "tipo": "pantalla",
+   "rotulos": [
+    {
+     "t": 39.0,
+     "dur": 2.1,
+     "texto": "DIVIDIR.",
+     "tipo": "titular"
+    }
+   ]
   },
   {
    "plano": "12_amiga_brinda",
-   "t": 44.9,
-   "dur": 2.0,
+   "t": 41.3,
+   "dur": 1.8,
    "desde": 0.4,
    "voz": {
     "id": "amiga",
@@ -163,8 +201,8 @@
   },
   {
    "plano": "13_dueno_restaurante",
-   "t": 46.9,
-   "dur": 2.4,
+   "t": 43.1,
+   "dur": 2.6,
    "desde": 0.4,
    "voz": {
     "id": "esceptico",
@@ -172,19 +210,13 @@
    }
   },
   {
-   "plano": "F",
-   "t": 49.3,
-   "dur": 1.4,
-   "tipo": "pantalla"
-  },
-  {
    "plano": "14_taller",
-   "t": 50.7,
-   "dur": 2.6,
+   "t": 45.7,
+   "dur": 2.2,
    "desde": 0.4,
    "rotulos": [
     {
-     "t": 51.0,
+     "t": 46.0,
      "dur": 1.8,
      "texto": "15:40",
      "tipo": "dato"
@@ -193,8 +225,8 @@
   },
   {
    "plano": "15_llamada",
-   "t": 53.3,
-   "dur": 4.2,
+   "t": 47.9,
+   "dur": 3.4,
    "desde": 0.4,
    "voz": {
     "id": "proveedor_1",
@@ -203,25 +235,33 @@
   },
   {
    "plano": "16_bodega",
-   "t": 57.5,
-   "dur": 2.4,
+   "t": 51.3,
+   "dur": 2.0,
    "desde": 0.4
   },
   {
    "plano": "17_manos_pago",
-   "t": 59.9,
-   "dur": 2.0,
+   "t": 53.3,
+   "dur": 1.8,
    "desde": 0.4
   },
   {
    "plano": "G",
-   "t": 61.9,
-   "dur": 2.0,
-   "tipo": "pantalla"
+   "t": 55.1,
+   "dur": 2.5,
+   "tipo": "pantalla",
+   "rotulos": [
+    {
+     "t": 55.3,
+     "dur": 2.1,
+     "texto": "COMPROBAR.",
+     "tipo": "titular"
+    }
+   ]
   },
   {
    "plano": "18_proveedor_ya",
-   "t": 63.9,
+   "t": 57.6,
    "dur": 2.6,
    "desde": 0.4,
    "voz": {
@@ -230,39 +270,13 @@
    }
   },
   {
-   "plano": "19_camion_sale",
-   "t": 66.5,
-   "dur": 2.4,
-   "desde": 0.4
-  },
-  {
-   "plano": "19b_florista_cierra",
-   "t": 68.9,
-   "dur": 3.2,
-   "desde": 0.4,
-   "rotulos": [
-    {
-     "t": 69.2,
-     "dur": 1.8,
-     "texto": "18:30",
-     "tipo": "dato"
-    }
-   ]
-  },
-  {
-   "plano": "I",
-   "t": 72.1,
-   "dur": 1.6,
-   "tipo": "pantalla"
-  },
-  {
    "plano": "20_sofa_noche",
-   "t": 73.7,
-   "dur": 2.6,
+   "t": 60.2,
+   "dur": 2.2,
    "desde": 0.4,
    "rotulos": [
     {
-     "t": 74.0,
+     "t": 60.5,
      "dur": 1.8,
      "texto": "21:10",
      "tipo": "dato"
@@ -271,8 +285,8 @@
   },
   {
    "plano": "21_hija_cuarto",
-   "t": 76.3,
-   "dur": 4.4,
+   "t": 62.4,
+   "dur": 3.8,
    "desde": 0.4,
    "voz": {
     "id": "hija_2",
@@ -281,19 +295,39 @@
   },
   {
    "plano": "22_lucia_sonrie",
-   "t": 80.7,
-   "dur": 4.0,
+   "t": 66.2,
+   "dur": 3.4,
    "desde": 0.4
   },
   {
    "plano": "H",
-   "t": 84.7,
-   "dur": 3.0,
+   "t": 69.6,
+   "dur": 2.6,
    "tipo": "pantalla"
   },
   {
+   "plano": "23a_aeropuerto",
+   "t": 72.2,
+   "dur": 3.0,
+   "desde": 0.4,
+   "rotulos": [
+    {
+     "t": 72.5,
+     "dur": 1.8,
+     "texto": "18 de diciembre",
+     "tipo": "dato"
+    }
+   ]
+  },
+  {
+   "plano": "23b_abrazo",
+   "t": 75.2,
+   "dur": 4.2,
+   "desde": 0.4
+  },
+  {
    "plano": "cierre",
-   "t": 87.7,
+   "t": 79.4,
    "dur": 4.0,
    "tipo": "cierre"
   }
