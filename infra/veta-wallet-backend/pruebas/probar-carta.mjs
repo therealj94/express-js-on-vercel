@@ -13,20 +13,35 @@ let fallos = 0
 const ok = (que, cond) => { console.log(`${cond ? '  ok  ' : ' FALLA'}  ${que}`); if (!cond) fallos++ }
 const plano = (s) => s.replace(/\s+/g, ' ')
 
+/* LA CARTA CAMBIA CON LA FECHA: el bloque del sorteo de 1 AUKA se retira solo
+   después del 9-sep-2026 (sorteoVivo). Antes esta prueba exigía el sorteo sin
+   mirar el reloj, así que desde el 10-sep fallaba con la carta haciendo
+   justo lo correcto. Ahora se miran los dos momentos: con el reloj puesto
+   antes del cierre, el sorteo tiene que ir completo y con la regla de cobre;
+   con el de hoy (pasado el cierre), no puede aparecer. */
+const ahoraDeVerdad = Date.now
+const cartaEl = (fecha) => {
+  Date.now = () => fecha
+  try { return cartaNovedades({ nombre: 'José Enamorado', correo: 'jose@ordenglobal.org' }) }
+  finally { Date.now = ahoraDeVerdad }
+}
+const conSorteo = cartaEl(Date.UTC(2026, 8, 1, 12))
+const antes = plano(conSorteo.html + ' ' + conSorteo.texto)
 const c = cartaNovedades({ nombre: 'José Enamorado', correo: 'jose@ordenglobal.org' })
 const todo = plano(c.html + ' ' + c.texto)
 
 console.log('\nLa regla de cobre (Decisión 4 de la Junta)\n')
-ok('nunca dice «respaldado»', !/respaldad/i.test(todo))
-ok('nunca dice «es una onza»', !/es una onza/i.test(todo))
-ok('sí dice que AUKA SIGUE el precio', /sigue el precio de una onza de oro/i.test(todo))
-ok('avisa de que no entrega metal', /no te entrega metal/i.test(todo))
+ok('nunca dice «respaldado»', !/respaldad/i.test(todo) && !/respaldad/i.test(antes))
+ok('nunca dice «es una onza»', !/es una onza/i.test(todo) && !/es una onza/i.test(antes))
+ok('donde nombra AUKA, dice que SIGUE el precio', /sigue el precio de una onza de oro/i.test(antes))
+ok('y avisa de que no entrega metal', /no te entrega metal/i.test(antes))
 
 console.log('\nEl sorteo se invita completo o no se invita\n')
-ok('lleva el +18', /18 años/.test(todo))
-ok('lleva el enlace a las bases', /sorteo-orden-global/.test(todo))
-ok('dice cuándo cierra', /9 de septiembre/.test(todo))
-ok('dice que no hay que comprar nada', /no hay que comprar nada/i.test(todo))
+ok('con el sorteo abierto lleva el +18', /18 años/.test(antes))
+ok('lleva el enlace a las bases', /sorteo-orden-global/.test(antes))
+ok('dice cuándo cierra', /9 de septiembre/.test(antes))
+ok('dice que no hay que comprar nada', /no hay que comprar nada/i.test(antes))
+ok('cerrado el sorteo, la carta ya no invita', !/sorteo/i.test(todo))
 
 console.log('\nNo se vende lo que no está abierto\n')
 ok('avisa de que comprar y cambiar siguen en obra', /todavía no están abiertos/.test(todo))
