@@ -42,7 +42,7 @@ proveedor— es la vida que pasa entre esas dos notas.
 **Cierre:** *Orden Global. Un sistema financiero que se puede comprobar.* ·
 `ordenscan.com`
 
-**Duración:** ~80 s en vertical 9:16. De ahí sale un corte de 30 s para
+**Duración:** ~90 s en vertical 9:16 (plan de tiempos en `prompts/pelicula3_montaje.json`). De ahí sale un corte de 30 s para
 anuncios, con el almuerzo y la llamada.
 
 ### Por qué el escéptico y el florista
@@ -187,36 +187,82 @@ Más ~$1,30/mes de caché en S3 y los créditos de voz de ElevenLabs.
 
 ---
 
-## 6. Encender y apagar (cómo no se queda nada cobrando)
+## 6. El día que aprueben el descuento: guion de rodaje
+
+Todo lo de antes ya está hecho y probado en local. El día D es esto:
+
+### Sesión 1 — un comando, ~3 h, ~$6
 
 ```bash
 cd video-pipeline
-python3 tools/aws_api.py cupo                      # ¿aprobaron el Spot?
-python3 tools/preflight.py --nube aws --spot \
-    --guion prompts/pelicula3_un_martes.json --cola prompts/q_p3_sesion1.json
-# 0 PARA, o no se enciende
-python3 tools/aws_api.py create --spot --horas 4 \
-    --job prompts/q_p3_sesion1.json \
-    --env HF_TOKEN=$HF_TOKEN --env HF_REPO=Therealjose54/orden-global-videos \
-    --env ESPERA_MIN=20
-python3 tools/aws_api.py logs <i-...>              # hitos: bf16, CACHÉ SEMBRADA, entregado ×106
-python3 tools/aws_api.py status                    # al final: «No se está cobrando nada»
+HF_TOKEN=hf_... ./lanzar.sh 1
 ```
 
-Se apaga sola de cuatro maneras, la primera que llegue:
-1. **Acaba la cola** y nadie manda otra en `ESPERA_MIN` (20 min).
-2. **`encolar.py --fin`**.
-3. **El tope de horas** (`--horas`), escrito dentro de la propia máquina en su
-   primer segundo de vida.
-4. **El contenedor muere** por lo que sea.
+`lanzar.sh` comprueba el cupo (si no hay Spot, pregunta antes de ir a
+On-Demand), pasa el preflight (un solo PARA y no enciende), crea la máquina con
+tope de 4 h y dice cómo vigilarla. La máquina se apaga sola.
 
-Apagar = destruir: el disco se borra con ella, y la caché de S3 queda para la
-próxima. Probado el 27-sep: `terminated`, cero discos.
+**Hitos en `aws_api.py logs <id>`:** `VRAM … -> bf16` → `TRABAJO: …` →
+`CACHÉ SEMBRADA` → 114 × `entregado:` → `APAGADO: TRABAJO COMPLETO`. Si el log
+no se mueve en 12 min: `aws_api.py destroy <id>`.
 
-Si Spot interrumpe la máquina: los clips hechos ya están en HF (se entregan uno
-a uno), y el siguiente `create` retoma sin repetirlos.
+### Elegir — José, desde el móvil, sin GPU encendida
 
----
+```bash
+HF_TOKEN=hf_... python3 tools/recoger.py --sesion 1 --dest <carpeta>
+```
+
+Baja todo, verifica cada fichero contra su SHA-256 de Hugging Face y arma
+**28 hojas** con números grandes, pensadas para el teléfono:
+- 3 de casting: *«¿cuál es Lucía?»*, la hija y el proveedor.
+- 24 de planos, con cuatro opciones cada una.
+- 1 de la prueba de método: i2v contra t2v, inicio y final lado a lado.
+
+José contesta en una línea: **«lucía 3 · 01=2 02=3 03=1 … · i2v»**.
+
+### Sesión 2 — la película, ~9,5 h, ~$19
+
+```bash
+python3 tools/sesion2.py --picks "01=2 02=3 03=1 …" --metodo i2v   # o t2v
+HF_TOKEN=hf_... ./lanzar.sh 2
+```
+
+52 tomas (2 por plano, 3 en los planos 02, 11, 15 y 22), a 124 fotogramas.
+Si la prueba dice que i2v no convence, `--metodo t2v` usa el camino que ya dio
+45 de 46 clips buenos. Tope de 11 h.
+
+**Mientras corre, sin GPU:** capturas de pantalla A–J, voces, música y la
+animática con los tiempos definitivos.
+
+### Elegir tomas y sesión 3
+
+```bash
+HF_TOKEN=hf_... python3 tools/recoger.py --sesion 2 --cola prompts/q_p3_sesion2.json --dest <carpeta>
+```
+
+Hojas con el primer y el último fotograma de cada toma: se ve si la acción
+ocurrió sin reproducir 52 clips. Lo que no convenza va a la sesión 3 con ids
+nuevos (`_t4`…): `./lanzar.sh 3 prompts/q_p3_retomas.json`.
+
+### Cómo se apaga (siempre, sin nadie mirando)
+
+1. Se acaba la cola y en 20 min nadie manda otra.
+2. `encolar.py --fin`.
+3. El tope de horas, escrito dentro de la máquina en su primer segundo.
+4. El contenedor muere por lo que sea.
+
+Apagar = destruir; el disco se va con ella y la caché de S3 se queda. Si Spot
+la interrumpe, lo entregado ya está en HF y el siguiente `lanzar.sh` sigue
+donde iba. Al final de cada sesión, `aws_api.py status` tiene que decir
+*«No se está cobrando nada»*.
+
+### El ritmo ya se puede ver
+
+`prompts/pelicula3_montaje.json` es el plan de tiempos: 35 bloques con planos,
+pantallas, horas en pantalla y voces, **91,7 s**. La animática sale de ahí sin
+GPU (`montaje/animatica.py`). Más largo que los 80 s previstos porque las
+notas de voz necesitan su tiempo; el corte de 30 s para anuncios sale del
+almuerzo y la llamada.
 
 ## 7. Lo que falta, y quién lo hace
 

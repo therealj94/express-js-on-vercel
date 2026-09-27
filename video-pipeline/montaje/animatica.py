@@ -112,8 +112,12 @@ def main():
     sl = json.loads(Path(sys.argv[1]).read_text())
     salida = sys.argv[2]
     planos = sl["shots"]
-    dur = sl.get("defaults", {}).get("duration_s", 4)
-    total = len(planos) * dur
+    dur_def = sl.get("defaults", {}).get("duration_s", 4)
+    # Cada plano puede traer su propia duración y su texto ("dur", "_titulo",
+    # "_desc"): así la animática sale del plan de montaje y no de un reparto
+    # uniforme que no se parece al corte real.
+    durs = [float(s.get("dur", dur_def)) for s in planos]
+    total = sum(durs)
 
     ff = subprocess.Popen(
         ["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24",
@@ -121,12 +125,16 @@ def main():
          "-pix_fmt", "yuv420p", "-c:v", "libx264", "-crf", "20",
          "-preset", "fast", salida], stdin=subprocess.PIPE)
 
+    t0 = 0.0
     for i, s in enumerate(planos):
-        titulo, desc = DESCRIPCIONES.get(s["id"], (s["id"], ""))
-        for fr in range(int(dur * FPS)):
+        titulo, desc = DESCRIPCIONES.get(s["id"], (s.get("_titulo", s["id"]),
+                                                   s.get("_desc", "")))
+        dur = durs[i]
+        for fr in range(int(round(dur * FPS))):
             t = fr / FPS
             ff.stdin.write(fotograma(i + 1, len(planos), titulo, desc,
-                                     t, dur, i * dur + t, total).tobytes())
+                                     t, dur, t0 + t, total).tobytes())
+        t0 += dur
         print(f"  {i+1:2d}. {titulo}", flush=True)
 
     ff.stdin.close()
