@@ -489,6 +489,22 @@ const CHAT = (() => {
      antes de este cambio, que están en claro y se siguen viendo. */
   const abiertos = new Map();     // id → blob: URL ya resuelta
 
+  /* El TIPO del archivo abierto, leído de sus primeros bytes. Un blob sin
+     tipo lo adivina Chrome, pero Safari no siempre reproduce un audio así, y
+     desde que las notas de voz van cerradas TODAS pasan por aquí: las del
+     teléfono son m4a y las de esta web, webm. El mensaje no trae el tipo, así
+     que se mira la firma del formato, que es lo que haría el navegador. */
+  function tipoPorBytes(b) {
+    const ascii = (i, n) => String.fromCharCode(...b.subarray(i, i + n));
+    if (b.length > 12 && ascii(4, 4) === 'ftyp') return /^M4A|^M4B/.test(ascii(8, 4)) ? 'audio/mp4' : 'video/mp4';
+    if (b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3) return 'audio/webm';
+    if (ascii(0, 4) === 'OggS') return 'audio/ogg';
+    if (b[0] === 0xff && b[1] === 0xd8) return 'image/jpeg';
+    if (b[0] === 0x89 && ascii(1, 3) === 'PNG') return 'image/png';
+    if (ascii(0, 4) === 'RIFF' && ascii(8, 4) === 'WEBP') return 'image/webp';
+    return '';
+  }
+
   async function archivoAbierto(id, llaveB64, ivB64) {
     if (!llaveB64 || !ivB64 || !CANDADO?.hay()) return urlArchivo(id);
     const ya = abiertos.get(id);
@@ -498,7 +514,7 @@ const CHAT = (() => {
       if (!r.ok) throw new Error('no está');
       const cerrados = new Uint8Array(await r.arrayBuffer());
       const claros = await CANDADO.abrirBytes(cerrados, llaveB64, ivB64);
-      const url = URL.createObjectURL(new Blob([claros]));
+      const url = URL.createObjectURL(new Blob([claros], { type: tipoPorBytes(claros) }));
       abiertos.set(id, url);
       return url;
     } catch {
