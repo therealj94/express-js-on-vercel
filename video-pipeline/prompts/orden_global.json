@@ -1,0 +1,213 @@
+{
+  "proyecto": "Orden Global — El camino",
+  "formato": {
+    "aspect": "9:16 vertical",
+    "gen_w": 720,
+    "gen_h": 1280,
+    "final_w": 1080,
+    "final_h": 1920,
+    "fps": 24,
+    "nota": "Se genera a 720x1280 (proporción exacta 9:16, dentro del rango nativo de H3) y se sube a 1080x1920 con SeedVR2. Generar directo a 1080x1920 multiplica por 2,2 el coste y H3 pierde coherencia por encima de su resolución de entrenamiento."
+  },
+  "defaults": {
+    "still_workflow": "workflows/flux2_api.json",
+    "video_workflow": "workflows/h3_i2v_api.json",
+    "flf_workflow": "workflows/h3_fl2va_api.json",
+    "duration_s": 5,
+    "fps": 24,
+    "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, glitter, cellophane, laser beams, rigid glowing lines, hologram, crypto imagery, charts, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, perfect teeth, looking at camera, celebration, luxury imagery, excessive camera shake, bouquet standing upright unsupported, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker"
+  },
+  "look_base": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, handheld on a shoulder rig with small organic drift, natural practical light only, gentle halation on highlights, real 35mm grain, muted true colour, milky blacks, slight corner softness, documentary realism, no advertising gloss",
+  "casting": [
+    {
+      "id": "RAMIRO",
+      "rol": "minero",
+      "retrato": "Vertical portrait of a 58 year old Latin American miner, deeply weathered brown skin, grey stubble, mine dust settled into every crease of his face, scuffed hard hat with a headlamp strapped over it, filthy high-visibility vest over a faded long-sleeve shirt, enormous cracked working hands with short broken nails and one dark thumbnail, neutral expression, not looking at camera, lit only by his headlamp and one work lamp behind, visible pores and facial asymmetry"
+    },
+    {
+      "id": "CLARA",
+      "rol": "custodia de bóveda",
+      "retrato": "Vertical portrait of a 34 year old woman, dark hair pulled back tight and flat, small round wire glasses, plain navy work coat, spotless white cotton gloves, a pen clipped to her breast pocket, very straight posture, precise and unhurried, neutral expression, not looking at camera, cold even overhead strip light, clinical stainless steel room, visible pores, no makeup"
+    },
+    {
+      "id": "RAFAEL",
+      "rol": "operador de la cadena",
+      "retrato": "Vertical portrait of a 29 year old thin man, close-cropped hair, headphones resting around his neck, plain dark t-shirt with a small 4cm embroidered gold monogram on the chest, calm and alert, tired from a long shift, not looking at camera, face lit only by cool monitor glow in a dark room, visible pores, ordinary teeth"
+    },
+    {
+      "id": "MERCEDES",
+      "rol": "florista",
+      "retrato": "Vertical portrait of a 61 year old woman with a warm round face, silver hair in a loose bun escaping at the sides, reading glasses on a beaded chain, green canvas apron with old dried stains, hands nicked from stems and wet fingers, neutral concentrated expression, not looking at camera, warm soft shop window light with green bounce from flower buckets under her jaw, visible pores and expression lines"
+    },
+    {
+      "id": "KARIM",
+      "rol": "repartidor",
+      "retrato": "Vertical portrait of a 28 year old thin man with a tired but kind face, dark hair flattened and damp from a helmet, faint sweat at the temples, a small scar through one eyebrow, clean dark navy polo with a small 4cm embroidered gold monogram on the left chest, neutral expression, not looking at camera, low warm late afternoon sun raking across the street, visible pores"
+    },
+    {
+      "id": "ELENA",
+      "rol": "receptora",
+      "retrato": "Vertical portrait of a 40 year old woman, dark shoulder-length hair loosely tied back with strands escaping at the temples, no makeup, faint freckles across the nose, expression lines at the corners of the eyes, cream knit sweater with slightly pilled sleeves pushed to the forearms, neutral expression, not looking at camera, warm low sun from a window camera-left, visible pores"
+    },
+    {
+      "id": "EL_RAMO",
+      "rol": "objeto",
+      "retrato": "Vertical still life of a bouquet of twenty-four deep red roses in a cone of brown kraft paper tied with a cream satin ribbon, cut stems bound in damp paper towel inside a clear full water sleeve, heads packed into an even dome with no gaps, paper taut, lying on its side on a wooden counter, warm shop window light, photographic, real flowers with visible petal texture and water beads"
+    }
+  ],
+  "shots": [
+    {
+      "id": "01_rebobinado",
+      "titulo": "EL REBOBINADO",
+      "segundos": 6,
+      "move": "static",
+      "reparto": [
+        "ELENA",
+        "EL_RAMO"
+      ],
+      "still": "Looking straight down at a wooden entry table, fourteen dead roses lying in a collapsed brown kraft paper cone, dull burgundy petals browning at the edges, heads bent over, loose petals scattered on the wood, a woman's hand resting on one bent stem, warm late afternoon light from a window, natural skin texture with visible pores and fine hair, facial asymmetry, ordinary teeth, unstyled hair, working hands with short nails and small scars, no beauty retouching, no posing, documentary realism",
+      "motion": "the wilted roses slowly revive and straighten, colour deepening from brown to red, loose petals lifting back onto the flowers, the crumpled paper pulling taut, her fingers tighten very slightly on the stem before the hand withdraws",
+      "truco": "GENERAR AL REVÉS. Se pide que las rosas revivan y luego se invierte el clip con ffmpeg. Pedirle a un modelo que 'rebobine' produce papilla; pedirle que reviva y darle la vuelta produce un rebobinado físicamente creíble.",
+      "post": "reverse",
+      "gesto": "her fingers tighten very slightly on the stem before the hand withdraws"
+    },
+    {
+      "id": "02_ramiro_mina",
+      "titulo": "RAMIRO · LA MINA",
+      "segundos": 9,
+      "move": "handheld",
+      "reparto": [
+        "RAMIRO"
+      ],
+      "still": "Deep inside a narrow wet mine tunnel, dark rock walls pressing in on both sides of a tall vertical frame, a 58 year old weathered miner in a hard hat with headlamp holding a fist-sized piece of gold-veined quartz ore in his cracked palm, his wrist dropped under its weight, hard raking headlamp light, visible dust hanging in the beam, no daylight, natural skin texture with visible pores and fine hair, facial asymmetry, ordinary teeth, unstyled hair, working hands with short nails and small scars, no beauty retouching, no posing, documentary realism",
+      "motion": "he turns the heavy ore over in his palm once, studying it, dust drifting through the lamp beam, his chest rising with slow breathing, he breathes out through his nose and the dust in the beam moves with it, he blinks twice at an irregular interval, his jaw shifts as he judges the weight",
+      "gesto": "he breathes out through his nose and the dust in the beam moves with it, he blinks twice at an irregular interval, his jaw shifts as he judges the weight"
+    },
+    {
+      "id": "03_clara_boveda",
+      "titulo": "CLARA · LA BÓVEDA",
+      "segundos": 9,
+      "move": "push",
+      "reparto": [
+        "CLARA"
+      ],
+      "still": "A small windowless stainless steel certification room, a woman in a navy work coat and white cotton gloves standing over a precision scale holding a small cast gold bar, a paper certificate and a seal on the bench, cold even overhead strip lighting, clinical and trustworthy, natural skin texture with visible pores and fine hair, facial asymmetry, ordinary teeth, unstyled hair, working hands with short nails and small scars, no beauty retouching, no posing, documentary realism",
+      "motion": "she reads the scale display, checks it a second time, writes a figure by hand on the certificate and presses a seal onto it, she blinks once behind the glasses, her lips press together for an instant as she confirms the second reading, a small controlled exhale",
+      "gesto": "she blinks once behind the glasses, her lips press together for an instant as she confirms the second reading, a small controlled exhale"
+    },
+    {
+      "id": "04_rafael_cadena",
+      "titulo": "RAFAEL · LA CADENA",
+      "segundos": 8,
+      "move": "static",
+      "reparto": [
+        "RAFAEL"
+      ],
+      "still": "A small dark quiet operations room seen from slightly low, one desk with several monitors, a thin young man alone at the desk with headphones around his neck, a paper notebook beside the keyboard, his face lit only by cool monitor glow, the room dark around him, natural skin texture with visible pores and fine hair, facial asymmetry, ordinary teeth, unstyled hair, working hands with short nails and small scars, no beauty retouching, no posing, documentary realism",
+      "motion": "he glances at a monitor, nods once to himself and writes something short in the paper notebook, then goes still and watches the screen, blinking slowly, he rubs one eye with the heel of his hand, blinks slowly, his shoulders drop half a centimetre as he settles back into the chair",
+      "gesto": "he rubs one eye with the heel of his hand, blinks slowly, his shoulders drop half a centimetre as he settles back into the chair"
+    },
+    {
+      "id": "05_mercedes_floreria",
+      "titulo": "MERCEDES · LA FLORERÍA",
+      "segundos": 9,
+      "move": "static",
+      "reparto": [
+        "MERCEDES",
+        "EL_RAMO"
+      ],
+      "still": "A neighbourhood florist shop counter in warm morning light, a 61 year old woman in a green canvas apron behind the counter, a complete bouquet of twenty-four deep red roses in taut brown kraft paper lying on its side across the counter in front of her, a phone face up on the counter beside it, flower buckets bouncing green light under her jaw, natural skin texture with visible pores and fine hair, facial asymmetry, ordinary teeth, unstyled hair, working hands with short nails and small scars, no beauty retouching, no posing, documentary realism",
+      "motion": "she pulls the cream ribbon tight around the paper cone and pushes the wrapped bouquet across the counter with both hands, then glances down as her phone screen lights up, she pushes her glasses up with the back of a wrist because her fingertips are wet, her lips move slightly as she murmurs to the flowers, she wipes a hand on the apron",
+      "gesto": "she pushes her glasses up with the back of a wrist because her fingertips are wet, her lips move slightly as she murmurs to the flowers, she wipes a hand on the apron"
+    },
+    {
+      "id": "06_karim_camino",
+      "titulo": "KARIM · EL CAMINO",
+      "segundos": 7,
+      "move": "handheld",
+      "reparto": [
+        "KARIM",
+        "EL_RAMO"
+      ],
+      "still": "Close travelling shot beside a young delivery man riding an electric bike through city streets at golden hour, a bouquet of red roses secured upright in a padded flat crate behind him, low warm sun raking down the street, long shadows and dust in the air, shopfronts rushing past behind him, natural skin texture with visible pores and fine hair, facial asymmetry, ordinary teeth, unstyled hair, working hands with short nails and small scars, no beauty retouching, no posing, documentary realism",
+      "motion": "he rides steadily through the street, glancing back once to check the crate, the city sliding past behind him, he squints against the low sun, wipes sweat from his temple with a forearm, glances back at the crate and returns his eyes to the road",
+      "gesto": "he squints against the low sun, wipes sweat from his temple with a forearm, glances back at the crate and returns his eyes to the road"
+    },
+    {
+      "id": "07_elena_puerta",
+      "titulo": "ELENA · LA PUERTA",
+      "segundos": 7,
+      "move": "push",
+      "reparto": [
+        "ELENA",
+        "KARIM",
+        "EL_RAMO"
+      ],
+      "still": "An apartment doorway in warm low late afternoon sun, a 40 year old woman in a cream knit sweater with a dish towel in one hand taking a heavy complete bouquet of twenty-four deep red roses in taut kraft paper from a delivery man in a navy polo, water beading on the outer petals, her shoulders adjusting to the weight, natural skin texture with visible pores and fine hair, facial asymmetry, ordinary teeth, unstyled hair, working hands with short nails and small scars, no beauty retouching, no posing, documentary realism",
+      "motion": "she takes the bouquet and her arms visibly drop with its weight, she brings it against her chest and lowers her face into the roses, and smiles, her shoulders lift and settle as she takes the weight, she breathes in through her nose over the roses, her eyes close for half a second, the smile starts at the eyes before the mouth",
+      "gesto": "her shoulders lift and settle as she takes the weight, she breathes in through her nose over the roses, her eyes close for half a second, the smile starts at the eyes before the mouth"
+    },
+    {
+      "id": "08_centavo",
+      "titulo": "EL CENTAVO",
+      "segundos": 3,
+      "move": "static",
+      "reparto": [
+        "EL_RAMO"
+      ],
+      "still": "Extreme macro on the outer rim of a single deep red rose petal filling the whole tall frame, the fine down along its edge, one bead of water, the grain of the petal surface, razor-thin depth of field, warm late sun raking across the edge, one impossibly fine golden filament thinner than a hair resting on the rim",
+      "motion": "the single fine golden filament lifts off the petal edge, curls once in the warm air and drifts upward out of frame, the petal otherwise completely still, no human presence at all, only the petal and the filament",
+      "gesto": "no human presence at all, only the petal and the filament"
+    },
+    {
+      "id": "09_cierre",
+      "titulo": "EL CIERRE",
+      "segundos": 5,
+      "move": "static",
+      "reparto": [
+        "KARIM"
+      ],
+      "still": "Medium close on a young delivery man standing in an apartment doorway in warm late afternoon light, warm light on one side of his face, a small gold embroidered monogram just visible on the chest of his navy polo, a woman soft and out of focus behind him holding red roses, the lower quarter of the tall frame dark and clean, natural skin texture with visible pores and fine hair, facial asymmetry, ordinary teeth, unstyled hair, working hands with short nails and small scars, no beauty retouching, no posing, documentary realism",
+      "motion": "he turns his head and looks straight into the camera lens with a completely flat, tired, matter-of-fact expression, and speaks two short sentences without smiling, he blinks once before speaking, his throat moves as he swallows, a tired exhale between the two sentences, no smile at any point",
+      "dialogo": "Cobramos un centavo. ... El camino lo hicimos nosotros.",
+      "nota": "Único plano con mirada a cámara y único con diálogo. H3 genera audio nativo; si el labial no cuadra, se graba la voz aparte y se sincroniza en montaje.",
+      "gesto": "he blinks once before speaking, his throat moves as he swallows, a tired exhale between the two sentences, no smile at any point"
+    }
+  ],
+  "post": {
+    "hilo_dorado": "NO se genera con el modelo. Un filamento continuo que cruza nueve planos sin romperse es exactamente lo que un modelo de vídeo no puede garantizar: cada plano se genera por separado y no tiene memoria del anterior. Se compone encima en DaVinci o After Effects, donde además se controla su grosor, su deriva y su continuidad exacta. El único plano donde el hilo se pide al modelo es el 08, porque ahí es un objeto físico dentro de la escena.",
+    "cadena": [
+      "01 se genera hacia delante y se invierte con ffmpeg",
+      "upscale de la toma elegida a 1080x1920 con SeedVR2",
+      "recorte y encuadre 9:16, sin letterbox",
+      "curva de color unificada en los nueve planos",
+      "grano 35mm y halación suave",
+      "hilo dorado compuesto encima, plano a plano",
+      "monograma final dibujado por el hilo, animado en post",
+      "audio: ambiente por plano, los dos tonos de pago, el chime del centavo, y la voz de Karim"
+    ]
+  },
+  "realismo": {
+    "principio": "Un modelo produce caras 'de anuncio' salvo que se le pida lo contrario en positivo Y se le prohíba en negativo. Las dos cosas, no una.",
+    "positivo": "natural skin texture with visible pores and fine hair, facial asymmetry, ordinary teeth, unstyled hair, working hands with short nails and small scars, no beauty retouching, no posing, documentary realism",
+    "lora": "Realism People de fal a escala 0.8 en todos los planos con personas. Es el mayor salto de realismo por MB del pipeline: piel con poros, ojos vivos, microexpresiones.",
+    "gestos": "Cada plano lleva UN microgesto concreto y físico. Un parpadeo a destiempo, un tragar saliva, una mano que se seca en el delantal. Sin eso las caras salen correctas pero muertas; con eso el ojo las lee como personas."
+  },
+  "voz": {
+    "decision": "La voz NO se deja al modelo de vídeo. H3 genera audio nativo, pero el labial en español latino es una lotería y es la única línea hablada de la pieza: si falla, falla el remate del anuncio.",
+    "cadena": [
+      "1. El plano 09 se genera MUDO, cuidando solo la interpretación: mirada a cámara, cara cansada, sin sonrisa.",
+      "2. La voz se genera aparte con un TTS de calidad, en español latino neutro.",
+      "3. Se sincroniza el labial sobre el clip ya generado con LatentSync (abierto, corre en la misma GPU de 96 GB).",
+      "4. Se mezcla en montaje con el silencio de ambiente que pide el guion."
+    ],
+    "tts_opciones": {
+      "elevenlabs": "El estándar de la industria. Voz latina neutra creíble, control de pausas y énfasis. De pago pero barato para dos frases.",
+      "inworld_o_gemini_tts": "Superan a ElevenLabs en pruebas ciegas recientes y salen más baratos.",
+      "chatterbox": "Abierto (Resemble AI). En pruebas ciegas el 63,8 % prefirió su salida frente a ElevenLabs. Corre en el propio pod: coste cero y sin cuentas.",
+      "voz_propia": "La opción de verdad: que José o alguien de la empresa grabe las dos frases con el móvil. Un hombre cansado diciendo un dato al final de su turno no necesita actuación, y una voz real gana a cualquier TTS."
+    },
+    "recomendacion": "Grabar la voz real. Son dos frases de tres segundos y el guion pide justamente que suene a persona corriente, no a locutor. El TTS queda como plan B, y Chatterbox como plan B gratis dentro del pod.",
+    "direccion": "'Cobramos un centavo.' — plano, informativo, sin subir el tono al final. Un beat completo de silencio. 'El camino lo hicimos nosotros.' — más bajo, casi para adentro. El chiste funciona solo si NO se interpreta."
+  }
+}

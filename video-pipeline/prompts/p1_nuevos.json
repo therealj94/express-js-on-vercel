@@ -1,0 +1,59 @@
+{
+ "defaults": {
+  "still_workflow": "workflows/h3_calidad_api.json",
+  "video_workflow": "workflows/h3_i2v_api.json",
+  "duration_s": 4,
+  "fps": 24,
+  "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts",
+  "width": 720,
+  "height": 1280,
+  "look": "apple_human"
+ },
+ "shots": [
+  {
+   "id": "12_bolsas_calle",
+   "still": "a 60 year old Central American shopkeeper with indigenous features, medium brown sun-weathered skin, deep lines across her forehead and around her mouth, heavy-lidded dark brown eyes, black hair heavily streaked with grey and pulled straight back tight, reading glasses pushed up on top of her head, thin lips, a grey patterned short-sleeved blouse under a pale cream apron with a chest pocket. The shopkeeper walking home along a narrow neighbourhood street in the late afternoon, carrying two full cloth shopping bags, one in each hand, the bags heavy enough that her shoulders drop, a loaf of bread and a bag of rice showing at the top of one. Low golden side light down the street, painted concrete walls, power lines overhead, a few people far behind her out of focus. She is not smiling; she looks tired and settled. Documentary medium shot from slightly behind and to the side, shot on 35mm, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+   "motion": "she walks steadily away from camera down the street, shifting the weight of one bag as she goes, and does not look back,  wipes both hands on her apron, and glances toward the door without turning her head much; a slow blink; her shoulders drop as she settles her weight onto the other foot, subtle handheld float, small organic drift, no shake, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+   "move": "handheld",
+   "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts",
+   "seeds": [
+    5100,
+    5101,
+    5102,
+    5103
+   ],
+   "stills": 4,
+   "pick": null
+  },
+  {
+   "id": "13_mesa_casa",
+   "still": "a 60 year old Central American shopkeeper with indigenous features, medium brown sun-weathered skin, deep lines across her forehead and around her mouth, heavy-lidded dark brown eyes, black hair heavily streaked with grey and pulled straight back tight, reading glasses pushed up on top of her head, thin lips, a grey patterned short-sleeved blouse under a pale cream apron with a chest pocket. The shopkeeper's hands taking things out of a cloth shopping bag onto a scratched wooden table in a small dim kitchen at dusk: a bag of rice, a bag of beans, a loaf of bread, a box of pills. Her hands are in the light of a single warm bulb overhead, the rest of the room falling away into darkness, a plastic tablecloth pattern under the food. Documentary macro insert of the hands and the table, shallow depth of field, shot on 35mm, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+   "motion": "her hands lift the bread out of the bag and set it down on the table, then square the bag of rice beside it, unhurried,  wipes both hands on her apron, and glances toward the door without turning her head much; a slow blink; her shoulders drop as she settles her weight onto the other foot, subtle handheld float, small organic drift, no shake, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+   "move": "static",
+   "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts",
+   "seeds": [
+    5110,
+    5111,
+    5112,
+    5113
+   ],
+   "stills": 4,
+   "pick": null
+  },
+  {
+   "id": "15_hija_lee",
+   "still": "a 31 year old Central American woman with olive skin, straight black shoulder-length hair tucked behind her ears, thick straight eyebrows, a small nose, full lips and no makeup, wearing a plain unmarked pale grey-green work polo. Close up of the 31 year old woman sitting at the small table of the cramped rented kitchen at night, holding the phone up and reading it, the screen lighting her face from below, its content out of focus and illegible. Behind her the window is fully dark now and the overhead bulb is warm. She is still in her plain work polo, her shoulders down, off shift. Documentary close shot, shallow depth of field, shot on 35mm, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+   "motion": "she reads, and a small tired smile comes into one side of her mouth and stays, and she lets out one breath through her nose,  wipes both hands on her apron, and glances toward the door without turning her head much; a slow blink; her shoulders drop as she settles her weight onto the other foot, subtle handheld float, small organic drift, no shake, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+   "move": "static",
+   "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts",
+   "seeds": [
+    5120,
+    5121,
+    5122,
+    5123
+   ],
+   "stills": 4,
+   "pick": null
+  }
+ ]
+}

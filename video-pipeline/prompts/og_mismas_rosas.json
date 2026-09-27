@@ -1,0 +1,82 @@
+{
+  "proyecto": "Orden Global — Las mismas rosas",
+  "formato": {
+    "aspect": "9:16 vertical",
+    "gen_w": 720,
+    "gen_h": 1280,
+    "final_w": 1080,
+    "final_h": 1920,
+    "fps": 24,
+    "nota_duracion": "30 s para móvil. La versión de 57 s se descartó: un espectador sin contexto la abandonaba en el segundo 10."
+  },
+  "idea": {
+    "titulo_de_trabajo": "Las mismas rosas",
+    "premisa": "Las mismas veinticuatro rosas hacen el viaje dos veces. La primera vez llegaron catorce y muertas. Hoy llegan veinticuatro. Lo único que cambió es quién las llevó.",
+    "el_sujeto": "Las rosas. Siempre. No hay protagonista humano: en la parte 1 las personas eran quienes robaban, y aquí su ausencia es el mensaje. Solo se ven manos.",
+    "rima_con_la_parte_1": {
+      "el_contador": "Allí bajaba a golpes con seis dings ásperos: 24, 21, 19, 16, 14. Aquí se desploma igual en los primeros siete segundos —como recuerdo— y luego vuelve a 24 y ya solo baja una vez, 0.1, con un click suave.",
+      "el_reloj": "Allí MAR 10:40 → MIÉ 17:30, treinta y una horas. Aquí 17:30:00 → 17:30:04.",
+      "quien_cobra": "Allí cada eslabón se quedaba con algo y la víctima no lo veía. Aquí se cobra una sola vez, a la vista, y es un pétalo.",
+      "el_cierre": "Allí 'ENVIADAS 24 · ENTREGADAS 14'. Aquí la misma placa con 23.9."
+    },
+    "regla_para_movil": "El problema entero cabe en los primeros siete segundos: rosas, contador desplomándose, ramo muerto. Quien haga scroll en el segundo tres ya se llevó el mensaje.",
+    "por_que_no_hay_portavoz": "Un espectador dijo que la marca no es lo bastante conocida para permitirse misterio, pero tampoco aguanta que alguien le explique el chiste. La voz cuenta, las cifras prueban, y nadie mira a cámara."
+  },
+  "defaults": {
+    "video_workflow": "workflows/h3_calidad_api.json",
+    "duration_s": 6,
+    "fps": 24,
+    "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, embroidered logo, signage with readable words, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, CGI flowers, artificial flowers, plastic flowers, glitter, cellophane, hologram, sparkles, magic effects, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, model looks, big smile, celebration, looking at camera, addressing the camera, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker, crooked teeth, deformed teeth, distorted mouth",
+    "steps": 20
+  },
+  "look_base": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off with the smallest organic drift, natural practical light only, real 35mm grain, muted true colour, milky blacks, documentary realism, calm observational framing, no advertising gloss",
+  "casting": [
+    {
+      "id": "RAMO_MUERTO",
+      "rol": "objeto",
+      "retrato": "Vertical still life of a thin bouquet of fourteen dead red roses lying on its side on a wooden entry table, heads bent right over on limp stems, outer petals browned and curled at the edges, several loose dry petals scattered on the wood around it, the brown kraft paper creased and far too wide for the flowers it holds, a snapped rubber band instead of ribbon, cut stems dry with no water sleeve, warm late afternoon light from a window camera-left"
+    }
+  ],
+  "shots": [
+    {
+      "id": "01_las_muertas",
+      "titulo": "LAS QUE LLEGARON LA ÚLTIMA VEZ",
+      "segundos": 6,
+      "move": "static",
+      "reparto": ["RAMO_MUERTO"],
+      "overlay": "el contador se desploma 24 → 14 con los dings ásperos",
+      "still": "Looking straight down at a wooden entry table from directly above, a thin bouquet of fourteen dead red roses lying on its side in creased brown kraft paper that is far too wide for them, heads bent right over, outer petals browned and curled, four loose dry petals scattered on the bare wood around the paper, a snapped rubber band where a ribbon should be, no water sleeve on the dry cut stems, warm late afternoon light raking across the wood from camera-left, deep clean shadow filling the lower part of the tall frame, no people at all, photographic realism, real petal texture and visible wood grain",
+      "motion": "nothing moves except one dry petal that detaches from a bent head and drops onto the wood, and the light shifting almost imperceptibly across the table, the bouquet completely still and abandoned",
+      "gesto": "un pétalo seco se desprende solo y cae sobre la madera",
+      "nota": "EL ÚNICO PLANO NUEVO. Sin personas, sin caras: el tipo que este modelo hace mejor y el más barato de repetir. Sobre él se monta el desplome del contador, que es el resumen de la parte 1 en cuatro segundos."
+    }
+  ],
+  "montaje": {
+    "nota": "El resto del corte se arma con material YA generado, recortado. No hace falta volver a generar nada más.",
+    "linea_de_tiempo": [
+      {"t": "0.0-6.0", "clip": "01_las_muertas (NUEVO)",
+       "hud": "ENVIADAS 24 · se desploma a 21, 19, 16, 14 entre 2.5 y 4.5 s",
+       "sonido": "cuatro dings ásperos, de dureza creciente",
+       "voz": ["0.5 Veinticuatro rosas.", "2.6 Así llegaron la última vez."]},
+      {"t": "6.0-11.0", "clip": "01_el_envio recortado (la florista envuelve)",
+       "hud": "el contador vuelve a 24 · reloj 17:30:00",
+       "voz": ["6.6 Hoy salieron las mismas veinticuatro."]},
+      {"t": "11.0-14.5", "clip": "02_las_manos_que_envian recortado",
+       "hud": "24 · 17:30:00", "voz": []},
+      {"t": "14.5-21.0", "clip": "03_las_manos_que_reciben recortado",
+       "hud": "24 hasta el pétalo; luego 23.9 y el reloj a 17:30:04",
+       "sonido": "un solo click suave, en el fotograma del pétalo",
+       "voz": ["14.8 Cuatro segundos después estaban en sus manos."]},
+      {"t": "21.0-26.0", "clip": "04_el_petalo recortado antes del dedo",
+       "hud": "23.9",
+       "voz": ["21.2 Se soltó un pétalo.", "23.4 Ese fue todo el costo del envío."]},
+      {"t": "26.0-30.0", "clip": "cierre",
+       "hud": "logo OG · ENVIADAS 24 · ENTREGADAS 23.9",
+       "voz": ["26.4 Orden Global. Lo que sale, llega."]}
+    ]
+  },
+  "pendiente": [
+    "El porcentaje real de comisión, para que la voz pueda decir un dato en vez de una metáfora: 'Se soltó un pétalo. Menos de un uno por ciento.'",
+    "¿El repartidor de la parte 1 aparece? Ahora mismo no sale nadie, y creo que es lo correcto: en la parte 1 las personas eran las que robaban."
+  ]
+}
