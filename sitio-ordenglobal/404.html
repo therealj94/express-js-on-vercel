@@ -5,48 +5,37 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Esta página no existe | Orden Global</title>
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#07091A">
+<meta name="theme-color" content="#060505">
 <link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="icon" href="/assets/favicon-og.png" type="image/png" sizes="180x180">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
-<link rel="stylesheet" href="/assets/portada.css?v=20260921">
+<link rel="stylesheet" href="/assets/og26.css?v=20260926">
 <style>
-.perdida{min-height:calc(100svh - 66px);display:flex;flex-direction:column;justify-content:center;
-  padding-top:clamp(40px,8vw,90px);padding-bottom:clamp(40px,8vw,90px);max-width:720px}
-.perdida .codigo{font:500 13px var(--mono);letter-spacing:.2em;color:var(--oro);margin-bottom:18px}
-.perdida h1{font:300 clamp(34px,6vw,60px)/1.05 var(--serif);font-variation-settings:'opsz' 144;
-  color:var(--crema);letter-spacing:-.012em;margin-bottom:18px;max-width:16ch}
-.perdida p{color:var(--bruma);font-size:clamp(16px,1.6vw,18px);max-width:52ch;margin-bottom:12px}
-.perdida p[lang=en]{color:var(--humo);font-size:15px}
-.perdida .botones{margin-top:26px}
+/* Las rutas van en absoluto: esta página se sirve en cualquier dirección. */
+.perdida{min-height:calc(100svh - 80px);display:flex;flex-direction:column;justify-content:center;padding-block:48px 96px;max-width:44rem}
+.perdida .dato{color:var(--gris)}
+.perdida h1{font-size:clamp(2.6rem,6vw,4.6rem);line-height:1;margin:18px 0 24px}
+.perdida p[lang=en]{color:var(--gris);font-size:.9375rem}
 </style>
 </head>
 <body>
 
-<header class="barra">
-  <div class="env">
-    <a class="lock" href="/"><img src="/assets/og.png" alt="" width="177" height="96"><b class="marca">ORDEN <span>GLOBAL</span></b></a>
-  </div>
+<header class="techo env">
+  <a class="marca" href="/" aria-label="Orden Global, inicio">
+    <img src="/assets/og.svg" alt="" width="49" height="26"><span>ORDEN GLOBAL</span>
+  </a>
 </header>
 
-<main>
-<section class="perdida env">
-  <p class="codigo">404</p>
-  <h1>Esta página no está en la cadena.</h1>
-  <p>La dirección que abriste no existe o cambió de sitio. Lo que sí existe está a un toque: la portada, la historia del proyecto o tu cuenta.</p>
-  <p lang="en">This page doesn’t exist or has moved. The home page, the story and your account are one tap away.</p>
-  <div class="botones">
-    <a class="btn btn-oro" href="/">Ir a la portada</a>
-    <a class="btn btn-linea" href="/historia/">Ver la historia</a>
-    <a class="btn btn-linea" href="https://app.vetawallet.com">Abrir Veta Wallet</a>
+<main class="env perdida">
+  <p class="dato">404</p>
+  <h1>Esta página no existe.</h1>
+  <p class="intro">La dirección que abriste no existe o cambió de sitio.</p>
+  <p lang="en">This page doesn’t exist or has moved.</p>
+  <div class="acciones" style="display:flex;flex-wrap:wrap;align-items:center;gap:22px 30px;margin-top:28px">
+    <a class="boton" href="/">Ir a la portada</a>
+    <a class="enlace" href="/en/" lang="en">Home in English</a>
   </div>
-</section>
 </main>
 
-<footer>
-  <div class="env">
-    <div class="legal"><span>© 2026 Orden Global Corp, Roatán, Honduras</span><span><a href="mailto:info@ordenglobal.org">info@ordenglobal.org</a></span></div>
-  </div>
-</footer>
 </body>
 </html>

@@ -17,6 +17,8 @@ cp "$AQUI/assets/"*.css "$AQUI/assets/"*.js "$AQUI/assets/"*.svg assets/
 # Los dos videos de la campaña y sus pósteres viven en el repositorio: la
 # portada nueva los estrena y producción todavía no los tiene.
 cp "$AQUI/assets/medios/"* assets/medios/
+# Las imágenes para compartir de la portada nueva, también del repositorio.
+cp "$AQUI/assets/"social-26*.png assets/
 cp "$AQUI/assets/fuentes/"*.woff2 assets/fuentes/
 
 # Los medios, de producción.
