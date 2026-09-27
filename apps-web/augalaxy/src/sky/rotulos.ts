@@ -38,5 +38,6 @@ export const rotulos = new Map<string, Rotulo>()
    en pantalla es el resplandor, no la esfera. */
 export const sol = { x: 0, y: 0, r: 0, vis: 0, frente: false }
 
-/* ¿Hay capa HTML? En el visor no: la pantalla está partida en dos ojos. */
+/* ¿Mandan los letreros 3D? En cualquier modo visor (WebXR, Cartón, 360) sí:
+   la pantalla está partida en dos ojos o la cámara la mueve la cabeza. */
 export const capa = { xr: false }

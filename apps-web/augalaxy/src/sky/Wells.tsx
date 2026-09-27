@@ -925,7 +925,11 @@ function WellView({ def }: { def: WellDef }) {
          aquí solo se dice dónde cae el planeta y si el cielo permite nombres
          ahora —puerta, película, tiniebla—. El letrero 3D se apaga. Dentro
          del visor no hay HTML, y el letrero sigue con su regla de siempre. */
-      capa.xr = state.gl.xr.isPresenting
+      /* En CUALQUIER modo visor, no solo WebXR: Cartón y 360 dibujan con sus
+         propias cámaras (dos ojos, o girada por la cabeza) y una capa plana
+         proyectada con la cámara de siempre quedaría suelta de los planetas
+         y dibujada una sola vez para los dos ojos. Hallazgo de Codex, PR #32. */
+      capa.xr = state.gl.xr.isPresenting || sim.visor
       rotulos.set(def.key, { x: miX, y: miY, r: R * talla * porMundo, d, nombre: def.name,
         vis: puerta * cineL * (1 - sim.noche), sel: selected, frente: tmpP.z < 1 })
       ;(letrero.current.material as THREE.SpriteMaterial).opacity = capa.xr ? op : 0
