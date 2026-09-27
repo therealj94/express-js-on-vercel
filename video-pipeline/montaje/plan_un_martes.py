@@ -79,7 +79,7 @@ TARJETAS = [
     ("A_enviar.png", [[20, 400, 1060, 1010]], "Enviado a Sofía", "03_cocina_envia", 1.8, 2.8, "pago"),
     ("B_tarjeta.png", [[20, 20, 1060, 780], [20, 1440, 1060, 1650]], "El boleto de diciembre", "04_mesa_boleto", 2.0, 2.8, "pago"),
     ("C_pagar.png", [[20, 520, 1060, 1180], [20, 1450, 1060, 1620]], "Pagado", "07_qr_mostrador", 1.0, 2.4, "pago"),
-    ("J_ondk.png", [[20, 20, 1060, 720]], "Su parte de Orden Global", "08b_taller_pausa", 2.3, 6.4, "tink"),
+    ("J_ondk.png", [[20, 20, 1060, 720]], "Su parte de Orden Global", "08b_taller_pausa", 0.4, 7.6, "tink"),
     ("E_dividir_pagado.png", [[20, 520, 1060, 1180], [20, 1450, 1060, 1620]], "Cada quien, lo suyo", "11_un_qr_cada_uno", 0.9, 3.4, "pago"),
     ("G_comprobante.png", [[20, 20, 1060, 690], [20, 1470, 1060, 1610]], "Pagado a Honduras", "17_manos_pago", 2.5, 2.4, "pago"),
 ]
