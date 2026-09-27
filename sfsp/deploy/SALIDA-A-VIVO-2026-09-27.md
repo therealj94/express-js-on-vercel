@@ -175,6 +175,26 @@ Qué hacer, en orden:
   `npx babel-node scripts/reenviar-confirmacion.js`.
 - Mientras SES rechace la llave, el botón y el guion responden «no salió».
 
+### Mejoras en código, sin desplegar todavía (`7ca4a62` y siguiente)
+
+- Veta: `/salud` muestra `correo.estado` y pasa a «fallando» tras 3 fallos
+  seguidos. El enlace de confirmación vence a los 7 días, con una página en
+  español. `GET /auth/estadoCorreo`, que la app consulta al abrir Ajustes.
+  Entrar con llave usa la misma vara que el puente.
+- Veta: el guion de despliegue corre las pruebas y no despliega si una falla.
+  `probar-carta` ya no depende del reloj. Suite: **117/117**.
+- MyTokenPay: Node 20 → 22 (Node 20 dejó de tener soporte en abril de 2026).
+  Pasa typecheck y 55/55 con Node 22. Es el paso previo a mover la app de
+  Heroku-24 a Heroku-26.
+
+**Falta desplegar, con aprobación explícita de José:**
+1. Veta v124: `node infra/veta-wallet-backend/bin/desplegar.mjs`. Se
+   revierte a v123.
+2. App: lanzar `veta-preview.yml` en `preview`.
+3. MyTokenPay: `PATCH /apps/mytokenpay-api {"build_stack":"heroku-26"}` y
+   una construcción desde `git archive`. Se comprueban `/healthz` y las
+   rutas. Se revierte a v29, que vuelve con su stack.
+
 ## Pendiente
 
 1. ~~Cambiar `ADMIN_PASSWORD` en `mytokenpay-api`~~: hecho por José el 27-sep.
