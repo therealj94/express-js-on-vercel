@@ -24,10 +24,10 @@ El panel que verifica negocios y paga los retiros usa una cuenta de administrado
 cuya contraseña **no vive en el repositorio**. Se entrega por un canal privado y
 es la de la variable `ADMIN_PASSWORD` del backend en Heroku (con `ADMIN_EMAIL`).
 
-> **Rotación pendiente (26-sep-2026):** una versión anterior de este archivo
-> publicó la contraseña, que sigue en el historial de git. Hay que cambiarla antes
-> de cualquier uso real (condición de arranque §16 de SFSP v0.3). Es la llave que
-> aprueba comercios y libera dinero.
+> **Rotada el 27-sep-2026.** Una versión anterior de este archivo publicó la
+> contraseña, que sigue en el historial de git. José la cambió justo después de
+> desplegar la v29, así que la del historial ya no entra. Es la llave que
+> aprueba comercios y libera dinero: si alguna vez vuelve a salir, se rota igual.
 
 **Cómo se rota, de verdad.** Hasta el 26-sep-2026 cambiar `ADMIN_PASSWORD` no
 servía de nada: si la cuenta ya existía en Mongo, al arrancar solo se le ponía el
