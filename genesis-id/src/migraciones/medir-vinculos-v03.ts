@@ -13,7 +13,7 @@
  *     obligatoria (A2), esas personas reciben 403 VINCULO_SIN_DIRECCION en
  *     Ordenex hasta que vuelvan a abrir Veta Wallet y se revincule.
  */
-import { iniciarSoloLectura, store } from '../store';
+import { iniciarSoloLectura, store } from '../store.js';
 
 await iniciarSoloLectura();
 const ids = store.todo().identidades;
