@@ -252,7 +252,7 @@ def onda_de(wav: Path, barras: int = 44) -> list[float]:
     return list(0.12 + 0.88 * r ** 0.7)
 
 
-def png_onda(alturas, etiqueta: str | None, T, dst: Path, y: int = 470) -> None:
+def png_onda(alturas, etiqueta: str | None, T, dst: Path, y: int = 1170) -> None:
     img = lienzo()
     d = ImageDraw.Draw(img)
     paso, ancho = 13, 5
@@ -358,7 +358,7 @@ def main() -> int:
         N = round(dur * FPS)
         if contar(seg) != N:
             fijo = seg.with_suffix(".fijo.mp4")
-            ff("-i", str(seg), "-vf", f"tpad=stop_mode=clone:stop={FPS},setpts=N/({FPS}*TB)",
+            ff("-i", str(seg), "-vf", f"tpad=stop_mode=clone:stop=-1,setpts=N/({FPS}*TB)",
                "-frames:v", str(N), "-r", str(FPS), "-c:v", "libx264", "-crf", "16", "-pix_fmt", "yuv420p", str(fijo))
             fijo.replace(seg)
         segs.append(seg)
@@ -388,7 +388,7 @@ def main() -> int:
                 png_onda(onda_de(Path(a.voces) / f"{c['voz']}.wav"),
                          f"Nota de voz · {c['quien']}" if c["tipo"] == "nota" else f"Llamada · {c['quien']}", T, p)
                 capas.append({"png": p, "t": c["t"], "dur": c["dur"], "desliza": False})
-            y0 = 640 if c["tipo"] != "dialogo" else 1330
+            y0 = 1300 if c["tipo"] != "dialogo" else 1420
             for i, (l, off) in enumerate(repartir(c["texto"], c["dur"])):
                 q = tmp / f"capa_{len(capas)}.png"
                 png_cita(f"«{l}»" if len(repartir(c['texto'], c['dur'])) == 1 else l, c.get("quien") if i == 0 else None, i, T, q, y0)
