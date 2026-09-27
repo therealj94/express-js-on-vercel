@@ -44,7 +44,7 @@
       ],
       "pick": null,
       "_personaje": "lucia",
-      "audio_fuera": "Nota de voz de la hija: «Ma, buenos días… ya me cobraron la renta de este mes. Y ¿viste los vuelos de diciembre? Todavía están baratos.»"
+      "audio_fuera": "Nota de voz de la hija: «Ma, buen día… ya me cobraron la renta de este mes. Y fijate que los vuelos de diciembre todavía están baratos.»"
     },
     {
       "id": "03_manos_enviar",
@@ -239,6 +239,7 @@
       ],
       "pick": null,
       "_personaje": "dueno",
+      "audio_fuera": "Amigo (fuera de cuadro, escéptico): «¿Y cómo sé que le llegó?» — Lucía le gira el teléfono con el comprobante; el dueño levanta dos dedos desde la caja.",
       "insert_despues": "F · Panel del comercio: la mesa completa, cobrado (pantalla real)"
     },
     {
@@ -328,7 +329,7 @@
       ],
       "pick": null,
       "_personaje": "proveedor",
-      "audio_fuera": "Proveedor: «…Ya. Ya me cayó. ¡Súbanla!»"
+      "audio_fuera": "Proveedor: «…Aquí lo estoy viendo. Ya me cayó. ¡Súbanla!»"
     },
     {
       "id": "19_camion_sale",
@@ -345,6 +346,25 @@
         1904
       ],
       "pick": null
+    },
+    {
+      "id": "19b_florista_cierra",
+      "escena": "4b · 18:30",
+      "still": "a 64 year old Central American man with a grey mustache, thick forearms and a dark green canvas apron with no lettering, reading glasses pushed up on his forehead. At dusk he pulls down the corrugated metal shutter of his small flower shop, a few empty galvanized buckets stacked by the door, the street lights just coming on, then stands under the shop awning looking at his phone with his reading glasses on. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition.",
+      "motion": "he pulls the metal shutter down with a hook, then lowers his glasses and taps his phone once, unhurried",
+      "move": "static",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        1901,
+        1902,
+        1903,
+        1904
+      ],
+      "pick": null,
+      "_personaje": "florista",
+      "insert_despues": "I · MyTokenPay: retiro del día a su cuenta en lempiras (pantalla real)",
+      "_nota": "La puerta de salida: el jurado de Lima dijo «ninguno me muestra a alguien sacando su plata». Aquí se ve, sin decir el verbo."
     },
     {
       "id": "20_sofa_noche",

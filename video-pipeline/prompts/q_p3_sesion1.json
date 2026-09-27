@@ -1,7 +1,7 @@
 {
  "version": 1,
  "defaults": {},
- "_nota": "Sesion 1 de «Un martes»: casting (16) + stills de los 22 planos (88) + dos pruebas de video del plano 02 (i2v desde su still 01, y t2v) a 124 fotogramas. Al acabar la cola el pod espera ESPERA_MIN y se apaga solo.",
+ "_nota": "Sesion 1 de «Un martes»: casting (16) + stills de los 23 planos (92) + dos pruebas de video del plano 02 (i2v desde su still 01, y t2v) a 124 fotogramas. Al acabar la cola el pod espera ESPERA_MIN y se apaga solo.",
  "jobs": [
   {
    "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts",
@@ -1280,6 +1280,62 @@
   {
    "id": "still_19_camion_sale_04",
    "prompt": "A white box truck loaded with rolls of fabric pulls out through the open metal gate of a textile warehouse onto a dusty road lined with trees, late afternoon golden side light, a man in a navy cap closing the gate behind it. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+   "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts",
+   "seed": 1003,
+   "workflow": "workflows/h3_calidad_api.json",
+   "width": 720,
+   "height": 1280,
+   "steps": 28,
+   "cfg": 3.5,
+   "duration_s": 5,
+   "fps": 1,
+   "retries": 1
+  },
+  {
+   "id": "still_19b_florista_cierra_01",
+   "prompt": "a 64 year old Central American man with a grey mustache, thick forearms and a dark green canvas apron with no lettering, reading glasses pushed up on his forehead. At dusk he pulls down the corrugated metal shutter of his small flower shop, a few empty galvanized buckets stacked by the door, the street lights just coming on, then stands under the shop awning looking at his phone with his reading glasses on. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+   "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts",
+   "seed": 1000,
+   "workflow": "workflows/h3_calidad_api.json",
+   "width": 720,
+   "height": 1280,
+   "steps": 28,
+   "cfg": 3.5,
+   "duration_s": 5,
+   "fps": 1,
+   "retries": 1
+  },
+  {
+   "id": "still_19b_florista_cierra_02",
+   "prompt": "a 64 year old Central American man with a grey mustache, thick forearms and a dark green canvas apron with no lettering, reading glasses pushed up on his forehead. At dusk he pulls down the corrugated metal shutter of his small flower shop, a few empty galvanized buckets stacked by the door, the street lights just coming on, then stands under the shop awning looking at his phone with his reading glasses on. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+   "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts",
+   "seed": 1001,
+   "workflow": "workflows/h3_calidad_api.json",
+   "width": 720,
+   "height": 1280,
+   "steps": 28,
+   "cfg": 3.5,
+   "duration_s": 5,
+   "fps": 1,
+   "retries": 1
+  },
+  {
+   "id": "still_19b_florista_cierra_03",
+   "prompt": "a 64 year old Central American man with a grey mustache, thick forearms and a dark green canvas apron with no lettering, reading glasses pushed up on his forehead. At dusk he pulls down the corrugated metal shutter of his small flower shop, a few empty galvanized buckets stacked by the door, the street lights just coming on, then stands under the shop awning looking at his phone with his reading glasses on. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+   "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts",
+   "seed": 1002,
+   "workflow": "workflows/h3_calidad_api.json",
+   "width": 720,
+   "height": 1280,
+   "steps": 28,
+   "cfg": 3.5,
+   "duration_s": 5,
+   "fps": 1,
+   "retries": 1
+  },
+  {
+   "id": "still_19b_florista_cierra_04",
+   "prompt": "a 64 year old Central American man with a grey mustache, thick forearms and a dark green canvas apron with no lettering, reading glasses pushed up on his forehead. At dusk he pulls down the corrugated metal shutter of his small flower shop, a few empty galvanized buckets stacked by the door, the street lights just coming on, then stands under the shop awning looking at his phone with his reading glasses on. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
    "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts",
    "seed": 1003,
    "workflow": "workflows/h3_calidad_api.json",

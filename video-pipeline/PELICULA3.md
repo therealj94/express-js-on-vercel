@@ -1,7 +1,11 @@
 # Película 3 — «Un martes»
 
+> **Se rueda ya; se publica escena por escena cuando cada cosa funcione con
+> gente real.** Las condiciones están en `ECOSISTEMA_MERCADEO.md` §5. Hoy solo
+> el cierre (comprobante + ordenscan) es publicable tal cual.
+
 **27-sep-2026.** Guion y plan de rodaje. Planos: `prompts/pelicula3_un_martes.json`
-(lint: 0 PARA). Cola de la primera sesión: `prompts/q_p3_sesion1.json` (106
+(lint: 0 PARA). Cola de la primera sesión: `prompts/q_p3_sesion1.json` (110
 trabajos). Se rueda en AWS Mumbai cuando llegue el cupo Spot (`AWS.md`).
 
 ---
@@ -27,10 +31,11 @@ proveedor— es la vida que pasa entre esas dos notas.
 
 | Hora | Qué pasa | Qué se usa (pantalla real) |
 |---|---|---|
-| **6:40** | La hija manda una nota de voz: le cobraron la renta, y los vuelos de diciembre están baratos. Lucía, con el café, le manda el dinero y compra el boleto para que vuelva en diciembre. | Veta Wallet: envío a otro país · Tarjeta Visa virtual en línea |
+| **6:40** | La hija manda una nota de voz: le cobraron la renta, y fijate que los vuelos de diciembre están baratos. Lucía, con el café, le manda el dinero y compra el boleto para que vuelva en diciembre. | Veta Wallet: envío a otro país · Tarjeta Visa virtual en línea |
 | **10:15** | Pasa por la floristería del barrio por girasoles para el cumpleaños de una amiga. Paga con el teléfono; al florista le suena el suyo y asiente. | MyTokenPay: pagar con QR · panel del comercio: cobro recibido |
-| **13:30** | Almuerzo de cumpleaños, cuatro amigos, risa. Llega la cuenta y cuatro manos saltan a la vez. Cada uno paga su parte con su QR. «¡Ya no hay “te lo paso luego”!». El dueño levanta dos dedos desde la caja. | MyTokenPay: dividir cuenta, un QR por persona · cobro completo |
-| **15:40** | En el taller, entre rollos de tela, llama el proveedor de otro país: el camión sale a las cuatro; si no le entra el pago hoy, la tela llega hasta la otra semana. Lucía paga ahí mismo. Corte a la bodega: *«…Ya. Ya me cayó. ¡Súbanla!»*. El camión sale. | Veta Wallet: pago al proveedor; comprobante con hora y comisión |
+| **13:30** | Almuerzo de cumpleaños, cuatro amigos, risa. Llega la cuenta y cuatro manos saltan a la vez. Cada uno paga su parte con su QR. «¡Ya no hay “te lo paso luego”!». El amigo que nunca lo ha usado pregunta, fuera de cuadro: «¿Y cómo sé que le llegó?». Lucía le gira el teléfono con el comprobante, y el dueño levanta dos dedos desde la caja. | MyTokenPay: dividir cuenta, un QR por persona · cobro completo |
+| **15:40** | En el taller, entre rollos de tela, llama el proveedor de otro país: el camión sale a las cuatro; si no le entra el pago hoy, la tela llega hasta la otra semana. Lucía paga ahí mismo. Corte a la bodega: el proveedor no confía, **mira**: *«…Aquí lo estoy viendo. Ya me cayó. ¡Súbanla!»*. El camión sale. | Veta Wallet: pago al proveedor; comprobante con hora |
+| **18:30** | El florista baja la cortina del local y, bajo el alero, pasa lo del día a su cuenta en lempiras. Nadie lo dice: se ve. | MyTokenPay: retiro a moneda local |
 | **21:10** | Sofá, zapatos fuera. Nota de voz de la hija, en su cuarto con una fecha marcada en el calendario: *«Ya pagué la renta. ¡Llego el dieciocho! ¿Cómo te fue hoy?»*. Lucía abre el historial: el día entero en cinco líneas. Escribe: **«Bien, mija. Un martes.»** | Historial del día |
 
 **Cierre:** *Orden Global. Un sistema financiero que se puede comprobar.* ·
@@ -38,6 +43,17 @@ proveedor— es la vida que pasa entre esas dos notas.
 
 **Duración:** ~80 s en vertical 9:16. De ahí sale un corte de 30 s para
 anuncios, con el almuerzo y la llamada.
+
+### Por qué el escéptico y el florista
+
+La prueba de público dio la clave de todo: *«yo no voy a ser el primer
+tonto»*. La confianza con el dinero aquí es social. Por eso en la película
+**nadie es el primero**: el florista y el restaurante ya cobran así, las amigas
+ya lo usan, y la única duda en voz alta (*«¿y cómo sé que le llegó?»*) se
+contesta como promete la marca: enseñando el comprobante, no pidiendo
+confianza. Y el jurado de Lima pidió ver *«a alguien sacando su plata»*: el
+florista lo hace al cerrar, sin que nadie diga el verbo, que además está
+vetado.
 
 ### Nadie habla a cámara
 
@@ -94,8 +110,8 @@ baja**, y sin cara de alegría al mirarla.
 
 | Pieza | Cómo | Coste |
 |---|---|---|
-| 22 planos humanos | MiniMax H3 en AWS, still → vídeo (i2v) | GPU |
-| Pantallas A–H | **Capturas de las apps reales** con cuentas demo, igual que el tráiler de MyTokenPay. Nunca generadas: el modelo inventa letras | 0 |
+| 23 planos humanos | MiniMax H3 en AWS, still → vídeo (i2v) | GPU |
+| Pantallas A–I | **Capturas de las apps reales** con cuentas demo, igual que el tráiler de MyTokenPay. Nunca generadas: el modelo inventa letras | 0 |
 | Voces | ElevenLabs: Lucía, la hija, el proveedor, la amiga. Diseñadas, no de biblioteca | créditos EL |
 | Música | Compuesta aquí (`musica_cine.py`), sin licencias | 0 |
 | Rótulos de hora | PNG con Pillow (no hay `drawtext`) | 0 |
@@ -131,9 +147,9 @@ sesión 1 no genera la película: genera **lo necesario para decidir**.
 
 ### Sesión 1 — casting, stills y la prueba que decide el método (~3 h)
 
-`prompts/q_p3_sesion1.json`, 106 trabajos:
+`prompts/q_p3_sesion1.json`, 110 trabajos:
 - **Casting:** 8 Lucías, 4 hijas, 4 proveedores.
-- **Stills:** los 22 planos × 4 opciones.
+- **Stills:** los 23 planos × 4 opciones.
 - **La prueba:** el plano 02 dos veces a 124 fotogramas: desde su still (i2v)
   y desde texto (t2v, el camino probado).
 
@@ -147,8 +163,8 @@ qué still de cada plano. Y viendo la prueba decidimos el método de la sesión 
 
 ### Sesión 2 — la película a calidad (~9 h, desde la caché)
 
-22 planos × 2 semillas, y × 3 en los cuatro que sostienen la historia (02, 11,
-15 y 22): 48 clips. Tope `--horas 10`. Mientras corre, aquí se hacen las
+23 planos × 2 semillas, y × 3 en los cuatro que sostienen la historia (02, 11,
+15 y 22): 50 clips. Tope `--horas 10`. Mientras corre, aquí se hacen las
 capturas de pantalla, las voces y la música. No hace falta esperar a la GPU.
 
 ### Sesión 3 — retomas (~1–2 h)
@@ -208,6 +224,7 @@ a uno), y el siguiente `create` retoma sin repetirlos.
 | `HF_TOKEN` con escritura | José | Sesión 1 |
 | ¿D02 aprobada? ¿La comisión se puede enseñar? | José | Solo el inserto G |
 | ¿Qué es VICO? ¿Entra la inversión? | José + legal | Solo la escena opcional |
-| ¿El envío a otro país está en producción en Veta Wallet? ¿A qué países? | José | Inserto A y G |
-| Capturas A–H de las apps reales | aquí, sin GPU | Montaje |
+| El envío a otro país existe como transferencia de ORIGEN, pero **nadie puede pasarlo a moneda local fuera de Honduras** (y el retiro es manual, solo lempiras). ¿Cuándo? | José | Publicar 6:40 y 15:40 |
+| Capturas A–I de las apps reales | aquí, sin GPU, **cuando cada pantalla funcione de verdad** | Montaje |
+| Que cada escena sea verdad para gente real | el equipo | **Publicar** (ver `ECOSISTEMA_MERCADEO.md` §5) |
 | Voces y música | aquí, sin GPU | Montaje |

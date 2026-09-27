@@ -46,7 +46,7 @@
       ],
       "pick": null,
       "_personaje": "lucia",
-      "audio_fuera": "Nota de voz de la hija: «Ma, buenos días… ya me cobraron la renta de este mes. Y ¿viste los vuelos de diciembre? Todavía están baratos.»",
+      "audio_fuera": "Nota de voz de la hija: «Ma, buen día… ya me cobraron la renta de este mes. Y fijate que los vuelos de diciembre todavía están baratos.»",
       "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
     },
     {
@@ -252,6 +252,7 @@
       ],
       "pick": null,
       "_personaje": "dueno",
+      "audio_fuera": "Amigo (fuera de cuadro, escéptico): «¿Y cómo sé que le llegó?» — Lucía le gira el teléfono con el comprobante; el dueño levanta dos dedos desde la caja.",
       "insert_despues": "F · Panel del comercio: la mesa completa, cobrado (pantalla real)",
       "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
     },
@@ -346,7 +347,7 @@
       ],
       "pick": null,
       "_personaje": "proveedor",
-      "audio_fuera": "Proveedor: «…Ya. Ya me cayó. ¡Súbanla!»",
+      "audio_fuera": "Proveedor: «…Aquí lo estoy viendo. Ya me cayó. ¡Súbanla!»",
       "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
     },
     {
@@ -364,6 +365,26 @@
         1904
       ],
       "pick": null,
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "19b_florista_cierra",
+      "escena": "4b · 18:30",
+      "still": "a 64 year old Central American man with a grey mustache, thick forearms and a dark green canvas apron with no lettering, reading glasses pushed up on his forehead. At dusk he pulls down the corrugated metal shutter of his small flower shop, a few empty galvanized buckets stacked by the door, the street lights just coming on, then stands under the shop awning looking at his phone with his reading glasses on. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "he pulls the metal shutter down with a hook, then lowers his glasses and taps his phone once, unhurried, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "static",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        1901,
+        1902,
+        1903,
+        1904
+      ],
+      "pick": null,
+      "_personaje": "florista",
+      "insert_despues": "I · MyTokenPay: retiro del día a su cuenta en lempiras (pantalla real)",
+      "_nota": "La puerta de salida: el jurado de Lima dijo «ninguno me muestra a alguien sacando su plata». Aquí se ve, sin decir el verbo.",
       "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
     },
     {
