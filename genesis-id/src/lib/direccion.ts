@@ -19,6 +19,8 @@ export const CODIGOS_VINCULO = {
   SIN_DIRECCION: 'VINCULO_SIN_DIRECCION',
   DIRECCION_INVALIDA: 'VINCULO_DIRECCION_INVALIDA',
   // Solo lo da Genesis ID: el puente no sabe de quién es cada dirección.
+  // La dirección ya está atada a OTRA identidad (409). Un solo código para las
+  // dos correcciones que llegaron a la vez (genesis-id-v03 y segtrans).
   DIRECCION_AJENA: 'VINCULO_DIRECCION_AJENA',
 } as const
 

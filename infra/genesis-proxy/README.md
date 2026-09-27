@@ -53,8 +53,17 @@ app.use(['/genesis/biometria', '/genesis/documento/leer'], parserRostro)
 
 // El middleware tiene que dejar en `req.usuario` al menos { id, email }.
 // Si la app maneja dirección on-chain, añadir `address`: el puente la usa para
-// atar la billetera al GID y que ordenscan pueda resolverla.
-app.use('/genesis', routerGenesis({ exigirSesion: verificarToken }))
+// atar la billetera al GID y que ordenscan pueda resolverla (del cuerpo de la
+// petición no la toma nunca).
+//
+// `correoVerificado(req)`: true solo si la app COMPROBÓ que el correo de esa
+// sesión es de quien la usa. Sin ella, el puente no ata la cuenta ni pide pases
+// de SSO: Genesis ID toma ese correo como prueba de que la persona es la dueña
+// de la identidad.
+app.use('/genesis', routerGenesis({
+  exigirSesion: verificarToken,
+  correoVerificado: (req) => req.usuario.correoConfirmado === true,
+}))
 ```
 
 Si el parser general va primero, la verificación de identidad muere con un 413

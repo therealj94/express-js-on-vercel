@@ -6,7 +6,7 @@
 // Reescribirlo en TypeScript fue justamente lo que dejó a MyTokenPay con un
 // puente distinto de los otros; sus tipos viven aparte, en este archivo.
 
-import type { RequestHandler, Router } from 'express'
+import type { Request, RequestHandler, Router } from 'express'
 
 /** Parser JSON ancho, solo para las rutas que reciben fotografías. */
 export declare const parserRostro: RequestHandler
@@ -18,13 +18,19 @@ export declare function genesisConfigurado(): boolean
 export declare const CODIGOS_VINCULO: Readonly<{
   SIN_DIRECCION: 'VINCULO_SIN_DIRECCION'
   DIRECCION_INVALIDA: 'VINCULO_DIRECCION_INVALIDA'
+  DIRECCION_SIN_PRUEBA: 'VINCULO_DIRECCION_SIN_PRUEBA'
+}>
+
+/** Los códigos con que el puente se niega a actuar sobre un correo sin comprobar. */
+export declare const CODIGOS_CORREO: Readonly<{
+  NO_VERIFICADO: 'CORREO_NO_VERIFICADO'
+  GID_AJENO: 'SESION_GID_AJENO'
 }>
 
 /** Los códigos propios del puente (Genesis ID no los conoce). */
 export declare const CODIGOS_PUENTE: Readonly<{
   CUENTA_NO_ATADA: 'CUENTA_NO_ATADA'
   VINCULO_APAGADO: 'VINCULO_APAGADO'
-  DIRECCION_NO_PROBADA: 'VINCULO_DIRECCION_NO_PROBADA'
 }>
 
 /** Apps cuyo vínculo trae una dirección custodiada por la app (no tecleada por el cliente). */
@@ -41,7 +47,8 @@ export declare function normalizarDireccion(valor: unknown): string | null
 
 /**
  * El router `/genesis/*`. `exigirSesion` tiene que dejar en `req.usuario` al
- * menos `{ id, email }`, y `address` si la app conoce la billetera del usuario.
+ * menos `{ id, email }`, `address` si la app conoce la billetera del usuario y
+ * `gid` si la sesión probó (o sabe) a qué GID está atada la cuenta.
  *
  * `exigirGidDeSesion`: la sesión de la app no prueba el correo, así que una
  * identidad que ya tiene GID solo la toca una sesión con `req.usuario.gid`
@@ -49,9 +56,14 @@ export declare function normalizarDireccion(valor: unknown): string | null
  *
  * `vinculoActivo`: si `/vincular` puede atar cuentas; se pregunta en cada
  * petición. Por omisión, sí.
+ *
+ * `correoVerificado(req)` dice si la app comprobó que el correo de ESA sesión es
+ * de quien la usa. Sin ella se da por no comprobado: no hay `/vincular` ni
+ * `/sso/token`, ni escrituras sobre una identidad que ya respondió por alguien.
  */
 export declare function routerGenesis(opciones: {
   exigirSesion: RequestHandler
   exigirGidDeSesion?: boolean
   vinculoActivo?: () => boolean
+  correoVerificado?: (req: Request) => boolean | Promise<boolean>
 }): Router

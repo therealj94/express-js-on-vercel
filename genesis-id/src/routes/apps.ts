@@ -425,13 +425,19 @@ appsRouter.get('/identidades/por-gid/:gid', limite(120), exigeApp('gid.perfil'),
    src/migraciones/v03-estados-y-vinculos.ts). Se comprueba al final, después del
    bloqueo y del correo, para que esas respuestas no cambien.
 
-   Y UNA DIRECCIÓN, UNA IDENTIDAD. Si la billetera ya está atada a OTRA
-   identidad, 409 `VINCULO_DIRECCION_AJENA`: si no, `GET /direccion/:dir`
-   —lo que consulta el explorador— se la atribuía a quien tuviera la identidad
-   más vieja, y el límite de exposición la contaría en dos GID. Lo que ya estaba
-   compartido de antes no se rompe: la identidad que ya tenía la dirección
-   puede volver a vincularla. GENESIS_VINCULO_DIRECCION_AJENA=permitir es la
-   válvula de emergencia, como la del correo: pasa, pero queda anotado. */
+   UNA DIRECCIÓN, UNA IDENTIDAD. Si la billetera ya está atada a OTRA
+   identidad, 409 `VINCULO_DIRECCION_AJENA` y no se ata. Sin esto, cualquiera
+   con una identidad verificada ataba a su GID la billetera de otra persona (o
+   la de una tesorería, o la de una estafa), `GET /direccion/:dir` —lo que
+   pinta OrdenScan— la enseñaba como «verificada, GID tal» y, si su identidad
+   era más antigua, la dirección de la dueña pasaba a resolverse a su GID; y
+   el límite de exposición por GID (v0.3 §8.5) se hacía con direcciones
+   ajenas. Volver a atar la misma dirección a la MISMA identidad sigue
+   valiendo, y lo que ya estaba compartido de antes no se rompe: la identidad
+   que ya tenía la dirección puede volver a vincularla (una dirección en dos
+   identidades no es de nadie en `/direccion/:dir`). Válvula de emergencia,
+   como la del correo: GENESIS_VINCULO_DIRECCION_AJENA=permitir (o
+   GENESIS_VINCULO_DIRECCION_UNICA=false) deja pasar, y queda anotado. */
 appsRouter.post('/vinculos', limite(60), exigeApp('vinculo.crear'), async (req, res) => {
   const { identidadId, cuenta, direccion, email } = req.body ?? {}
   if (!identidadId || !cuenta) {
@@ -477,7 +483,9 @@ appsRouter.post('/vinculos', limite(60), exigeApp('vinculo.crear'), async (req, 
     registrar(`app:${req.app_ecosistema!.clave}`, 'vinculo.direccionAjena', objetivo.id, {
       cuenta: String(cuenta), direccion: billetera, otraIdentidad: otra.id,
     })
-    if (process.env.GENESIS_VINCULO_DIRECCION_AJENA !== 'permitir') {
+    const valvulaAbierta = process.env.GENESIS_VINCULO_DIRECCION_AJENA === 'permitir'
+      || process.env.GENESIS_VINCULO_DIRECCION_UNICA === 'false'
+    if (!valvulaAbierta) {
       return res.status(409).json({
         error: 'Esa dirección de billetera ya está atada a otra identidad',
         codigo: CODIGOS_VINCULO.DIRECCION_AJENA,
@@ -532,7 +540,11 @@ appsRouter.get('/gid/:gid', limite(300), exigeApp('gid.verificar'), async (req, 
 
 /** ¿Hay identidad verificada detrás de esta dirección on-chain? */
 appsRouter.get('/direccion/:direccion', limite(300), exigeApp('gid.verificar'), async (req, res) => {
-  const identidad = ids.porDireccion(req.params.direccion)
+  const todas = ids.identidadesConDireccion(req.params.direccion)
+  // Atada a más de una identidad (datos de antes de exigir una sola): no es de
+  // nadie. Decir la primera era darle la dirección de una persona a otra.
+  if (todas.length > 1) return res.json({ verificada: false, gid: null, ambigua: true })
+  const identidad = todas[0]
   if (!identidad) return res.json({ verificada: false, gid: null })
   const bloq = bloqueada(identidad)
   res.json({ verificada: identidad.estado === 'verificada' && !bloq, bloqueada: bloq, gid: identidad.gid })

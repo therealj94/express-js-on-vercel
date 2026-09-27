@@ -22,12 +22,44 @@ administración invisible para quien no es administrador.
 
 El panel que verifica negocios y paga los retiros usa una cuenta de administrador
 cuya contraseña **no vive en el repositorio**. Se entrega por un canal privado y
-se configura en la variable de entorno del backend en Heroku.
+es la de la variable `ADMIN_PASSWORD` del backend en Heroku (con `ADMIN_EMAIL`).
 
 > **Rotación pendiente (26-sep-2026):** una versión anterior de este archivo
 > publicó la contraseña, que sigue en el historial de git. Hay que cambiarla antes
 > de cualquier uso real (condición de arranque §16 de SFSP v0.3). Es la llave que
 > aprueba comercios y libera dinero.
+
+**Cómo se rota, de verdad.** Hasta el 26-sep-2026 cambiar `ADMIN_PASSWORD` no
+servía de nada: si la cuenta ya existía en Mongo, al arrancar solo se le ponía el
+rol y la contraseña vieja seguía abriendo el panel. Ahora:
+
+1. Se cambia `ADMIN_PASSWORD` en Heroku (el cambio reinicia el dyno).
+2. Al arrancar, si la contraseña guardada no es la de la variable, se reescribe.
+3. Eso deja sin valor **todas** las sesiones del administrador firmadas antes
+   (las sesiones llevan una huella de la contraseña). Hay que volver a entrar.
+4. Comprobar: la contraseña vieja da 401 en `/api/auth/login`; la nueva entra.
+
+Con el despliegue de este cambio, además:
+
+- Las sesiones del administrador firmadas **antes** del despliegue dejan de valer
+  aunque no se rote nada (se firmaron sin huella y la contraseña estuvo
+  publicada): el administrador tiene que entrar una vez más. Las de las demás
+  cuentas siguen valiendo.
+- `/api/auth/forgot-password` **nunca** entrega el código de reseteo del
+  administrador, y `/api/auth/reset-password` no le cambia la contraseña: la
+  suya se rota solo por la variable.
+- El código de reseteo ya no sirve como sesión, sirve una sola vez y, al usarlo,
+  cierra las sesiones anteriores de esa cuenta.
+
+**Lo que sigue abierto (decisión de José).** Para las demás cuentas, el código
+de reseteo se sigue devolviendo en la respuesta (`demoResetToken`), porque la
+app móvil publicada completa así el «olvidé mi contraseña» y este backend no
+envía correos. Quiere decir que quien sepa el correo de un comercio puede
+cambiarle la contraseña. `MTP_OCULTAR_TOKEN_RESETEO=si` lo apaga para todos
+(la app entonces solo dice «revisá tu correo» y el reseteo deja de funcionar
+hasta que haya envío de correo, por ejemplo SES como Veta). El alta tampoco
+verifica el correo; por eso el puente con Genesis ID solo ata cuentas y pide
+pases de SSO en sesiones abiertas con Genesis ID (ver `src/routes/genesis.ts`).
 
 ## Cómo probarlo, de punta a punta
 
@@ -91,8 +123,11 @@ que ya tiene GID si la sesión nació de un pase (`/api/auth/sso`, que firma el 
 en el token); con contraseña se ve solo el estado del trámite. Un trámite a
 medias (sin GID) se sigue llevando igual. Atar la cuenta a Genesis ID
 (`/genesis/vincular` y el vínculo de `/api/auth/sso`) va **apagado** salvo
-`MTP_VINCULO_GENESIS=1`, y `/genesis/vincular` solo acepta la dirección que
-Genesis ya conoce de Veta Wallet para esa identidad.
+`MTP_VINCULO_GENESIS=1`. `/genesis/vincular` no ata ninguna dirección que
+llegue en la petición (422 `VINCULO_DIRECCION_SIN_PRUEBA`): el vínculo se hace
+en `/api/auth/sso`, con la dirección que Veta Wallet custodia para esa identidad.
+El puente aplica además `correoVerificado` (integración 26-sep): el correo solo
+está comprobado en la sesión que nació del pase, para el GID de la cuenta.
 
 ## Base de datos: hecho ✅
 

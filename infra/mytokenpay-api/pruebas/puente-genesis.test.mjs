@@ -13,6 +13,13 @@
 //
 // Y que el vínculo MyTokenPay→Genesis va APAGADO salvo MTP_VINCULO_GENESIS=1.
 //
+// Integración 26-sep con la corrección de seguridad transversal: el puente
+// aplica además `correoVerificado` (pruebas/puente-genesis-correo.test.mjs) y
+// la dirección del vínculo sale SOLO de la sesión: `/genesis/vincular` no ata
+// una dirección del cuerpo (422 VINCULO_DIRECCION_SIN_PRUEBA), ni la que
+// custodia Veta; MyTokenPay ata en `/api/auth/sso`. Y un reseteo de contraseña
+// cierra las sesiones anteriores (pruebas/cuentas.test.mjs).
+//
 // Levanta el API de verdad DOS veces (almacén en memoria): con el vínculo
 // apagado, que es como se despliega, y encendido. Las dos apuntan a un
 // Genesis ID DE MENTIRA en 127.0.0.1. Ninguna red ni clave de verdad.
@@ -241,11 +248,12 @@ test('encendido: cuenta con el correo de una identidad ajena: ni vincula, ni sac
     d: a('/api/v1/identidades/idn-victima/datos'), m: a('/api/v1/movimientos'),
   }
 
-  // Ni con la dirección que Genesis sí conoce de la víctima.
+  // Ni con la dirección que Genesis sí conoce de la víctima: una dirección del
+  // cuerpo no se usa nunca (y Genesis ni se entera).
   for (const direccion of [AJENA, VETA_VICTIMA]) {
     const v = await encendido('/genesis/vincular', { metodo: 'POST', token: t, cuerpo: { direccion } })
-    assert.equal(v.estado, 403, v.texto)
-    assert.equal(v.datos.codigo, CUENTA_NO_ATADA)
+    assert.equal(v.estado, 422, v.texto)
+    assert.equal(v.datos.codigo, 'VINCULO_DIRECCION_SIN_PRUEBA')
   }
   const s = await encendido('/genesis/sso/token', { metodo: 'POST', token: t, cuerpo: {} })
   assert.equal(s.estado, 403)
@@ -307,15 +315,20 @@ test('encendido: la víctima entra por SSO y adopta esa cuenta; la contraseña d
   }
   const pases = a('/api/v1/sso/token')
   for (const t of tokens) {
+    // El reseteo cierra las sesiones anteriores (401); las que siguen vivas no
+    // llevan el GID (403 CUENTA_NO_ATADA). Ninguna saca un pase.
     const s = await encendido('/genesis/sso/token', { metodo: 'POST', token: t, cuerpo: {} })
-    assert.equal(s.estado, 403, s.texto)
-    assert.equal(s.datos.codigo, CUENTA_NO_ATADA)
-    assert.equal((await encendido('/genesis/vincular', { metodo: 'POST', token: t, cuerpo: { direccion: VETA_VICTIMA } })).estado, 403)
+    assert.ok([401, 403].includes(s.estado), s.texto)
+    if (s.estado === 403) assert.equal(s.datos.codigo, CUENTA_NO_ATADA)
+    assert.notEqual((await encendido('/genesis/vincular', { metodo: 'POST', token: t, cuerpo: { direccion: VETA_VICTIMA } })).estado, 200)
   }
   assert.equal(a('/api/v1/sso/token'), pases)
 
-  // La sesión que nació del pase, en cambio, sí.
-  const s = await encendido('/genesis/sso/token', { metodo: 'POST', token: r.datos.token, cuerpo: {} })
+  // La sesión que nace del pase, en cambio, sí (una nueva: el reseteo de arriba
+  // cerró también la anterior).
+  const r2 = await encendido('/api/auth/sso', { metodo: 'POST', cuerpo: { token: 'pase-victima', email: 'victima@prueba.test' } })
+  assert.equal(r2.estado, 200, r2.texto)
+  const s = await encendido('/genesis/sso/token', { metodo: 'POST', token: r2.datos.token, cuerpo: {} })
   assert.equal(s.estado, 200, s.texto)
   assert.equal(s.datos.token, 'pase-emitido')
   assert.deepEqual(ultimo('/api/v1/sso/token').cuerpo, { gid: 'GID-VICTIMA', cuenta: idCuenta })
@@ -328,35 +341,30 @@ test('encendido: /vincular con la sesión del pase: sin dirección 422, inválid
   const sin = await encendido('/genesis/vincular', { metodo: 'POST', token, cuerpo: {} })
   assert.equal(sin.estado, 422)
   assert.equal(sin.datos.codigo, 'VINCULO_SIN_DIRECCION')
+  // Del cuerpo, ni bien ni mal escrita: la dirección solo sale de la sesión.
   const mala = await encendido('/genesis/vincular', { metodo: 'POST', token, cuerpo: { direccion: '0x1234' } })
   assert.equal(mala.estado, 422)
-  assert.equal(mala.datos.codigo, 'VINCULO_DIRECCION_INVALIDA')
+  assert.equal(mala.datos.codigo, 'VINCULO_DIRECCION_SIN_PRUEBA')
   assert.equal(a('/api/v1/vinculos'), antes)
 })
 
-test('encendido: /vincular solo ata una dirección que Genesis ya conoce de Veta para esa identidad', async () => {
+test('encendido: /vincular no ata ninguna dirección del cuerpo, tampoco la que custodia Veta; el vínculo se hace en /auth/sso', async () => {
   const r = await encendido('/api/auth/sso', { metodo: 'POST', cuerpo: { token: 'pase-victima', email: 'victima@prueba.test' } })
   const token = r.datos.token
-  const antes = a('/api/v1/vinculos')
-
-  // Una dirección cualquiera —aunque esté en OTRO vínculo de la identidad, que
-  // no es custodio—: 422 y Genesis no recibe nada.
-  const ajena = await encendido('/genesis/vincular', { metodo: 'POST', token, cuerpo: { direccion: AJENA } })
-  assert.equal(ajena.estado, 422, ajena.texto)
-  assert.equal(ajena.datos.codigo, 'VINCULO_DIRECCION_NO_PROBADA')
-  assert.equal(a('/api/v1/vinculos'), antes)
-
-  // La de su Veta, escrita como sea: se ata, normalizada, con la cuenta y el
-  // correo de la sesión (no los del cuerpo).
-  const ok = await encendido('/genesis/vincular', {
-    metodo: 'POST', token,
-    cuerpo: { direccion: '0x52908400098527886E0F7030069857D2E4169EE7', cuenta: 'la-de-otro', email: 'otro@x.test' },
-  })
-  assert.equal(ok.estado, 200, ok.texto)
+  // /auth/sso (encendido) ya ató con la dirección que custodia Veta.
   const v = ultimo('/api/v1/vinculos')
   assert.equal(v.cuerpo.cuenta, idCuenta)
   assert.equal(v.cuerpo.email, 'victima@prueba.test')
   assert.equal(v.cuerpo.direccion, VETA_VICTIMA)
   assert.equal(v.clave, CLAVE)
-  assert.ok(!ok.texto.includes(CLAVE))
+  const antes = a('/api/v1/vinculos')
+
+  // Por /genesis/vincular, ni una cualquiera ni la de su Veta: 422 y Genesis no recibe nada.
+  for (const direccion of [AJENA, '0x52908400098527886E0F7030069857D2E4169EE7']) {
+    const x = await encendido('/genesis/vincular', { metodo: 'POST', token, cuerpo: { direccion, cuenta: 'la-de-otro', email: 'otro@x.test' } })
+    assert.equal(x.estado, 422, x.texto)
+    assert.equal(x.datos.codigo, 'VINCULO_DIRECCION_SIN_PRUEBA')
+    assert.ok(!x.texto.includes(CLAVE))
+  }
+  assert.equal(a('/api/v1/vinculos'), antes)
 })

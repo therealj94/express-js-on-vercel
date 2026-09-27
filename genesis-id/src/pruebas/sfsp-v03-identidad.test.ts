@@ -265,6 +265,48 @@ describe('El vínculo exige dirección de billetera', () => {
     assert.equal(ids.porDireccion(otra)?.id, idn)
   })
 
+  test('una dirección de OTRA identidad: 409 VINCULO_DIRECCION_AJENA y no se ata', async () => {
+    // La dueña: verificada, con su billetera ya atada desde su app.
+    const duena = verificada('duena-dir@prueba.local', '2099-12-31')
+    const suya = '0xdbF03B407c01E7cD3CBea99509d93f8DDDC8C6FB' // del ejemplo de la EIP-55
+    ids.vincular(duena.id, 'veta-wallet', 'cuenta-duena', suya.toLowerCase(), 'prueba')
+    // La identidad de este bloque (`idn`) se creó ANTES que la dueña: sin el
+    // 409, atar ahí la misma dirección hacía que `/direccion` la resolviera a
+    // `idn` —la más antigua— en vez de a su dueña.
+    const r = await vincular({ direccion: suya })
+    assert.equal(r.estado, 409, JSON.stringify(r.cuerpo))
+    // Un solo código para la misma regla (integración con genesis-id-v03).
+    assert.equal(r.cuerpo.codigo, 'VINCULO_DIRECCION_AJENA')
+    assert.ok(!ids.porId(idn)!.vinculos.some((v) => v.direccion === suya.toLowerCase()))
+    const d = await pedir(`/api/v1/direccion/${suya}`, { headers: conClave() })
+    assert.equal(d.cuerpo.gid, duena.gid, 'la dirección sigue siendo de su dueña')
+
+    // Volver a atar la misma dirección a la MISMA identidad sigue valiendo.
+    const otra = await pedir('/api/v1/vinculos', {
+      method: 'POST', headers: conClave(),
+      body: JSON.stringify({ identidadId: duena.id, cuenta: 'cuenta-duena', email: 'duena-dir@prueba.local', direccion: suya }),
+    })
+    assert.equal(otra.estado, 200, JSON.stringify(otra.cuerpo))
+  })
+
+  test('la válvula GENESIS_VINCULO_DIRECCION_UNICA=false deja pasar, anotado', async () => {
+    const duena = verificada('valvula-dir@prueba.local', '2099-12-31')
+    const suya = '0x' + 'ab'.repeat(20)
+    ids.vincular(duena.id, 'veta-wallet', 'cuenta-valvula', suya, 'prueba')
+    process.env.GENESIS_VINCULO_DIRECCION_UNICA = 'false'
+    try {
+      const r = await vincular({ direccion: suya })
+      assert.equal(r.estado, 200, JSON.stringify(r.cuerpo))
+    } finally {
+      delete process.env.GENESIS_VINCULO_DIRECCION_UNICA
+    }
+    // Y ahora la dirección está en dos identidades: no se le da a ninguna.
+    assert.equal(ids.identidadesConDireccion(suya).length, 2)
+    assert.equal(ids.porDireccion(suya), undefined)
+    const d = await pedir(`/api/v1/direccion/${suya}`, { headers: conClave() })
+    assert.deepEqual(d.cuerpo, { verificada: false, gid: null, ambigua: true })
+  })
+
   test('la regla es la misma que la del puente de las apps', () => {
     assert.equal(normalizarDireccion(DIR_EIP55), DIR_MINUS)
     assert.equal(normalizarDireccion(DIR_EIP55.toUpperCase().replace('0X', '0x')), DIR_MINUS)

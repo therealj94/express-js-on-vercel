@@ -38,7 +38,7 @@
 //   app.use(['/genesis/biometria', '/genesis/foto', '/genesis/documento-fotos', '/genesis/documento/leer'], parserRostro)   // ANTES del parser general
 //   app.use(bodyParser.json({ limit: '100kb' }))  // el de siempre, sin tocar
 //   ...
-//   app.use('/genesis', routerGenesis({ exigirSesion: miMiddlewareDeAuth }))
+//   app.use('/genesis', routerGenesis({ exigirSesion: miMiddlewareDeAuth, correoVerificado: (req) => … }))
 //
 // El orden de esas dos líneas importa y no es un detalle: el cuerpo lo parsea
 // el PRIMER parser que lo alcanza, y los fotogramas del rostro pesan más que
@@ -84,6 +84,47 @@
 // Genesis ID desde `/vincular`. Por omisión sí (Veta). MyTokenPay lo deja
 // APAGADO salvo `MTP_VINCULO_GENESIS=1`, hasta que verifique correos y pueda
 // revocar sesiones.
+//
+// SOBRE `correoVerificado`
+//
+// El puente encuentra la identidad por el CORREO de la sesión, y Genesis ID
+// toma ese correo como la prueba de que la app autenticó a la dueña de la
+// identidad («EL VÍNCULO ES LA LLAVE DEL SSO», genesis-id/src/routes/apps.ts).
+// Esa prueba solo vale si la app comprobó que el correo es de quien lo usa, y
+// no todas lo hacen: el alta de MyTokenPay acepta cualquier correo, y el login
+// de Veta no exige haber pulsado el enlace de confirmación. Con el correo sin
+// comprobar, quien se diera de alta con el de otra persona ataba su cuenta al
+// GID de ella y pedía pases de SSO a su nombre —Ordenex, AuCorp y Ultron los
+// aceptan— o le cambiaba la foto de la credencial.
+//
+// Así que la app dice, petición por petición, si el correo de ESA sesión está
+// comprobado: `correoVerificado(req)` → true/false (o una promesa). Si no se
+// pasa, el puente lo da por NO comprobado. Sin correo comprobado:
+//
+//   · `/vincular` y `/sso/token` no se hacen (403 CORREO_NO_VERIFICADO): son
+//     las que convierten un correo en una llave para las otras apps.
+//   · las rutas del trámite (`/datos`, `/documento*`, `/vivacidad`,
+//     `/biometria`, `/foto`) siguen sirviendo para HACER el trámite, pero no
+//     tocan una identidad que ya respondió por alguien (verificada, vencida o
+//     suspendida, o con GID);
+//   · `/movimientos` no se reporta sobre el GID de esa identidad.
+//
+// Y si la sesión sabe a qué GID está atada la cuenta (`req.usuario.gid`), esas
+// mismas rutas exigen además que el correo lleve a ESE GID y no a otro.
+//
+// LAS DOS GUARDAS JUNTAS (integración 26-sep). `exigirGidDeSesion` y
+// `correoVerificado` responden a lo mismo —el correo de la sesión no prueba
+// quién es— desde dos lados, y se aplican las dos. Orden, cuando las dos niegan:
+// CUENTA_NO_ATADA (la sesión no probó el GID de esa identidad), después
+// CORREO_NO_VERIFICADO y después SESION_GID_AJENO. Una app sin
+// `exigirGidDeSesion` (Veta) recibe el CORREO_NO_VERIFICADO sin que el puente
+// llegue a preguntarle nada a Genesis.
+//
+// LA DIRECCIÓN DEL VÍNCULO sale SOLO de la sesión (la regla más estricta de las
+// dos correcciones). Una dirección que llega en el cuerpo se rechaza con 422
+// VINCULO_DIRECCION_SIN_PRUEBA, también si Genesis la conoce de la identidad:
+// MyTokenPay ata su cuenta en `/api/auth/sso`, con la dirección que custodia
+// Veta para esa identidad, y su app llama a `/genesis/vincular` con `{}`.
 
 import express, { Router } from 'express'
 
@@ -121,10 +162,15 @@ export const genesisConfigurado = () => Boolean(clave())
 // Lo que se guarda es siempre la forma en minúsculas, para que la misma
 // billetera no cuente dos veces por venir escrita de dos maneras.
 
-/** Los códigos con que se rechaza un vínculo. Los mismos que usa Genesis ID. */
+/**
+ * Los códigos con que se rechaza un vínculo. Los dos primeros son los mismos
+ * que usa Genesis ID; `DIRECCION_SIN_PRUEBA` es solo del puente: la dirección
+ * vino en el cuerpo y no de la sesión (ver `/vincular`).
+ */
 export const CODIGOS_VINCULO = Object.freeze({
   SIN_DIRECCION: 'VINCULO_SIN_DIRECCION',
   DIRECCION_INVALIDA: 'VINCULO_DIRECCION_INVALIDA',
+  DIRECCION_SIN_PRUEBA: 'VINCULO_DIRECCION_SIN_PRUEBA',
 })
 
 /** Los códigos propios del puente (Genesis ID no los conoce). */
@@ -133,15 +179,14 @@ export const CODIGOS_PUENTE = Object.freeze({
   CUENTA_NO_ATADA: 'CUENTA_NO_ATADA',
   /** Esta app tiene apagado atar cuentas (`vinculoActivo`). */
   VINCULO_APAGADO: 'VINCULO_APAGADO',
-  /** La dirección la puso el cliente y nada prueba que sea de esta persona. */
-  DIRECCION_NO_PROBADA: 'VINCULO_DIRECCION_NO_PROBADA',
 })
 
 /**
  * Las apps cuyo vínculo trae una dirección que la app CUSTODIA: la saca de su
  * propia sesión (Veta genera y guarda la llave), nunca de lo que teclea el
- * cliente. Solo una dirección que Genesis ya conoce por una de estas, y de la
- * MISMA identidad, se puede atar desde una app que no la tiene en la sesión.
+ * cliente. Una app que no tiene la dirección en la sesión (MyTokenPay) solo
+ * ata —en su `/api/auth/sso`— la que Genesis conoce por una de estas para la
+ * MISMA identidad; `/vincular` no acepta direcciones del cuerpo.
  */
 export const APPS_CUSTODIAS = Object.freeze(['veta-wallet'])
 
@@ -150,6 +195,16 @@ export function mismoGid(a, b) {
   const n = (g) => String(g || '').toUpperCase().replace(/\s/g, '')
   return Boolean(n(a)) && n(a) === n(b)
 }
+
+/** Los códigos con que el puente se niega a actuar sobre un correo que la app no comprobó. */
+export const CODIGOS_CORREO = Object.freeze({
+  NO_VERIFICADO: 'CORREO_NO_VERIFICADO',
+  GID_AJENO: 'SESION_GID_AJENO',
+})
+
+// Los estados en que una identidad ya respondió por alguien: el GID existe y
+// otras apps confían en él. Sin correo comprobado no se escribe sobre ellas.
+const YA_RESPONDIO = new Set(['verificada', 'vencida', 'suspendida'])
 
 // Keccak-256 (el de Ethereum, que NO es el SHA3-256 de `crypto`: cambia el
 // relleno). Va escrito aquí para que este archivo no dependa de ningún paquete
@@ -276,8 +331,11 @@ async function llamar(ruta, opciones = {}) {
  *                           él no se toca una identidad que ya tiene GID
  * @param vinculoActivo      () => boolean: ¿puede esta app atar cuentas desde
  *                           `/vincular`? Se pregunta en cada petición
+ * @param correoVerificado   (req) => boolean | Promise<boolean>: ¿la app comprobó
+ *                           que el correo de esta sesión es de quien la usa? Sin
+ *                           ella, se da por NO comprobado (ver arriba).
  */
-export function routerGenesis({ exigirSesion, exigirGidDeSesion = false, vinculoActivo = () => true } = {}) {
+export function routerGenesis({ exigirSesion, exigirGidDeSesion = false, vinculoActivo = () => true, correoVerificado } = {}) {
   if (typeof exigirSesion !== 'function') {
     throw new Error(
       'routerGenesis necesita el middleware de sesión de la app. Sin él, cualquiera podría ' +
@@ -286,6 +344,9 @@ export function routerGenesis({ exigirSesion, exigirGidDeSesion = false, vinculo
   }
   if (typeof vinculoActivo !== 'function') {
     throw new Error('routerGenesis: vinculoActivo tiene que ser una función que devuelva true o false.')
+  }
+  if (correoVerificado !== undefined && typeof correoVerificado !== 'function') {
+    throw new Error('correoVerificado tiene que ser una función (req) => boolean')
   }
 
   const router = Router()
@@ -297,47 +358,69 @@ export function routerGenesis({ exigirSesion, exigirGidDeSesion = false, vinculo
      `exigirGidDeSesion`, y solo si la identidad ya tiene GID: ver la nota
      «SOBRE exigirGidDeSesion» al principio del archivo. */
   const ajena = (req, idn) => Boolean(exigirGidDeSesion && idn?.gid && !mismoGid(idn.gid, req.usuario.gid))
-  const noAtada = (res) => res.status(403).json({
-    error: 'Esta sesión no está atada a esa identidad de Genesis ID. Entra con tu Genesis ID para usarla aquí.',
-    codigo: CODIGOS_PUENTE.CUENTA_NO_ATADA,
-  })
 
-  /** La identidad del correo de la sesión, o null. */
+  /** ¿Puede esta sesión hablar con la autoridad de su correo? Solo un `true` vale. */
+  async function correoDeFiar(req) {
+    if (!correoVerificado) return false
+    try {
+      return (await correoVerificado(req)) === true
+    } catch {
+      return false
+    }
+  }
+
+  /** La cuenta sabe a qué GID está atada, y el correo lleva a OTRO (o a ninguno). */
+  const gidAjeno = (req, identidad) => Boolean(req.usuario.gid) && !mismoGid(identidad?.gid, req.usuario.gid)
+
+  /**
+   * ¿Puede esta sesión actuar sobre `identidad`? Devuelve null si puede, o el
+   * código con que se le niega (ver «LAS DOS GUARDAS JUNTAS»).
+   */
+  async function sinAutoridad(req, identidad) {
+    if (ajena(req, identidad)) return CODIGOS_PUENTE.CUENTA_NO_ATADA
+    if (!(await correoDeFiar(req))) return CODIGOS_CORREO.NO_VERIFICADO
+    if (gidAjeno(req, identidad)) return CODIGOS_CORREO.GID_AJENO
+    return null
+  }
+
+  const MENSAJES_NEGAR = {
+    [CODIGOS_PUENTE.CUENTA_NO_ATADA]:
+      'Esta sesión no está atada a esa identidad de Genesis ID. Entra con tu Genesis ID para usarla aquí.',
+    [CODIGOS_CORREO.GID_AJENO]: 'Esta cuenta está atada a otra identidad de Genesis ID',
+    [CODIGOS_CORREO.NO_VERIFICADO]:
+      'Esta cuenta todavía no ha comprobado que el correo sea tuyo. Entrá con tu Genesis ID para hacerlo.',
+  }
+  const negar = (res, codigo) => res.status(403).json({ error: MENSAJES_NEGAR[codigo], codigo })
+  const noAtada = (res) => negar(res, CODIGOS_PUENTE.CUENTA_NO_ATADA)
+
+  /** La identidad de ese correo según Genesis ID ({ id, gid, estado, … }), o null. */
   async function identidadDe(email) {
     const r = await llamar(`/api/v1/identidades/por-email/${encodeURIComponent(email)}`)
-    return r.ok ? r.cuerpo?.identidad ?? null : null
+    const identidad = r.ok ? r.cuerpo?.identidad : null
+    return identidad && identidad.id ? identidad : null
   }
 
   /**
-   * El id de la identidad de esta sesión si puede tocarla. Si no, ya respondió
-   * (404 si no existe, 403 CUENTA_NO_ATADA si es ajena) y devuelve null.
+   * La identidad sobre la que va a escribir una ruta del trámite, o null si ya
+   * se contestó (404, o 403 con su código). Mientras la identidad está a medio
+   * trámite —sin GID y sin haber respondido por nadie— se sigue llevando desde
+   * la app, como antes; una que ya respondió por alguien solo la toca una
+   * sesión con autoridad (`sinAutoridad`).
    */
-  async function idPropio(req, res) {
-    const idn = await identidadDe(req.usuario.email)
-    if (!idn?.id) {
+  async function identidadParaEscribir(req, res) {
+    const identidad = await identidadDe(req.usuario.email)
+    if (!identidad) {
       res.status(404).json({ error: 'Identidad no encontrada' })
       return null
     }
-    if (ajena(req, idn)) {
-      noAtada(res)
-      return null
+    if (identidad.gid || YA_RESPONDIO.has(identidad.estado)) {
+      const codigo = await sinAutoridad(req, identidad)
+      if (codigo) {
+        negar(res, codigo)
+        return null
+      }
     }
-    return idn.id
-  }
-
-  /**
-   * ¿Conoce Genesis ID esta dirección por un vínculo de una app custodia de la
-   * MISMA identidad? Es la prueba que se le pide a una dirección que llega del
-   * cliente: sin ella, cualquiera ataría a su GID la billetera de otro —o la
-   * de un cómplice sin KYC— y `GET /api/v1/direccion/:d` (lo que pinta el
-   * explorador, y la base del límite de exposición por GID, v0.3 §8.5) diría
-   * que es suya.
-   */
-  async function direccionProbada(idn, direccion) {
-    if (!idn?.gid) return false
-    const r = await llamar(`/api/v1/gid/${encodeURIComponent(idn.gid)}`)
-    const apps = r.ok && Array.isArray(r.cuerpo?.apps) ? r.cuerpo.apps : []
-    return apps.some((a) => a && APPS_CUSTODIAS.includes(a.app) && normalizarDireccion(a.direccion) === direccion)
+    return identidad
   }
 
   /**
@@ -392,7 +475,7 @@ export function routerGenesis({ exigirSesion, exigirGidDeSesion = false, vinculo
 
   /** Foto de la credencial: la unica imagen que Genesis ID conserva. */
   router.post('/foto', async (req, res) => {
-    const idn = await idPropio(req, res)
+    const idn = (await identidadParaEscribir(req, res))?.id
     if (!idn) return
     responder(res)(await llamar(`/api/v1/identidades/${idn}/foto`, {
       method: 'POST', body: JSON.stringify({ foto: req.body?.foto }),
@@ -401,7 +484,7 @@ export function routerGenesis({ exigirSesion, exigirGidDeSesion = false, vinculo
 
   /** Datos que declara la persona sobre sí misma, incluido el perfil AML. */
   router.post('/datos', async (req, res) => {
-    const idn = await idPropio(req, res)
+    const idn = (await identidadParaEscribir(req, res))?.id
     if (!idn) return
     const b = req.body ?? {}
     responder(res)(await llamar(`/api/v1/identidades/${idn}/datos`, {
@@ -429,7 +512,7 @@ export function routerGenesis({ exigirSesion, exigirGidDeSesion = false, vinculo
    * es un dato personal menos en riesgo por cada usuario.
    */
   router.post('/documento', async (req, res) => {
-    const idn = await idPropio(req, res)
+    const idn = (await identidadParaEscribir(req, res))?.id
     if (!idn) return
     responder(res)(await llamar(`/api/v1/identidades/${idn}/documento`, {
       method: 'POST', body: JSON.stringify({ mrz: req.body?.mrz, textoAnverso: req.body?.textoAnverso }),
@@ -446,7 +529,7 @@ export function routerGenesis({ exigirSesion, exigirGidDeSesion = false, vinculo
    * ahi. Asi que por la web suben las dos caras y las lee una persona.
    */
   router.post('/documento-fotos', async (req, res) => {
-    const idn = await idPropio(req, res)
+    const idn = (await identidadParaEscribir(req, res))?.id
     if (!idn) return
     const r = await llamar(`/api/v1/identidades/${idn}/documento-fotos`, {
       method: 'POST',
@@ -477,7 +560,7 @@ export function routerGenesis({ exigirSesion, exigirGidDeSesion = false, vinculo
    * el límite general.
    */
   router.post('/documento/leer', async (req, res) => {
-    const idn = await idPropio(req, res)
+    const idn = (await identidadParaEscribir(req, res))?.id
     if (!idn) return
     const r = await llamar(`/api/v1/identidades/${idn}/documento/leer`, {
       method: 'POST', body: JSON.stringify({ imagen: req.body?.imagen }),
@@ -495,13 +578,13 @@ export function routerGenesis({ exigirSesion, exigirGidDeSesion = false, vinculo
    * cliente, quien controle el teléfono elegiría la que ya tiene grabada.
    */
   router.post('/vivacidad', async (req, res) => {
-    const idn = await idPropio(req, res)
+    const idn = (await identidadParaEscribir(req, res))?.id
     if (!idn) return
     responder(res)(await llamar(`/api/v1/identidades/${idn}/vivacidad`, { method: 'POST' }))
   })
 
   router.post('/biometria', async (req, res) => {
-    const idn = await idPropio(req, res)
+    const idn = (await identidadParaEscribir(req, res))?.id
     if (!idn) return
     responder(res)(await llamar(`/api/v1/identidades/${idn}/biometria`, {
       method: 'POST',
@@ -517,16 +600,21 @@ export function routerGenesis({ exigirSesion, exigirGidDeSesion = false, vinculo
   /**
    * Ata la cuenta de esta app al GID del usuario, CON su dirección de billetera.
    *
-   * La dirección de la sesión manda: si la app la conoce (Veta la tiene en el
-   * JWT), la del cuerpo no se mira —si no, cualquiera ataría a su GID la
-   * billetera de otro—. Solo una app que no guarda dirección en la sesión
-   * (MyTokenPay) la toma del cuerpo, y entonces tiene que estar PROBADA: que
-   * Genesis ID ya la conozca por el vínculo de una app custodia de la misma
-   * identidad (`direccionProbada`). Sin dirección válida no hay vínculo: ver
-   * `normalizarDireccion`. El formato se comprueba ANTES de hablar con Genesis.
+   * La dirección sale SOLO de la sesión (Veta la tiene en el JWT: la billetera
+   * custodiada que genera su servidor). Una dirección que llega en el cuerpo no
+   * prueba nada —cualquiera escribe la de otro, la de una tesorería o la de una
+   * estafa— y Genesis ID la publicaría como «identidad verificada» de ese GID
+   * (`/api/v1/direccion/:dir`, lo que enseña OrdenScan). Así que se rechaza con
+   * su propio código, aunque Genesis la conozca de la identidad. Ninguna app
+   * publicada la mandaba por necesidad: la de MyTokenPay llama con `{}`, y la
+   * web de Veta manda la de su sesión, que es la que se usa. MyTokenPay ata su
+   * cuenta en `/api/auth/sso` con la dirección que custodia Veta.
    *
-   * Con `exigirGidDeSesion`, además, solo ata una sesión que probó el GID de
-   * esa identidad: atar es lo que después deja pedir pases de SSO a su nombre.
+   * Sin dirección válida no hay vínculo (ver `normalizarDireccion`), y sin
+   * autoridad sobre la identidad tampoco (ver «LAS DOS GUARDAS JUNTAS»): con
+   * `exigirGidDeSesion`, además, solo ata una sesión que probó el GID de esa
+   * identidad —atar es lo que después deja pedir pases de SSO a su nombre—.
+   * La dirección se comprueba ANTES de hablar con Genesis ID.
    */
   router.post('/vincular', async (req, res) => {
     if (!vinculoActivo()) {
@@ -535,13 +623,18 @@ export function routerGenesis({ exigirSesion, exigirGidDeSesion = false, vinculo
         codigo: CODIGOS_PUENTE.VINCULO_APAGADO,
       })
     }
-    const deLaSesion = req.usuario.address || null
-    const candidata = deLaSesion || req.body?.direccion || null
+    const candidata = req.usuario.address || null
     if (!candidata) {
-      return res.status(422).json({
-        error: 'Hace falta la dirección de la billetera para vincular la cuenta',
-        codigo: CODIGOS_VINCULO.SIN_DIRECCION,
-      })
+      const traida = req.body?.direccion
+      return res.status(422).json(traida
+        ? {
+            error: 'La dirección de la billetera tiene que venir de tu sesión, no de la petición',
+            codigo: CODIGOS_VINCULO.DIRECCION_SIN_PRUEBA,
+          }
+        : {
+            error: 'Hace falta la dirección de la billetera para vincular la cuenta',
+            codigo: CODIGOS_VINCULO.SIN_DIRECCION,
+          })
     }
     const direccion = normalizarDireccion(candidata)
     if (!direccion) {
@@ -550,20 +643,18 @@ export function routerGenesis({ exigirSesion, exigirGidDeSesion = false, vinculo
         codigo: CODIGOS_VINCULO.DIRECCION_INVALIDA,
       })
     }
-    const idn = await identidadDe(req.usuario.email)
-    if (!idn?.id) return res.status(404).json({ error: 'Identidad no encontrada' })
-    if (exigirGidDeSesion && !(idn.gid && mismoGid(idn.gid, req.usuario.gid))) return noAtada(res)
-    if (!deLaSesion && !(await direccionProbada(idn, direccion))) {
-      return res.status(422).json({
-        error: 'Esa dirección no es una billetera que Genesis ID conozca de tu identidad. ' +
-          'Conéctala primero desde Veta Wallet.',
-        codigo: CODIGOS_PUENTE.DIRECCION_NO_PROBADA,
-      })
-    }
+    // Sin `exigirGidDeSesion`, un correo sin comprobar se niega sin preguntarle
+    // nada a Genesis.
+    if (!exigirGidDeSesion && !(await correoDeFiar(req))) return negar(res, CODIGOS_CORREO.NO_VERIFICADO)
+    const identidad = await identidadDe(req.usuario.email)
+    if (!identidad) return res.status(404).json({ error: 'Identidad no encontrada' })
+    if (exigirGidDeSesion && !(identidad.gid && mismoGid(identidad.gid, req.usuario.gid))) return noAtada(res)
+    const codigo = await sinAutoridad(req, identidad)
+    if (codigo) return negar(res, codigo)
     responder(res)(await llamar('/api/v1/vinculos', {
       method: 'POST',
       body: JSON.stringify({
-        identidadId: idn.id,
+        identidadId: identidad.id,
         // La cuenta la fija el servidor a partir de la sesión, nunca el cuerpo
         // de la petición: si viniera del cliente, alguien podría atar su GID a
         // la cuenta de otro.
@@ -571,7 +662,7 @@ export function routerGenesis({ exigirSesion, exigirGidDeSesion = false, vinculo
         // El correo prueba ante Genesis ID que esta app autenticó a la persona
         // dueña de esa identidad: sin él, cualquier clave de API podía atar su
         // cuenta al expediente de cualquiera y pedir tokens de SSO a su nombre.
-        // Genesis lo exige cuando GENESIS_VINCULO_EXIGE_EMAIL está puesta.
+        // Por eso solo se manda si la app lo comprobó (`correoVerificado`).
         email: req.usuario.email,
         direccion,
       }),
@@ -583,12 +674,17 @@ export function routerGenesis({ exigirSesion, exigirGidDeSesion = false, vinculo
    * el KYC.
    */
   router.post('/sso/token', async (req, res) => {
-    const perfil = await llamar(`/api/v1/identidades/por-email/${encodeURIComponent(req.usuario.email)}`)
-    const gid = perfil.cuerpo?.identidad?.gid
+    // Un pase de SSO abre sesión en las otras apps del ecosistema con este GID:
+    // sin correo comprobado (y sin `exigirGidDeSesion`, que tiene su propia
+    // prueba) no se pide, ni siquiera se pregunta por el GID.
+    if (!exigirGidDeSesion && !(await correoDeFiar(req))) return negar(res, CODIGOS_CORREO.NO_VERIFICADO)
+    const identidad = await identidadDe(req.usuario.email)
+    const gid = identidad?.gid
     if (!gid) return res.status(403).json({ error: 'Todavía no hay una identidad verificada' })
-    // El pase abre las demás apps COMO esa persona: solo lo pide una sesión
-    // que probó su GID (ver `exigirGidDeSesion`).
-    if (ajena(req, perfil.cuerpo.identidad)) return noAtada(res)
+    // El pase abre las demás apps COMO esa persona: solo lo pide una sesión con
+    // autoridad sobre esa identidad (probó su GID, o su correo está comprobado).
+    const codigo = await sinAutoridad(req, identidad)
+    if (codigo) return negar(res, codigo)
     responder(res)(await llamar('/api/v1/sso/token', {
       method: 'POST',
       body: JSON.stringify({ gid, cuenta: req.usuario.id || req.usuario.email }),
@@ -633,12 +729,13 @@ export function routerGenesis({ exigirSesion, exigirGidDeSesion = false, vinculo
 
   /** Movimientos para el monitoreo AML. Nunca se le dice al usuario si saltó algo. */
   router.post('/movimientos', async (req, res) => {
-    const perfil = await llamar(`/api/v1/identidades/por-email/${encodeURIComponent(req.usuario.email)}`)
-    const gid = perfil.cuerpo?.identidad?.gid
+    const identidad = await identidadDe(req.usuario.email)
+    const gid = identidad?.gid
     if (!gid) return res.json({ ok: true, omitido: 'sin GID verificado' })
-    // Atribuirle movimientos a un GID que esta sesión no probó ensuciaría el
-    // monitoreo AML de otra persona. Se omite, sin decir más, como arriba.
-    if (ajena(req, perfil.cuerpo.identidad)) return res.json({ ok: true, omitido: 'sin GID verificado' })
+    // Atribuirle movimientos a un GID sobre el que esta sesión no tiene
+    // autoridad ensuciaría el monitoreo AML de otra persona. Se omite, sin
+    // decir más: la respuesta es la misma que sin GID.
+    if (await sinAutoridad(req, identidad)) return res.json({ ok: true, omitido: 'sin GID verificado' })
     await llamar('/api/v1/movimientos', {
       method: 'POST',
       body: JSON.stringify({ gid, movimientos: req.body?.movimientos ?? [] }),

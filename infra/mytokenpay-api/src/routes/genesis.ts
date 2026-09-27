@@ -17,13 +17,22 @@
 // cuerpo de la petición. Ninguna ruta aprueba nada.
 //
 // PERO EL CORREO DE UNA CUENTA DE MYTOKENPAY NO PRUEBA NADA. El alta no lo
-// verifica y «olvidé mi contraseña» devuelve el enlace en la respuesta, así
+// verifica y «olvidé mi contraseña» devolvía el enlace en la respuesta, así
 // que cualquiera tiene una cuenta con el correo de otra persona. Por eso el
-// puente se monta con `exigirGidDeSesion`: una identidad que ya tiene GID solo
-// la toca una sesión que lo PROBÓ, es decir, que nació de un pase de Genesis
-// ID en `/api/auth/sso` y lleva ese GID firmado en el token (lib/auth.ts). Y
-// el vínculo (`/vincular`) va APAGADO salvo MTP_VINCULO_GENESIS=1
-// (lib/genesis.ts).
+// puente se monta con las dos guardas (ver lib/genesisPuente.js, «LAS DOS
+// GUARDAS JUNTAS»):
+//
+//   · `exigirGidDeSesion`: una identidad que ya tiene GID solo la toca una
+//     sesión que lo PROBÓ, es decir, que nació de un pase de Genesis ID en
+//     `/api/auth/sso` y lleva ese GID firmado en el token (lib/auth.ts);
+//   · `correoVerificado`: el correo de la sesión solo está comprobado en esa
+//     misma sesión y para el GID de la cuenta. Con cualquier otra sesión el
+//     puente sigue sirviendo para HACER el trámite, pero no ata la cuenta, no
+//     pide pases de SSO y no toca una identidad ya verificada.
+//
+// Y el vínculo (`/vincular`) va APAGADO salvo MTP_VINCULO_GENESIS=1
+// (lib/genesis.ts). Cuando MyTokenPay verifique el correo en el alta, este es
+// el único sitio que hay que cambiar.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { NextFunction, Request, Response } from 'express'
@@ -75,10 +84,10 @@ async function cargarUsuario(req: Request, res: Response, next: NextFunction) {
 /**
  * La sesión de MyTokenPay, en la forma que pide el puente: un solo middleware.
  *
- * MyTokenPay no guarda dirección de billetera en la sesión, así que el puente
- * la toma del cuerpo de `/vincular` —y sin ella no vincula (SFSP v0.3 §11)—,
- * pero solo si Genesis ID ya la conoce del vínculo de Veta Wallet de la misma
- * identidad: una dirección tecleada no prueba de quién es.
+ * MyTokenPay no guarda dirección de billetera en la sesión, así que su
+ * `/genesis/vincular` no ata nada (422): una dirección del cuerpo no prueba que
+ * sea de quien la manda. La cuenta se ata en `/api/auth/sso`, con la dirección
+ * que Genesis ya conoce de la identidad (SFSP v0.3 §11).
  */
 function exigirSesion(req: Request, res: Response, next: NextFunction) {
   void requireAuth(req, res, (err?: unknown) => {
@@ -90,8 +99,20 @@ function exigirSesion(req: Request, res: Response, next: NextFunction) {
   })
 }
 
+/**
+ * ¿El correo de ESTA sesión está comprobado? Solo si se abrió con un pase de
+ * Genesis ID para el GID de la cuenta (ver arriba). Una sesión de contraseña
+ * —aunque la cuenta tenga GID— no: quien se dio de alta con un correo ajeno
+ * antes de que la dueña entrara por SSO conoce esa contraseña.
+ */
+function correoVerificado(req: Request): boolean {
+  const gid = req.usuario?.gid
+  return Boolean(gid && req.sesionGid && mismoGid(req.sesionGid, gid))
+}
+
 export const genesisRouter = routerGenesis({
   exigirSesion,
   exigirGidDeSesion: true,
   vinculoActivo: vinculoGenesisActivo,
+  correoVerificado,
 })

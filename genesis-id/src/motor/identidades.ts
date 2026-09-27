@@ -1148,9 +1148,17 @@ export function vincular(
   return identidad
 }
 
-export const porDireccion = (direccion: string): Identidad | undefined => {
-  const d = String(direccion || '').toLowerCase()
-  return store.todo().identidades.find((i) =>
+/**
+ * Todas las identidades que tienen esa dirección en alguno de sus vínculos.
+ *
+ * Tendría que haber una como mucho: una billetera es de una persona. Pero hasta
+ * el v0.3 nadie lo comprobaba al atar (ver POST /vinculos), así que puede haber
+ * datos viejos con la misma dirección en dos identidades.
+ */
+export const identidadesConDireccion = (direccion: string): Identidad[] => {
+  const d = String(direccion || '').trim().toLowerCase()
+  if (!d) return []
+  return store.todo().identidades.filter((i) =>
     i.vinculos.some((v) => (v.direccion || '').toLowerCase() === d))
 }
 
@@ -1187,6 +1195,17 @@ export function direccionesDe(identidad: Identidad): string[] {
     for (const a of v.direccionesAnteriores ?? []) todas.add(a.direccion.toLowerCase())
   }
   return [...todas]
+}
+
+/**
+ * La identidad de esa dirección, o `undefined` si no hay ninguna O SI HAY MÁS
+ * DE UNA. Antes devolvía la primera (la más antigua): con la misma dirección
+ * atada a dos identidades, la dirección de una persona se resolvía al GID de
+ * otra. Una respuesta ambigua no es de nadie.
+ */
+export const porDireccion = (direccion: string): Identidad | undefined => {
+  const todas = identidadesConDireccion(direccion)
+  return todas.length === 1 ? todas[0] : undefined
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

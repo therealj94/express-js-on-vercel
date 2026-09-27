@@ -404,7 +404,19 @@ app.use("/wallet", walletRouter);
 //
 // Ninguna de estas rutas verifica a nadie: eso lo decide un operador en el
 // panel de Genesis ID. Aqui solo se aportan datos.
-app.use("/genesis", routerGenesis({ exigirSesion: sesionGenesis }));
+//
+// `correoVerificado`: el puente solo ata la cuenta y pide pases de SSO si la
+// app comprobo el correo de la sesion (ver lib/genesisPuente.js). El login de
+// Veta NO exige haber confirmado el correo, asi que exigirlo aqui dejaria sin
+// SSO a quien entra hoy sin haberlo confirmado. Por eso va detras de una
+// bandera APAGADA: GENESIS_PUENTE_EXIGE_CORREO_CONFIRMADO=si lo exige. Hasta
+// entonces se comporta como siempre: el correo de una sesion de Veta vale.
+const exigeCorreoConfirmado = () =>
+  String(process.env.GENESIS_PUENTE_EXIGE_CORREO_CONFIRMADO || "").trim().toLowerCase() === "si";
+app.use("/genesis", routerGenesis({
+  exigirSesion: sesionGenesis,
+  correoVerificado: (req) => !exigeCorreoConfirmado() || req.usuario?.correoConfirmado === true,
+}));
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {

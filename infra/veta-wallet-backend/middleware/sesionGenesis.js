@@ -31,6 +31,10 @@ const sesionGenesis = async (req, res, next) => {
       id: String(usuario._id),
       email: usuario.email,
       address: usuario.address,
+      // ¿Confirmó el correo con el enlace? El login de Veta no lo exige, así
+      // que una sesión puede llevar un correo sin comprobar. El puente lo usa
+      // a través de `correoVerificado` (ver app.js).
+      correoConfirmado: usuario.isVerified === true,
     };
     next();
   } catch (error) {
