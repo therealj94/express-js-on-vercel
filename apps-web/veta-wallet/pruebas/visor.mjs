@@ -176,6 +176,14 @@ console.log('\n── 360 en pantalla: la cabeza manda ────────�
   await pag.evaluate(() => { VETA.vsMirada(false); return VETA.vsEntrar('trescientos60'); });
   await pag.waitForFunction(() => window.VISOR.activo(), null, { timeout: 9000 });
   ok('entra al modo mirar-alrededor', await pag.evaluate(() => VISOR.modo() === 'trescientos60'));
+  /* Los nombres de la capa HTML se proyectan con la cámara de siempre: en el
+     visor quedarían sueltos de los planetas. Aquí mandan los letreros 3D.
+     Hallazgo de Codex en el PR #32. */
+  await pag.waitForTimeout(600);
+  ok('los nombres planos se apartan: mandan los letreros 3D', await pag.evaluate(() => {
+    const c = document.querySelector('.ae-rotulos');
+    return !c || getComputedStyle(c).display === 'none';
+  }));
   ok('y la casa se aparta: el body lo marca', await pag.evaluate(() =>
     document.body.classList.contains('en-visor') && document.body.dataset.visor === 'trescientos60'));
   ok('con el menú fuera de la vista', await pag.evaluate(() => {
@@ -365,6 +373,14 @@ console.log('\n── cartón: dos ojos y separación ────────�
   await m.evaluate(() => { VETA.vsMirada(false); return VETA.vsEntrar('carton'); });
   await m.waitForFunction(() => window.VISOR.activo(), null, { timeout: 9000 });
   ok('entra en modo cartón', await m.evaluate(() => VISOR.modo() === 'carton'));
+  /* Los nombres de la capa HTML se proyectan con la cámara de siempre: en el
+     visor quedarían sueltos de los planetas. Aquí mandan los letreros 3D.
+     Hallazgo de Codex en el PR #32. */
+  await m.waitForTimeout(600);
+  ok('los nombres planos se apartan: mandan los letreros 3D', await m.evaluate(() => {
+    const c = document.querySelector('.ae-rotulos');
+    return !c || getComputedStyle(c).display === 'none';
+  }));
   ok('la pantalla se parte por el medio', await m.evaluate(() =>
     getComputedStyle(document.body, '::after').width === '1px'));
   /* Los dos ojos de verdad: se comprueba que el motor dibuja DOS veces por

@@ -6278,10 +6278,10 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = '330f568ed8';
+  const VETA_V = '7392dd72dc';
   const VETA_FECHA = '2026-09-27';
 
-  const AET_V = '2e498490b7';
+  const AET_V = '11c0a0e475';
 
   /* MEDIAPIPE, UNA SOLA COPIA EN EL SITIO. La casa ya sirve el modelo de manos
      y su WASM en /vendor/vision/ para su propio AirTouch. El motor traia los

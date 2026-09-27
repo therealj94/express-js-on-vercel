@@ -8,6 +8,7 @@ import { atmosphereFragment, atmosphereVertex, SOMBRA_ANILLO, SOMBRA_PLANETA } f
 import { getRingTexture } from './textures'
 import { emblemaTextura, letreroTextura, planetaTextura, nubesTextura, anilloTextura, lucesTextura } from './emblema'
 import type { Galaxy } from './lattice'
+import { capa, rotulos } from './rotulos'
 
 export type Archetype = 'pulsar' | 'binary' | 'memory' | 'torus' | 'sentinel'
 
@@ -424,7 +425,10 @@ function avanzarSistema(state: { clock: THREE.Clock; camera: THREE.Camera; size:
       // se aparta el de ATRÁS; el núcleo no se mueve nunca
       const [kLejos, lejos, cerca] = a.d > b.d ? [ka, a, b] : [kb, b, a]
       if (kLejos === '__nucleo') continue
-      const hace = (a.r + b.r) * 1.08 + 8
+      /* Se mide con el HALO, no con la esfera: la atmósfera se ve hasta 1,3
+         radios, y dos mundos «sin tocarse» por la esfera se encimaban igual
+         por el vidrio de alrededor. */
+      const hace = (a.r + b.r) * 1.24 + 6
       let dx = lejos.x - cerca.x
       let dy = lejos.y - cerca.y
       const dist = Math.hypot(dx, dy)
@@ -433,8 +437,8 @@ function avanzarSistema(state: { clock: THREE.Clock; camera: THREE.Camera; size:
       // píxeles que sobran -> unidades del mundo a la distancia de esa casa
       const mundo = (hace - dist) / Math.max(1e-3, lejos.k)
       const e = empujeDe(kLejos)
-      e.v.addScaledVector(derecha, dx * mundo * 20 * paso)
-      e.v.addScaledVector(arriba, -dy * mundo * 20 * paso)
+      e.v.addScaledVector(derecha, dx * mundo * 26 * paso)
+      e.v.addScaledVector(arriba, -dy * mundo * 26 * paso)
     }
   }
   /* El resorte que devuelve cada casa a su órbita. Poco amortiguado a
@@ -443,7 +447,9 @@ function avanzarSistema(state: { clock: THREE.Clock; camera: THREE.Camera; size:
     e.v.addScaledVector(e.p, -2.2 * paso)
     e.v.multiplyScalar(Math.exp(-2.6 * paso))
     e.p.addScaledVector(e.v, paso)
-    if (e.p.length() > 3.2) e.p.setLength(3.2)
+    /* Hasta 4,5 unidades: con 3,2 el resorte ganaba y dos mundos grandes se
+       quedaban montados en el punto de equilibrio. */
+    if (e.p.length() > 4.5) e.p.setLength(4.5)
   }
 }
 
@@ -620,7 +626,13 @@ function WellView({ def }: { def: WellDef }) {
     /* En el vacío, las casas tampoco están: se encogen a nada y vuelven a
        crecer cuando el cielo aparece. */
     const vivo = 1 - sim.vacio
-    g.scale.setScalar(Math.max(0.001, vivo))
+    /* EN EL TELÉFONO, MUNDOS UN POCO MÁS CHICOS. La escena se diseñó a 1200
+       px de ancho; en 400 px los once mundos y el sol se reparten el mismo
+       cielo en un tercio del espacio, y las esferas se encimaban con sus
+       halos (Veta Wallet sobre AuCorp, Genesis Core sobre Ajustes). Achicar
+       los MUNDOS —no la órbita— les devuelve aire sin juntar el sistema. */
+    const talla = THREE.MathUtils.clamp(state.size.width / 1000, 0.8, 1)
+    g.scale.setScalar(Math.max(0.001, vivo * talla))
     g.visible = vivo > 0.01
     avanzarSistema(state, dt)
     const ahora = dondeEsta(def, tmpO)
@@ -748,7 +760,7 @@ function WellView({ def }: { def: WellDef }) {
         / (2 * Math.tan((state.camera as THREE.PerspectiveCamera).fov * Math.PI / 360) * d)
       const miX = (tmpP.x * 0.5 + 0.5) * state.size.width
       const miY = (-tmpP.y * 0.5 + 0.5) * state.size.height
-      enPantalla.set(def.key, { x: miX, y: miY, r: R * porMundo, d, k: porMundo })
+      enPantalla.set(def.key, { x: miX, y: miY, r: R * talla * porMundo, d, k: porMundo })
 
       /* EL LETRERO NO CRECE CON EL PLANETA. Su tamaño en PANTALLA es el mismo
          para todas las casas —proporcional a la distancia, nada más—, así que
@@ -909,7 +921,22 @@ function WellView({ def }: { def: WellDef }) {
 
       const op = puerta * cineL * (1 - sim.noche)
         * (alBorde ? Math.min(0.12, lejania) : selected ? 1 : lejania * libre)
-      ;(letrero.current.material as THREE.SpriteMaterial).opacity = op
+      /* FUERA DEL VISOR EL NOMBRE LO PONE LA CAPA HTML (ver `rotulos.ts`):
+         aquí solo se dice dónde cae el planeta y si el cielo permite nombres
+         ahora —puerta, película, tiniebla—. El letrero 3D se apaga. Dentro
+         del visor no hay HTML, y el letrero sigue con su regla de siempre. */
+      /* En CUALQUIER modo visor, no solo WebXR: Cartón y 360 dibujan con sus
+         propias cámaras (dos ojos, o girada por la cabeza) y una capa plana
+         proyectada con la cámara de siempre quedaría suelta de los planetas
+         y dibujada una sola vez para los dos ojos. Hallazgo de Codex, PR #32. */
+      capa.xr = state.gl.xr.isPresenting || sim.visor
+      rotulos.set(def.key, { x: miX, y: miY, r: R * talla * porMundo, d, nombre: def.name,
+        vis: puerta * cineL * (1 - sim.noche), sel: selected, frente: tmpP.z < 1 })
+      ;(letrero.current.material as THREE.SpriteMaterial).opacity = capa.xr ? op : 0
+      ;(w.__AE_ROTULO_TXT ||= {})[def.key] = def.name
+      ;(w.__AE_ROTULO_D ||= {})[def.key] = d
+      if (!capa.xr) cajasNombre.set(def.key, { x: cx, y: cy, w: wpx, h: hpx, d, op: 0 })
+      else {
       /* Para que una prueba pueda ver lo que una foto no distingue: un
          rótulo apagado y uno fuera de cuadro se ven igual. */
       ;(w.__AE_ROTULO_OP ||= {})[def.key] = op
@@ -922,6 +949,7 @@ function WellView({ def }: { def: WellDef }) {
       ;(w.__AE_ROTULO_D ||= {})[def.key] = d
       ;(w.__AE_ROTULO_CAJA ||= {})[def.key] = { x: cx, y: cy, w: wpx, h: hpx, op }
       cajasNombre.set(def.key, { x: cx, y: cy, w: wpx, h: hpx, d, op })
+      }
     }
 
     if (halo.current) {

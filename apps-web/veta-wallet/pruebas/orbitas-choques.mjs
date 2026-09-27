@@ -8,7 +8,8 @@
  * reloj de las órbitas por varias fases con __AE_ORBITA, se deja actuar a los
  * choques, y se mide sobre los discos proyectados (__AE_DISCOS):
  *
- *   · ningún par de esferas encimado más de 4 px (medido sin choques: 47);
+ *   · ningún par de esferas encimado más de 4 px contando su halo (antes del
+ *     28-sep, en un teléfono de 412 px: 22);
  *   · ningún nombre visible montado sobre otro.
  */
 import { chromium } from 'playwright';
@@ -41,7 +42,7 @@ const nav = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1
   args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 
 async function abrirInicio() {
-  const p = await nav.newPage({ viewport: { width: 390, height: 844 }, locale: 'es-HN', hasTouch: true, isMobile: true });
+  const p = await nav.newPage({ viewport: { width: 412, height: 915 }, locale: 'es-HN', hasTouch: true, isMobile: true });
   p.on('pageerror', (e) => console.log('  ERROR JS:', String(e).slice(0, 300)));
   await p.goto(base, { waitUntil: 'domcontentloaded' });
   await p.evaluate(() => localStorage.setItem('veta.sesion', JSON.stringify({
@@ -67,7 +68,9 @@ for (let f = 0; f < FASES; f++) {
     const D = window.__AE_DISCOS(); const k = Object.keys(D); let peor = { v: 1e9, par: '' };
     for (let i = 0; i < k.length; i++) for (let j = i + 1; j < k.length; j++) {
       const a = D[k[i]], b = D[k[j]];
-      const hueco = Math.hypot(a.x - b.x, a.y - b.y) - (a.r + b.r);
+      // Con el HALO (1,2 radios): por la esfera sola no se tocaban y por el
+      // vidrio de alrededor se encimaban hasta 22 px en un teléfono.
+      const hueco = Math.hypot(a.x - b.x, a.y - b.y) - (a.r + b.r) * 1.2;
       if (hueco < peor.v) peor = { v: Math.round(hueco), par: k[i] + '/' + k[j] };
     }
     const vis = Object.entries(window.__AE_ROTULO_CAJA || {}).filter(([, c]) => c.op > 0.15);
