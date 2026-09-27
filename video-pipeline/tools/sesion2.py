@@ -65,13 +65,16 @@ def main() -> int:
                    "negative": d["negative"], "width": d["width"], "height": d["height"],
                    "duration_s": s.get("duration_s", d["duration_s"]), "fps": d["fps"],
                    "steps": a.pasos, "cfg": 1.0, "retries": 1}
+            # El «motion» del look ya trae la cámara y la biblia de estilo. El
+            # «still» del look NO se usa en vídeo: lleva «cinematic still
+            # frame», que empuja a una toma quieta, y repetiría la óptica.
             if a.metodo == "i2v":
                 job["workflow"] = "workflows/h3_i2v_api.json"
                 job["image"] = f"still_{s['id']}_{s['pick']:02d}_00001_.mp4"
-                job["prompt"] = f"{ls['motion']}, {s['move']} camera"
+                job["prompt"] = ls["motion"]
             else:
                 job["workflow"] = "workflows/h3_calidad_api.json"
-                job["prompt"] = f"{ls['still']} {ls['motion']}, {s['move']} camera"
+                job["prompt"] = f"{s['still'].rstrip('.')}. {ls['motion']}"
             jobs.append(job)
 
     Path(a.guion).write_text(json.dumps(guion, ensure_ascii=False, indent=2))
