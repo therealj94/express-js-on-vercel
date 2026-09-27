@@ -403,10 +403,20 @@ const CHAT = (() => {
      y el texto saliera en claro (sin candado en este navegador, o nadie del
      otro lado con llave todavía), el aviso de la burbuja llegaría tarde, con
      lo escrito ya mandado. Hallazgo de Codex en el PR #31.
-     'si' · 'sin-candado' · 'sin-aparatos'. */
+     'si' · 'sin-candado' · 'sin-aparatos' · null (no se pudo saber).
+     No reutiliza la duda de `hayAparatosPara`, que ante un fallo de red dice
+     «sí» para no bajar un adjunto a claro: aquí un «sí» por duda sería un
+     sello prometiendo lo que no se comprobó. Si falla, se queda sin saber y
+     el sello no promete nada. Segunda revisión de Codex en el PR #31. */
   async function cifraCon(para) {
     if (!CANDADO?.hay()) return 'sin-candado';
-    return (await hayAparatosPara(para)) ? 'si' : 'sin-aparatos';
+    try {
+      const quienes = await destinatarios(para);
+      if (!quienes.length) return null;
+      const aparatos = await llavesDe(quienes);
+      const mia = await CANDADO.miLlave().catch(() => null);
+      return aparatos.some((x) => !mia || x.id !== mia.id) ? 'si' : 'sin-aparatos';
+    } catch { return null; }
   }
 
   /**

@@ -27,6 +27,8 @@ await pag.route('**/*', async (route) => {
   if (u === CEREBRO + '/enviar') { subidas.push({ enviado: JSON.parse(req.postData()||'{}') }); return j({ ok:true }) }
   if (u === CEREBRO + '/bandeja') return j(bandejaFalsa || { mensajes: [] })
   if (u === CEREBRO + '/conversaciones') return j({ conversaciones: [] })
+  if (u.startsWith(CEREBRO + '/llaves') && await pag.evaluate(() => !!window.__llavesCaidas).catch(() => false))
+    return route.fulfill({ status: 503, body: 'caído' })
   return j({})
 })
 await pag.goto('http://127.0.0.1:8791/apps-web/veta-wallet/index.html',{waitUntil:'domcontentloaded'})
@@ -179,11 +181,17 @@ const sello = await pag.evaluate(async () => {
     CANDADO.hay = () => true   // con candado, pero el relevo no devuelve llaves de Ana
     await VETA.chatAbrir('ana@ordenglobal.link')
     const sinAparatos = await lee()
-    return { sinCandado, sinAparatos }
+    // Y si la consulta de llaves FALLA, no se sabe: el sello no promete nada.
+    window.__llavesCaidas = true
+    await VETA.chatAbrir('ana@ordenglobal.link')
+    const sinSaber = await lee()
+    window.__llavesCaidas = false
+    return { sinCandado, sinAparatos, sinSaber }
   } finally { CANDADO.hay = hayAntes }
 })
 const promete = (x) => /punta a punta/.test(x.texto)
 ok('sin candado, el sello dice que va sin cifrar', !promete(sello.sinCandado) && sello.sinCandado.claro && /sin cifrar/.test(sello.sinCandado.texto), JSON.stringify(sello.sinCandado))
+ok('si la consulta de llaves falla, el sello no promete punta a punta', !promete(sello.sinSaber) && !sello.sinSaber.claro, JSON.stringify(sello.sinSaber))
 ok('sin llaves del otro lado, también', !promete(sello.sinAparatos) && sello.sinAparatos.claro && /sin cifrar/.test(sello.sinAparatos.texto), JSON.stringify(sello.sinAparatos))
 
 ok('sin errores de javascript', err.length===0)
