@@ -228,6 +228,25 @@ Commit `7a738a9`.
   tiene la política `AWSCompromisedKeyQuarantine`: AWS la pone sola cuando
   detecta una llave publicada.
 
+### Tandas completas (27-sep, madrugada)
+
+- La llave volvió a valer tras reactivarla José. **La causa de la
+  desactivación sigue sin conocerse**: hay que mirarla en CloudTrail, porque
+  puede repetirse.
+- Antes de seguir se comprobó que el chequeo de rebotes ve de verdad: la
+  cuenta y el conjunto `ordenglobal-transaccional` suprimen BOUNCE y
+  COMPLAINT, así que un rebote aparecería en la lista de supresión.
+- **16 tandas, 407 correos** más la prueba de José: primero las 70 cuentas
+  activas en 30 días (30+30+10) y después las 337 restantes, de la más
+  reciente a la más vieja. **0 fallos, 0 rebotes y 0 quejas** en la lista de
+  supresión desde las 03:00 UTC. SES cuenta 409 enviados en 24 h (408 + el
+  simulador) y la cuenta sigue `HEALTHY`.
+- Dominios de la casa saltados: 55.
+- Al terminar: confirmados **4 → 14** (10 de hoy). Quedan 467 sin confirmar,
+  todos con enlace vigente 7 días. Ya no queda nadie a quien mandar.
+- Siguiente: medir la confirmación en unos días. Cuando la mayoría de los
+  activos esté confirmada, encender `GENESIS_PUENTE_EXIGE_CORREO_CONFIRMADO`.
+
 ## Pendiente
 
 1. ~~Cambiar `ADMIN_PASSWORD` en `mytokenpay-api`~~: hecho por José el 27-sep.
