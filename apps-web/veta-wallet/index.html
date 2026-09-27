@@ -24,8 +24,8 @@
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval';
-  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-  font-src 'self' data: https://fonts.gstatic.com;
+  style-src 'self' 'unsafe-inline';
+  font-src 'self' data:;
   img-src 'self' data: blob: https://cerebro.ordenscan.com;
   media-src 'self' blob: https://cerebro.ordenscan.com;
   connect-src 'self'
@@ -65,11 +65,13 @@
 <meta property="og:title" content="Orden Global">
 <meta property="og:description" content="Un ecosistema entero, en una sola cuenta.">
 <meta property="og:image" content="https://app.vetawallet.com/assets/veta.png">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- Tipografias propias. Antes se pedian a fonts.googleapis.com en cada visita:
+     bloqueaba el primer pintado, metia a un tercero en el camino de una app
+     financiera y le contaba quien entra. Ahora viajan con el sitio. -->
+<link rel="preload" href="assets/fonts/archivo-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/fonts/tipografias.css?v=12ca793224">
 
 <style>
-
 /* ═══════════════════════════════════════════════════════════════════════════
    Veta Wallet · web
 
@@ -252,8 +254,8 @@ body.en-visor[data-visor=carton] #visor-capa .vs-pista{display:none}
   /* Y el saludo se aparta: con la tarjeta puesta eran dos bloques de texto
      peleándose el mismo rincón. */
   body.hay-ficha #ae-saludo{opacity:0;transition:opacity .3s ease}
-  /* Y la mano de AirTouch y el orbe de AU-RA también: caían justo encima de
-     ENTRAR. Vuelven solos al cerrarse la tarjeta. */
+  /* Y la mano de AirTouch, el orbe de AU-RA y el timón también: caían justo
+     encima de ENTRAR. Vuelven solos al cerrarse la tarjeta. */
   body.hay-ficha #at-boton,body.hay-ficha #aura-orbe,body.hay-ficha .ae-timon{opacity:0;pointer-events:none}
 }
 
@@ -974,16 +976,7 @@ button:not(:disabled):active,[role=button]:active,summary:active,
   box-shadow:0 30px 80px -40px rgba(0,0,0,.9)}
 
 /* ── acceso: el formulario a un lado, la promesa al otro ─────────────────── */
-/* LA PANTALLA DE ENTRADA SE DESPLAZA SOLA.
-   Esta pagina no lleva <!DOCTYPE html>, asi que el navegador la dibuja en modo
-   quirks: ahi el que se desplaza es el CUERPO, y el gesto del dedo va al
-   documento, que no tiene nada que desplazar. La rueda del raton si funciona
-   —apunta al elemento de debajo—, por eso en escritorio no se veia y en el
-   telefono la gente se quedaba sin poder llegar al boton de entrar.
-   Arreglar el modo del documento toca TODA la app y necesita su propia
-   revision; esto arregla la entrada ya: se le da a #acceso su propio
-   contenedor desplazable, que el dedo si mueve. */
-#acceso{position:relative;z-index:2;min-height:100svh;max-height:100svh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;display:grid;align-items:center;
+#acceso{position:relative;z-index:2;min-height:100svh;display:grid;align-items:center;
   grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(24px,5vw,70px);
   padding:clamp(86px,13vh,110px) clamp(20px,5vw,64px) 48px}
 .acc-lado{max-width:430px;justify-self:end}
@@ -4133,19 +4126,6 @@ body.en-ventana .lienzo::before{
 .gid-late{animation:gidLate 1.5s ease-in-out infinite}
 @keyframes gidLate{50%{transform:scale(.94);opacity:.7}}
 @media (prefers-reduced-motion:reduce){.gid-late{animation:none}}
-
-/* PANTALLAS CORTAS: primero entrar, despues el espectaculo.
-   Con 640-700 px de alto —iPhone SE, Android de gama media, o cualquier
-   telefono con el teclado abierto— el orbe de AU-RA y su titular empujaban el
-   boton de entrar fuera de la vista. Aqui se encogen: siguen estando, dejan de
-   estorbar. */
-@media (max-height: 720px){
-  #acceso{padding-top:64px;padding-bottom:28px;gap:16px}
-  .ag-orbe{width:104px;height:104px;margin:4px 0 0}
-  .acc-lado h2{font-size:clamp(22px,5.4vw,28px);margin-bottom:6px}
-  .ag-voz{display:none}
-  .acc{padding:20px}
-}
 </style>
 
 <!-- El velo de apertura. El texto de respaldo es el español plano: si el
@@ -4840,9 +4820,9 @@ body.en-ventana .lienzo::before{
 
 <!-- El saber publico que Genesis dejo salir. Lo genera
      infra/cerebro/publicar-saber.mjs; no se edita a mano. -->
-<script src="saber.js?v=a685349818"></script>
-<script src="telemetria.js?v=a685349818"></script>
-<script src="qr.js?v=a685349818"></script>
+<script src="saber.js?v=12ca793224"></script>
+<script src="telemetria.js?v=12ca793224"></script>
+<script src="qr.js?v=12ca793224"></script>
 <!-- La cripto para entrar con la frase semilla. Se carga aparte y no dentro
      de app.js porque son 13 KB que solo hacen falta si alguien elige ese
      camino, y porque asi se puede probar sola (pruebas/probar-llaves.mjs). -->
@@ -4994,24 +4974,24 @@ body.en-ventana .lienzo::before{
   </div>
 </div>
 
-<script src="vendor/cripto-llaves.js?v=a685349818"></script>
-<script src="llaves.js?v=a685349818"></script>
-<script src="tono.js?v=a685349818"></script>
-<script src="llamada.js?v=a685349818"></script>
-<script src="llamadaGrupo.js?v=a685349818"></script>
-<script src="velas.js?v=a685349818"></script>
-<script src="cadena.js?v=a685349818"></script>
-<script src="datos.js?v=a685349818"></script>
-<script src="aura.js?v=a685349818"></script>
-<script src="candado.js?v=a685349818"></script>
-<script src="chat.js?v=a685349818"></script>
-<script src="i18n.js?v=a685349818"></script>
-<script src="galaxia.js?v=a685349818"></script>
+<script src="vendor/cripto-llaves.js?v=12ca793224"></script>
+<script src="llaves.js?v=12ca793224"></script>
+<script src="tono.js?v=12ca793224"></script>
+<script src="llamada.js?v=12ca793224"></script>
+<script src="llamadaGrupo.js?v=12ca793224"></script>
+<script src="velas.js?v=12ca793224"></script>
+<script src="cadena.js?v=12ca793224"></script>
+<script src="datos.js?v=12ca793224"></script>
+<script src="aura.js?v=12ca793224"></script>
+<script src="candado.js?v=12ca793224"></script>
+<script src="chat.js?v=12ca793224"></script>
+<script src="i18n.js?v=12ca793224"></script>
+<script src="galaxia.js?v=12ca793224"></script>
 <!-- GENESIS CORE: el cerebro del ecosistema, el mismo volumen que se proyecta
      en la sala de Genesis ID. Solo lo usa su vista. -->
-<script src="cerebro-og.js?v=a685349818"></script>
+<script src="cerebro-og.js?v=12ca793224"></script>
 <!-- MODO VISOR: la casa dentro de un visor (WebXR, cartón o 360 en pantalla). -->
-<script src="visor.js?v=a685349818"></script>
-<script src="musica.js?v=a685349818"></script>
-<script src="airtouch.js?v=a685349818"></script>
-<script src="app.js?v=a685349818"></script>
+<script src="visor.js?v=12ca793224"></script>
+<script src="musica.js?v=12ca793224"></script>
+<script src="airtouch.js?v=12ca793224"></script>
+<script src="app.js?v=12ca793224"></script>

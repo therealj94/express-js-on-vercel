@@ -2248,21 +2248,6 @@ const VETA = (() => {
   const SIN_VISOR = ['enviar', 'cobrar', 'cambiar', 'comprar', 'lector', 'mtp',
                      'tarjeta', 'llaves', 'seguridad', 'aucorp', 'ordenex'];
 
-  /* UN REINTENTO CADA TANTO, NO EN BUCLE. Varias vistas piden sus datos al
-     entrar y se vuelven a dibujar cuando llegan. Si la respuesta falla, el dato
-     sigue vacío, el redibujo vuelve a pedirlo, falla otra vez… y la vista se
-     rehace varias veces por segundo: la animación de entrada vuelve a empezar
-     cada vez y la pantalla se queda apagada, a medio aparecer. Así se veían
-     Remesas y MyTokenPay. Con esto, cada dato se reintenta como mucho una vez
-     cada 30 segundos. */
-  const ultimoIntento = {};
-  function puedeIntentar(clave, ms = 30000) {
-    const ahora = Date.now();
-    if (ultimoIntento[clave] && ahora - ultimoIntento[clave] < ms) return false;
-    ultimoIntento[clave] = ahora;
-    return true;
-  }
-
   function vista(cual, dato) {
     if (!VISTAS[cual]) cual = 'nucleo';
     if (window.VISOR?.activo()) {
@@ -2363,14 +2348,14 @@ const VETA = (() => {
        siquiera necesita el precio de emitir: eso es del formulario de
        pedirla. */
     if (cual !== 'tarjeta' && movAbierto) cerrarMov();
-    if (cual === 'tarjeta' && !tarjeta && !tarjetaCargando && puedeIntentar('tarjeta')) {
+    if (cual === 'tarjeta' && !tarjeta && !tarjetaCargando) {
       tarjetaCargando = true;
       cargarTarjeta()
         .then(() => { if (tarjeta?.falta && !emision) return cargarEmision(); })
         .finally(() => { tarjetaCargando = false; })
         .then(() => { if (vistaActual === 'tarjeta') vista('tarjeta'); });
     }
-    if (cual === 'remesas' && !tasas && puedeIntentar('tasas')) cargarTasas().then(() => { if (vistaActual === 'remesas') vista('remesas'); });
+    if (cual === 'remesas' && !tasas) cargarTasas().then(() => { if (vistaActual === 'remesas') vista('remesas'); });
     if (cual === 'chat') { p2cPortada(); chatEntrar(); } else p2cPortadaFuera();
     if (cual === 'token') montarVelasToken();
     else { velasApagar(); velasAmpliarCerrar(); }
@@ -3738,9 +3723,8 @@ const VETA = (() => {
   function vIdentidad() {
     return `
     <div class="cab gid-cab">${selloGenesis(40)}<div><h2>Genesis ID</h2><div class="sub">${t('id.sub')}</div></div></div>
-    ${/* Verificada: UNA credencial, no dos. La tarjeta de estado repetía los
-       mismos datos debajo; queda solo mientras la identidad está en trámite. */
-      esVerificada() ? credencial() : tarjetaIdentidad()}
+    ${esVerificada() ? credencial() : ''}
+    ${tarjetaIdentidad()}
     <div class="bloque vidrio">
       <h3>${t('id.unaT')}</h3>
       <p class="pie" style="margin-top:8px">${t('id.unaP')}</p>
@@ -6278,10 +6262,17 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = 'a685349818';
-  const VETA_FECHA = '2026-09-24';
+  const VETA_V = '12ca793224';
+  const VETA_FECHA = '2026-09-27';
 
   const AET_V = '5a41b77ab2';
+
+  /* MEDIAPIPE, UNA SOLA COPIA EN EL SITIO. La casa ya sirve el modelo de manos
+     y su WASM en /vendor/vision/ para su propio AirTouch. El motor traia los
+     mismos bytes otra vez —43 MB repetidos, subidos en cada despliegue—; con
+     esto usa los de aqui. Si algun dia el motor corre fuera de esta casa, cae
+     solo a los suyos. */
+  window.__AE_VISION = { wasm: '/vendor/vision/wasm/', modelo: '/vendor/vision/hand_landmarker.task' };
 
   function aetCargar() {
     if (aetCarga) return aetCarga;
@@ -7246,13 +7237,8 @@ const VETA = (() => {
      `datos.js` mientras la API sirve diecinueve. Estas tres rutas son publicas:
      mirar la vitrina no exige identificarse. */
   async function cargarComercios(forzar) {
-    /* Un fallo también cuenta como «ya se intentó»: sin esto, con la API caída,
-       cada intento fallido redibujaba la vista, la vista volvía a pedir, y así
-       cuatro veces por segundo — la pantalla nunca terminaba de aparecer (se
-       quedaba apagada, a medio fundido) y el servidor recibía una ráfaga sin
-       fin. Reintentar queda para `forzar`. */
-    if (mtpCargando || ((mtpNegocios || mtpFalloDirectorio) && !forzar)) return;
-    mtpCargando = true; mtpFalloDirectorio = null; // se limpia solo al reintentar de verdad
+    if (mtpCargando || (mtpNegocios && !forzar)) return;
+    mtpCargando = true; mtpFalloDirectorio = null;
     try {
       const [neg, cats, paises] = await Promise.all([
         mtpCrudo('/api/companies'),
@@ -7793,19 +7779,10 @@ const VETA = (() => {
   };
 
   function paymio() {
-    if (!mtpMioCargado) {
-      /* Si la consulta falla, no se reintenta en cada redibujo (era un bucle
-         de nueve vueltas en tres segundos): se dice y se reintenta después. */
-      const reintento = puedeIntentar('negocio-mio', 20000);
-      if (reintento) negCargar();
-      const fallo = !reintento && mtpFallo;
-      const es = idiomaActivo() === 'es';
-      return `
+    if (!mtpMioCargado) { negCargar(); return `
       <button class="volver" onclick="VETA.vista('pay')"><svg viewBox="0 0 24 24">${ICO.atras}</svg>MyTokenPay</button>
-      <div class="bloque vidrio centrado">${fallo
-        ? `<p class="pie">${es ? 'No pudimos traer tu comercio. Probá de nuevo en unos segundos.' : 'We could not load your business. Try again in a few seconds.'}</p>
-           <button class="btn btn-linea btn-sm" style="margin-top:12px" onclick="VETA.vista('paymio')">${es ? 'Reintentar' : 'Retry'}</button>`
-        : `<span class="girando"></span><p class="pie" style="margin-top:12px">${t('mtp.cargando')}</p>`}</div>`; }
+      <div class="bloque vidrio centrado"><span class="girando"></span>
+        <p class="pie" style="margin-top:12px">${t('mtp.cargando')}</p></div>`; }
 
     const cab = `
     <button class="volver" onclick="VETA.vista('pay')">

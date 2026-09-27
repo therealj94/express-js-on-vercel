@@ -204,3 +204,42 @@ José: «no me gusta, podemos regresar a la versión anterior, donde el logo era
 **Prueba nueva:** `veta-wallet/pruebas/toque-planeta.mjs`, 5/5 en verde. Con el paquete anterior falla 4 de 5. Motor 31/31, `inicio-ida-y-vuelta.mjs` y `tocar-planetas.mjs` en verde.
 
 **Nada subido.** Para que se vea en el teléfono hay que subir la wallet (`subir.py`), con `comparar-publicado.py` antes: producción tiene cambios del 27-sep que no están en esta rama.
+
+---
+
+## 10 · Órbitas, choques, paleta de marca y publicación (27-sep)
+
+José: «giros gravitacionales y que choquen las esferas entre sí para evitar que se crucen». Además dio libertad de diseño.
+
+**Qué cambió (`sky/Wells.tsx`, `sky/Sky.tsx`, `sky/Dust.tsx`, `kernel/sim.ts`):**
+
+- **Órbitas de Kepler.** Las casas orbitan alrededor de AU-RA y el plano de adentro adelanta al de afuera. Una vuelta de adentro dura 150 s. Se quedan quietas durante el vuelo, con una casa abierta, en la película y con «reducir movimiento».
+- **Choques en pantalla.** Si dos discos proyectados se van a encimar, la esfera de atrás se aparta con un resorte poco amortiguado. El sol cuenta como un cuerpo más.
+
+  | Medición en 10 fases de órbita | Resultado |
+  |---|---|
+  | Sin choques | se enciman hasta 47 px |
+  | Con choques | peor hueco de 0 a 13 px |
+
+- **Paleta de la casa.** Nebulosa de oro tenue, órbitas de oro viejo y polvo champán, en lugar de azul rey y cian.
+- **Nombres nítidos o ausentes.** Un nombre se oculta si cae sobre una casa más cercana, sobre el sol o sobre el nombre de una casa más cercana.
+
+**Pruebas:**
+
+- Motor: 31/31.
+- Nuevas: `pruebas/orbitas-choques.mjs` y `pruebas/toque-planeta.mjs`.
+- En verde: `tocar-planetas.mjs` (teléfono y monitor) e `inicio-ida-y-vuelta.mjs`.
+
+**Publicado el 27-sep en app.vetawallet.com** (Amplify `d264zjawew1yea`, `VETA_V 12ca793224`, `AET_V 5a41b77ab2`). Antes pasó por ensayo (`d289v5ffkexk23`).
+
+- **La base fue lo que ya servía producción** (job 193, `VETA_V 37c3053f0d`), que no estaba en ninguna rama. Encima solo cambian:
+  - el motor de la galaxia;
+  - la línea `AET_V` de `app.js`;
+  - la regla `hay-ficha` de `index.html`.
+- **`comparar-publicado.py` dio «dicen lo mismo»** después de subir.
+- **`apps-web/veta-wallet` en esta rama es ese árbol publicado.**
+
+**Ojo antes de la próxima subida:**
+
+- `claude/sfsp410-ondk-saldos-ox2fba` tiene cambios de la wallet sin publicar: la edad del precio, el oro de Londres y el fin de los precios `FIJOS`. Pero trae el motor de texturas y le faltan las tipografías propias y la limpieza del sorteo que producción sí tiene. Subirla tal cual deshace esto; primero hay que unir esta rama.
+- **www.vetawallet.com** (un solo archivo, `d7ofsbyqsj3d9`) no se tocó: su última subida es del 21-ago.
