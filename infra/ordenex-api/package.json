@@ -4,7 +4,7 @@
   "private": true,
   "description": "La casa de cambio de Orden Global. Express + Mongoose, contra DISENO.md.",
   "engines": {
-    "node": ">=20"
+    "node": "24.x"
   },
   "scripts": {
     "start": "node app.js",

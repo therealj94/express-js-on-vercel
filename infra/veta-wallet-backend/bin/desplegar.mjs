@@ -90,12 +90,13 @@ if (process.argv.includes('--sin-pruebas')) {
     const { stdout } = await correr('npm', ['run', 'probar'], {
       cwd: join(RAIZ, PREFIJO), maxBuffer: 1 << 24,
     });
-    const pasan = (stdout.match(/^# pass (\d+)$/m) || [])[1] || '?';
+    // TAP (`# pass N`) con Node 22 y el formato nuevo (`ℹ pass N`) con Node 24.
+    const pasan = (stdout.match(/^(?:# |ℹ )pass (\d+)$/m) || [])[1] || '?';
     verde(`✓ ${pasan} pruebas en verde`);
   } catch (e) {
     rojo('Las pruebas fallaron. NO se despliega.');
     const salida = String(e.stdout || e.message);
-    console.log(salida.split('\n').filter((l) => /^not ok|^# (pass|fail)/.test(l)).join('\n'));
+    console.log(salida.split('\n').filter((l) => /^not ok|^✖|^(?:# |ℹ )(pass|fail)/.test(l)).join('\n'));
     process.exit(1);
   }
 }
