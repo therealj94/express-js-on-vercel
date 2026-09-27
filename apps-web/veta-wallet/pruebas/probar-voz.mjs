@@ -94,6 +94,21 @@ const vuelta = await pag.evaluate(async ({ adj }) => {
 ok('lo que sube no es el audio en claro', vuelta && !vuelta.igualQueElOriginal, JSON.stringify(vuelta))
 ok('y con la llave vuelve entera', vuelta?.vuelveEntera, `${subCif?.bytes} bytes subidos`)
 
+// Con candado, pero quien recibe no tiene NINGÚN aparato con llave (el relevo
+// no devuelve llaves): la nota no se cierra, porque la llave no podría viajar y
+// el archivo quedaría imposible de oír. Hallazgo de Codex en el PR #31.
+const sinAparatos = await pag.evaluate(async () => {
+  const hayAntes = CANDADO.hay
+  CANDADO.hay = () => true
+  try {
+    const crudos = new Uint8Array(4096).map((_, i) => (i * 37) & 255)
+    const adj = await CHAT.subirVoz(new Blob([crudos], { type: 'audio/webm' }), 3, 'ana@ordenglobal.link')
+    const subido = Uint8Array.from(atob(window.__ultimaSubida), c => c.charCodeAt(0))
+    return { llave: !!adj.llave, enClaro: subido.length === crudos.length && subido.every((b, i) => b === crudos[i]) }
+  } finally { CANDADO.hay = hayAntes }
+})
+ok('sin aparatos del otro lado, la nota sube en claro y se puede oír', !sinAparatos.llave && sinAparatos.enClaro, JSON.stringify(sinAparatos))
+
 ok('sin errores de javascript', err.length===0)
 if(err.length) console.log(err.slice(0,3))
 await nav.close()

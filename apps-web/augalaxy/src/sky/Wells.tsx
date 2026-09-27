@@ -395,6 +395,11 @@ function avanzarSistema(state: { clock: THREE.Clock; camera: THREE.Camera; size:
      de a poco, como algo con masa. */
   orbita.marcha = quieto ? 0 : Math.min(1, orbita.marcha + paso * 0.6)
   orbita.reloj += paso * orbita.marcha
+  /* Y los choques también se quedan quietos: el vuelo apunta a donde la casa
+     ESTÁ al empezar, y un resorte que siguiera empujándola la movería debajo
+     de la cámara que ya va hacia ella. Con «reducir movimiento», con una casa
+     abierta o en la película, nada se mueve solo. */
+  if (quieto) return
 
   /* Los choques, medidos sobre los discos del cuadro anterior. */
   derecha.setFromMatrixColumn(state.camera.matrixWorld, 0)

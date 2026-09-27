@@ -42,6 +42,9 @@ export function GestureLayer() {
     let longTimer: number | null = null
     /* La pulsación larga ya abrió su menú: soltar después no es un toque. */
     let largaAbierta = false
+    /* En algún momento del gesto hubo más de un dedo: soltar el último no es
+       un toque, aunque ese dedo no se haya movido (el fijo de un pellizco). */
+    let variosDedos = false
     let edgeIntent = false
     let pinchDist = 0
     let twoFingerStartY = 0
@@ -109,6 +112,7 @@ export function GestureLayer() {
         x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), lejos: 0, gira: false,
       })
       largaAbierta = false
+      if (ptrs.size === 1) variosDedos = false
       edgeIntent = e.clientX > rect().right - rect().width * 0.14
       sim.pointer.copy(toNdc(e.clientX, e.clientY))
       sim.pointerMovedAt = sim.now
@@ -135,6 +139,7 @@ export function GestureLayer() {
       }
 
       if (ptrs.size === 2) {
+        variosDedos = true
         clearLong()
         const [a, b] = [...ptrs.values()]
         pinchDist = Math.hypot(a.x - b.x, a.y - b.y)
@@ -173,6 +178,10 @@ export function GestureLayer() {
              la intención era GIRAR, el menú se retira solo. Antes se quedaba
              abierto y se comía el gesto. */
           if (st.tear.open) st.closeTear()
+          /* Y si la pulsación larga ya había enseñado la ficha, se retira
+             también: arrastrar le gana, y una ficha abierta esconde los
+             botones de la casa (`hay-ficha`). */
+          if (largaAbierta) { largaAbierta = false; st.select(null) }
         }
         if (st.activeId) {
           if (dy > 60 && Math.abs(dy) > Math.abs(dx)) {
@@ -218,8 +227,8 @@ export function GestureLayer() {
          para entrar hacía falta un SEGUNDO toque en menos de 340 ms sobre un
          planeta que, entre tanto, se había movido. Por eso los planetas «no
          se podían tocar». Ahora: tocar un planeta es entrar. La pulsación
-         larga sigue abriendo su menú, y si lo abrió, soltar no hace nada más. */
-      if (ptrs.size === 0 && !transit.active && !st.activeId && !p.gira && !largaAbierta && lejos <= tolerancia) {
+         larga enseña la ficha, y si la enseñó, soltar no hace nada más. */
+      if (ptrs.size === 0 && !transit.active && !st.activeId && !p.gira && !largaAbierta && !variosDedos && lejos <= tolerancia) {
         const id = pickWell(e.clientX, e.clientY)
         if (!id && tocaAura(e.clientX, e.clientY)) {
           const llamar = (window as any).__AE_AURA as (() => void) | undefined

@@ -375,6 +375,24 @@ const CHAT = (() => {
     catch { return { motivo: 'sin-llave-propia' }; }
   }
 
+  /* ¿Hay a quién cerrarle un ADJUNTO? Se pregunta ANTES de subir: un archivo
+     se cierra al subir, pero su llave viaja después, dentro del mensaje. Si
+     quien recibe no tiene ningún aparato con llave, el mensaje sale en claro
+     y sin la llave, y un archivo cerrado quedaría imposible de abrir para
+     siempre. En ese caso se sube en claro, igual que el texto, y la burbuja
+     lo marca sin cifrar. Cualquier otra duda (la red) cuenta como «sí»: el
+     envío después falla de verdad en vez de bajar a claro por un tropiezo. */
+  async function hayAparatosPara(para) {
+    if (!para || !CANDADO?.hay()) return !!CANDADO?.hay();
+    try {
+      const quienes = await destinatarios(para);
+      if (!quienes.length) return true;
+      const aparatos = await llavesDe(quienes);
+      const mia = await CANDADO.miLlave().catch(() => null);
+      return aparatos.some((x) => !mia || x.id !== mia.id);
+    } catch { return true; }
+  }
+
   /**
    * Reaccionar, CERRADO. `para` es el hilo (correo o grupo): hace falta para
    * saber a qué aparatos cerrarle el sobre, igual que en `enviar`. Sin
@@ -436,7 +454,7 @@ const CHAT = (() => {
    * conversaciones tiene que poder decir «📷 Imagen» sin abrir nada, y el
    * relevo necesita el tipo para servir el archivo. Es metadato, no contenido
    * — y los metadatos ya estaban declarados como lo que el servidor ve. */
-  async function subir(fichero, { publico = false } = {}) {
+  async function subir(fichero, { publico = false, para = null } = {}) {
     if (fichero.size > TOPE) { const e = new Error('más de 8MB'); e.code = 413; throw e; }
     const crudos = new Uint8Array(await fichero.arrayBuffer());
     const tipo = tipoDe(fichero.type);
@@ -453,7 +471,7 @@ const CHAT = (() => {
        directorio va abierto, cada uno con su nombre. */
     if (publico) {
       datos = aB64Simple(crudos);
-    } else if (CANDADO?.hay()) {
+    } else if (CANDADO?.hay() && await hayAparatosPara(para)) {
       const c = await CANDADO.cerrarBytes(crudos);
       datos = aB64Simple(c.bytes);
       llave = c.llave;
@@ -494,10 +512,13 @@ const CHAT = (() => {
      desde que las notas de voz van cerradas TODAS pasan por aquí: las del
      teléfono son m4a y las de esta web, webm. El mensaje no trae el tipo, así
      que se mira la firma del formato, que es lo que haría el navegador. */
-  function tipoPorBytes(b) {
+  function tipoPorBytes(b, pista = '') {
+    // WebM y MP4 no dicen por su firma si son audio o video: lo dice la
+    // etiqueta que los va a mostrar (`pista`).
+    const medio = pista === 'video' ? 'video' : 'audio';
     const ascii = (i, n) => String.fromCharCode(...b.subarray(i, i + n));
-    if (b.length > 12 && ascii(4, 4) === 'ftyp') return /^M4A|^M4B/.test(ascii(8, 4)) ? 'audio/mp4' : 'video/mp4';
-    if (b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3) return 'audio/webm';
+    if (b.length > 12 && ascii(4, 4) === 'ftyp') return pista ? `${medio}/mp4` : (/^M4A|^M4B/.test(ascii(8, 4)) ? 'audio/mp4' : 'video/mp4');
+    if (b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3) return `${medio}/webm`;
     if (ascii(0, 4) === 'OggS') return 'audio/ogg';
     if (b[0] === 0xff && b[1] === 0xd8) return 'image/jpeg';
     if (b[0] === 0x89 && ascii(1, 3) === 'PNG') return 'image/png';
@@ -505,7 +526,7 @@ const CHAT = (() => {
     return '';
   }
 
-  async function archivoAbierto(id, llaveB64, ivB64) {
+  async function archivoAbierto(id, llaveB64, ivB64, pista = '') {
     if (!llaveB64 || !ivB64 || !CANDADO?.hay()) return urlArchivo(id);
     const ya = abiertos.get(id);
     if (ya) return ya;
@@ -514,7 +535,7 @@ const CHAT = (() => {
       if (!r.ok) throw new Error('no está');
       const cerrados = new Uint8Array(await r.arrayBuffer());
       const claros = await CANDADO.abrirBytes(cerrados, llaveB64, ivB64);
-      const url = URL.createObjectURL(new Blob([claros], { type: tipoPorBytes(claros) }));
+      const url = URL.createObjectURL(new Blob([claros], { type: tipoPorBytes(claros, pista) }));
       abiertos.set(id, url);
       return url;
     } catch {
@@ -616,7 +637,7 @@ const CHAT = (() => {
   }
 
   /** Sube la nota y devuelve su adjunto, con la duración en segundos. */
-  async function subirVoz(trozo, segundos) {
+  async function subirVoz(trozo, segundos, para = null) {
     if (trozo.size > TOPE) { const e = new Error('más de 8MB'); e.code = 413; throw e; }
     /* LA NOTA DE VOZ TAMBIÉN SE CIERRA, igual que una foto (ver `subir`). Se
        subía en claro: `enviarAdjunto` no encontraba llave, el mensaje salía
@@ -626,13 +647,14 @@ const CHAT = (() => {
        teléfono— ya abrían una nota con su llave; faltaba cerrarla al subir. */
     const crudos = new Uint8Array(await trozo.arrayBuffer());
     let datos, llave = null, iv = null;
-    if (CANDADO?.hay()) {
+    if (CANDADO?.hay() && await hayAparatosPara(para)) {
       const c = await CANDADO.cerrarBytes(crudos);
       datos = aB64Simple(c.bytes);
       llave = c.llave;
       iv = c.iv;
     } else {
-      // Sin candado se sube en claro y el mensaje sale marcado sin cifrar.
+      // Sin candado, o sin nadie a quien cerrarle la llave, se sube en claro
+      // y el mensaje sale marcado sin cifrar.
       datos = aB64Simple(crudos);
     }
     /* La duración viaja en el NOMBRE porque el relevo no tiene un campo para

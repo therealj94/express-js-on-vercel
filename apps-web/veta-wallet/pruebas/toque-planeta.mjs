@@ -111,6 +111,47 @@ for (const c of CASOS) {
   await p.close();
 }
 
+/* Dos casos que encontró la revisión de Codex (PR #31). */
+{
+  // Un pellizco: un dedo se mueve y el otro se queda quieto sobre el planeta.
+  // Soltar primero el que se movió y luego el quieto NO es un toque.
+  const p = await abrirInicio();
+  const d = await centro(p, 'pay');
+  const r = await p.evaluate(({ x, y }) => new Promise((ok) => {
+    const cv = document.querySelector('#ae-casa canvas');
+    const ev = (t, id, px, py) => cv.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true,
+      pointerId: id, pointerType: 'touch', isPrimary: id === 1, clientX: px, clientY: py }));
+    ev('pointerdown', 1, x, y);
+    ev('pointerdown', 2, x + 120, y + 60);
+    ev('pointermove', 2, x + 170, y + 110);
+    ev('pointerup', 2, x + 170, y + 110);
+    setTimeout(() => { ev('pointerup', 1, x, y);
+      setTimeout(() => ok({ vuela: window.AUGALAXY._transito().active }), 60); }, 80);
+  }), d);
+  exigir(!r.vuela, 'soltar un pellizco sobre un planeta no entra', JSON.stringify(r));
+  await p.close();
+}
+{
+  // Pulsación larga (enseña la ficha) y después arrastre: la ficha se retira.
+  const p = await abrirInicio();
+  const d = await centro(p, 'pay');
+  const r = await p.evaluate(({ x, y }) => new Promise((ok) => {
+    const cv = document.querySelector('#ae-casa canvas');
+    const ev = (t, px, py) => cv.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true,
+      pointerId: 9, pointerType: 'touch', isPrimary: true, clientX: px, clientY: py }));
+    ev('pointerdown', x, y);
+    setTimeout(() => {
+      const conFicha = !!document.querySelector('.ae-whisper') || document.body.classList.contains('hay-ficha');
+      ev('pointermove', x + 30, y); ev('pointermove', x + 60, y);
+      setTimeout(() => { ev('pointerup', x + 60, y);
+        setTimeout(() => ok({ conFicha, despues: document.body.classList.contains('hay-ficha'),
+          vuela: window.AUGALAXY._transito().active }), 700); }, 60);
+    }, 800);
+  }), d);
+  exigir(r.conFicha && !r.despues && !r.vuela, 'pulsación larga y luego arrastre: la ficha se retira y no entra', JSON.stringify(r));
+  await p.close();
+}
+
 await nav.close();
 sv.close();
 console.log(malas ? `\n${malas} falla(s)` : '\nTodo en verde');
