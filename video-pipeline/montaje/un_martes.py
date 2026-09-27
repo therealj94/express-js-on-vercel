@@ -412,6 +412,7 @@ def main() -> int:
 
     # --- 1. planos ------------------------------------------------------------
     segs = []
+    inicio = 0.0
     for k, b in enumerate(bloques):
         seg, dur, tipo = tmp / f"s{k:02d}.mp4", b["dur"], b.get("tipo", "plano")
         if tipo == "plano":
@@ -428,7 +429,9 @@ def main() -> int:
             png_cierre(Path(a.logo), T, plan.get("cierre", {}).get("direccion", ""), p)
             ff("-loop", "1", "-framerate", str(FPS), "-t", f"{dur}", "-i", str(p), "-vf",
                "fade=in:st=0:d=0.8,format=yuv420p", "-c:v", "libx264", "-crf", "16", str(seg))
-        N = round(dur * FPS)
+        # fotogramas repartidos de forma acumulada: muchas tomas cortas no pierden medio cuadro cada una
+        N = round((inicio + dur) * FPS) - round(inicio * FPS)
+        inicio += dur
         if contar(seg) != N:
             fijo = seg.with_suffix(".fijo.mp4")
             ff("-i", str(seg), "-vf", f"tpad=stop_mode=clone:stop=-1,setpts=N/({FPS}*TB)",
