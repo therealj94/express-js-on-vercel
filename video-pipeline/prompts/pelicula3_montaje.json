@@ -8,160 +8,165 @@
   "ancho": 1080,
   "alto": 1920,
   "fps": 30,
-  "dur_s": 123.0
+  "dur_s": 126.0
  },
  "bloques": [
   {
-   "plano": "01_san_salvador",
+   "plano": "intro",
    "t": 0.0,
+   "dur": 3.0,
+   "tipo": "negro"
+  },
+  {
+   "plano": "01_san_salvador",
+   "t": 3.0,
    "dur": 4.4,
    "desde": 0.2,
+   "fundido": 0.9,
    "hora": "San Salvador, El Salvador · 6:40 a. m."
   },
   {
    "plano": "00_taller_abre",
-   "t": 4.4,
+   "t": 7.4,
    "dur": 4.0,
    "desde": 0.3
   },
   {
    "plano": "02_cocina_nota",
-   "t": 8.4,
+   "t": 11.4,
    "dur": 4.6
   },
   {
    "plano": "03_cocina_envia",
-   "t": 13.0,
+   "t": 16.0,
    "dur": 5.0,
    "desde": 0.1
   },
   {
    "plano": "04_mesa_boleto",
-   "t": 18.0,
+   "t": 21.0,
    "dur": 5.8,
    "desde": 0.0
   },
   {
    "plano": "05_calle_floristeria",
-   "t": 23.8,
-   "dur": 2.8,
+   "t": 26.8,
+   "dur": 3.4,
    "hora": "10:15 a. m."
   },
   {
    "plano": "06_florista_ramo",
-   "t": 26.6,
+   "t": 30.2,
    "dur": 2.4
   },
   {
    "plano": "07_qr_mostrador",
-   "t": 29.0,
+   "t": 32.6,
    "dur": 3.6
   },
   {
    "plano": "08b_taller_pausa",
-   "t": 32.6,
+   "t": 36.2,
    "dur": 5.0,
    "desde": 0.2,
    "hora": "12:10 p. m."
   },
   {
    "plano": "14b_taller_mira",
-   "t": 37.6,
-   "dur": 5.6,
+   "t": 41.2,
+   "dur": 5.0,
    "desde": 0.0
   },
   {
    "plano": "09_regalo",
-   "t": 43.2,
-   "dur": 4.4,
+   "t": 46.2,
+   "dur": 5.0,
+   "desde": 0.2,
    "hora": "1:30 p. m."
   },
   {
    "plano": "10_llega_cuenta",
-   "t": 47.6,
-   "dur": 2.6
+   "t": 51.2,
+   "dur": 3.2
   },
   {
    "plano": "11_un_qr_cada_uno",
-   "t": 50.2,
-   "dur": 4.4
-  },
-  {
-   "plano": "12_amiga_habla",
-   "t": 54.6,
-   "dur": 4.4,
-   "desde": 0.1,
-   "audio_clip": 1.0
+   "t": 54.4,
+   "dur": 4.8,
+   "desde": 0.2
   },
   {
    "plano": "12b_incredulo",
-   "t": 59.0,
-   "dur": 3.4,
+   "t": 59.2,
+   "dur": 3.2,
    "desde": 0.0,
    "audio_clip": 1.0
   },
   {
    "plano": "13_dueno_pulgar",
    "t": 62.4,
-   "dur": 4.2,
+   "dur": 4.8,
    "desde": 0.25,
    "audio_clip": 0.7
   },
   {
    "plano": "12c_convencido",
-   "t": 66.6,
+   "t": 67.2,
    "dur": 2.2,
    "desde": 2.6
   },
   {
    "plano": "14_taller",
-   "t": 68.8,
-   "dur": 2.8,
+   "t": 69.4,
+   "dur": 3.6,
    "hora": "3:40 p. m."
   },
   {
    "plano": "16_bodega",
-   "t": 71.6,
-   "dur": 3.4,
+   "t": 73.0,
+   "dur": 4.4,
+   "desde": 0.2,
    "hora": "San Pedro Sula, Honduras · 3:40 p. m."
   },
   {
    "plano": "16_honduras_llama",
-   "t": 75.0,
-   "dur": 5.4,
+   "t": 77.4,
+   "dur": 5.1,
    "desde": 0.2,
    "audio_clip": 1.0
   },
   {
    "plano": "15_lucia_responde",
-   "t": 80.4,
+   "t": 82.5,
    "dur": 5.0,
-   "desde": 0.2,
+   "desde": 0.0,
    "audio_clip": 1.0,
    "hora": "San Salvador"
   },
   {
    "plano": "17_manos_pago",
-   "t": 85.4,
-   "dur": 4.2
+   "t": 87.5,
+   "dur": 5.1,
+   "desde": 0.0
   },
   {
    "plano": "18_proveedor_sync",
-   "t": 89.6,
-   "dur": 4.8,
+   "t": 92.6,
+   "dur": 4.4,
    "desde": 0.25,
    "audio_clip": 1.0,
    "hora": "San Pedro Sula"
   },
   {
    "plano": "20_sofa_noche",
-   "t": 94.4,
-   "dur": 3.0,
+   "t": 97.0,
+   "dur": 3.2,
+   "desde": 0.2,
    "hora": "9:10 p. m."
   },
   {
    "plano": "21_hija_sync",
-   "t": 97.4,
+   "t": 100.2,
    "dur": 6.2,
    "desde": 0.25,
    "audio_clip": 1.0,
@@ -169,33 +174,40 @@
   },
   {
    "plano": "22_lucia_sonrie",
-   "t": 103.6,
-   "dur": 4.8,
-   "desde": 0.2
+   "t": 106.4,
+   "dur": 5.0,
+   "desde": 0.0
   },
   {
    "plano": "23a_aeropuerto",
-   "t": 108.4,
+   "t": 111.4,
    "dur": 5.2,
    "desde": 0.0,
    "hora": "San Salvador · 18 de diciembre"
   },
   {
    "plano": "23b_abrazo",
-   "t": 113.6,
+   "t": 116.6,
    "dur": 4.4
   },
   {
    "plano": "cierre",
-   "t": 118.0,
+   "t": 121.0,
    "dur": 5.0,
    "tipo": "cierre"
   }
  ],
  "capas": [
   {
+   "tipo": "titulo",
+   "t": 0.5,
+   "dur": 2.2,
+   "fundido": 0.7,
+   "texto": "Un martes"
+  },
+  {
    "tipo": "nota",
-   "t": 8.5,
+   "t": 11.5,
    "dur": 6.0,
    "quien": "Sofía",
    "voz": "hija_1",
@@ -203,84 +215,77 @@
   },
   {
    "tipo": "narra",
-   "t": 1.1,
-   "dur": 1.15,
+   "t": 4.3,
+   "dur": 1.05,
    "voz": "n01",
    "texto": "Me llamo Lucía."
   },
   {
    "tipo": "narra",
-   "t": 2.3,
+   "t": 5.4,
    "dur": 2.94,
    "voz": "n02",
    "texto": "Tengo un taller de tapicería, en San Salvador."
   },
   {
    "tipo": "narra",
-   "t": 5.4,
+   "t": 8.4,
    "dur": 2.54,
    "voz": "n03",
    "texto": "Mi hija, Sofía, estudia en Madrid."
   },
   {
    "tipo": "narra",
-   "t": 14.9,
+   "t": 17.9,
    "dur": 4.85,
    "voz": "n04",
    "texto": "Antes era una fila y días de espera. Ahora, desde la cocina."
   },
   {
    "tipo": "narra",
-   "t": 19.8,
+   "t": 22.8,
    "dur": 4.42,
    "voz": "n05",
    "texto": "Y ya le compré el boleto. En diciembre viene a casa."
   },
   {
    "tipo": "narra",
-   "t": 24.4,
+   "t": 27.4,
    "dur": 2.73,
    "voz": "n06",
    "texto": "En el barrio ya se paga así."
   },
   {
    "tipo": "narra",
-   "t": 32.9,
-   "dur": 7.25,
+   "t": 36.5,
+   "dur": 9.47,
    "voz": "n07",
    "texto": "Y esto es mío. Se llama ONDK: una parte de Orden Global, la empresa detrás de todo esto."
   },
   {
    "tipo": "narra",
-   "t": 40.2,
-   "dur": 3.2,
-   "voz": "n07b",
-   "texto": "Tiene su acta, y la puedo abrir cuando quiera."
-  },
-  {
-   "tipo": "narra",
-   "t": 43.7,
-   "dur": 2.33,
+   "t": 46.6,
+   "dur": 3.26,
    "voz": "n08",
-   "texto": "Martes de cumpleaños."
+   "texto": "Al mediodía, el cumpleaños de mi comadre Rosa."
   },
   {
    "tipo": "narra",
-   "t": 47.7,
-   "dur": 3.25,
+   "t": 51.3,
+   "dur": 3.41,
    "voz": "n09",
    "texto": "Y la cuenta... que siempre era un lío."
   },
   {
    "tipo": "narra",
-   "t": 51.0,
-   "dur": 2.67,
+   "t": 55.0,
+   "dur": 2.35,
    "voz": "n10",
    "texto": "Ahora, cada quien paga lo suyo."
   },
   {
    "tipo": "narra",
-   "t": 57.2,
+   "t": 57.4,
    "dur": 2.35,
    "voz": "n11",
    "texto": "Siempre hay uno que no se lo cree."
@@ -294,35 +299,56 @@
   },
   {
    "tipo": "narra",
-   "t": 69.7,
+   "t": 70.3,
    "dur": 2.45,
    "voz": "n13",
    "texto": "Mi proveedor de telas está en Honduras."
   },
   {
    "tipo": "narra",
-   "t": 82.5,
+   "t": 84.8,
    "dur": 3.25,
    "voz": "n14",
    "texto": "Otro país. Y el camión no espera."
   },
   {
    "tipo": "narra",
-   "t": 95.0,
-   "dur": 2.59,
+   "t": 97.6,
+   "dur": 2.81,
    "voz": "n15",
-   "texto": "Un martes cualquiera."
+   "texto": "Por fin, en casa."
   },
   {
    "tipo": "narra",
-   "t": 118.6,
+   "t": 107.0,
+   "dur": 1.87,
+   "voz": "n17",
+   "texto": "Le contesté lo de siempre."
+  },
+  {
+   "tipo": "narra",
+   "t": 113.0,
+   "dur": 4.11,
+   "voz": "n18",
+   "texto": "El dieciocho de diciembre... volvió a casa."
+  },
+  {
+   "tipo": "narra",
+   "t": 118.8,
+   "dur": 2.29,
+   "voz": "n19",
+   "texto": "Y todo empezó un martes cualquiera."
+  },
+  {
+   "tipo": "narra",
+   "t": 121.6,
    "dur": 4.69,
    "voz": "n16",
    "texto": ""
   },
   {
    "tipo": "tarjeta",
-   "t": 14.8,
+   "t": 17.8,
    "dur": 2.8,
    "pantalla": "A_enviar.png",
    "recortes": [
@@ -338,7 +364,7 @@
   },
   {
    "tipo": "tarjeta",
-   "t": 20.0,
+   "t": 23.0,
    "dur": 2.8,
    "pantalla": "B_tarjeta.png",
    "recortes": [
@@ -360,7 +386,7 @@
   },
   {
    "tipo": "tarjeta",
-   "t": 30.0,
+   "t": 33.6,
    "dur": 2.4,
    "pantalla": "C_pagar.png",
    "recortes": [
@@ -382,8 +408,8 @@
   },
   {
    "tipo": "tarjeta",
-   "t": 34.9,
-   "dur": 6.0,
+   "t": 38.5,
+   "dur": 6.4,
    "pantalla": "J_ondk.png",
    "recortes": [
     [
@@ -398,8 +424,8 @@
   },
   {
    "tipo": "tarjeta",
-   "t": 51.6,
-   "dur": 2.6,
+   "t": 55.3,
+   "dur": 3.4,
    "pantalla": "E_dividir_pagado.png",
    "recortes": [
     [
@@ -420,7 +446,7 @@
   },
   {
    "tipo": "tarjeta",
-   "t": 87.0,
+   "t": 90.0,
    "dur": 2.4,
    "pantalla": "G_comprobante.png",
    "recortes": [
@@ -443,70 +469,82 @@
   },
   {
    "tipo": "dialogo",
-   "t": 54.8,
-   "dur": 2.2,
-   "quien": "amiga",
-   "texto": "¡Ya no hay «te lo paso luego»!"
-  },
-  {
-   "tipo": "dialogo",
-   "t": 59.15,
-   "dur": 2.4,
+   "t": 59.3,
+   "dur": 2.0,
    "quien": "amigo",
    "texto": "¿Y cómo sé que le llegó?"
   },
   {
    "tipo": "dialogo",
-   "t": 75.2,
-   "dur": 5.0,
+   "t": 77.6,
+   "dur": 4.8,
    "quien": "Don Chepe",
    "texto": "Doña Lucía, el camión sale a las cuatro. Si me entra el pago hoy, la tela le llega el jueves."
   },
   {
    "tipo": "dialogo",
-   "t": 81.1,
-   "dur": 1.8,
+   "t": 83.4,
+   "dur": 1.7,
    "quien": "Lucía",
    "texto": "Ya se lo mando, don Chepe."
   },
   {
    "tipo": "dialogo",
-   "t": 90.2,
-   "dur": 4.0,
+   "t": 93.2,
+   "dur": 3.7,
    "quien": "Don Chepe",
    "texto": "Ya me cayó. ¡Súbanla!"
   },
   {
    "tipo": "dialogo",
-   "t": 97.5,
+   "t": 100.3,
    "dur": 5.9,
    "quien": "Sofía",
    "texto": "Ma, ya pagué la renta. Y ya vi el vuelo… ¡llego el dieciocho! ¿Cómo te fue hoy?"
   },
   {
    "tipo": "chat",
-   "t": 104.2,
-   "dur": 4.0,
+   "t": 106.6,
+   "dur": 4.8,
    "burbujas": [
     {
-     "lado": "entra",
-     "texto": "¿Cómo te fue hoy?",
+     "lado": "nota",
+     "texto": "0:06",
      "hora": "9:12 p. m.",
      "t": 0.0
+    },
+    {
+     "lado": "escribe",
+     "texto": "",
+     "hora": "",
+     "t": 1.7,
+     "hasta": 2.75
     },
     {
      "lado": "sale",
      "texto": "Bien, mija. Un martes.",
      "hora": "9:18 p. m.",
-     "t": 1.6
+     "t": 2.7
     }
    ]
   }
  ],
+ "musica_desde": 3.0,
  "efectos": [
   {
+   "tipo": "sonido",
+   "archivo": "amanecer",
+   "t": 0.2,
+   "vol": 0.8,
+   "salida": 2.5
+  },
+  {
    "tipo": "timbre",
-   "t": 69.1
+   "t": 69.7
+  },
+  {
+   "tipo": "enviado",
+   "t": 109.3
   }
  ]
 }

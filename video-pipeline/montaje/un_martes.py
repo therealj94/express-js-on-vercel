@@ -62,6 +62,7 @@ class Tipos:
         self.chat = ImageFont.truetype(str(d / "ManropeMedium.ttf"), 44)
         self.hora_chat = ImageFont.truetype(str(d / "ManropeMedium.ttf"), 28)
         self.narra = ImageFont.truetype(str(d / "ManropeMedium.ttf"), 46)
+        self.titulo = ImageFont.truetype(str(d / "FrauncesItalic.ttf"), 120)
 
 
 def lienzo() -> Image.Image:
@@ -132,7 +133,7 @@ def png_tarjeta(pantalla: Path, recortes, pie: str | None, T: Tipos, dst: Path) 
     mask = Image.new("L", tarjeta.size, 0)
     ImageDraw.Draw(mask).rounded_rectangle([0, 0, *tarjeta.size], 34, fill=255)
     x0 = (W - tarjeta.width) // 2
-    y0 = 1690 - tarjeta.height
+    y0 = 1640 - tarjeta.height  # deja sitio abajo a la narración
     img = sombra_de(lienzo(), [x0, y0, x0 + tarjeta.width, y0 + tarjeta.height], 34, 170, 30)
     img.paste(tarjeta, (x0, y0), mask)
     d = ImageDraw.Draw(img)
@@ -190,7 +191,7 @@ def png_narra(texto: str, T: Tipos, dst: Path) -> None:
     por debajo de las tarjetas para no pisarlas nunca."""
     img = lienzo()
     d = ImageDraw.Draw(img)
-    lineas = textwrap.wrap(texto, 34)
+    lineas = textwrap.wrap(texto, 38)
     y0 = 1795 - (len(lineas) - 1) * 62
     s = lienzo(); ds = ImageDraw.Draw(s)
     for i, l in enumerate(lineas):
@@ -198,6 +199,17 @@ def png_narra(texto: str, T: Tipos, dst: Path) -> None:
         ds.text(((W - tw) / 2, y0 + i * 62 + 3), l, font=T.narra, fill=(0, 0, 0, 255))
         d.text(((W - tw) / 2, y0 + i * 62), l, font=T.narra, fill=(255, 255, 255, 245))
     img = Image.alpha_composite(s.filter(ImageFilter.GaussianBlur(9)), img)
+    img.save(dst)
+
+
+def png_titulo(texto: str, T: Tipos, dst: Path) -> None:
+    """El título sobre negro, con una línea dorada debajo: la película respira
+    antes de empezar."""
+    img = lienzo()
+    d = ImageDraw.Draw(img)
+    tw = d.textlength(texto, font=T.titulo)
+    d.text(((W - tw) / 2, H / 2 - 90), texto, font=T.titulo, fill=CREMA + (255,))
+    d.line([(W / 2 - 40, H / 2 + 80), (W / 2 + 40, H / 2 + 80)], fill=ORO + (230,), width=3)
     img.save(dst)
 
 
@@ -330,6 +342,31 @@ def png_burbuja(texto: str, lado: str, hora: str, fila: int, T, dst: Path, y0: i
     derecha (crema dorada) con doble check."""
     img = lienzo()
     d = ImageDraw.Draw(img)
+    if lado in ("nota", "escribe"):
+        # nota de voz entrante (play + onda + duración) o los tres puntos de «escribiendo»
+        bw, bh = (560, 150) if lado == "nota" else (190, 104)
+        y = y0 + fila * 30 + (0 if fila == 0 else 160)
+        x = 80 if lado == "nota" else W - 80 - bw
+        fondo = (250, 250, 247) if lado == "nota" else (236, 222, 180)
+        img = sombra_de(img, [x, y, x + bw, y + bh], 30, 120, 18)
+        d = ImageDraw.Draw(img)
+        d.rounded_rectangle([x, y, x + bw, y + bh], 30, fill=fondo + (250,))
+        if lado == "nota":
+            cy = y + 62
+            d.polygon([(x + 40, cy - 22), (x + 40, cy + 22), (x + 76, cy)], fill=(60, 66, 72, 255))
+            rng = np.random.default_rng(7)
+            for i in range(30):
+                h = 8 + 38 * abs(np.sin(i * 0.55)) * (0.5 + rng.random() * 0.5)
+                d.rounded_rectangle([x + 100 + i * 13, cy - h / 2, x + 106 + i * 13, cy + h / 2], 3, fill=(90, 98, 106, 255))
+            d.text((x + 40, y + bh - 50), texto, font=T.hora_chat, fill=(110, 118, 124, 255))
+            mw = d.textlength(hora, font=T.hora_chat)
+            d.text((x + bw - mw - 30, y + bh - 50), hora, font=T.hora_chat, fill=(110, 118, 124, 255))
+        else:
+            for k in range(3):
+                cx = x + 58 + k * 38
+                d.ellipse([cx - 10, y + bh / 2 - 10, cx + 10, y + bh / 2 + 10], fill=(120, 110, 80, 255 - k * 50))
+        img.save(dst)
+        return
     lineas = textwrap.wrap(texto, 26)
     tw = max(d.textlength(l, font=T.chat) for l in lineas)
     bw, bh = tw + 76, len(lineas) * 58 + 88
@@ -380,7 +417,8 @@ def main() -> int:
         if tipo == "plano":
             clip = Path(a.clips) / tomas[b["plano"]]
             ff("-ss", str(b.get("desde", 0.4)), "-t", f"{dur}", "-i", str(clip), "-vf",
-               f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},fps={FPS},{GRADE},format=yuv420p",
+               f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},fps={FPS},{GRADE}"
+               + (f",fade=in:st=0:d={b['fundido']}" if b.get("fundido") else "") + ",format=yuv420p",
                "-an", "-r", str(FPS), "-c:v", "libx264", "-crf", "16", "-preset", "medium", str(seg))
         elif tipo == "negro":
             ff("-f", "lavfi", "-i", f"color=c=black:s={W}x{H}:r={FPS}:d={dur}",
@@ -434,7 +472,8 @@ def main() -> int:
             for i, b in enumerate(c["burbujas"]):
                 q = tmp / f"capa_{len(capas)}.png"
                 png_burbuja(b["texto"], b["lado"], b["hora"], i, T, q)
-                capas.append({"png": q, "t": c["t"] + b["t"], "dur": c["dur"] - b["t"], "desliza": True})
+                fin = b.get("hasta", c["dur"])
+                capas.append({"png": q, "t": c["t"] + b["t"], "dur": fin - b["t"], "desliza": True})
             continue
         if c["tipo"] == "tarjeta":
             png_tarjeta(Path(a.pantallas) / c["pantalla"], c["recortes"], c.get("pie"), T, p)
@@ -444,20 +483,24 @@ def main() -> int:
             png_llamada(c["quien"], c["texto"], T, p)
         elif c["tipo"] == "sub":
             png_sub(c["texto"], T, p)
+        elif c["tipo"] == "titulo":
+            png_titulo(c["texto"], T, p)
         elif c["tipo"] == "narra":
             if not c["texto"]:
                 continue
             png_narra(c["texto"], T, p)
         elif c["tipo"] == "mensaje":
             png_mensaje(c["texto"], T, p)
-        capas.append({"png": p, "t": c["t"], "dur": c["dur"], "desliza": c["tipo"] in ("tarjeta", "mensaje")})
+        capas.append({"png": p, "t": c["t"], "dur": c["dur"], "desliza": c["tipo"] in ("tarjeta", "mensaje"),
+                      "fundido": c.get("fundido", 0.35)})
 
     ents, cad, prev = ["-i", str(base)], [], "0:v"
     for i, c in enumerate(capas, start=1):
         ents += ["-loop", "1", "-framerate", str(FPS), "-t", f"{c['dur']}", "-i", str(c["png"])]
         t0, d = c["t"], c["dur"]
-        cad.append(f"[{i}:v]format=rgba,fade=in:st=0:d=0.35:alpha=1,"
-                   f"fade=out:st={max(0, d - 0.35)}:d=0.35:alpha=1,setpts=PTS+{t0}/TB[l{i}]")
+        fu = c.get("fundido", 0.35)
+        cad.append(f"[{i}:v]format=rgba,fade=in:st=0:d={fu}:alpha=1,"
+                   f"fade=out:st={max(0, d - fu)}:d={fu}:alpha=1,setpts=PTS+{t0}/TB[l{i}]")
         y = f"if(lt(t\\,{t0 + 0.45})\\,({t0 + 0.45}-t)*110\\,0)" if c["desliza"] else "0"
         cad.append(f"[{prev}][l{i}]overlay=x=0:y='{y}':eof_action=pass[o{i}]")
         prev = f"o{i}"
@@ -486,6 +529,10 @@ def main() -> int:
                str(Path(a.clips) / tomas[b["plano"]]), "-vn", "-ac", "2", "-ar", str(sr), str(wav))
             x, _ = sf.read(str(wav), always_2d=True)
             x = x * float(b["audio_clip"])
+            # sin clics: 10 ms de entrada y 120 ms de salida en cada corte
+            n1, n2 = int(0.01 * sr), int(0.12 * sr)
+            x[:n1] *= np.linspace(0, 1, n1)[:, None]
+            x[-n2:] *= np.linspace(1, 0, n2)[:, None]
             i = int(b["t"] * sr)
             voz[i:i + len(x)] += x[: len(voz) - i]
     fx = np.zeros_like(voz)
@@ -498,11 +545,22 @@ def main() -> int:
         if e["tipo"] == "timbre":
             s = timbre(sr); i = int(e["t"] * sr)
             fx[i:i + len(s)] += s
+        elif e["tipo"] == "sonido":
+            s, s0 = sf.read(str(Path(a.voces) / f"{e['archivo']}.wav"), always_2d=True)
+            s = np.repeat(s, 2, 1) if s.shape[1] == 1 else s
+            s = s * float(e.get("vol", 1.0))
+            fo = int(float(e.get("salida", 1.5)) * sr)
+            s[-fo:] *= np.linspace(1, 0, fo)[:, None]
+            i = int(e["t"] * sr)
+            fx[i:i + len(s)] += s[: len(fx) - i]
+        elif e["tipo"] == "enviado":
+            s = tink(sr) * 0.7; i = int(e["t"] * sr)
+            fx[i:i + len(s)] += s
     sf.write(str(tmp / "voz.wav"), voz, sr)
     sf.write(str(tmp / "fx.wav"), fx, sr)
     audio = tmp / "audio.wav"
     ff("-i", a.musica, "-i", str(tmp / "voz.wav"), "-i", str(tmp / "fx.wav"), "-filter_complex",
-       f"[0:a]aresample={sr},volume=0.55,apad=whole_dur={total},atrim=0:{total}[mus];"
+       f"[0:a]aresample={sr},adelay={int(plan.get('musica_desde', 0) * 1000)}:all=1,volume=0.55,apad=whole_dur={total},atrim=0:{total}[mus];"
        f"[1:a]asplit=2[v][vsc];"
        f"[mus][vsc]sidechaincompress=threshold=0.03:ratio=6:attack=40:release=450[musd];"
        f"[musd][v][2:a]amix=inputs=3:normalize=0,afade=t=out:st={total - 2.5}:d=2.5,"
