@@ -20,9 +20,6 @@ cp "$AQUI/assets/medios/"* assets/medios/
 # Las imágenes para compartir de la portada nueva, también del repositorio.
 cp "$AQUI/assets/"social-26*.png assets/
 cp "$AQUI/assets/fuentes/"*.woff2 assets/fuentes/
-# Three.js para el gramo en 3D, servido desde el sitio (la CSP no deja cargar
-# scripts de otro dominio).
-mkdir -p assets/vendor && cp "$AQUI/assets/vendor/"* assets/vendor/
 
 # Los medios, de producción.
 bajar() { curl -sSf -o "$1" "$B/$1" || { echo "no se pudo bajar $1"; exit 1; }; }

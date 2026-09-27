@@ -28,6 +28,13 @@ python3 desplegar.py /tmp/ogsite  # la sube a Amplify
   casas), la cadena latiendo en vivo, copiar códigos y los videos. Con
   movimiento reducido no hay escenas: la página se lee de corrido.
   `og26.css` queda solo para la 404.
+- La escena 3D de ORIGEN: la fuente está en `escena3d/` (`escena.js` y el
+  símbolo trazado en `simbolo.js`) y **no se publica tal cual**. `sh
+  construir-3d.sh` la empaqueta con las partes de Three.js 0.170 que usa en
+  `assets/origen3d-escena.js` (unos 520 KB, 135 KB comprimido, con la licencia
+  MIT de Three.js al final). `assets/origen3d.js` es el cargador: solo pide la
+  escena si hay WebGL, no hay movimiento reducido y la sección se acerca, con
+  la misma versión `?v=` que él. El símbolo en plano es `assets/origen-simbolo.svg`.
 - `assets/medios/`: el tráiler de ORIGEN y el spot de Ordenex con sus pósteres.
 
 Tres reglas que conviene no romper:
