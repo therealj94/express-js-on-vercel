@@ -180,3 +180,27 @@ José: «no me gusta, podemos regresar a la versión anterior, donde el logo era
   - `inicio-ida-y-vuelta.mjs` en verde.
 - **Siguen fallando** `aetherion-inicio.mjs` («el Inicio clásico aparece») y `galaxia-entrada.mjs` (`getImageData` con un valor infinito). Fallan **igual en el respaldo puro**, sin los arreglos: ya venían así.
 - **Nada subido.** El dominio sirve la galaxia de texturas desde el 20-sep. Para que la gente vea esta versión, hay que subirla siguiendo `rescate-produccion/SUBIR.md`, con `comparar-publicado.py` antes y después.
+
+---
+
+## 9 · «Esos planetas no se pueden tocar» (27-sep)
+
+**Lo que se ve hoy en app.vetawallet.com no es esta rama.** Producción sirve la galaxia de texturas (`AET_V = ec1cd1c429`: Tierras, Marte, Lunas, Saturno), y la vuelta a los logos de la sección 8 nunca llegó: la subida del 24-sep falló por la credencial de AWS.
+
+**Además, compilar reintroducía las texturas.** `index.html` apuntaba a `src/experience/entry.tsx`, así que `publicar.py` compilaba la galaxia de texturas aunque la wallet tuviera guardada la de logos. Ahora apunta a `src/main.tsx`. La de texturas sigue en `src/experience/`.
+
+**El toque, en la galaxia de logos (`gesture/useGestures.tsx`):**
+
+| Antes | Ahora |
+|---|---|
+| Un toque de más de 260 ms no contaba | Un toque cuenta dure lo que dure |
+| Más de 10 px de temblor era un giro, y la cámara giraba con cada píxel | 16 px de tolerancia con el dedo (6 con ratón); nada gira hasta pasarla |
+| Para entrar: segundo toque en menos de 340 ms | Un toque entra |
+| Pulsación de 420 ms abría un menú radial bajo el dedo, y el clic al soltar caía encima | 550 ms enseña la ficha de la casa, abajo y con ENTRAR |
+| `pointercancel` podía contar como toque | Cancelar no abre nada |
+
+**La ficha** se salía por la derecha en el teléfono: framer-motion pisaba el `translateX(-50%)`. Ahora se centra con márgenes. Mientras está abierta se apartan la mano de AirTouch, el orbe de AU-RA y el timón, que tapaban ENTRAR. Ya no asoma durante el vuelo.
+
+**Prueba nueva:** `veta-wallet/pruebas/toque-planeta.mjs`, 5/5 en verde. Con el paquete anterior falla 4 de 5. Motor 31/31, `inicio-ida-y-vuelta.mjs` y `tocar-planetas.mjs` en verde.
+
+**Nada subido.** Para que se vea en el teléfono hay que subir la wallet (`subir.py`), con `comparar-publicado.py` antes: producción tiene cambios del 27-sep que no están en esta rama.

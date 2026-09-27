@@ -252,6 +252,9 @@ body.en-visor[data-visor=carton] #visor-capa .vs-pista{display:none}
   /* Y el saludo se aparta: con la tarjeta puesta eran dos bloques de texto
      peleándose el mismo rincón. */
   body.hay-ficha #ae-saludo{opacity:0;transition:opacity .3s ease}
+  /* Y la mano de AirTouch y el orbe de AU-RA también: caían justo encima de
+     ENTRAR. Vuelven solos al cerrarse la tarjeta. */
+  body.hay-ficha #at-boton,body.hay-ficha #aura-orbe,body.hay-ficha .ae-timon{opacity:0;pointer-events:none}
 }
 
 /* EL TOUR GÉNESIS · las palabras de la historia. La Palabra va grande y al

@@ -15,7 +15,20 @@ interface Ptr {
   sx: number
   sy: number
   t: number
+  /* Lo MÁS que se alejó el dedo en todo el gesto, no dónde terminó: quien
+     arrastra y vuelve al punto de partida estaba girando, no tocando. */
+  lejos: number
+  /* Ya pasó la tolerancia y esto es un giro: desde aquí el dedo manda la
+     cámara. Antes de eso la cámara no se mueve, para que el planeta no se
+     corra debajo del dedo mientras alguien lo está tocando. */
+  gira: boolean
 }
+
+/* CUÁNTO PUEDE TEMBLAR UN TOQUE. Una yema de verdad se corre 8-14 px entre
+   apretar y soltar; con 10 px, uno de cada tantos toques se leía como giro y
+   el planeta «no se dejaba tocar». El ratón es preciso: con él basta poco. */
+const TOLERANCIA_DEDO = 16
+const TOLERANCIA_RATON = 6
 
 export function GestureLayer() {
   const gl = useThree((s) => s.gl)
@@ -27,8 +40,8 @@ export function GestureLayer() {
     const ndc = new THREE.Vector2()
     const ptrs = new Map<number, Ptr>()
     let longTimer: number | null = null
-    let lastTapId: string | null = null
-    let lastTapTime = 0
+    /* La pulsación larga ya abrió su menú: soltar después no es un toque. */
+    let largaAbierta = false
     let edgeIntent = false
     let pinchDist = 0
     let twoFingerStartY = 0
@@ -92,7 +105,10 @@ export function GestureLayer() {
          se llevaba por delante el resto del gesto. Por eso pellizcar y
          arrastrar no giraba nada. */
       try { el.setPointerCapture?.(e.pointerId) } catch { /* puntero de aire */ }
-      ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now() })
+      ptrs.set(e.pointerId, {
+        x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), lejos: 0, gira: false,
+      })
+      largaAbierta = false
       edgeIntent = e.clientX > rect().right - rect().width * 0.14
       sim.pointer.copy(toNdc(e.clientX, e.clientY))
       sim.pointerMovedAt = sim.now
@@ -104,13 +120,18 @@ export function GestureLayer() {
         const y = e.clientY
         longTimer = window.setTimeout(() => {
           const id = pickWell(x, y)
+          /* LA PULSACIÓN LARGA ENSEÑA LA FICHA, no un menú. Antes abría a los
+             420 ms un menú radial («Sintonizar», «Anclar espora»…) justo bajo el
+             dedo: quien tocaba con calma lo abría sin querer, y el clic que el
+             navegador manda al soltar caía encima de ese menú. La ficha sale
+             abajo, lejos del dedo, con su ENTRAR, y soltar no toca nada. */
           if (id) {
-            const r = rect()
-            st.openTear(x - r.left, y - r.top, id)
-            audio.snap()
+            largaAbierta = true
+            st.select(id)
+            audio.select(0.5)
             haptic.tick()
           }
-        }, 420)
+        }, 550)
       }
 
       if (ptrs.size === 2) {
@@ -137,8 +158,15 @@ export function GestureLayer() {
       sim.pointerMovedAt = sim.now
 
       const st = useUiStore.getState()
+      p.lejos = Math.max(p.lejos, Math.hypot(e.clientX - p.sx, e.clientY - p.sy))
+      const tolerancia = e.pointerType === 'mouse' ? TOLERANCIA_RATON : TOLERANCIA_DEDO
       if (ptrs.size === 1 && !transit.active) {
-        if (Math.hypot(e.clientX - p.sx, e.clientY - p.sy) > 10) {
+        /* Mientras el dedo tiembla dentro de la tolerancia, nada gira: es un
+           toque en curso. Antes cada píxel de temblor giraba la cámara y el
+           planeta se corría debajo del dedo antes de soltarlo. */
+        if (!p.gira && p.lejos <= tolerancia) return
+        if (!p.gira) {
+          p.gira = true
           clearLong()
           /* ARRASTRAR LE GANA AL MENÚ. Si la mano se quedó quieta un momento
              antes de moverse, el menú radial ya se abrió; en cuanto se ve que
@@ -182,38 +210,42 @@ export function GestureLayer() {
       clearLong()
       if (!p) return
       const st = useUiStore.getState()
-      const moved = Math.hypot(e.clientX - p.sx, e.clientY - p.sy)
-      const dt = performance.now() - p.t
+      const lejos = Math.max(p.lejos, Math.hypot(e.clientX - p.sx, e.clientY - p.sy))
+      const tolerancia = e.pointerType === 'mouse' ? TOLERANCIA_RATON : TOLERANCIA_DEDO
 
-      if (ptrs.size === 0 && !transit.active && !st.activeId) {
-        if (moved < 10 && dt < 260) {
-          const id = pickWell(e.clientX, e.clientY)
-          if (!id && tocaAura(e.clientX, e.clientY)) {
-            const llamar = (window as any).__AE_AURA as (() => void) | undefined
-            if (llamar) {
-              audio.select(0.6)
-              haptic.tick()
-              llamar()
-              return
-            }
-          }
-          const now = performance.now()
-          if (id && id === lastTapId && now - lastTapTime < 340) {
-            transit.beginEnter(id, camera as THREE.PerspectiveCamera)
-            audio.commit()
-            haptic.commit()
-            lastTapId = null
-          } else {
-            if (id) {
-              audio.select(0.5)
-              haptic.tick()
-            }
-            st.select(id)
-            lastTapId = id
-            lastTapTime = now
+      /* UN TOQUE ES UN TOQUE, DURE LO QUE DURE. Antes se descartaba todo lo
+         que pasara de 260 ms —y quien toca con calma tarda eso y más—, y
+         para entrar hacía falta un SEGUNDO toque en menos de 340 ms sobre un
+         planeta que, entre tanto, se había movido. Por eso los planetas «no
+         se podían tocar». Ahora: tocar un planeta es entrar. La pulsación
+         larga sigue abriendo su menú, y si lo abrió, soltar no hace nada más. */
+      if (ptrs.size === 0 && !transit.active && !st.activeId && !p.gira && !largaAbierta && lejos <= tolerancia) {
+        const id = pickWell(e.clientX, e.clientY)
+        if (!id && tocaAura(e.clientX, e.clientY)) {
+          const llamar = (window as any).__AE_AURA as (() => void) | undefined
+          if (llamar) {
+            audio.select(0.6)
+            haptic.tick()
+            llamar()
+            return
           }
         }
+        if (id) {
+          st.select(id)
+          transit.beginEnter(id, camera as THREE.PerspectiveCamera)
+          audio.commit()
+          haptic.commit()
+        } else {
+          st.select(null)
+        }
       }
+    }
+
+    /* El sistema se quedó con el gesto (un deslizamiento de la página, una
+       llamada entrante): eso no es un toque y no abre nada. */
+    const onCancel = (e: PointerEvent) => {
+      ptrs.delete(e.pointerId)
+      clearLong()
     }
 
     const onWheel = (e: WheelEvent) => {
@@ -336,7 +368,7 @@ export function GestureLayer() {
     el.addEventListener('pointerdown', onDown)
     el.addEventListener('pointermove', onMove)
     el.addEventListener('pointerup', onUp)
-    el.addEventListener('pointercancel', onUp)
+    el.addEventListener('pointercancel', onCancel)
     el.addEventListener('wheel', onWheel, { passive: false })
     el.addEventListener('dblclick', onDoble)
     el.addEventListener('touchmove', onTouchMove, { passive: false })
@@ -349,7 +381,7 @@ export function GestureLayer() {
       el.removeEventListener('pointerdown', onDown)
       el.removeEventListener('pointermove', onMove)
       el.removeEventListener('pointerup', onUp)
-      el.removeEventListener('pointercancel', onUp)
+      el.removeEventListener('pointercancel', onCancel)
       el.removeEventListener('wheel', onWheel)
       el.removeEventListener('dblclick', onDoble)
       el.removeEventListener('touchmove', onTouchMove)

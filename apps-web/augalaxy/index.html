@@ -21,6 +21,11 @@
   </head>
   <body>
     <div id="root" data-orden-standalone></div>
-    <script type="module" src="/src/experience/entry.tsx"></script>
+    <!-- La galaxia de los LOGOS (src/main.tsx) es la que sirve la wallet desde
+         la decisión de José del 23-sep. Esta entrada decide qué compila
+         publicar.py: cuando apuntaba a src/experience/entry.tsx, compilar volvía
+         a meter los planetas de texturas en producción sin que nadie lo pidiera.
+         Esa galaxia sigue en src/experience/ por si se retoma. -->
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
