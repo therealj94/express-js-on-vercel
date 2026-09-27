@@ -187,13 +187,13 @@ Qué hacer, en orden:
   Pasa typecheck y 55/55 con Node 22. Es el paso previo a mover la app de
   Heroku-24 a Heroku-26.
 
-**Falta desplegar, con aprobación explícita de José:**
-1. Veta v124: `node infra/veta-wallet-backend/bin/desplegar.mjs`. Se
-   revierte a v123.
-2. App: lanzar `veta-preview.yml` en `preview`.
-3. MyTokenPay: `PATCH /apps/mytokenpay-api {"build_stack":"heroku-26"}` y
-   una construcción desde `git archive`. Se comprueban `/healthz` y las
-   rutas. Se revierte a v29, que vuelve con su stack.
+**Desplegado** con aprobación de José (27-sep):
+
+| Destino | Antes → ahora | Comprobación | Cómo revertir |
+|---|---|---|---|
+| `vetawallet` | v123 → **v124** (`eedfe4d`) | El guion corrió las 117 pruebas. `/salud` ok con `correo.estado: sin_envios`. `/auth/estadoCorreo` responde 401 sin sesión. Un enlace falso muestra la página «Enlace no válido» (400) | Roll back a **v123** |
+| App Veta (EAS `preview`) | Actions #100 → **#101** (`eedfe4d`) | En verde | Volver a lanzar `veta-preview.yml` desde `ceb41d5` |
+| `mytokenpay-api` | v29 (Heroku-24, Node 20) → **v30** (Heroku-26, Node 22) | `/healthz` ok (mongo). `web.1` corre v30. `/genesis/*`, `/api/companies` y `/api/admin` responden 401 sin sesión | Roll back a **v29**; si el stack no vuelve, `PATCH build_stack heroku-24` |
 
 ## Pendiente
 
