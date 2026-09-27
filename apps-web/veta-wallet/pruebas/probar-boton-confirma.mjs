@@ -13,7 +13,7 @@ await pag.route('**/*', async (route) => {
   /* Esta prueba mide EL BOTÓN, milisegundo a milisegundo: se le corta la
      puerta 3D para que el montaje de la galaxia no le pise el reloj (el botón
      con la puerta 3D viva lo cubre puerta-continua.mjs). */
-  if (u.includes('/aetherion/')) return route.abort()
+  if (u.includes('/augalaxy/')) return route.abort()
   if (u.startsWith('http://127.0.0.1:8791')) return route.continue()
   if (u === API + '/auth/login') {
     await new Promise(r => { soltar = r })

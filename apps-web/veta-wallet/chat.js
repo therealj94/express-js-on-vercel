@@ -7,8 +7,18 @@
  * Aqui no hay pantalla: solo hablar con el relevo. Las vistas viven en app.js,
  * igual que cadena.js no sabe dibujar una moneda.
  *
- * NO hay cifrado de punta a punta en esta version, y no se promete en ningun
- * texto de la interfaz. Decirlo aqui es mas barato que descubrirlo despues.
+ * CIFRADO DE PUNTA A PUNTA (al 27-sep-2026). Aquí decía que no lo había, y
+ * ya no es cierto. El texto, las fotos, los videos, los archivos y las notas
+ * de voz de una conversación se cierran con el candado del aparato
+ * (candado.js), y la llave de cada archivo viaja DENTRO del mensaje cifrado.
+ *
+ * Lo que sale en claro lo marca cada mensaje con `e2e:false`, y la burbuja lo
+ * dice:
+ *   · cuando quien recibe todavía no tiene ningún aparato con llave;
+ *   · cuando este navegador no tiene candado (navegación privada con el cajón
+ *     bloqueado).
+ *
+ * Los estados y la foto de perfil son públicos y van en claro a propósito.
  */
 const CHAT = (() => {
   'use strict';
@@ -592,12 +602,23 @@ const CHAT = (() => {
   /** Sube la nota y devuelve su adjunto, con la duración en segundos. */
   async function subirVoz(trozo, segundos) {
     if (trozo.size > TOPE) { const e = new Error('más de 8MB'); e.code = 413; throw e; }
-    const datos = await new Promise((ok, mal) => {
-      const l = new FileReader();
-      l.onload = () => ok(String(l.result).split(',')[1] || '');
-      l.onerror = () => mal(new Error('no se pudo leer la nota'));
-      l.readAsDataURL(trozo);
-    });
+    /* LA NOTA DE VOZ TAMBIÉN SE CIERRA, igual que una foto (ver `subir`). Se
+       subía en claro: `enviarAdjunto` no encontraba llave, el mensaje salía
+       marcado sin cifrar, y el relevo guardaba la voz de la persona tal cual.
+       Era la única parte de una conversación que desmentía «cada latido,
+       cifrado de punta a punta». Los dos lados que reciben —esta web y el
+       teléfono— ya abrían una nota con su llave; faltaba cerrarla al subir. */
+    const crudos = new Uint8Array(await trozo.arrayBuffer());
+    let datos, llave = null, iv = null;
+    if (CANDADO?.hay()) {
+      const c = await CANDADO.cerrarBytes(crudos);
+      datos = aB64Simple(c.bytes);
+      llave = c.llave;
+      iv = c.iv;
+    } else {
+      // Sin candado se sube en claro y el mensaje sale marcado sin cifrar.
+      datos = aB64Simple(crudos);
+    }
     /* La duración viaja en el NOMBRE porque el relevo no tiene un campo para
        ella y añadirle uno obligaría a desplegar los dos lados a la vez. Es
        fea pero es honesta: se lee al pintar y si falta, se enseña sin ella. */
@@ -605,7 +626,7 @@ const CHAT = (() => {
       tipo: 'voz', datos, mime: trozo.type || 'audio/webm',
       nombre: `voz-${Math.max(1, Math.round(segundos))}s`,
     }), 120000);
-    return { id: d.id, tipo: 'voz', nombre: `voz-${Math.max(1, Math.round(segundos))}s` };
+    return { id: d.id, tipo: 'voz', nombre: `voz-${Math.max(1, Math.round(segundos))}s`, llave, iv };
   }
 
   /** Los segundos que dice el nombre de la nota, o null si no se sabe. */

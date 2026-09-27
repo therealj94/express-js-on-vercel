@@ -34,7 +34,7 @@ const nav=await chromium.launch({executablePath:'/opt/pw-browsers/chromium-1194/
 // AETHERION a medias rompe ademas la entrada por la esfera, y entonces la
 // prueba estaria midiendo el remiendo en vez de la app.
 const SIN_AETHERION = async (pag) => {
-  await pag.route('**/aetherion/assets/aetherion.js*', (r) => r.abort());
+  await pag.route('**/augalaxy/assets/augalaxy.js*', (r) => r.abort());
 };
 
 let vacias = 0;

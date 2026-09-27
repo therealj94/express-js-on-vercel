@@ -803,12 +803,11 @@ es: {
    * una llamada. Ni el relevo TURN puede: reenvia paquetes cerrados sin
    * abrirlos.
    *
-   * Los MENSAJES no. Viajan cifrados hasta nuestro servidor y ahi quedan
-   * legibles para nosotros. Decir lo contrario haria que alguien mandara por
-   * el chat lo que no debia, y esa es la peor mentira posible porque la
-   * persona actua sobre ella.
-   *
-   * Asi que se dicen las dos cosas, separadas, y la limitacion primero. */
+   * Los MENSAJES tambien, desde que existe el candado (chat.js, candado.js):
+   * el texto y los adjuntos se cierran en el aparato. Lo que no se puede
+   * cerrar sale marcado en su propia burbuja, porque decir «cifrado» de algo
+   * que no lo esta haria que alguien mandara lo que no debia, y esa es la peor
+   * mentira posible porque la persona actua sobre ella. */
   'cha.e2eLlamadas': 'Lo que escribís y las llamadas van cifrados de punta a punta: ni nosotros podemos leerlos ni escucharlas.',
   'cha.e2eIdentidad': 'Y del otro lado siempre hay una persona real, verificada con Genesis ID en nuestra cadena.',
   /* Lo que TODAVIA no esta cifrado se sigue diciendo, en el mismo sitio y con
@@ -891,8 +890,8 @@ es: {
   'pay.pagarT': 'Pagar a este negocio',
     'pay.escanear': 'Escanear su código',
   'tok.noListado': 'no listado',
-  'llv.abrir': 'Entrar con mi frase semilla o mi llave privada',
-  'llv.t': 'Entrar con tu llave',
+  'llv.abrir': 'Ya tengo una billetera: importarla',
+  'llv.t': 'Importar una billetera existente',
   'llv.p': 'Si no te acordás de la contraseña y tampoco tenés el correo a mano, tu frase semilla te deja entrar. Es la misma que te dimos al abrir la cuenta.',
   'llv.campo': 'Tu frase semilla o tu llave privada',
   'llv.ph': 'doce palabras separadas por un espacio, o una llave que empieza con 0x',
@@ -1931,8 +1930,8 @@ en: {
   'pay.pagarT': 'Pay this business',
     'pay.escanear': 'Scan their code',
   'tok.noListado': 'unlisted',
-  'llv.abrir': 'Sign in with my seed phrase or private key',
-  'llv.t': 'Sign in with your key',
+  'llv.abrir': 'I already have a wallet: import it',
+  'llv.t': 'Import an existing wallet',
   'llv.p': 'If you do not remember your password and cannot reach your email either, your seed phrase gets you in. It is the same one we gave you when you opened the account.',
   'llv.campo': 'Your seed phrase or private key',
   'llv.ph': 'twelve words separated by a space, or a key starting with 0x',

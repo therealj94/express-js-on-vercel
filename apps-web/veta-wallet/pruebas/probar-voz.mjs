@@ -19,6 +19,7 @@ await pag.route('**/*', async (route) => {
   if (u === CEREBRO + '/subir') {
     const b = JSON.parse(req.postData()||'{}')
     subidas.push({ tipo:b.tipo, mime:b.mime, nombre:b.nombre, bytes:(b.datos||'').length })
+    await pag.evaluate((d) => { window.__ultimaSubida = d }, b.datos || '')
     return j({ id: 'arch1' })
   }
   if (u === CEREBRO + '/enviar') { subidas.push({ enviado: JSON.parse(req.postData()||'{}') }); return j({ ok:true }) }
@@ -67,6 +68,31 @@ await pag.click('.cha-mic'); await pag.waitForTimeout(1200)
 await pag.click('.cha-grab-x'); await pag.waitForTimeout(900)
 ok('cancelar NO sube nada', subidas.length === antes, `${subidas.length} vs ${antes}`)
 ok('y suelta el microfono', await pag.evaluate(()=>!document.querySelector('.cha-mic')?.classList.contains('grabando')))
+
+// Con candado, la nota sube CERRADA: el relevo guarda bytes que no puede oír,
+// y con la llave que viaja dentro del mensaje vuelve entera.
+const cerrada = await pag.evaluate(async () => {
+  const hayAntes = CANDADO.hay
+  CANDADO.hay = () => true
+  try {
+    const crudos = new Uint8Array(4096).map((_, i) => (i * 37) & 255)
+    const adj = await CHAT.subirVoz(new Blob([crudos], { type: 'audio/webm' }), 3)
+    return { llave: !!adj.llave, iv: !!adj.iv, adj }
+  } finally { CANDADO.hay = hayAntes }
+})
+const subCif = subidas.filter(s=>s.tipo==='voz').pop()
+ok('con candado la nota vuelve con su llave', cerrada.llave && cerrada.iv)
+const vuelta = await pag.evaluate(async ({ adj }) => {
+  const r = window.__ultimaSubida
+  if (!r) return null
+  const cerr = Uint8Array.from(atob(r), c => c.charCodeAt(0))
+  const crudos = new Uint8Array(4096).map((_, i) => (i * 37) & 255)
+  const igual = cerr.length === crudos.length && cerr.every((b, i) => b === crudos[i])
+  const abierta = await CANDADO.abrirBytes(cerr, adj.llave, adj.iv)
+  return { igualQueElOriginal: igual, vuelveEntera: abierta.length === 4096 && abierta.every((b, i) => b === crudos[i]) }
+}, cerrada)
+ok('lo que sube no es el audio en claro', vuelta && !vuelta.igualQueElOriginal, JSON.stringify(vuelta))
+ok('y con la llave vuelve entera', vuelta?.vuelveEntera, `${subCif?.bytes} bytes subidos`)
 
 ok('sin errores de javascript', err.length===0)
 if(err.length) console.log(err.slice(0,3))
