@@ -17,7 +17,9 @@ function hayWebGL() {
   try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; }
 }
 
-if (sec && !quieto && hayWebGL()) {
+// Sin IntersectionObserver (Safari y WebViews viejos) no hay 3D: el disco
+// plano se queda, en vez de una sección fija vacía.
+if (sec && !quieto && hayWebGL() && 'IntersectionObserver' in window) {
   html.classList.add('con3d');
   const io = new IntersectionObserver((es) => {
     if (es.some((e) => e.isIntersecting)) { io.disconnect(); import(new URL('origen3d-escena.js' + new URL(import.meta.url).search, import.meta.url).href).then((m) => m.arrancar(sec)).catch(() => html.classList.remove('con3d')); }

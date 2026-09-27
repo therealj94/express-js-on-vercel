@@ -60,6 +60,18 @@ const RENDIRSE_TRAS_MS = 100000;
    VER la tarjeta antes de confiar, y ese botón se lo da. */
 const GOOGLE_WALLET = 'com.google.android.apps.walletnfcrel';
 
+/* ¿El aviso es de esta tarjeta? Si el aviso no dice de qué tarjeta es, no hay
+   con qué descartarlo y se acepta; si lo dice y no coincide, no es este pago. */
+function esDeEstaTarjeta(n, card) {
+  if (!card) return true;
+  const idAviso = n.card_id ?? n.cardId ?? null;
+  const idTarjeta = card.id ?? card.card_id ?? null;
+  if (idAviso != null && idTarjeta != null) return String(idAviso) === String(idTarjeta);
+  const finAviso = n.last4 ?? n.card_last4 ?? null;
+  if (finAviso != null && card.last4 != null) return String(finAviso) === String(card.last4);
+  return true;
+}
+
 export default function Pagar({ nav, params }) {
   const t = useT();
   const toast = useToast();
@@ -123,16 +135,30 @@ export default function Pagar({ nav, params }) {
       try {
         const d = await cardApi.notifications();
         const lista = Array.isArray(d?.notifications) ? d.notifications : [];
-        const nuevo = lista.find((n) => {
+        /* El aviso no trae un identificador del tap, así que no se puede
+           probar que sea ESTE pago. Lo que sí se puede: que sea de esta
+           tarjeta (si el aviso dice de cuál es) y que sea el único cobro que
+           llegó mientras se esperaba. Si hay más de uno —una suscripción que
+           cayó justo ahora, una compra en línea— no se adivina: se manda a
+           ver los movimientos. */
+        const candidatos = lista.filter((n) => {
           const cuando = new Date(n.createdAt || 0).getTime();
-          return cuando >= desde.current && (n.type === 'APPROVED' || n.type === 'DECLINED');
+          if (cuando < desde.current) return false;
+          if (n.type !== 'APPROVED' && n.type !== 'DECLINED') return false;
+          return esDeEstaTarjeta(n, card);
         });
+        if (candidatos.length > 1 && vivo.current) {
+          setFase('sinRespuesta');
+          return;
+        }
+        const nuevo = candidatos[0];
         if (nuevo && vivo.current) {
           hap();
           setMov(nuevo);
           setFase(nuevo.type === 'APPROVED' ? 'listo' : 'rechazado');
-          // Se marca leído: este aviso ya se entregó, aquí y ahora.
-          cardApi.markNotificationsRead().catch(() => {});
+          /* No se marca nada como leído: el endpoint marca TODOS los avisos
+             de la tarjeta y se llevaría alertas que esta pantalla no enseñó.
+             La bandeja se queda como estaba y se lee en la tarjeta. */
           return;
         }
       } catch (e) {
@@ -200,6 +226,7 @@ export default function Pagar({ nav, params }) {
           </Text>
           {!!mov?.merchant && <Text style={s.comercio}>{mov.merchant}</Text>}
           {!bien && <Text style={s.motivo}>{mov?.message || t('pagar.rechazadoP')}</Text>}
+          <Text style={s.pie}>{t('pagar.detectado')}</Text>
 
           <View style={{ height: 30 }} />
           <View style={s.acciones}>
