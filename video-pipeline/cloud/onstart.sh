@@ -56,6 +56,12 @@ descargar_pesos() {
     local url="https://huggingface.co/$1/resolve/main/$2"
     local dst="$3" nom="${2##*/}"
     local intento
+    # Ya está (restaurado de la caché de S3 en AWS): sin fichero .aria2 al lado
+    # la descarga anterior terminó. aria2c no lo salta solo: lo baja otra vez
+    # con otro nombre.
+    if [ -s "$dst/$nom" ] && [ ! -e "$dst/$nom.aria2" ]; then
+      echo "    en caché: $nom"; return 0
+    fi
     for intento in 1 2 3; do
       aria2c -x16 -s16 -k10M --file-allocation=none --console-log-level=warn \
         --header="Authorization: Bearer ${HF_TOKEN}" \
@@ -135,6 +141,11 @@ fi
 echo "==> esperando a que terminen los pesos..."
 wait "$DESCARGA" || echo "!! la descarga de pesos terminó con error"
 tail -30 "$WORK/pesos.log"
+# Marca para el arranque de AWS: solo una instalación completa se siembra en la
+# caché. Una a medias se copiaría a todas las sesiones siguientes.
+if ! grep -q "FALLO DEFINITIVO" "$WORK/pesos.log"; then
+  touch "$WORK/.instalado"
+fi
 
 # --- Autenticación delante de ComfyUI -------------------------------------
 # ComfyUI no tiene login. En una IP pública sin proxy, cualquiera que escanee
