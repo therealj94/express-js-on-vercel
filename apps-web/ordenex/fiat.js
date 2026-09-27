@@ -74,7 +74,7 @@ const VFIAT = (() => {
      el módulo y se elige con idiomaActivo(). Español con voseo, como la casa. */
   const TXT = {
     es: {
-      titulo: 'Fiat', sub: 'Entrada y salida en lempiras o dólares, de persona a persona, con agentes verificados.',
+      titulo: 'Fiat', sub: 'Próximamente: entrada y salida en lempiras o dólares, de persona a persona, con agentes verificados. Se abre con los primeros agentes.',
       legal: 'El cambio fiat es entre personas con identidad verificada en Genesis ID. Ordenex custodia la garantía en ORIGEN y arbitra si hace falta; el dinero fiat viaja de banco a banco entre las partes — la casa no lo toca.',
       tabComprar: 'Comprar', tabVender: 'Vender', tabSolicitudes: 'Mis solicitudes',
 
@@ -144,7 +144,7 @@ const VFIAT = (() => {
       historiaT: 'Historia',
     },
     en: {
-      titulo: 'Fiat', sub: 'Cash in and out in lempiras or dollars, person to person, through verified agents.',
+      titulo: 'Fiat', sub: 'Coming soon: cash in and out in lempiras or dollars, person to person, through verified agents. It opens with the first agents.',
       legal: 'Fiat exchange happens between people with a verified Genesis ID identity. Ordenex holds the ORIGEN collateral in escrow and arbitrates if needed; fiat money travels bank to bank between the parties — the house never touches it.',
       tabComprar: 'Buy', tabVender: 'Sell', tabSolicitudes: 'My requests',
 
