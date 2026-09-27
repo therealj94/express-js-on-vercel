@@ -171,7 +171,7 @@ const EDAD_MAXIMA_SELLO_MS = 90_000;
  *  solo. Nunca se inventa uno para que la venta siga abierta, y nunca se
  *  re-sella como nuevo un precio viejo (EDAD_MAXIMA_SELLO_MS).
  *  Sale del oráculo único (lib/oraculo.js): el mismo gramin que /mercados y
- *  que la wallet, no una lectura propia de CoinGecko. */
+ *  que la wallet (el precio de Londres), no una lectura propia de un feed. */
 async function precioOrigen() {
   const oraculo = require('./oraculo');
   const m = await oraculo.metales();

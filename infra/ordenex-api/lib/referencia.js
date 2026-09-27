@@ -9,8 +9,10 @@
 //
 // EL FEED ES EL ORACULO UNICO (lib/oraculo.js, SFSP v0.3 §10.5, plan v0.3
 // C5): el mismo archivo, byte a byte, que usa el backend de la wallet a traves
-// de su lib/origenPrice.js. CoinGecko (pax-gold, kinesis-silver) de principal
-// y gold-api.com (XAU/XAG) de respaldo; cache de 30 s y edad maxima de 10 min.
+// de su lib/origenPrice.js. El precio es el de Londres: spot XAU/XAG
+// (gold-api.com) con el fijo oficial de la LBMA como guarda (un spot a mas del
+// 5 % del fijo se descarta); cache de 30 s y edad maxima de 10 min. Sin
+// conexion con Londres no hay precio.
 // Aqui ya no se lee ningun feed por cuenta propia.
 //
 // ORIGEN se referencia como gramo de oro / 55 (un gramin), que es lo que

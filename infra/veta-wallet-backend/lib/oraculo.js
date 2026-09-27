@@ -25,26 +25,33 @@
 // Los 0,01 USD NO son el precio de ORIGEN: son la COMISIÓN por transacción.
 //
 // ══════════════════════════════════════════════════════════════════════════
-// LAS FUENTES
+// LAS FUENTES (decisión de la dirección, 27-sep-2026: «el precio de Londres»)
 //
-//   principal  CoinGecko, pax-gold y kinesis-silver (onza en USD).
-//   respaldo   gold-api.com, XAU y XAG.
+//   precio vivo  gold-api.com, XAU y XAG: el spot del mercado de Londres (el
+//                OTC de Londres, el que se cotiza como XAU/USD y XAG/USD).
+//   guarda       el último fijo oficial de la LBMA (prices.lbma.org.uk: oro
+//                AM y PM, plata), leído cada 6 h. Un spot que se aparta más de
+//                DESVIO_MAXIMO (5 %) del fijo vigente (de menos de 5 días) se
+//                DESCARTA: esa pata queda sin precio y la operación que la
+//                necesita se bloquea. Si la LBMA no contesta, o su fijo es más
+//                viejo que 5 días, el spot se sirve igual y la lectura lo dice
+//                (`londres: 'sin-fijo'`).
 //
-// Binance NO es respaldo: contesta 451 a las IP de Estados Unidos, que es
-// donde corren los dos backends (medido el 12-ago-2026). Un respaldo que nunca
-// responde sólo gasta sus cuatro segundos de espera.
+// Sin conexión con Londres no hay precio: null, y quien mueve dinero bloquea.
+// Fuera quedan CoinGecko (pax-gold, kinesis-silver: tokens que cotizan con
+// prima o descuento sobre el metal, no el precio de Londres) y Binance
+// (contesta 451 a las IP de Estados Unidos, medido el 12-ago-2026).
 //
-// Si la principal trae una pata y no la otra (oro sí, plata no), la que falta
-// se pide al respaldo. Y si tampoco el respaldo la trae, se conserva la de la
-// lectura anterior (ver «cada pata con su hora», abajo): una lectura a medias
-// no borra la pata buena que ya había.
+// Si una lectura trae una pata y no la otra (oro sí, plata no), se conserva la
+// de la lectura anterior (ver «cada pata con su hora», abajo): una lectura a
+// medias no borra la pata buena que ya había.
 //
 // ══════════════════════════════════════════════════════════════════════════
 // LA REGLA DEL TIEMPO
 //
-//   caché          30 s — refrescar más a menudo sólo regala el rate limit de
-//                  CoinGecko sin clave (la IP es UNA para todos los clientes:
-//                  cada 30 s son dos llamadas por minuto, miren diez o diez mil).
+//   caché          30 s — la IP del backend es UNA para todos los clientes:
+//                  cada 30 s son dos llamadas por minuto al feed, miren diez o
+//                  diez mil.
 //   edad máxima    10 min — si el feed no llega, la última lectura buena se
 //                  sirve, rotulada con su hora (`en`), mientras tenga menos de
 //                  10 minutos. Más vieja que eso NO se sirve: se contesta null
@@ -86,9 +93,13 @@ const EDAD_MAXIMA_MS = 10 * 60_000;
 const PLAZO_MS = 4_000;
 const HISTORIAL_MAX = 120;
 
-const COINGECKO =
-  'https://api.coingecko.com/api/v3/simple/price?ids=pax-gold,kinesis-silver&vs_currencies=usd';
 const GOLD_API = 'https://api.gold-api.com/price/'; // + XAU | XAG
+const LBMA = 'https://prices.lbma.org.uk/json/'; // + gold_am | gold_pm | silver .json
+const LBMA_ARCHIVOS = { oro: ['gold_am', 'gold_pm'], plata: ['silver'] };
+const LBMA_REFRESCO_MS = 6 * 3_600_000;
+const FIJO_VIGENCIA_MS = 5 * 86_400_000;
+const DESVIO_MAXIMO = 0.05;
+const PLAZO_LBMA_MS = 15_000;
 
 const positivo = (x) => {
   const n = Number(x);
@@ -102,16 +113,6 @@ function graminDeOnza(onzaOro) {
 }
 
 // ── las fuentes de verdad ───────────────────────────────────────────────────
-
-async function leerCoinGecko() {
-  const r = await fetch(COINGECKO, { signal: AbortSignal.timeout(PLAZO_MS) });
-  if (!r.ok) return null;
-  const d = await r.json();
-  return {
-    oro: positivo(d?.['pax-gold']?.usd),
-    plata: positivo(d?.['kinesis-silver']?.usd),
-  };
-}
 
 async function leerGoldApi() {
   const uno = async (simbolo) => {
@@ -127,16 +128,44 @@ async function leerGoldApi() {
   return { oro, plata };
 }
 
-const FUENTES_DE_VERDAD = [
-  { nombre: 'coingecko', leer: leerCoinGecko },
-  { nombre: 'gold-api', leer: leerGoldApi },
-];
+const FUENTES_DE_VERDAD = [{ nombre: 'londres-spot', leer: leerGoldApi }];
+
+/**
+ * El último fijo oficial de la LBMA del metal, en USD por onza:
+ * { valor, dia (ms), archivo } | null. De oro se toman AM y PM y gana el más
+ * reciente (a igual día, el PM). No lanza.
+ */
+async function leerFijoLbma(metal) {
+  let mejor = null;
+  for (const archivo of LBMA_ARCHIVOS[metal] || []) {
+    try {
+      const r = await fetch(`${LBMA}${archivo}.json`, { signal: AbortSignal.timeout(PLAZO_LBMA_MS) });
+      if (!r.ok) continue;
+      const serie = await r.json();
+      if (!Array.isArray(serie)) continue;
+      for (let i = serie.length - 1; i >= 0; i--) {
+        const valor = positivo(serie[i]?.v?.[0]);
+        const dia = Date.parse(serie[i]?.d);
+        if (valor == null || !Number.isFinite(dia)) continue;
+        const orden = dia + (archivo.endsWith('pm') ? 1 : 0);
+        if (!mejor || orden > mejor.orden) mejor = { valor, dia, archivo, orden };
+        break;
+      }
+    } catch {
+      // la LBMA caída no tumba el precio: el spot se sirve «sin-fijo»
+    }
+  }
+  return mejor && { valor: mejor.valor, dia: mejor.dia, archivo: mejor.archivo };
+}
 
 /**
  * Un oráculo. `crearOraculo()` sin argumentos es el de producción; las pruebas
  * le pasan fuentes y reloj fingidos para no tocar la red.
  *
  *   fuentes   [{ nombre, leer: async () => ({ oro, plata }) | null }], en orden
+ *   fijo      async (metal) => ({ valor, dia }) | null — el fijo de Londres que
+ *             hace de guarda. Por omisión, la LBMA; si la prueba pasa sus
+ *             propias fuentes y no pasa `fijo`, no hay guarda (no toca la red).
  *   ahora     () => milisegundos
  */
 function crearOraculo(opciones = {}) {
@@ -145,6 +174,39 @@ function crearOraculo(opciones = {}) {
   const frescoMs = opciones.frescoMs ?? FRESCO_MS;
   const edadMaximaMs = opciones.edadMaximaMs ?? EDAD_MAXIMA_MS;
   const historialMax = opciones.historialMax ?? HISTORIAL_MAX;
+  const leerFijo = opciones.fijo || (opciones.fuentes ? async () => null : leerFijoLbma);
+  const desvioMaximo = opciones.desvioMaximo ?? DESVIO_MAXIMO;
+
+  // El fijo de Londres por metal, con su propia caché de 6 h y un vuelo a la vez.
+  const fijos = { oro: null, plata: null };
+  const fijoEn = { oro: null, plata: null };
+  const fijoVuelo = { oro: null, plata: null };
+  async function fijoDe(metal) {
+    const t = ahora();
+    if (fijoEn[metal] !== null && t - fijoEn[metal] < LBMA_REFRESCO_MS) return fijos[metal];
+    if (!fijoVuelo[metal]) {
+      fijoVuelo[metal] = Promise.resolve()
+        .then(() => leerFijo(metal))
+        .catch(() => null)
+        .then((f) => {
+          fijoEn[metal] = ahora();
+          if (f && positivo(f.valor) != null) fijos[metal] = f;
+          return fijos[metal];
+        })
+        .finally(() => {
+          fijoVuelo[metal] = null;
+        });
+    }
+    return fijoVuelo[metal];
+  }
+
+  // ¿El spot está dentro de Londres? { ok, londres: 'dentro'|'fuera'|'sin-fijo' }
+  async function contraLondres(metal, valor) {
+    const f = await fijoDe(metal);
+    if (!f || !Number.isFinite(f.dia) || ahora() - f.dia > FIJO_VIGENCIA_MS) return { ok: true, londres: 'sin-fijo' };
+    const desvio = Math.abs(valor - f.valor) / f.valor;
+    return desvio <= desvioMaximo ? { ok: true, londres: 'dentro' } : { ok: false, londres: 'fuera', desvio, fijo: f.valor };
+  }
 
   // Cada pata por separado: { valor, fuente, en } | null. Ver «cada pata con
   // su hora» en la cabecera.
@@ -152,9 +214,11 @@ function crearOraculo(opciones = {}) {
   let intentoEn = null; // cuándo se preguntó por última vez a los feeds
   let vuelo = null;
   const registro = [];
+  const rechazos = []; // spots descartados por la guarda de Londres (auditoría)
 
   // Pregunta a las fuentes en orden hasta tener las dos patas o acabarlas.
   async function traer() {
+    const londres = { oro: null, plata: null };
     let oro = null;
     let plata = null;
     let fuenteOro = null;
@@ -167,15 +231,26 @@ function crearOraculo(opciones = {}) {
       } catch {
         l = null;
       }
-      const o = oro == null ? positivo(l?.oro) : null;
-      const p = plata == null ? positivo(l?.plata) : null;
+      let o = oro == null ? positivo(l?.oro) : null;
+      let p = plata == null ? positivo(l?.plata) : null;
+      // La guarda de Londres: un spot que se aparta del fijo LBMA no se usa.
+      if (o != null) {
+        const g = await contraLondres('oro', o);
+        londres.oro = g.londres;
+        if (!g.ok) { rechazos.push({ metal: 'oro', valor: o, fijo: g.fijo, fuente: f.nombre, en: ahora() }); o = null; }
+      }
+      if (p != null) {
+        const g = await contraLondres('plata', p);
+        londres.plata = g.londres;
+        if (!g.ok) { rechazos.push({ metal: 'plata', valor: p, fijo: g.fijo, fuente: f.nombre, en: ahora() }); p = null; }
+      }
       if (o != null) { oro = o; fuenteOro = f.nombre; }
       if (p != null) { plata = p; fuentePlata = f.nombre; }
       if (o != null || p != null) usadas.push(f.nombre);
       if (oro != null && plata != null) break;
     }
     if (oro == null && plata == null) return null;
-    return { oro, plata, fuente: usadas.join('+'), en: ahora(), fuenteOro, fuentePlata };
+    return { oro, plata, fuente: usadas.join('+'), en: ahora(), fuenteOro, fuentePlata, londres };
   }
 
   // Una lectura renueva SÓLO las patas que trae; la otra se queda como estaba.
@@ -231,9 +306,10 @@ function crearOraculo(opciones = {}) {
           if (lectura) {
             apuntar(lectura);
             // Al historial va la lectura tal como llegó, sin rellenar.
-            registro.push({ oro: lectura.oro, plata: lectura.plata, fuente: lectura.fuente, en: lectura.en });
+            registro.push({ oro: lectura.oro, plata: lectura.plata, fuente: lectura.fuente, en: lectura.en, londres: lectura.londres });
             if (registro.length > historialMax) registro.splice(0, registro.length - historialMax);
           }
+          if (rechazos.length > historialMax) rechazos.splice(0, rechazos.length - historialMax);
           return lectura;
         })
         .finally(() => {
@@ -285,15 +361,27 @@ function crearOraculo(opciones = {}) {
     return registro.map((l) => ({ ...l }));
   }
 
+  /** Los spots descartados por la guarda de Londres (copia). */
+  function descartados() {
+    return rechazos.map((r) => ({ ...r }));
+  }
+
+  /** El fijo LBMA vigente que hace de guarda, por metal (sin tocar la red si está en caché). */
+  async function fijoLondres(metal) {
+    return fijoDe(metal);
+  }
+
   /** Sólo pruebas: olvidar caché e historial. */
   function _reiniciar() {
     patas = { oro: null, plata: null };
     intentoEn = null;
     vuelo = null;
     registro.length = 0;
+    rechazos.length = 0;
+    for (const m of ['oro', 'plata']) { fijos[m] = null; fijoEn[m] = null; fijoVuelo[m] = null; }
   }
 
-  return { metales, cotizacion, precioOrigenUsd, historial, _reiniciar };
+  return { metales, cotizacion, precioOrigenUsd, historial, descartados, fijoLondres, _reiniciar };
 }
 
 const deCasa = crearOraculo();
@@ -305,11 +393,16 @@ module.exports = {
   FRESCO_MS,
   EDAD_MAXIMA_MS,
   HISTORIAL_MAX,
+  DESVIO_MAXIMO,
+  FIJO_VIGENCIA_MS,
   graminDeOnza,
+  leerFijoLbma,
   crearOraculo,
   metales: deCasa.metales,
   cotizacion: deCasa.cotizacion,
   precioOrigenUsd: deCasa.precioOrigenUsd,
   historial: deCasa.historial,
+  descartados: deCasa.descartados,
+  fijoLondres: deCasa.fijoLondres,
   _reiniciar: deCasa._reiniciar,
 };

@@ -35,13 +35,15 @@ function correr(codigo, env = {}) {
   return r.stdout.trim().split("\n").pop();
 }
 
-// Un fetch fingido: CoinGecko contesta lo que se le diga, gold-api igual.
-const fetchFingido = (cg, ga) => `
+// Un fetch fingido: el spot de Londres (gold-api) y el fijo de la LBMA
+// contestan lo que se les diga; null es «sin red».
+const fetchFingido = (spot, lbma = null) => `
   globalThis.fetch = async (url) => {
-    var cuerpo = String(url).includes('coingecko') ? ${JSON.stringify(cg)} : ${JSON.stringify(ga)};
+    var cuerpo = String(url).includes('lbma') ? ${JSON.stringify(lbma)} : ${JSON.stringify(spot)};
     if (cuerpo === null) throw new Error('sin red');
     return { ok: true, json: async () => cuerpo };
   };`;
+const hoy = new Date().toISOString().slice(0, 10);
 
 test("las dos copias del oráculo son idénticas byte a byte", () => {
   const aqui = fs.readFileSync(path.join(RAIZ, "lib", "oraculo.js"));
@@ -98,20 +100,62 @@ test("una lectura con una sola pata no borra el oro bueno de hace segundos", asy
   assert.equal(await o.precioOrigenUsd(), null);
 });
 
-test("origenPrice por omisión: el gramin que da el oráculo", () => {
+test("origenPrice por omisión: el gramin del spot de Londres, dentro del fijo LBMA", () => {
   const out = correr(
-    `${fetchFingido({ "pax-gold": { usd: 4400 }, "kinesis-silver": { usd: 52 } }, null)}
+    `${fetchFingido({ price: 4400 }, [{ d: hoy, v: [4380, 0, 0] }])}
      require('./lib/origenPrice').default().then(p=>console.log(String(p)))`,
   );
   assert.ok(Math.abs(Number(out) - 4400 / 31.1035 / 55) < 1e-12, out);
 });
 
-test("origenPrice usa el respaldo cuando CoinGecko no llega", () => {
+test("un spot que se aparta más del 5 % del fijo LBMA se descarta: sin precio", () => {
   const out = correr(
-    `${fetchFingido(null, { price: 4500 })}
-     require('./lib/origenPrice').default().then(p=>console.log(String(p)))`,
+    `${fetchFingido({ price: 5000 }, [{ d: hoy, v: [4300, 0, 0] }])}
+     require('./lib/origenPrice').default().then(()=>console.log('SI')).catch(e=>console.log(e.code))`,
   );
-  assert.ok(Math.abs(Number(out) - 4500 / 31.1035 / 55) < 1e-12, out);
+  assert.equal(out, "PRECIO_NO_DISPONIBLE");
+});
+
+test("sin la LBMA el spot de Londres se sirve igual (rotulado sin-fijo)", async () => {
+  let t = Date.now();
+  const o = oraculo.crearOraculo({
+    fuentes: [{ nombre: "londres-spot", leer: async () => ({ oro: 4400, plata: 52 }) }],
+    fijo: async () => null,
+    ahora: () => t,
+  });
+  assert.equal((await o.metales()).oro, 4400);
+  assert.equal(o.historial()[0].londres.oro, "sin-fijo");
+});
+
+test("la guarda de Londres: fijo vigente acepta dentro del 5 % y descarta fuera", async () => {
+  const t = Date.parse(hoy);
+  let spot = 4400;
+  const o = oraculo.crearOraculo({
+    fuentes: [{ nombre: "londres-spot", leer: async () => ({ oro: spot, plata: null }) }],
+    fijo: async (m) => (m === "oro" ? { valor: 4300, dia: t } : null),
+    ahora: () => t,
+  });
+  assert.equal((await o.metales()).oro, 4400);
+  assert.equal(o.historial()[0].londres.oro, "dentro");
+  const o2 = oraculo.crearOraculo({
+    fuentes: [{ nombre: "londres-spot", leer: async () => ({ oro: 4600, plata: null }) }],
+    fijo: async () => ({ valor: 4300, dia: t }),
+    ahora: () => t,
+  });
+  assert.equal(await o2.metales(), null);
+  assert.equal(o2.descartados()[0].metal, "oro");
+  // Un fijo de hace más de 5 días no sirve de guarda.
+  const o3 = oraculo.crearOraculo({
+    fuentes: [{ nombre: "londres-spot", leer: async () => ({ oro: 4600, plata: null }) }],
+    fijo: async () => ({ valor: 4300, dia: t - 6 * 86_400_000 }),
+    ahora: () => t,
+  });
+  assert.equal((await o3.metales()).oro, 4600);
+});
+
+test("el oráculo ya no lee CoinGecko ni ningún token como precio del oro", () => {
+  const codigo = fs.readFileSync(path.join(RAIZ, "lib", "oraculo.js"), "utf8");
+  assert.ok(!/coingecko|pax-gold|kinesis/i.test(codigo.replace(/^\/\/.*$/gm, "")), "quedó una fuente que no es Londres");
 });
 
 test("sin ninguna fuente: PRECIO_NO_DISPONIBLE, no un precio inventado", () => {

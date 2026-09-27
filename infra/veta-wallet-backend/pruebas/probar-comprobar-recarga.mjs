@@ -72,7 +72,7 @@ function correr(cfg, env = {}) {
 const GRAMIN_4400 = "38.8794";
 
 test("sin OG_PRECIO_MODO: el gramin, no 0,01 USD fijo", () => {
-  const out = correr({ coingecko: 4400 });
+  const out = correr({ goldapi: 4400 });
   assert.match(out, new RegExp(`en ORIGEN\\s+: ${GRAMIN_4400}`), out);
   assert.doesNotMatch(out, /10000\.0000|0\.010000|· fijo/, out);
 });
@@ -83,7 +83,7 @@ test("modo oro con OG_ORIGEN_USD=0,01 puesta: se ignora, como en el backend", ()
   assert.doesNotMatch(out, /10000\.0000/, out);
 });
 
-test("Ordenex y CoinGecko caídos: el oráculo único tira del respaldo (gold-api)", () => {
+test("Ordenex caído: el oráculo único lee el spot de Londres (gold-api)", () => {
   const out = correr({ goldapi: 4400 });
   assert.match(out, new RegExp(`en ORIGEN\\s+: ${GRAMIN_4400}`), out);
 });
@@ -94,7 +94,7 @@ test("modo fijo pedido expresamente, con OG_ORIGEN_USD", () => {
 });
 
 test("modo fijo sin OG_ORIGEN_USD: se dice que no hay precio, no 0,01", () => {
-  const out = correr({ coingecko: 4400 }, { OG_PRECIO_MODO: "fijo" });
+  const out = correr({ goldapi: 4400 }, { OG_PRECIO_MODO: "fijo" });
   assert.match(out, /NO se pudo leer el precio de ORIGEN/, out);
   assert.doesNotMatch(out, /en ORIGEN\s+:/, out);
 });
