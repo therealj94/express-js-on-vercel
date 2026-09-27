@@ -189,6 +189,7 @@ em{font-style:italic;color:var(--oro)}
 .monedas{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin-top:clamp(80px,10vw,140px);border-top:1px solid var(--linea)}
 .monedas div{padding:28px 24px 0 0}
 .monedas dt{font:300 clamp(2rem,3.4vw,3.2rem)/1 var(--f-disp);font-variation-settings:'opsz' 144;letter-spacing:-.02em;color:var(--oro)}
+.monedas dt .simbolo{display:inline-block;height:.9em;width:auto;margin-right:.3em;vertical-align:-.08em}
 .monedas dd{margin:14px 0 0;color:rgba(244,239,228,.8);font-size:.9875rem;max-width:18em}
 
 /* ── Las casas: una galería que se recorre de costado ───────────────────────── */

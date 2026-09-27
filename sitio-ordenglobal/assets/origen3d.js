@@ -27,6 +27,7 @@ if (sec && !quieto && hayWebGL()) {
 async function arrancar() {
   const THREE = await import('./vendor/three.module.min.js');
   const { RoomEnvironment } = await import('./vendor/RoomEnvironment.js');
+  const SIMBOLO = (await import('./origen-simbolo.js')).default;
   const lienzo = sec.querySelector('canvas');
   const escena3 = sec.querySelector('.escena');
   const frases = sec.querySelectorAll('.frase');
@@ -108,6 +109,32 @@ async function arrancar() {
   disco.rotation.z = Math.PI / 2 - piezas[0].userData.medio;
   const soporte = new THREE.Group(); soporte.add(disco); escena.add(soporte);
 
+  // El símbolo de ORIGEN, en oro macizo, dentro de un anillo con 55 marcas:
+  // la del gramín, arriba, más larga. Aparece cuando la porción se va.
+  const oroSimbolo = new THREE.MeshStandardMaterial({ color: 0xd9ad4a, metalness: 1, roughness: 0.26, bumpMap: martillado, bumpScale: 1.2, transparent: true });
+  const simbolo = new THREE.Group();
+  const ALTO = 1.3;
+  SIMBOLO.formas.forEach((fz) => {
+    const sh = new THREE.Shape(fz.contorno.map(([x, y]) => new THREE.Vector2(x * ALTO, y * ALTO)));
+    fz.agujeros.forEach((h) => sh.holes.push(new THREE.Path(h.map(([x, y]) => new THREE.Vector2(x * ALTO, y * ALTO)))));
+    const g = new THREE.ExtrudeGeometry(sh, { depth: 0.1, bevelEnabled: true, bevelThickness: 0.018, bevelSize: 0.01, bevelSegments: 3, curveSegments: 12 });
+    g.translate(0, 0, -0.05);
+    simbolo.add(new THREE.Mesh(g, oroSimbolo));
+  });
+  const anillo = new THREE.Mesh(new THREE.TorusGeometry(0.86, 0.008, 8, 160), oroSimbolo);
+  simbolo.add(anillo);
+  const marcas = [];
+  for (let i = 0; i < N; i++) {
+    const larga = i === 0;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.012, larga ? 0.13 : 0.05, 0.012), oroSimbolo);
+    const a = Math.PI / 2 - (i / N) * Math.PI * 2;
+    const rr = 0.9 + (larga ? 0.065 : 0.025);
+    m.position.set(Math.cos(a) * rr, Math.sin(a) * rr, 0); m.rotation.z = a - Math.PI / 2;
+    simbolo.add(m); marcas.push(m);
+  }
+  simbolo.position.y = 0.32;
+  escena.add(simbolo);
+
   // ── El guion: cada tramo del scroll, un paso del tráiler ─────────────────
   const lim = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
   const suave = (u) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
@@ -140,6 +167,7 @@ async function arrancar() {
     const sale = tramo(p, 0.42, 0.6);     // una porción se eleva
     const frente = tramo(p, 0.6, 0.7);  // la porción queda sola, de frente
     const late = tramo(p, 0.82, 0.88);     // sube y baja con el oro
+    const forma = tramo(p, 0.64, 0.78);   // la porción se vuelve el símbolo
 
     soporte.rotation.x = -1.05 + abre * 0.55 - frente * 0.2;
     soporte.rotation.y = Math.sin(t * 0.35) * 0.18 * (1 - sale);
@@ -147,6 +175,7 @@ async function arrancar() {
     soporte.position.y = 0.3 - frente * 3.1;
     soporte.scale.setScalar(1 - frente * 0.3);
     // Hasta que se marcan, es una sola moneda; después, las 55 piezas.
+    soporte.visible = frente < 0.98;
     const marcado = abre > 0.02;
     moneda.visible = !marcado;
     for (let i = 0; i < N; i++) piezas[i].visible = marcado;
@@ -167,10 +196,22 @@ async function arrancar() {
     oro.color.copy(BASE).multiplyScalar(1 - sale * 0.55);
     oro.opacity = 1 - frente * 0.85;
     oroUno.emissive.setRGB(0.1 * sale, 0.06 * sale, 0.01 * sale);
+    oroUno.transparent = forma > 0; oroUno.opacity = 1 - forma;
+    uno.visible = forma < 0.99;
+
+    // El símbolo: gira desde el perfil hasta quedar de frente, y las 55
+    // marcas se dibujan una por una alrededor.
+    simbolo.visible = forma > 0.001;
+    oroSimbolo.opacity = forma;
+    simbolo.scale.setScalar(0.6 + forma * 0.4);
+    simbolo.rotation.y = (1 - forma) * -1.4 + Math.sin(t * 0.5) * 0.12 * forma;
+    const cuantas = Math.floor(lim((p - 0.66) / 0.14) * N);
+    for (let i = 0; i < N; i++) marcas[i].visible = i < cuantas;
     // Sube y baja: una onda lenta, como el precio en el tráiler.
     const ola = late * Math.sin(t * 1.3) * 0.22;
     uno.position.z += ola * 0.2;
     soporte.position.y += ola * frente;
+    simbolo.position.y = 0.32 + ola * 0.9;
 
     // Las frases.
     let k = 0; for (let i = 0; i < PASOS.length - 1; i++) if (p >= PASOS[i]) k = i;
@@ -182,7 +223,9 @@ async function arrancar() {
   }
 
   medir();
-  addEventListener('resize', medir);
+  // El lienzo se mide a sí mismo: en el teléfono la barra del navegador
+  // cambia el alto sin avisar con un resize.
+  new ResizeObserver(medir).observe(lienzo);
   new IntersectionObserver((es) => {
     const v = es.some((e) => e.isIntersecting);
     if (v && !visible) { visible = true; requestAnimationFrame(cuadro); }
