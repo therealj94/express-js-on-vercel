@@ -37,14 +37,14 @@ PLANOS = [
     ("09_regalo", 4.4, {"hora": "1:30 p. m."}),
     ("10_llega_cuenta", 2.6, {}),
     ("11_un_qr_cada_uno", 4.4, {}),
-    ("12_amiga_habla", 4.4, {"desde": 0.25, "audio_clip": 1.0}),
-    ("12b_incredulo", 3.4, {"desde": 0.2, "audio_clip": 1.0}),
+    ("12_amiga_habla", 4.4, {"desde": 0.1, "audio_clip": 1.0}),
+    ("12b_incredulo", 3.4, {"desde": 0.0, "audio_clip": 1.0}),
     ("13_dueno_pulgar", 4.2, {"desde": 0.25, "audio_clip": 0.7}),
     ("12c_convencido", 2.2, {"desde": 2.6}),
     ("14_taller", 2.8, {"hora": "3:40 p. m."}),
-    ("16_bodega", 2.6, {"hora": "San Pedro Sula, Honduras · 3:40 p. m."}),
-    ("16_honduras_llama", 7.0, {"desde": 0.1, "audio_clip": 1.0}),
-    ("15_lucia_responde", 4.2, {"desde": 0.2, "audio_clip": 1.0, "hora": "San Salvador"}),
+    ("16_bodega", 3.4, {"hora": "San Pedro Sula, Honduras · 3:40 p. m."}),
+    ("16_honduras_llama", 5.4, {"desde": 0.2, "audio_clip": 1.0}),
+    ("15_lucia_responde", 5.0, {"desde": 0.2, "audio_clip": 1.0, "hora": "San Salvador"}),
     ("17_manos_pago", 4.2, {}),
     ("18_proveedor_sync", 4.8, {"desde": 0.25, "audio_clip": 1.0, "hora": "San Pedro Sula"}),
     ("20_sofa_noche", 3.0, {"hora": "9:10 p. m."}),
@@ -64,7 +64,7 @@ NARRA = [
     ("n07", "08b_taller_pausa", 0.3), ("n07b", "14b_taller_mira", 2.6),
     ("n08", "09_regalo", 0.5), ("n09", "10_llega_cuenta", 0.1), ("n10", "11_un_qr_cada_uno", 0.8),
     ("n11", "12_amiga_habla", 2.6), ("n12", "13_dueno_pulgar", 0.1),
-    ("n13", "14_taller", 0.9), ("n14", "15_lucia_responde", 2.4),
+    ("n13", "14_taller", 0.9), ("n14", "15_lucia_responde", 2.1),
     ("n15", "20_sofa_noche", 0.6), ("n16", "cierre", 0.6),
 ]
 
@@ -80,11 +80,11 @@ TARJETAS = [
 
 DIALOGO = [
     # quien, texto, plano, desfase, duración
-    ("amiga", "¡Ya no hay «te lo paso luego»!", "12_amiga_habla", 0.3, 2.4),
-    ("amigo", "¿Y cómo sé que le llegó?", "12b_incredulo", 0.3, 2.6),
+    ("amiga", "¡Ya no hay «te lo paso luego»!", "12_amiga_habla", 0.2, 2.2),
+    ("amigo", "¿Y cómo sé que le llegó?", "12b_incredulo", 0.15, 2.4),
     ("Don Chepe", "Doña Lucía, el camión sale a las cuatro. Si me entra el pago hoy, la tela le llega el jueves.",
-     "16_honduras_llama", 0.2, 6.6),
-    ("Lucía", "Ya se lo mando, don Chepe.", "15_lucia_responde", 0.3, 2.0),
+     "16_honduras_llama", 0.2, 5.0),
+    ("Lucía", "Ya se lo mando, don Chepe.", "15_lucia_responde", 0.7, 1.8),
     ("Don Chepe", "Ya me cayó. ¡Súbanla!", "18_proveedor_sync", 0.6, 4.0),
     ("Sofía", "Ma, ya pagué la renta. Y ya vi el vuelo… ¡llego el dieciocho! ¿Cómo te fue hoy?", "21_hija_sync", 0.1, 5.9),
 ]
