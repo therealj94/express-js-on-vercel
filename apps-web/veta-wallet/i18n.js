@@ -815,6 +815,9 @@ es: {
      antes. */
   'cha.sinE2E': 'Las fotos, los videos, los archivos y las notas de voz todavía no: viajan cifrados hasta nuestro servidor y ahí se guardan como están. Ni por acá ni por ningún lado mandes tu frase de recuperación o tu contraseña.',
   'cha.e2eSinLlave': 'Sin cifrar: esta persona todavía no ha abierto la versión nueva.',
+  /* El sello de un hilo que NO se cierra, dicho antes de escribir. */
+  'cha.selloSinCandado': 'Este chat va sin cifrar en este navegador: no pudo guardar tu llave. Lo que escribas lo puede leer nuestro servidor.',
+  'cha.selloSinLlave': 'Este chat todavía va sin cifrar: del otro lado nadie abrió la versión nueva. Lo que escribas lo puede leer nuestro servidor.',
   'cha.e2eCerrado': 'Llegó cifrado para otro de tus aparatos. Abrilo desde el que lo recibió.',
   'cha.fueEnClaro': 'Este mensaje viajó sin cifrar: no se pudo preparar el candado.',
   'cha.sinVerificar': 'No se pudo comprobar quién lo escribió.',
@@ -1865,6 +1868,8 @@ en: {
   'cha.e2eIdentidad': 'And on the other side there is always a real person, verified with Genesis ID on our own chain.',
   'cha.sinE2E': 'Photos, videos, files and voice notes are not yet: they travel encrypted to our server and are stored there as they are. Never send your recovery phrase or your password — here or anywhere.',
   'cha.e2eSinLlave': 'Not encrypted: this person has not opened the new version yet.',
+  'cha.selloSinCandado': 'This chat is not encrypted in this browser: it could not keep your key. Our server can read what you write.',
+  'cha.selloSinLlave': 'This chat is not encrypted yet: nobody on the other side has opened the new version. Our server can read what you write.',
   'cha.e2eCerrado': 'This arrived encrypted for another of your devices. Open it there.',
   'cha.fueEnClaro': 'This message travelled unencrypted: the lock could not be set up.',
   'cha.sinVerificar': 'We could not confirm who wrote this.',

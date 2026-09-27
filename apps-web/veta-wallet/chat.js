@@ -398,6 +398,17 @@ const CHAT = (() => {
     } catch { return true; }
   }
 
+  /* ¿Va cerrado lo que se escriba en ESTE hilo? Lo pregunta el sello de
+     abajo del chat ANTES de que la persona escriba: si dijera «punta a punta»
+     y el texto saliera en claro (sin candado en este navegador, o nadie del
+     otro lado con llave todavía), el aviso de la burbuja llegaría tarde, con
+     lo escrito ya mandado. Hallazgo de Codex en el PR #31.
+     'si' · 'sin-candado' · 'sin-aparatos'. */
+  async function cifraCon(para) {
+    if (!CANDADO?.hay()) return 'sin-candado';
+    return (await hayAparatosPara(para)) ? 'si' : 'sin-aparatos';
+  }
+
   /**
    * Reaccionar, CERRADO. `para` es el hilo (correo o grupo): hace falta para
    * saber a qué aparatos cerrarle el sobre, igual que en `enviar`. Sin
@@ -1117,7 +1128,7 @@ const CHAT = (() => {
            publicarMiLlave, codigoCon,
            grupoCrear, grupoInfo, grupoEditar, grupoInvitar, grupoSalir, grupoUnirse,
            esGrupo, urlArchivo, vozEnVivo, oir,
-           puedeGrabar, grabarInicio, grabarFin, subirVoz, segundosDeVoz,
+           puedeGrabar, grabarInicio, grabarFin, subirVoz, segundosDeVoz, cifraCon,
            escuchar, dejarDeEscuchar, senalar, turno,
            reaccionar, escribiendo,
            puedeAvisar, iphoneSinInstalar, registrarObrero, pedirAvisos, llaveAvisos };

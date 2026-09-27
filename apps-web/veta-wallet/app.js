@@ -8632,6 +8632,16 @@ const VETA = (() => {
     chatSt.gente = null;
     chatSt.busca = '';
     chatSt.verCodigo = false;
+    // Si lo que se escriba aquí va cerrado se sabe tras preguntar por las
+    // llaves del otro lado; mientras tanto el sello no promete nada.
+    // Va con el id del hilo: otro camino que abra un hilo sin pasar por aquí
+    // no hereda lo que se supo del anterior.
+    chatSt.cifra = { id, v: null };
+    CHAT.cifraCon(id).then((v) => {
+      if (chatSt.con?.id === id && chatSt.cifra?.id === id && chatSt.cifra.v !== v) {
+        chatSt.cifra = { id, v }; pintarChat();
+      }
+    }).catch(() => {});
     pintarChat();
     await chatCargarMsgs();
     CHAT.leido(id);
@@ -12816,15 +12826,30 @@ const VETA = (() => {
             este hilo lo procesa nuestro servidor para poder contestar, y del
             otro lado no hay una persona—, y un sello que miente enseña a
             ignorar todos los sellos. */''}
-      <div class="cha-sello${esAura(c) ? ' cha-sello-aura' : ''}">
+      ${/* Y con una persona, «punta a punta» sólo cuando este hilo de verdad
+            se cierra (CHAT.cifraCon). Sin candado en este navegador, o sin
+            nadie con llave del otro lado, se dice ANTES de escribir, no en la
+            burbuja cuando ya salió. Mientras se pregunta, no se promete. */''}
+      ${(() => {
+        const cifra = chatSt.cifra?.id === c.id ? chatSt.cifra.v : null;
+        const claro = !esAura(c) && (cifra === 'sin-candado' || cifra === 'sin-aparatos');
+        const titulo = esAura(c) ? 'au.chSello'
+          : cifra === 'si' ? 'cha.e2eLlamadas'
+          : cifra === 'sin-candado' ? 'cha.selloSinCandado'
+          : cifra === 'sin-aparatos' ? 'cha.selloSinLlave' : '';
+        return `
+      <div class="cha-sello${esAura(c) ? ' cha-sello-aura' : ''}${claro ? ' cha-sello-claro' : ''}">
         <svg viewBox="0 0 24 24">${esAura(c)
           ? '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>'
+          : claro
+          ? '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 7.5-2"/>'
           : '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>'}</svg>
         <div>
-          <b>${t(esAura(c) ? 'au.chSello' : 'cha.e2eLlamadas')}</b>
+          ${titulo ? `<b>${t(titulo)}</b>` : ''}
           <span>${t(esAura(c) ? 'au.chSelloP' : 'cha.e2eIdentidad')}</span>
         </div>
-      </div>
+      </div>`;
+      })()}
       ${/* El renglon de «las fotos y los videos todavia no» se fue de aqui.
             Debajo de la caja de escribir, en cada pantalla y para siempre, un
             parrafo de letra chica sobre lo que NO esta cifrado le quita el

@@ -262,8 +262,14 @@ const gente = await p.evaluate(() => ({
   sello: document.querySelector('.cha-sello')?.textContent || '',
 }));
 ok(!gente.tira, 'sin tira de AU-RA');
-ok(/punta a punta|end-to-end/i.test(gente.sello),
-   'y su sello sigue prometiendo punta a punta, como corresponde');
+/* Con una persona el sello es el de la gente (del otro lado alguien real), no
+   el de AU-RA. «Punta a punta» sólo lo dice cuando sabe que ESTE hilo se
+   cierra: `_chatCon` abre el hilo sin preguntar por las llaves, así que aquí
+   no promete nada (probar-voz.mjs y probar-chat-vivo.mjs miran ese sí/no). */
+ok(/persona real|real person/i.test(gente.sello) && !/procesa|processes/i.test(gente.sello),
+   'y su sello es el de la gente, no el de ella');
+ok(!/punta a punta|end-to-end/i.test(gente.sello),
+   'sin prometer punta a punta antes de saber si este hilo se cierra');
 ok(!gente.claseMsgs.includes('cha-de-aura'), 'sin la clase de ella');
 ok(!/beta/i.test(gente.sub), 'el subtítulo es el de siempre');
 

@@ -165,6 +165,27 @@ const sinCandado = await pag.evaluate(async () => {
 bandejaFalsa = null
 ok('sin candado, un adjunto cerrado se avisa y no se pinta roto', sinCandado.aviso && !sinCandado.roto, JSON.stringify(sinCandado))
 
+// El sello de abajo del chat no promete «punta a punta» antes de escribir si
+// lo escrito va a salir en claro. Quinta revisión de Codex en el PR #31.
+const sello = await pag.evaluate(async () => {
+  const hayAntes = CANDADO.hay
+  const lee = async () => { await new Promise(r => setTimeout(r, 900))
+    const s = document.querySelector('.cha-sello')
+    return { texto: s?.querySelector('b')?.textContent || '', claro: !!s?.classList.contains('cha-sello-claro') } }
+  try {
+    CANDADO.hay = () => false
+    await VETA.chatAbrir('ana@ordenglobal.link')
+    const sinCandado = await lee()
+    CANDADO.hay = () => true   // con candado, pero el relevo no devuelve llaves de Ana
+    await VETA.chatAbrir('ana@ordenglobal.link')
+    const sinAparatos = await lee()
+    return { sinCandado, sinAparatos }
+  } finally { CANDADO.hay = hayAntes }
+})
+const promete = (x) => /punta a punta/.test(x.texto)
+ok('sin candado, el sello dice que va sin cifrar', !promete(sello.sinCandado) && sello.sinCandado.claro && /sin cifrar/.test(sello.sinCandado.texto), JSON.stringify(sello.sinCandado))
+ok('sin llaves del otro lado, también', !promete(sello.sinAparatos) && sello.sinAparatos.claro && /sin cifrar/.test(sello.sinAparatos.texto), JSON.stringify(sello.sinAparatos))
+
 ok('sin errores de javascript', err.length===0)
 if(err.length) console.log(err.slice(0,3))
 await nav.close()
