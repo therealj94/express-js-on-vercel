@@ -61,6 +61,7 @@ class Tipos:
         self.cita = ImageFont.truetype(str(d / "FrauncesItalic.ttf"), 50)
         self.chat = ImageFont.truetype(str(d / "ManropeMedium.ttf"), 44)
         self.hora_chat = ImageFont.truetype(str(d / "ManropeMedium.ttf"), 28)
+        self.narra = ImageFont.truetype(str(d / "ManropeMedium.ttf"), 46)
 
 
 def lienzo() -> Image.Image:
@@ -184,6 +185,22 @@ def png_llamada(quien: str, texto: str, T: Tipos, dst: Path) -> None:
     img.save(dst)
 
 
+def png_narra(texto: str, T: Tipos, dst: Path) -> None:
+    """Lo que cuenta Lucía, abajo del todo y sin caja: texto limpio con sombra,
+    por debajo de las tarjetas para no pisarlas nunca."""
+    img = lienzo()
+    d = ImageDraw.Draw(img)
+    lineas = textwrap.wrap(texto, 34)
+    y0 = 1795 - (len(lineas) - 1) * 62
+    s = lienzo(); ds = ImageDraw.Draw(s)
+    for i, l in enumerate(lineas):
+        tw = d.textlength(l, font=T.narra)
+        ds.text(((W - tw) / 2, y0 + i * 62 + 3), l, font=T.narra, fill=(0, 0, 0, 255))
+        d.text(((W - tw) / 2, y0 + i * 62), l, font=T.narra, fill=(255, 255, 255, 245))
+    img = Image.alpha_composite(s.filter(ImageFilter.GaussianBlur(9)), img)
+    img.save(dst)
+
+
 def png_sub(texto: str, T: Tipos, dst: Path) -> None:
     subtitulo(lienzo(), texto, T).save(dst)
 
@@ -226,6 +243,24 @@ def tink(sr: int = 48000) -> np.ndarray:
     return np.stack([s, s], 1)
 
 
+def pago(sr: int = 48000, fuerza: float = 1.0) -> np.ndarray:
+    """El sonido de «ya está pagado»: dos campanas cálidas (sol-si, una tercera
+    mayor que suena a resuelto), con parciales de campana de verdad y una cola
+    que respira. El «tink» de antes sonaba a aviso; esto suena a cierre."""
+    dur = 1.6
+    t = np.arange(int(sr * dur)) / sr
+    out = np.zeros_like(t)
+    for f0, t0, a in ((783.99, 0.0, 0.55), (987.77, 0.09, 0.75)):
+        tt = np.clip(t - t0, 0, None)
+        env = (tt > 0) * np.clip(tt * 900, 0, 1)
+        for r, g, dec in ((1.0, 1.0, 3.2), (2.0, 0.35, 5.0), (2.76, 0.18, 7.5), (5.4, 0.06, 12.0)):
+            out += a * g * np.sin(2 * np.pi * f0 * r * tt) * env * np.exp(-tt * dec)
+    cuerpo = np.sin(2 * np.pi * 196 * t) * np.exp(-t * 9) * np.clip(t * 600, 0, 1) * 0.25
+    s = (out + cuerpo) * 0.09 * fuerza
+    izq = s; der = np.concatenate([np.zeros(int(sr * 0.012)), s[:-int(sr * 0.012)]])
+    return np.stack([izq, der], 1)
+
+
 def timbre(sr: int = 48000) -> np.ndarray:
     """Un teléfono que suena: dos tonos alternos, dos veces, algo lejano."""
     out = []
@@ -238,7 +273,7 @@ def timbre(sr: int = 48000) -> np.ndarray:
     return np.stack([s, s], 1)
 
 
-COLORES = {"Sofía": (214, 186, 112), "Textiles del Valle": (110, 200, 150),
+COLORES = {"Sofía": (214, 186, 112), "Textiles del Valle": (110, 200, 150), "Don Chepe": (110, 200, 150),
            "amiga": (232, 140, 110), "amigo": (150, 175, 210), "Lucía": (243, 236, 217)}
 
 
@@ -379,7 +414,8 @@ def main() -> int:
         if b.get("hora"):
             p = tmp / f"hora_{len(capas)}.png"
             png_hora(b["hora"], T, p)
-            capas.append({"png": p, "t": b["t"] + 0.25, "dur": min(2.2, b["dur"] - 0.4), "desliza": False})
+            # un lugar se lee más despacio que una hora
+            capas.append({"png": p, "t": b["t"] + 0.25, "dur": min(3.4 if len(b["hora"]) > 14 else 2.2, b["dur"] - 0.4), "desliza": False})
     for c in plan.get("capas", []):
         p = tmp / f"capa_{len(capas)}.png"
         if c["tipo"] in ("nota", "llamada", "dialogo"):
@@ -408,6 +444,10 @@ def main() -> int:
             png_llamada(c["quien"], c["texto"], T, p)
         elif c["tipo"] == "sub":
             png_sub(c["texto"], T, p)
+        elif c["tipo"] == "narra":
+            if not c["texto"]:
+                continue
+            png_narra(c["texto"], T, p)
         elif c["tipo"] == "mensaje":
             png_mensaje(c["texto"], T, p)
         capas.append({"png": p, "t": c["t"], "dur": c["dur"], "desliza": c["tipo"] in ("tarjeta", "mensaje")})
@@ -450,9 +490,10 @@ def main() -> int:
             voz[i:i + len(x)] += x[: len(voz) - i]
     fx = np.zeros_like(voz)
     for c in plan.get("capas", []):
-        if c["tipo"] == "tarjeta":
-            s = tink(sr); i = int(c["t"] * sr)
-            fx[i:i + len(s)] += s
+        if c["tipo"] == "tarjeta" and c.get("sonido", "tink"):
+            s = pago(sr, c.get("fuerza", 1.0)) if c.get("sonido") == "pago" else tink(sr)
+            i = int(c["t"] * sr)
+            fx[i:i + len(s)] += s[: len(fx) - i]
     for e in plan.get("efectos", []):
         if e["tipo"] == "timbre":
             s = timbre(sr); i = int(e["t"] * sr)
