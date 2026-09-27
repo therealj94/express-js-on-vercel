@@ -223,6 +223,12 @@ def paquete(a) -> tuple[bytes, dict]:
         datos = onstart.encode()
         ti = tarfile.TarInfo("onstart.sh"); ti.size = len(datos); ti.mode = 0o755
         t.addfile(ti, io.BytesIO(datos))
+        # Imágenes de referencia o stills elegidos: quedan en /workspace/refs/
+        # y la cola los pide por esa ruta. No caben en variables de entorno.
+        if getattr(a, "adjuntos", None):
+            for f in sorted(Path(a.adjuntos).glob("*")):
+                if f.is_file():
+                    t.add(str(f), arcname=f"refs/{f.name}")
     secretos = "".join(f"{k}={v}\n" for k, v in env.items())
     if "\n" in "".join(env.values()):
         sys.exit("Un valor de --env tiene saltos de línea; docker --env-file no lo admite.")
@@ -405,6 +411,7 @@ def main() -> int:
     c.add_argument("--spot", action="store_true")
     c.add_argument("--otra", action="store_true")
     c.add_argument("--seco", action="store_true", help="DryRun: valida sin crear")
+    c.add_argument("--adjuntos", help="carpeta de imágenes que viajan a /workspace/refs/")
     sub.add_parser("status")
     lg = sub.add_parser("logs"); lg.add_argument("id")
     lg.add_argument("-n", type=int, default=80)

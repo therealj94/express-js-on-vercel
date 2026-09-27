@@ -89,6 +89,11 @@ descargar_pesos() {
     baja "$R" "loras/minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors" "$M/loras"
     baja "$R" "loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors"      "$M/loras"
   fi
+  # Modo referencia (ref2va): la misma persona en todos los planos a partir de
+  # una foto. Es otro modelo de difusión, 21 GB; solo se baja si se pide.
+  if [ "${REF2VA:-0}" = "1" ]; then
+    baja "$R" "diffusion_models/minimax_h3_ref2va_pruned_fp8_scaled.safetensors" "$M/diffusion_models"
+  fi
   baja fal/MiniMax-H3-Realism-People-LoRA \
        "h3-realism-people-t2v-i2v-r2v.safetensors" "$M/loras" || true
 
