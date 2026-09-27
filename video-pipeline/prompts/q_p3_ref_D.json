@@ -304,6 +304,34 @@
    "workflow": "workflows/h3_ref2va_dos_api.json",
    "image": "/workspace/refs/lucia.png",
    "image_last": "/workspace/refs/hija.png"
+  },
+  {
+   "id": "08_florista_cobra_t2",
+   "seed": 8012,
+   "negative": "cartoon, illustration, 3d render, cgi, plastic skin, waxy skin, airbrushed, beauty filter, smooth poreless face, symmetrical face, dead eyes, mannequin, uncanny, oversaturated, gold, gold tint, gold bars, coins, luxury, wealth, stock photo smile, posed, model looks, looking at camera, deformed teeth, extra fingers, deformed hands, floating hands, studio backdrop, watermark, text overlay, readable text, logo, brand names, subtitles, ui elements, phone screen content, glowing screen graphics, holograms, crypto imagery, charts, motion blur smear, morphing, blurry, low detail, horizontal composition, black bars",
+   "width": 720,
+   "height": 1280,
+   "duration_s": 5,
+   "fps": 24,
+   "steps": 20,
+   "cfg": 1.0,
+   "retries": 1,
+   "workflow": "workflows/h3_calidad_api.json",
+   "prompt": "a 64 year old Central American man with a grey mustache, thick forearms and a dark green canvas apron with no lettering, reading glasses pushed up on his forehead. Behind his counter, his phone lying on the counter next to the cash drawer vibrates and lights up; he glances down at it over his glasses, then up, and gives a small satisfied nod to someone off-camera. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Close framing with shallow depth of field, natural light, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition. the phone on the counter lights up, he looks down at it, then looks up and nods once with a small smile, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like"
+  },
+  {
+   "id": "12_amiga_brinda_t2",
+   "seed": 12012,
+   "negative": "cartoon, illustration, 3d render, cgi, plastic skin, waxy skin, airbrushed, beauty filter, smooth poreless face, symmetrical face, dead eyes, mannequin, uncanny, oversaturated, gold, gold tint, gold bars, coins, luxury, wealth, stock photo smile, posed, model looks, looking at camera, deformed teeth, extra fingers, deformed hands, floating hands, studio backdrop, watermark, text overlay, readable text, logo, brand names, subtitles, ui elements, phone screen content, glowing screen graphics, holograms, crypto imagery, charts, motion blur smear, morphing, blurry, low detail, horizontal composition, black bars",
+   "width": 720,
+   "height": 1280,
+   "duration_s": 5,
+   "fps": 24,
+   "steps": 20,
+   "cfg": 1.0,
+   "retries": 1,
+   "workflow": "workflows/h3_calidad_api.json",
+   "prompt": "A heavyset woman around 40 with short curly black hair and big laugh lines in a mustard blouse, at a lunch table in a loud local restaurant, raising her phone like a toast towards the friend across the table, laughing with her whole body. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Close framing with shallow depth of field, natural light, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition. she raises her phone like a glass for a toast, laughing, then points at the friend across the table, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like"
   }
  ]
 }
