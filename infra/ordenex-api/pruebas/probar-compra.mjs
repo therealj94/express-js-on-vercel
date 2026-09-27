@@ -298,7 +298,11 @@ decir('sin ORIGEN para entregar, la orden NO nace');
     estado: { $in: ['esperando', 'recalculada', 'entregando', 'en-revision'] },
   }).select('origenWei origenWeiCotizado').lean();
   const yaComprometido = vivas.reduce((a, o) => a + BigInt(o.origenWei || o.origenWeiCotizado || 0), 0n);
-  INVENTARIO = yaComprometido + 39n * 10n ** 18n;
+  /* Margen para UNA orden y no para dos. Eran 39 ORIGEN cuando 100 USDT
+     compraban unos 38; desde el precio único oro/55 (9b9f7a9) compran unos
+     40,0003, y con 39 ya no cabía ni la primera. 60 deja pasar una orden y
+     frena la segunda, que es lo que se prueba. */
+  INVENTARIO = yaComprometido + 60n * 10n ** 18n;
   const primera = await pedir();
   comprobar(!!primera.id, 'con inventario justo, la primera nace', primera.id);
   let e2 = null; try { await pedir(); } catch (x) { e2 = x; }
