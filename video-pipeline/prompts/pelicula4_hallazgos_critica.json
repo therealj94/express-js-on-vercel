@@ -1,0 +1,632 @@
+[
+ {
+  "lente": "afirmaciones",
+  "severidad": "bloqueante",
+  "donde": "Concepto «una película que dura un día» + t32 (Kevin, amanecer) → t36–t39 (Rosa, mediodía) → t41 (máquina nueva, tarde) → t42 (cena) + V23",
+  "problema": "La película dice que todo pasa en un solo día. Así, Kevin se verifica al amanecer, al mediodía Rosa «podría tokenizar» y esa misma tarde ya hay máquina nueva, Kevin está contratado y su familia cena «saliendo adelante». El «podría» de V19 queda anulado por la imagen: se ve capital del mundo convertido en máquina y empleo en horas. Eso se lee como un resultado prometido y hace que la tokenización parezca una oferta que ya funciona, cuando hoy no hay ninguna empresa tokenizada ni capital captado. Además rompe la cronología de la película: son las 10:14 en t30 y en t32 vuelve a amanecer.",
+  "arreglo": "Sacar la secuencia 7 del «mismo día» antes de la GPU. Una opción: que la máquina nueva, Kevin y la cena vayan en un tiempo futuro marcado («Algún día…», o con otra luz y otra estación, y la retícula nocturna ya sin reloj). La otra: presentarlas como imaginadas (el rincón vacío se «dibuja» en líneas marfil y la máquina aparece como trazo, no como objeto real). Poner t32 (Kevin) a media mañana para que el día siga en orden. Rehacer los prompts de t32, t41 y t42 con la luz que corresponda."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "importante",
+  "donde": "Pantalla dividida / fórmulas 1 y 2 («la retícula es un mapa»; «las líneas son las fronteras») / t13–t22 / t14",
+  "problema": "Una retícula no puede ser el mapa del istmo. Las líneas marcan tres fronteras que no existen: Belice–Honduras, Honduras–Costa Rica y Nicaragua–Panamá. Y dos fronteras reales quedan como una simple esquina: Guatemala–Honduras y Nicaragua–Costa Rica. Justo Nicaragua–Costa Rica es la frontera de Andrés en t14. Si el hilo dorado «cose las fronteras», un público centroamericano lo nota enseguida. Esto contradice la fórmula 4 («la verdad como detalle»).",
+  "arreglo": "Dejar de llamarla mapa en el guion y en la comunicación y presentarla como «el orden del istmo». Otra opción es una retícula escalonada, tipo ladrillo o hexágonos, donde las 7 fronteras reales (GT–BZ, GT–SV, GT–HN, SV–HN, HN–NI, NI–CR, CR–PA) sí sean lados compartidos. En cualquier caso, coser solo las fronteras reales, dibujar como separación neutra (no como frontera) las que no existen y colocar a Andrés en un lado real entre CR y NI. Decidirlo antes de encuadrar los clips A."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "importante",
+  "donde": "Fórmula 3 («segura de producir: solo coincide el cuadro 0») / t05–t12 / portada (7,6 s)",
+  "problema": "El golpe de las 06:00 no depende del cuadro 0. Depende de que las siete acciones empiecen a la vez, y H3 decide por su cuenta en qué segundo se levanta la tranca, sube la cortina o gira la llave: puede ser a los 0,3 s o a los 2,5 s. La imagen más importante para compartir no está asegurada. La portada exige además la «cortina de Lucía a media subida» a los 0,6 s del clip, cosa que nadie controla.",
+  "arreglo": "Alinear en posproducción el primer cuadro de movimiento de cada clip, no el cuadro 0: congelar cada celda hasta su propio arranque y desplazar los clips para que los siete empiecen en 7,0. Elegir entre las 3 tomas por celda la que tenga un arranque claro y seco. Sacar la portada del fotograma real alineado, sin fijar de antemano en qué tiempo cae."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "importante",
+  "donde": "V06 «Ya existe. Se llama ORIGEN.» (respuesta a V04 «¿Y si entre todos tuviéramos una moneda digital para comerciar?»)",
+  "problema": "«Ya existe» responde a toda la pregunta, «entre todos» y «para comerciar» incluidos. Hoy hay cientos de cuentas, casi ninguna transacción y ningún comercio real. Lo que existe es el token y la app, no una moneda con la que comercian los siete países. Es una afirmación que no se puede sostener.",
+  "arreglo": "Afirmar solo lo que está construido: «Ya la construimos. Se llama ORIGEN.» o «Ya está en marcha. Se llama ORIGEN.». Mantener el condicional en el uso regional."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "importante",
+  "donde": "V24–V25 «Esto lo hicimos por vos. / Hoy, uniendo Centroamérica.» (dicho por Lucía) y la nota «rima con unamos»",
+  "problema": "Aquí hay tres problemas. (1) Lo dice Lucía, una clienta ficticia con voz de IA: «lo hicimos» pone en boca de una tapicera la obra de la empresa, lo que confunde quién habla y funciona como testimonio fabricado. (2) «Esto» abarca toda la visión (tokenización, reglas por país, unión), que no está hecha. «Hoy, uniendo Centroamérica», en presente, es una exageración para un sistema sin comercio real. (3) Rimar a propósito con el «unamos» de Bukele presenta a Orden Global como quien ejecuta el proyecto de un jefe de Estado, justo lo que el uso de su archivo debe evitar.",
+  "arreglo": "Poner el cierre como firma de la marca: solo texto en Didone, o una voz distinta y claramente institucional. Redactarlo en construcción, por ejemplo «Esto lo empezamos por vos. Para unir Centroamérica. ¿Y mañana… Latinoamérica?» o «Lo estamos construyendo por vos…». Quitar la nota de rima con Bukele y no subrayarla en el montaje."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "importante",
+  "donde": "V21 «Y adentro viajan las reglas de su país. Si no se cumplen, no pasa.» / t38 «QUIÉN PUEDE TENERLO (reglas de Panamá)» / t39 «REGLAS DE GUATEMALA … REGLAS DE PANAMÁ»",
+  "problema": "Se dice en presente que las reglas de cada país ya van codificadas y la cadena las hace cumplir. El protocolo permite reglas de tenencia, pero no existe ningún conjunto de reglas de Guatemala, Panamá, etc. cargado ni validado. Además el ejemplo cae en Panamá, que no tiene un marco vigente de emisión de activos digitales (su ley cripto no llegó a regir), mientras que el país con marco es El Salvador. Etiquetar siete portones con «REGLAS DE [PAÍS]» insinúa acuerdos con los siete Estados.",
+  "arreglo": "Pasar V21 a capacidad y condicional: «Y adentro pueden viajar las reglas de su país. Si no se cumplen, no pasa.». En t39, rotular los portones solo con el nombre del país («GUATEMALA … PANAMÁ»), sin «REGLAS DE». En el pasaporte, poner «QUIÉN PUEDE TENERLO: según las reglas de su país (ejemplo)». Revisar con legal si el ejemplo de Rosa se queda en Panamá."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "importante",
+  "donde": "V12 / t30 tarjeta «120 ORIGEN · Comisión de servicio: US$ 0,01» / riesgos («confirmar si se absorbe el coste de red»)",
+  "problema": "El coste de red (~0,002 ORIGEN) no es despreciable. Con ORIGEN a 1/55 g de oro (~US$ 2,3 con el oro cerca de US$ 4 000/oz), son unos US$ 0,005, es decir, un 50 % más sobre el centavo. Si no se absorbe, «un centavo de dólar por transacción» es falso aunque D02 esté en acta. La tarjeta mezcla además una comisión en USD con un envío en ORIGEN sin aclarar en qué se cobra.",
+  "arreglo": "Poner como condición previa a grabar V12 que D02 esté en acta y que el coste de red lo absorba el operador (o que el centavo sea el total). Si no, usar «…por menos de dos centavos…» o la variante «desde tu teléfono». En la tarjeta, mostrar una sola línea de costo total en la misma unidad que se cobra."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "importante",
+  "donde": "V15 «Genesis ID: nuestra identidad digital como centroamericanos» / t32–t35 / Genesis ID ✓ en el pasaporte de Rosa",
+  "problema": "«Identidad digital como centroamericanos» suena a una identidad regional reconocida, casi ciudadana, y a que vale en los siete países. Es justo lo que hoy no se puede afirmar: Genesis ID está en beta y solo sirve dentro del sistema. Kevin (Panamá), Lucía (El Salvador) y la empresa de Rosa aparecen con Genesis ID ✓ en países distintos, lo que refuerza esa lectura.",
+  "arreglo": "Mantener la idea de José, pero acotada al sistema: «Para entrar al ecosistema, Genesis ID: tu identidad digital dentro del sistema, pensada para toda Centroamérica.», o una versión más corta. Mantener «beta» visible en la tarjeta de t32 y dejar claro que no sustituye a la cédula (Kevin la sostiene: bien)."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "importante",
+  "donde": "t01 (archivo de Bukele) + V04 «moneda digital» / versión de 30 s (Bukele → pago en ORIGEN → «Esto lo hicimos por vos» → «uniendo Centroamérica»)",
+  "problema": "En El Salvador y en la región circularon muchos anuncios fraudulentos que usaban la cara de Bukele para vender cripto o «inversiones». Abrir con Bukele y pasar en segundos a «moneda digital» y «tokenizar» reproduce el esquema exacto de esas estafas: activa el «me huele a estafa cripto» y los filtros de figura pública de Meta y TikTok. El corte a «unamos Centroamérica» también deja fuera lo que decía a continuación (integración aduanera, comunidad de naciones): nunca habló de una moneda. Y el rótulo no dice que en 2018 era candidato, así que se lee como palabra presidencial. En el corte de 30 s la sucesión Bukele → centavo → «uniendo Centroamérica» es casi un respaldo implícito.",
+  "arreglo": "Rotular «ARCHIVO · NAYIB BUKELE (entonces candidato presidencial) · FORO REGIONAL ESQUIPULAS · 2018». Dejar un corte documental marcado (ventana 16:9 con el fondo original del foro, negro, «2018 → hoy») y no poner nunca ORIGEN, oro ni app en los 10 s siguientes a su imagen. En el corte de 30 s, usar la apertura de la versión B aunque sea orgánico. No usar el repost con marca de agua de @bukelord ni borrarle la marca: sin el original del foro, se publica solo la versión B."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "importante",
+  "donde": "t24 «GOLFO DE FONSECA» (agua de tres países)",
+  "problema": "El Golfo de Fonseca es una de las zonas en disputa más conocidas de la región (fallo de la CIJ de 1992, roces vigentes El Salvador–Honduras por la isla Conejo). Usarlo como símbolo de unidad y rotularlo contradice la regla del propio plan: «Mapas sin zonas en disputa ni límites marítimos».",
+  "arreglo": "Cambiarlo por un horizonte sin carga política, como un lago o un volcán (Atitlán, como la lámina 1 de José) o un mar abierto sin rótulo. Si se queda, quitar el rótulo y cualquier alusión a «tres países»."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "importante",
+  "donde": "Secuencia 2: V02–V03 + t14 (Andrés parado en la frontera CR–NI)",
+  "problema": "El problema que se plantea es físico: camiones esperando en la aduana. Nada del producto lo resuelve: los rollos de don Chepe igual cruzan la frontera. El espectador deduce que ORIGEN o Genesis ID acortan las filas de la frontera, y es una promesa implícita que no se puede cumplir.",
+  "arreglo": "Llevar la pérdida al terreno del dinero, que es lo que el producto sí toca. Por ejemplo, Andrés o don Chepe esperan días a que les llegue un pago de un país vecino, o pierden en el cambio. Se puede mantener la frontera como imagen de «siete sistemas», pero sin que una escena posterior sugiera que se cruza más rápido."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "importante",
+  "donde": "V04 / t23 «MONEDA DIGITAL» / letra chica (se quitó «ni moneda»)",
+  "problema": "El guion llama a ORIGEN «moneda digital» y además se quitó de la letra chica la salvedad sobre la moneda. En Guatemala, Honduras, Costa Rica y Nicaragua los bancos centrales han advertido que estos activos no son moneda de curso legal, y la emisión de moneda es exclusiva del Estado. Junto a «como la Unión Europea» (versión estadista) y «que vale igual en los siete países», se lee como una moneda regional que compite con las nacionales.",
+  "arreglo": "Mantener «moneda del sistema», como pide José, pero añadir a la letra chica y a la publicación: «ORIGEN no es moneda de curso legal en ningún país». En t23, cambiar el rótulo a «LA MONEDA DEL SISTEMA». Quitar «que vale igual en los siete países», que además insinúa que no hay costo de cambio al pasar a moneda local."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "importante",
+  "donde": "Versión B «para pautar» / notas de pauta",
+  "problema": "El plan solo resuelve el veto a anuncios políticos. Pero una pieza que promociona una «moneda digital» y «tokenizar empresas» cae bajo las políticas de productos financieros y cripto: TikTok prohíbe casi por completo anunciar criptoactivos y Meta exige autorización previa con licencias, que la marca no puede invocar. La versión B lo más probable es que se rechace o que termine en suspensión de la cuenta publicitaria.",
+  "arreglo": "Antes de planificar pauta, revisar la política de anuncios financieros y cripto de cada plataforma. Preparar una versión de pauta centrada en la unión y en Veta como app de pagos, sin «moneda digital», «tokenizar» ni «capital del mundo», o bien apoyarse solo en difusión orgánica y envío directo."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "importante",
+  "donde": "t52 (2,5 s) y versión de 60 s (≈2 s) / letra chica",
+  "problema": "La letra chica tiene unas 45 palabras y convive con el logo, el llamado y la web en 2,5 s (unos 2 s en el corte de 60). Nadie puede leerla, así que como salvedad legal no sirve de nada, que es justo lo que se revisaría si alguien lo tomara como oferta.",
+  "arreglo": "Alargar la placa final a 4–5 s como mínimo, o repartir: «Imágenes y voces ilustrativas generadas con IA» durante toda la película en esquina discreta, «Ejemplo ilustrativo» fijo durante toda la secuencia 7, y la frase legal completa también en la publicación y en el primer comentario fijado."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "importante",
+  "donde": "Retícula 3×3 (celdas de 356 px) / prompts t05–t11 («wide shot, full body» + «action in the middle third»)",
+  "problema": "Las personas en plano general completo quedan de unos 150–200 px dentro de una celda de 356 px: en el teléfono, las manos en la tranca, la llave del camión o la tela bajo el prensatelas no se ven, y el golpe se pierde. Además los prompts se contradicen: piden cuerpo entero en 9:16 y a la vez toda la acción en el tercio central, con cortinas y portones que suben o se abren en vertical. El recorte de 768×768 corta la cortina de Lucía. Rotular «GUATEMALA · 05:59» a ese tamaño no es cine, es un rótulo diminuto.",
+  "arreglo": "Para las celdas, pasar a planos medios o enteros cortos donde el gesto de abrir ocupe más de la mitad del cuadrado. Pedir la acción «centrada en un cuadrado central», no «en el tercio central». Comprobar en la animática con las fotos de casting, en un teléfono real, que cada gesto se entiende a 356 px. Dejar el rótulo de país solo al abrir cada celda y el reloj como un elemento único, no uno por celda."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "importante",
+  "donde": "V23 «Y una familia más que sale adelante.»",
+  "problema": "«Una más» da a entender que ya hay otras familias que salieron adelante gracias al sistema: una trayectoria que no existe (uso real casi nulo). Además afirma un resultado social en indicativo dentro de la parte que es visión.",
+  "arreglo": "Quitar «más» y pasarlo a condicional, o apoyarse en la imagen: «Y detrás de una máquina, una familia.» o «Y una familia que podría salir adelante.»."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "menor",
+  "donde": "t24 (trazo dorado que sube en «sube» y baja en «baja») / t23 (punto de luz que late y hace nacer «ORIGEN»)",
+  "problema": "Una línea dorada que sube y baja sobre el horizonte es, a ojos del público, un gráfico de cotización: huele a trading y a cripto. Una palabra de marca que nace de un punto de luz que late está cerca del «logo animado que parece de una secta» que el público ya rechazó. t24 también acumula tres capas de texto en 6,3 s (lugar, 1/55 g, «no se canjea…») más el subtítulo.",
+  "arreglo": "Mostrar «sube / baja» con la luz del sol, que se intensifica y se apaga, no con una línea. Hacer que ORIGEN aparezca por corte, quieto, en marfil. En t24, dejar un solo rótulo: «1 ORIGEN = el precio de 1/55 de gramo de oro · no se canjea por metal»."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "menor",
+  "donde": "Tarjetas de Veta Wallet (t28, t30, t31)",
+  "problema": "Si las tarjetas se copian de la app real, pueden llevar un enlace o botón del explorador de bloques («Ver en OrdenScan», un hash con enlace). José lo prohibió expresamente.",
+  "arreglo": "Rehacer las tarjetas en código sin hash, sin enlace al explorador y sin ninguna mención a OrdenScan. Revisar fotograma a fotograma antes de exportar."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "menor",
+  "donde": "t04 (Pacífico «at sunset» usado desde las 06:00) / t42 (Panamá 19:00, «last blue light») / t47 (Dangriga «sunset over the horizon»)",
+  "problema": "La fórmula 4 promete luz real, pero la celda del Pacífico muestra reflejos de atardecer en la mañana. En Ciudad de Panamá a las 19:00 de fines de septiembre ya es noche cerrada (el sol se pone hacia las 18:15). En Dangriga el mar mira al este: el sol no se pone sobre el agua.",
+  "arreglo": "Generar el Pacífico en dos tiempos (alba azul y ocaso). En t42, poner ventana de noche con bombilla cálida. En t47, que Marcus mire hacia tierra, al oeste, con el cielo naranja detrás de las palmas y el mar en penumbra."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "menor",
+  "donde": "t25–t26 (Morazán + hilo que cose las 7 capitales) / t51 (mapa de Latinoamérica) / mapas con Belice",
+  "problema": "No se identifica qué óleo de Morazán se usa ni de dónde sale, y circulan retratos dudosos además de la estatua de Tegucigalpa. La federación de Morazán tenía cinco Estados, no siete: Belice era británico y Panamá, colombiano. Coser las siete capitales justo después de él lo da a entender. El mapa continental arrastra disputas vigentes (Esequibo, Malvinas y el reclamo de Guatemala sobre Belice ante la CIJ).",
+  "arreglo": "Nombrar la obra, el autor o la colección y la fuente de dominio público del óleo, y no usar nunca la estatua. Separar en el montaje a Morazán del hilo de las siete (que el hilo empiece con V09, no con V08). En t51, dibujar solo la costa del continente, sin fronteras internas. En los mapas del istmo, usar un trazo de frontera de facto fino y sin rótulos."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "menor",
+  "donde": "Panel de Panamá (fila 3, col. 3) y Nicaragua / subtítulos en y 1310–1470",
+  "problema": "La columna de botones de TikTok e Instagram (x ≈ 950–1080, y ≈ 800–1500) tapa un tercio de la celda de Panamá. Es el panel de Rosa, el que José pidió de forma explícita, y además donde entra la cena de Kevin. El plan no limita el ancho de los subtítulos, que en esa franja también chocan con los botones.",
+  "arreglo": "Limitar los subtítulos a x 60–900. En la celda de Panamá, reservar el tercio derecho para ambiente (pared, ventana) y comprobarlo con la plantilla de interfaz de cada red antes de generar."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "menor",
+  "donde": "Versión de 30 s y versión de 60 s",
+  "problema": "En 30 s, ORIGEN no se explica nunca y la tarjeta «120 ORIGEN» aparece como una unidad cripto sin contexto: el «no entendí nada» de siempre. En 60 s, V19 («su taller») llega sin haber presentado a Rosa, así que parece el taller de Lucía o de don Chepe. Y se cae el pasaporte, que es la parte que da confianza, mientras se queda el «capital del mundo».",
+  "arreglo": "En 30 s, mostrar la tarjeta en dólares de referencia («≈ US$ …, pagado en ORIGEN») o añadir 2 s de t23 con V06. En 60 s, incluir V18 o un rótulo «CIUDAD DE PANAMÁ · ROSA» y 3 s del pasaporte (t38)."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "menor",
+  "donde": "Personajes «solo_prompt» (Nidia, Mario, Yarelis) / t41 (Rosa sin foto de referencia)",
+  "problema": "La mamá de Kevin sale en t32 y t42 y Mario en t31 y t45, pero sin foto de casting. Rosa aparece en t41 solo descrita en el prompt porque la referencia es Kevin. Sus caras van a cambiar entre planos y el público lo nota justo en la escena emocional.",
+  "arreglo": "Hacer casting barato también de Nidia y Mario. En t41, dejar a Rosa de espaldas y desenfocada de verdad, o usar un prompt con dos referencias si H3 lo admite."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "menor",
+  "donde": "Notas: licencia de H3 (excluye EE. UU., UE, Reino Unido y Corea) / «capital del mundo»",
+  "problema": "La película apunta al capital del mundo y se va a ver en España y EE. UU. Si la licencia de H3 limita el uso o la distribución de lo generado en esos territorios, publicar en redes globales podría incumplirla.",
+  "arreglo": "Leer la cláusula exacta antes de pasar a la GPU. Si restringe la distribución, usar otro modelo o geobloquear."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "menor",
+  "donde": "Letra chica y publicación («Imágenes ilustrativas generadas con IA»)",
+  "problema": "Lucía, don Chepe y todos los demás son personajes ficticios con voces sintéticas que cuentan beneficios del producto. La nota solo menciona imágenes, no voces, así que el relato puede leerse como testimonio real.",
+  "arreglo": "Cambiar a «Personajes, imágenes y voces ilustrativos, generados con IA»."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "menor",
+  "donde": "Reparto de los 7 paneles (Belice: pescador descalzo; Guatemala: caficultor maya; Nicaragua: horno de barro en el patio)",
+  "problema": "Los tres países con menos ingreso y más población indígena o afrodescendiente salen solo en oficios rurales y tradicionales, mientras El Salvador y Panamá son urbanos. El único protagonista negro va descalzo. Puede leerse como estereotipo o como pobreza exhibida.",
+  "arreglo": "Mezclar: por ejemplo, Marcus con calzado de faena y una lancha propia bien cuidada, y en Nicaragua o Guatemala un negocio urbano o una mujer joven emprendedora. Mantener la dignidad del oficio sin pintar carencia."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "menor",
+  "donde": "t36–t37 («a clean rectangular mark on the dusty floor where a machine used to stand»)",
+  "problema": "La marca de una máquina que «estuvo ahí» sugiere que Rosa la perdió (embargo, venta, avería), no que le faltan máquinas por crecimiento. Eso cambia el tono de «problema bueno» a apuro económico.",
+  "arreglo": "Mostrar un rincón despejado con un enchufe libre y pedidos apilados junto a él. O la silla vacía de una costurera nueva que espera máquina."
+ },
+ {
+  "lente": "afirmaciones",
+  "severidad": "menor",
+  "donde": "Clips B de las celdas (t15–t22, que duran hasta ~10,5 s)",
+  "problema": "La celda de Guatemala se ve de 18,35 a 28,9 s (unos 10,5 s). Un clip de 7 s a 0,7× solo cubre 10 s, y la cámara lenta en vídeo de IA con gente en movimiento deja artefactos (manos, rastrillo).",
+  "arreglo": "Generar clips de 7 s y cubrir el resto congelando el último fotograma con empuje, o repetir el clip en bucle. No bajar de 0,85×."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "bloqueante",
+  "donde": "Celdas de la retícula: t05–t11 (clips A), t15–t21 (clips B), t43–t48 (anochecer); ancabezado de estilo de todos esos prompt_h3",
+  "problema": "Los prompts piden «vertical 9:16 composition» y, a la vez, «Square centre crop… middle third». Además varios son «Wide shot, full body» (t05, t06, t07 «from across the street», t10 a través del parabrisas, t08 a contraluz y de espaldas). Con una persona de cuerpo entero dentro del tercio medio (≤448 px de 1344) y un recorte 768→356 (×0,46), el cuerpo mide unos 208 px y la cara unos 25 px en el lienzo de 1080: en el teléfono son unos 3 mm. No se reconoce a Lucía ni a don Chepe, y la portada («cortina a media subida») queda ilegible. También hay acciones que sacan al sujeto de su celda: Aurelio se va caminando hacia los cafetos, Marcus se mete al mar con la lancha, el camión de Andrés arranca y sale del cuadro, y la cortina de Lucía sube por encima del recorte. Justo lo primero que se prueba en GPU (los 7 clips A) saldría inservible.",
+  "arreglo": "1) Generar primero la imagen fija y animar después (lo recomienda CALIDAD.md): por cada celda, un fotograma 0 hecho con FLUX/Qwen a partir de la foto de casting y compuesto ya para el cuadrado, y luego H3 en I2V (h3_i2v_api.json / ref2va con IMAGE). Así el encuadre, el portón cerrado, la lancha y la cortina existen desde el cuadro 0. 2) Cambiar el encabezado en todas las tomas de celda: quitar «vertical 9:16 composition» y «visible pores» y poner: «Composition for a square centre crop: subject framed from the waist up, head just above the exact vertical centre, hands and action inside the central square; the top and bottom quarters hold only sky, wall or ground. The subject stays in place for the whole clip.» 3) Ejemplo con t07 reescrito: «Early morning on a working-class street in San Salvador, first low sun. Medium shot from the side, 35mm, locked-off, camera at waist height. <Subject 1>, [descripción canónica], stands in front of the closed metal roll-up shutter of her small upholstery workshop, both hands gripping its bottom handle at waist height, completely still in the first frame. Within the first second she pulls it up to chest height in one strong motion; the shutter keeps rising out of the top of the frame while she stays in place, looking inside.» Aplicar lo mismo en t05 (Aurelio se queda en el portón abierto mirando el cafetal), t06 (Marcus empuja la proa y se queda en la orilla con el agua por los tobillos), t08 (don Chepe de tres cuartos por delante, no de espaldas ni a contraluz total) y t10 (ver el hallazgo de Andrés). 4) En la prueba de 45 min, generar también 2 celdas en 768×768 nativo y comparar."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "bloqueante",
+  "donde": "t12 «EL GOLPE» (7,0 s), fórmula 3, portada (fotograma de 7,6 s), sonido «siete aperturas juntas»",
+  "problema": "La fórmula dice que es «segura de producir: solo coincide el cuadro 0», pero lo que se vende es que los siete abren en el mismo fotograma. H3 decide cuándo ocurre la acción: el portón se abre a 0,8 s en un clip y a 3 s en otro, y la cortina puede despegarse a los 2,5 s. Si todos se sueltan desde el cuadro 0 en 7,0, las siete aperturas quedan desparramadas en 3 s. Los siete SFX clavados en 7,0 no coinciden con la imagen, y la portada de 7,6 s puede mostrar la cortina todavía cerrada. Encima, cada celda A tiene que durar 6,35 s (de 7,0 a 13,35), al límite de los ~7 s de H3, donde la calidad cae.",
+  "arreglo": "1) Al prompt de cada clip A: «completely still in the first frame; the opening action happens within the first second». 2) Elegir tomas cuyo evento (Fi = el fotograma en que se despega la cortina, se abre el portón o se encienden las luces) caiga antes de 1,5 s. 3) En el montaje, congelar en cada celda el fotograma Fi−6, no el 0, y soltar cada clip en 7,0−(6/24) s: así los siete eventos caen en 7,0 ± 1 fotograma. Los SFX van en 7,0. 4) Sacar la portada después de alinear, del fotograma donde la cortina de Lucía va a media altura. 5) Para cubrir hasta 13,35 sin llegar al final del clip, pasar a 0,85× lo que sigue al evento o encadenar con el clip B por fundido dentro de la celda."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "importante",
+  "donde": "Cronología de «una película que dura un día»: t32–t34 (amanecer), t36–t42 (tokenizar → máquina → Kevin contratado → cena), anochecer t43–t49",
+  "problema": "1) El reloj va 06:00 → 10:14 (pago) → otra vez al alba (t32 «Dawn», t34 «Early morning») → mediodía. Como los relojes son el recurso central, el salto atrás desorienta. 2) Peor aún: en un solo día Rosa tokeniza su taller, recibe capital del mundo, compra la máquina, contrata a Kevin y él trabaja esa misma tarde. Se lee como una promesa de financiamiento instantáneo, que es justo lo que huele a estafa y a oferta, y contradice la fórmula 8 (lo que es visión va en condicional).",
+  "arreglo": "1) Pasar t32–t34 a media mañana: Kevin en casa buscando trabajo, «Mid-morning in the small kitchen…, warm daylight», y Carmen también «Mid-morning». 2) Marcar el salto de tiempo en t41: abrir con un corte por coincidencia desde el rectángulo del piso de t36/t37 (mismo encuadre) a la máquina nueva sobre él, con la mono dorada chica «UN TIEMPO DESPUÉS» arriba (y 220). 3) En la retícula del anochecer (t43–t49), quitar los relojes y dejar solo la luz: así la cena futura de Kevin puede ocupar la celda de Panamá sin mentir sobre la hora. Esto también resuelve el problema de la luz a las 18:00 (siguiente hallazgo)."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "importante",
+  "donde": "Andrés: t10 (patio en Limón, amanecer), t14 (frontera CR–Nicaragua, media mañana), t20 (costa de Limón, media mañana), t43 (patio en Limón, anochecer)",
+  "problema": "Hay un error de geografía que cualquier tico nota. La frontera de camiones Costa Rica–Nicaragua (Peñas Blancas) queda del lado Pacífico, a unos 400 km y 6–7 h de Limón. Andrés no puede estar ahí a media mañana, y tampoco de vuelta en la costa caribe de Limón a media mañana (t20). Además, en t10 se ve «a través del parabrisas», con reflejos y una llave que no se ve, en una celda de 356 px.",
+  "arreglo": "Mudar a Andrés a Liberia, Guanacaste (1 h de Peñas Blancas, cerca de la esquina del Pacífico de la retícula). t10: «Early morning in a gravel truck yard in Liberia, Guanacaste, dry-season trees. Medium shot from outside the open driver's window, 35mm, locked-off, head and shoulders inside the central square: <Subject 1>, [descripción], sits at the wheel of a plain white cargo truck in the dim cab, completely still in the first frame. Within the first second the dashboard lights come on and glow on his face and the engine shakes the cab; he grips the wheel.» t14: «Mid-morning at the Peñas Blancas land border…». t20: «on the Inter-American Highway in Guanacaste, dry forest». t43: el mismo patio de Liberia. En «personajes» cambiar el rol a «transportista de Liberia»."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "importante",
+  "donde": "Anochecer t43–t49: relojes «18:00 (Panamá 19:00)», luces de cada prompt y t47 en Dangriga",
+  "problema": "A fines de septiembre el sol se pone a eso de las 17:40–17:50 en GT, SV y HN, a las 17:25–17:35 en Costa Rica y a las 18:08 en Panamá. A las 18:00 Costa Rica ya está oscura, y a las 19:00 Panamá es de noche cerrada, sin «last blue light». Eso contradice la fórmula 4 («la verdad como detalle»). Además, la playa de Dangriga mira al este (Caribe): H3 va a pintar un atardecer sobre el mar, que es falso y rompe la rima «el Caribe amanece, el Pacífico se lleva el sol».",
+  "arreglo": "O bien no hay relojes al anochecer (lo recomendado, ver cronología), o bien pasan a «17:40 (Panamá 18:40)», que es verdad para los siete. t47 reescrito: «Dusk on the beach in Dangriga, Belize: the calm sea behind him already deep blue, the last orange afterglow above the palms and the town on the left of the frame. <Subject 1>, [descripción], stands still beside his painted boat pulled up on the sand, gazing toward the afterglow on the left for the whole clip. Waist-up, 35mm, locked-off.» Hacer una segunda versión de color del Caribe (t03) para el anochecer, ya oscura."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "importante",
+  "donde": "t43–t48 (cascada inversa) + t49 «los siete miran la última luz» (122,2–122,9)",
+  "problema": "Cada clip de anochecer mete 2–3 acciones: t43 el camión frena, se apagan los faros, Andrés baja y mira; t45 cierra las puertas, Mario saluda y se va, él mira. Cuándo gira la cabeza es aleatorio en cada clip, así que en t49 no van a estar los siete mirando a la izquierda a la vez. Mario suma otra cara sin foto de casting.",
+  "arreglo": "Cada clip de anochecer tiene que ser un estado fijo desde el cuadro 0, no una acción. Plantilla (t45): «Dusk in front of his textile shop in San Pedro Sula, a street lamp on. The metal doors are already closed behind him from the first frame. <Subject 1>, [descripción], stands still beside the doors, one hand resting on them, gazing toward the last orange light on the left of the frame for the whole clip, breathing slowly, a light breeze. Waist-up, 35mm, locked-off, head just above the vertical centre.» Lo mismo en t43 (Andrés apoyado en la puerta del camión, faros ya apagados), t44, t46 (cortina ya a media altura), t47 y t48. Sacar a Mario de t45."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "importante",
+  "donde": "t30 (don Chepe; el teléfono «lights up… and vibrates» en «segundos», ≈62,2 s)",
+  "problema": "El momento clave del pago («llega en segundos») depende de que el teléfono se encienda y vibre justo a los 5,8 s de la toma. H3 no controla ese momento, «vibrates» casi nunca se ve, y una pantalla encendida y boca arriba invita a inventar una interfaz con letras. La toma de 6,75 s también exige un clip de 7 s al límite.",
+  "arreglo": "El prompt no pide ningún evento: «…measures deep-green fabric against a wooden yardstick, calm, repeating the motion. His phone lies face down on the counter near his hand for the whole clip. Medium shot, 35mm, locked-off, everything in the left two thirds.» La vibración se hace en el montaje: sacudida de 2 px del teléfono, 3 fotogramas, clavada en 62,2 s, con el SFX. Se corta a t31 sobre la vibración. Generar el clip a 5 s y estirar a 0,8× los primeros segundos."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "importante",
+  "donde": "t31 (don Chepe lee, asiente, golpea dos veces, se da vuelta, llama; Mario levanta un rollo) + V14",
+  "problema": "Son cinco acciones y dos personajes en 3,75 s. Si el giro llega tarde, se le ve la boca mientras suena «¡Mario, ya pagó doña Lucía!» (TC 64,25, apenas 1,1 s después del inicio). Además, el rollo que levanta Mario aparece de la nada.",
+  "arreglo": "Arrancar ya de espaldas: «Shot from behind <Subject 1> over his right shoulder, 35mm, locked-off: from the first frame he stands with his back to the camera holding his phone low in front of him, the screen hidden by his body; his navy cap and checked shirt clearly visible. In the background, facing us beside a shelf, a 19 year old Honduran young man, [descripción de Mario], with a roll of deep-green fabric standing upright next to him from the first frame. <Subject 1> lifts his head and raises one arm toward him; the young man nods and lifts the green roll onto his shoulder.» Los nudillos van solo como sonido. La cara de don Chepe ya quedó en t30."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "importante",
+  "donde": "Continuidad de la tela: t17/t28 (Lucía, tela verde) contra t18, t30 y t31 (tela azul)",
+  "problema": "Lucía se queda sin tela verde y le paga a don Chepe, pero él mide tela azul y Mario carga un rollo azul. Se pierde el vínculo sin palabras (se acabó el verde → paga → sale el verde), que es lo que José pide: que se entienda sin explicación.",
+  "arreglo": "En t18, t30 y t31, «deep-green fabric» del mismo tono que t17/t28, y en la animática sacar la referencia de color del mismo fotograma de t17. El rollo verde tiene que estar en cuadro desde el cuadro 0 (ver t31)."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "importante",
+  "donde": "t36 / t37 / t41 (el rincón de la máquina que falta)",
+  "problema": "1) «A clean rectangular mark… where a machine used to stand» se lee como que una máquina se fue (se vendió o se rompió): es decadencia, no «más pedidos que máquinas», y H3 difícilmente pinta una marca limpia en el polvo. 2) Son tres generaciones distintas del mismo rincón, así que las baldosas, la pared y el enchufe cambian entre tomas: no hay continuidad para el corte por coincidencia.",
+  "arreglo": "1) Cambiar la marca por «a rectangle of blue masking tape on the floor marking an empty spot, a spare stool» (un lugar reservado para una máquina que todavía no existe). 2) Generar una sola imagen fija del rincón (FLUX, 768 de ancho) y usarla como fotograma de llegada de t36 (I2V) y como fondo de t41. 3) Para t37 no generar nada: el último fotograma de t36, oscurecido, con empuje 2.5D y los gráficos encima. Ahorra 2 clips."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "importante",
+  "donde": "t40 (Rosa, «the shot opens on the hand… rises to her face», 85 mm)",
+  "problema": "Arranca con un primer plano de mano a 85 mm, lo que viola la regla del propio plan («manos solo en planos medios»). El párrafo de vestuario queda metido entre «the hand of» y «resting», y confunde al modelo. Además, H3 rara vez ejecuta un tilt vertical pedido.",
+  "arreglo": "«Late afternoon in the sewing workshop in Calidonia, Panama City. Medium close-up, 85mm, locked-off with a very slow push-in: <Subject 1>, [descripción], seated at her old sewing machine, its chipped paint along the bottom edge of the frame, her face in profile toward the window on the left, warm golden backlight, dust in the air. Her hands stay below the frame. She rests, then slowly lifts her eyes toward the street.»"
+ },
+ {
+  "lente": "produccion",
+  "severidad": "importante",
+  "donde": "t41 (Kevin en la máquina nueva, Rosa de espaldas guiando la camisa)",
+  "problema": "Hay dos pares de manos haciendo una tarea fina bajo el prensatelas, en plano medio con empuje: es la receta de dedos deformes y de una aguja que atraviesa carne. Rosa no tiene referencia en este clip (solo Kevin es <Picture 1>), así que puede heredar la cara de Kevin o cambiar de cuerpo.",
+  "arreglo": "Usar dos referencias (ref2va admite varias): «<Subject 1> is the man in <Picture 1>. <Subject 2> is the woman in <Picture 2>.» Encuadre: «Medium shot from the chest up, 50mm, locked-off: <Subject 1> sits at a new industrial sewing machine standing on a rectangle of blue masking tape in the corner, concentrating, eyes down on his work; the machine head at the bottom edge of the frame, his hands below the frame. <Subject 2> stands just behind his shoulder, seen from the back, one hand on his shoulder. The machine starts and he leans in, following the seam with his eyes.» Aguja y costura, solo con sonido."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "importante",
+  "donde": "t42 (cena: la mamá sirve, la hermanita hace tarea, Kevin entra, deja la mochila, se sienta, le tocan el hombro, mira la ventana)",
+  "problema": "Son seis acciones y tres personajes en 3,35 s, y la mochila aparece de la nada. El mismo clip tiene que servir a pantalla completa y como celda de 356 px de Panamá, mirando a la izquierda en t49, pero no lleva instrucciones de recorte. La mamá sale en dos tomas (t32 y t42) sin foto de casting.",
+  "arreglo": "Partirla en dos. t42a (pantalla completa): «From the first frame <Subject 1> sits at the table, his backpack already on the floor by his chair; <Subject 2>, his mother, places a plate of rice and beans in front of him and rests her hand on his shoulder; his little sister does homework across the table. Medium-wide, 35mm, locked-off.» t42b (celda): «Waist-up, head just above centre: <Subject 1> seated at the table, still, gazing toward the last blue light in the window on the left for the whole clip.» Hacer casting de NIDIA (la mamá, 4 fotos, centavos) y usarla como <Picture 2>."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "importante",
+  "donde": "t24 (Golfo de Fonseca + trazo dorado que sube y baja + tres rótulos + subtítulo V07)",
+  "problema": "1) Una línea dorada que sube y baja sobre un horizonte es el gráfico de precios de cualquier anuncio cripto: justo lo que el público llamó «estafa cripto», y contradice la fórmula 7. 2) Rotular «GOLFO DE FONSECA» junto a «agua de tres países» pisa una disputa viva (Isla Conejo, entre Honduras y El Salvador, y el condominio de la CIJ de 1992), que el propio plan prohíbe en los mapas. 3) Cuatro capas de texto en 6,3 s no se leen.",
+  "arreglo": "1) Sin línea: la luz del sol sobre el agua se intensifica con fotogramas clave de color en «sube» y se apaga en «baja» (el oro como luz). 2) Quitar el rótulo del lugar, o cambiar la toma por un horizonte del Pacífico sin nombre. 3) Un solo rótulo a la vez: «1 ORIGEN = el precio de 1/55 de gramo de oro» (32,6–35,3) y luego «Fórmula pública · no se canjea por metal» (35,5–38,5). Mientras haya rótulo, el subtítulo V07 se reduce a una línea. Pedir el bote «from the first frame»."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "importante",
+  "donde": "V15 «nuestra identidad digital como centroamericanos» (t32)",
+  "problema": "Suena a una identidad oficial y regional emitida por un Estado. Implica lo mismo que el plan prohíbe («válida en los 7 países»), y Genesis ID está en beta.",
+  "arreglo": "Conservar la idea de José sin afirmar que es oficial: «Para entrar al ecosistema, Genesis ID: tu identidad digital, pensada para toda Centroamérica.» (12 palabras, ≈5,6 s). Confirmar la pronunciación («Génesis ai-dí» o «i-de») antes de grabar."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "importante",
+  "donde": "V25 «Hoy, uniendo Centroamérica.» (t50)",
+  "problema": "Afirma en presente algo que hoy no ocurre (cientos de cuentas, ningún comercio real). La fórmula 8 dice que lo que es visión va en condicional, y un cierre grandilocuente es lo que suena a «secta».",
+  "arreglo": "«Esto lo hicimos por vos. / Para unir Centroamérica. / ¿Y mañana… Latinoamérica?». Si José quiere conservar el gerundio: «Empezando por Centroamérica.» Las dos mantienen la escalada hacia Latinoamérica."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "importante",
+  "donde": "t01 (Bukele, «Fuente limpia», ventana 16:9)",
+  "problema": "Lo único que tenemos es el repost 9:16 de @bukelord con marca de agua. La ventana 16:9 y la «fuente limpia» no existen todavía, y difuminar la marca de otro no es una salida. Si no aparece el original, el arranque de la versión orgánica se cae.",
+  "arreglo": "Dejar el arranque bloqueado hasta tener el original del Foro Esquipulas 2018 (canal del foro, medios guatemaltecos). Si no aparece antes del montaje, la versión orgánica también sale con el arranque de la versión B (Lucía: «¿Y si pudiéramos… unir Centroamérica?»). Nunca se usa el repost con marca de agua."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "importante",
+  "donde": "version_60",
+  "problema": "Salta V05, así que después de «Ya existe. Se llama ORIGEN.» viene «Si el oro sube, sube…» sin que nadie haya dicho que sigue al oro. No se entiende. También se cae Genesis ID, que es el punto 6 de José.",
+  "arreglo": "Meter V05 (5,5 s) después de V04 y compensar quitando t40/V22 (5,7 s), o reescribir V07 para el corte: «Sigue el precio del oro: si sube, sube; si baja, baja.» Genesis ID puede entrar como tarjeta sin voz sobre t33 (1,5 s)."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "importante",
+  "donde": "Resolución y recortes (pantalla_dividida → GENERACIÓN: 768×1344, celdas de 768×768, mitades de 649×1344)",
+  "problema": "MINIMAX_H3.md todavía dice «720 × 1280 vertical (fijada en la cola, no en el workflow)» y 4 s a 24 fps. Si la cola sigue forzando 720×1280, se rompen todos los cálculos de recorte (768→356, 649×1344→536×1110) y los clips de 6,4–7 s que el plan necesita.",
+  "arreglo": "Antes de encender: verificar en 03_run_queue.py y en el preflight que cada job lleve width=768, height=1344 y length=4n+1 (7 s = 169 fotogramas), y actualizar MINIMAX_H3.md. Si la cola se queda en 720×1280: celdas de 720×720 y mitades de 608×1260."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "importante",
+  "donde": "t14 (Andrés en la frontera: «looks at his wristwatch»)",
+  "problema": "El reloj de pulsera no está en la descripción canónica de Andrés: aparece solo en esta toma y H3 lo inventa (y va a faltar en las demás). Además son tres acciones en una toma de 85 mm.",
+  "arreglo": "«Mid-morning at the Peñas Blancas land border between Costa Rica and Nicaragua, a long line of waiting cargo trucks, dust and hazy heat. <Subject 1>, [descripción], sits in the cab of his plain white truck, forearm on the open window, completely still in the first frame. He looks ahead at the unmoving line, lets his head fall back against the seat and slowly exhales. Medium shot from outside the cab, 85mm, locked-off, his face in the upper half.»"
+ },
+ {
+  "lente": "produccion",
+  "severidad": "menor",
+  "donde": "Todos los prompt_h3: «He does not look at the camera», «No text», «Nobody… smiles like in an advert»",
+  "problema": "Los modelos de difusión suelen ignorar las negaciones dentro del prompt positivo, o hasta las invierten (nombrar «smiles» o «text» los activa).",
+  "arreglo": "Pasar «looking at camera, smiling, text, letters, logo, signage» al nodo NEGATIVE (que exista, según la trampa 15 de MINIMAX_H3.md) y en el prompt positivo poner la mirada en afirmativo: «his eyes on his work», «her gaze on the street»."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "menor",
+  "donde": "Primeros planos con descripción completa (t29 Lucía «close-up… dark blue jeans», t33 Kevin «dark jeans»)",
+  "problema": "Describir prendas que quedan fuera del cuadro empuja a H3 a abrir el plano para mostrarlas.",
+  "arreglo": "Descripción canónica recortada a lo visible y siempre con las mismas palabras, por ejemplo en t29: «…small silver hoop earrings, no makeup, wearing a rust-orange linen shirt over a plain white t-shirt». Sin jeans ni coleta en la muñeca si no entran en cuadro."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "menor",
+  "donde": "t28 («daylight through the half-raised shutter»)",
+  "problema": "En t07 Lucía subió la cortina entera. Media cortina a media mañana es un error de continuidad (y rima antes de tiempo con la del anochecer).",
+  "arreglo": "«daylight through the fully raised shutter»."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "menor",
+  "donde": "Rosa: «a pencil tucked behind her right ear» (t11, t21, t36, t40, t41)",
+  "problema": "Un accesorio chico que H3 pone y saca entre tomas. En t36 también cuenta bolsas «with her pencil», así que el lápiz tendría que estar a la vez en la oreja y en la mano.",
+  "arreglo": "Quitar el lápiz de la descripción canónica. Quedan la cinta amarilla y las perlas, que se leen mejor en planos chicos. En t36: «counts the bags with a nod of her head»."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "menor",
+  "donde": "t15 (Aurelio rastrilla café rojo en el patio de secado)",
+  "problema": "La cosecha de Huehuetenango es de diciembre a abril. A fines de septiembre (la luz que el plan fija) no hay café en el patio, y un caficultor lo nota.",
+  "arreglo": "«walks between the coffee plants and checks a branch of green unripe cherries with his hand, then looks up at the slope». Mano en plano general, dentro del cuadrado."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "menor",
+  "donde": "t03/t04 (océanos «en bucle, viva toda la película»)",
+  "problema": "Un clip de 5–7 s en bucle durante más de 2 minutos deja ver la costura y el mismo reflejo repetido. El Pacífico «aún oscuro» al alba sale de un clip de atardecer.",
+  "arreglo": "Bucle de ida y vuelta con fundido de 12 fotogramas, reproducido a 0,5×. Dos versiones de color por océano (alba y anochecer), con el cambio en 21,95 (barrido) y en 120,65."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "menor",
+  "donde": "t37 («Tokenizar» en Didone + definición en mono + subtítulo V19)",
+  "problema": "Tres capas de texto en 6,65 s: en el teléfono no se leen.",
+  "arreglo": "«Tokenizar» de 87,75 a 89,5; después, la definición en dos líneas de 90 a 94 en lugar del subtítulo (como en t27 y t40). Sin subtítulo duplicado."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "menor",
+  "donde": "V05 «Una que siga el precio del oro, que vale igual en los siete países.»",
+  "problema": "Mezcla subjuntivo e indicativo, y «vale igual» puede oírse como «no pierde valor».",
+  "arreglo": "«Una sola para los siete, que siga el precio del oro.» (10 palabras, ≈4,3 s; el barrido sigue arrancando en «oro»)."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "menor",
+  "donde": "t32 (Kevin «holds his identity card face down»)",
+  "problema": "Una tarjeta en la mano: dedos, y el reverso de la cédula con letras inventadas.",
+  "arreglo": "Sacar la cédula: el teléfono apoyado en la taza, y Kevin mira y respira. El documento aparece en el gráfico «Documento ✓» de t33 y en el sobre de t35."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "menor",
+  "donde": "Mapas t26/t27/t39/t50 y V08 (Morazán)",
+  "problema": "La frontera Guatemala–Belice está ante la CIJ, y la federación de Morazán no incluía a Panamá ni a Belice. Coser los siete «de capital en capital» justo sobre la frase de Morazán invita a que alguien corrija.",
+  "arreglo": "Trazar la línea GT–BZ igual que las demás, sin sombreado, de Natural Earth en su versión de facto. En t25/t26, que V08 caiga sobre el óleo y que el mapa de siete entre recién con V09 («Somos más de cincuenta millones»), como ya está previsto: no adelantarlo."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "menor",
+  "donde": "Música (golpes en 10,3 · 24,9 · 26,1 · 27,3 · 31,2… a 75 bpm desde 7,0)",
+  "problema": "Casi ningún golpe cae en la grilla (un pulso = 0,8 s desde 7,0): la pista generada no va a coincidir, y forzarla corta la música.",
+  "arreglo": "Pedir la música por capas sobre la grilla y agregar los acentos fuera de grilla como golpes sueltos (marimba, chelo o sello) en otra pista, o correr los cortes al pulso más cercano (10,2 · 25,0 · 25,8 · 27,4 · 31,0)."
+ },
+ {
+  "lente": "produccion",
+  "severidad": "menor",
+  "donde": "Don Chepe: t08 «textile warehouse… double metal doors», t18/t30 «wooden counter of a textile shop», t45 «front of the textile warehouse»",
+  "problema": "Bodega o tienda: son dos decorados distintos que H3 va a inventar por separado.",
+  "arreglo": "Un solo lugar, «his small textile shop-warehouse in San Pedro Sula: a wooden counter in front, fabric rolls on shelves, double metal doors to the street», con la misma frase en todas sus tomas y una imagen fija de referencia del interior."
+ },
+ {
+  "lente": "tiempo",
+  "severidad": "importante",
+  "donde": "Todo el plan (t01–t52) y la fórmula 12",
+  "problema": "Duración verificada: las 52 tomas suman exactamente 133,7 s, sin huecos ni solapes entre inicios (está dentro de 120–135). Pero la fórmula 12 («ninguna línea pasa de ~2,4 palabras/s») es falsa. V05 («Una que siga el precio del oro, que vale igual en los siete países.») tiene 14 palabras en 5,5 s, es decir 2,55 palabras/s. A 2,3 palabras/s necesita 6,09 s: termina en 29,49 y se encima 0,09 s con V06 (29,40). Además, 10 líneas más pasan de 2,3 palabras/s: V04 2,33 · V08 2,40 · V10 2,33 · V12 2,35 · V13 2,40 · V17 2,35 · V21 2,37 · V22 2,36 · V23 2,41 · V24 2,38. Con el propio modelo del plan (+0,48 s por pausa «…»): V10 («Juntos…») termina en ≈52,37 y pisa V11 (52,25). V21 («Si no se cumplen… no pasa») termina en ≈107,5 y se come el silencio de 0,4 s después de «no pasa», que la música ubica en 106,4–107,25. V22 («del mundo…») termina en ≈113,8, más allá del fin de t40 (113,5).",
+  "arreglo": "Reescribir V05 como «Una que siga el precio del oro, igual en los siete países.» (12 palabras, 5,2 s) o correr su inicio a 23,2. Quitar «Juntos…» como pausa escrita en V10 o adelantar V10 a 45,6. En V21, cambiar «Si no se cumplen… no pasa» por «Si no se cumplen, no pasa» y dejar el silencio en 107,0–107,4. Adelantar V22 a 107,5. Rehacer la tabla de ritmo con palabras/2,3 más 0,48 s por «…», no solo con sílabas."
+ },
+ {
+  "lente": "tiempo",
+  "severidad": "importante",
+  "donde": "Secuencias 3 y 4 (21,95–52,0: t22, t23, t24, t25, t26, t27)",
+  "problema": "Hay un valle de retención de 30 s sin una cara humana a tamaño legible: la retícula de celdas de 356 px, ORIGEN sobre negro, el Golfo de Fonseca aéreo, el óleo de Morazán y dos mapas. Justo ahí va la explicación de la moneda, que es lo que el público ya marcó como «no entendí nada» y «me huele a estafa cripto». En TikTok, entre los 20 y los 50 s se pierde la mayor parte de la audiencia. Además, del segundo 2,8 al 32,35 la misma retícula 3×3 ocupa ≈27 de 32 s (solo la interrumpe Andrés entre 13,35 y 18,35): aunque las celdas se muevan, el macroencuadre queda estancado.",
+  "arreglo": "Meter una persona a pantalla completa en cada secuencia. En V04–V05, una celda crece a pantalla completa, por ejemplo Rosa o Lucía con el teléfono en la mano, y el barrido de oro pasa sobre su cara (en t22, 23,4–29,1). En V07, un plano de Lucía o don Chepe que mira la tarjeta de Veta, con el trazo sube/baja en el tercio inferior en lugar del Golfo. En V09–V10, volver a las siete caras (la retícula viva) en vez del mapa teñido, y dejar el mapa solo para «entre dos océanos». Regla: ningún tramo de más de 8 s sin una cara ni unas manos a más de un tercio de la pantalla."
+ },
+ {
+  "lente": "tiempo",
+  "severidad": "importante",
+  "donde": "Secuencias 6–7 (66,9–113,2: V15–V22)",
+  "problema": "Son 46 s de narración continua, sin una respiración mayor de 0,85 s, en el tramo más conceptual: Genesis ID, tokenizar, pasaporte, reglas. Además, de 87,5 a 107,45 (t37, t38 y t39) hay 20 s de gráficos y de un rincón vacío sin personas. t32 (Kevin, 6,85 s, plano fijo, solo aparece una tarjeta) supera la regla de 6 s sin cambio, y encima con la línea más abstracta del guion («Para entrar al ecosistema… Génesis i de…»).",
+  "arreglo": "Abrir una respiración de 1,2–1,5 s entre V17 y V18 (82,1→83,5), con el sello que llega y una nota sola, y otra de ≈1 s después de «no pasa». Partir t32 en dos: 3,4 s en plano medio más 3,4 s de inserto de la cédula boca abajo y el pulgar en el teléfono. Insertar a Rosa (1,5 s, primer plano mirando el pasaporte o firmando) entre t38 y t39 para que el pasaporte tenga dueña. Financiar los ≈3 s recortando t27 (6,4 → 5,0) y t26 (4,0 → 3,4)."
+ },
+ {
+  "lente": "tiempo",
+  "severidad": "importante",
+  "donde": "t52, cierre (131,2–133,7), y los finales de los cortes de 60 s (56,5–58,5) y 30 s (27,1–29,0)",
+  "problema": "La tarjeta final dura 2,5 s en la versión principal, 2,0 s en la de 60 y 1,9 s en la de 30, y lleva a la vez el logo, «Buscamos a los primeros países y aliados.», «ordenglobal.org» y ≈45 palabras de letra chica. No da tiempo a leer la llamada a la acción ni la URL, que es justo el objetivo de José («quiero saber de ellos»). Tampoco da para leer el descargo que aclara que el archivo de Bukele no implica relación.",
+  "arreglo": "Principal: t52 de 4,0 s (130,7–134,7). Se financia recortando t50 de 2,85 a 2,35 s: V25 dura 1,3 s. Total 134,7 s. Separar en dos tiempos: 0–2,0 s logo con «Buscamos a los primeros países y aliados.»; 2,0–4,0 s «ordenglobal.org» con la letra chica. Poner «Archivo 2018 · no implica relación con Orden Global» también como rótulo fijo durante t01. Cortes: tarjeta final de 3,5 s como mínimo (ver cómo financiarla en los hallazgos de cada corte)."
+ },
+ {
+  "lente": "tiempo",
+  "severidad": "importante",
+  "donde": "version_30",
+  "problema": "Los tiempos cierran (29,0 s y cada línea cabe), pero el sentido no. ORIGEN nunca se nombra en voz y tampoco se dice qué es; solo aparece «120 ORIGEN» en una tarjeta. Así, «Esto lo hicimos por vos» no tiene referente: el espectador ve «pagarle a tu proveedor por un centavo» sin saber con qué ni de quién. Además, la tarjeta final de 1,9 s no se alcanza a leer.",
+  "arreglo": "Rehacer desde 18,3: V06 «Ya existe. Se llama ORIGEN.» sobre t23 (18,3–20,9) · V24 sobre t49 (20,9–23,2) · V25 sobre t50 en 1,6 s (23,2–24,8) · V26 sobre t51 (24,8–27,8, con el silencio de 0,9 s) · logo y URL (27,8–30,0). Si no entra, sacar V25 y dejar «uniendo Centroamérica» como texto Didone sobre t51."
+ },
+ {
+  "lente": "tiempo",
+  "severidad": "importante",
+  "donde": "version_60 (8,1–22,2 y 33,0–39,4)",
+  "problema": "Los tiempos cierran (58,5 s y cada línea cabe en su casillero), pero se corta V05. Sin ella, V07 («Si el oro sube, sube…») llega sin que la voz haya dicho que ORIGEN sigue al oro: el vínculo queda solo en el rótulo «1 ORIGEN = EL PRECIO DE 1/55…», que no se alcanza a leer mientras se escucha. También se corta V18, así que V19 («Podría tokenizar su taller») no tiene referente: nunca se presentó a Rosa. En el mismo tramo, Kevin arranca la máquina (45,1) sin haber sido presentado. Y el cierre queda en 2,0 s.",
+  "arreglo": "En 12,9: reemplazar V06 por «Ya existe: se llama ORIGEN, y sigue el precio del oro.» (11 palabras, 4,8 s; 12,9–17,7) y correr V07 a 17,7. En 33,0: V19b «Un taller en Panamá podría abrirse, en partes digitales, al capital del mundo.» (13 palabras, 5,65 s), con el rótulo «ROSA · CIUDAD DE PANAMÁ». Financiar los +1,8 s y la tarjeta final de 3,5 s (+1,5 s) así: tutti t41 de 2,4 a 1,0 s (−1,4) y V04 de 4,8 a 4,4 s (−0,4); comprimir t42 y t49 a 2,6 s (−0,3); t51 a 3,1 s (−0,4); t50 a 2,2 s (−0,4). Final en ≈59,6 s."
+ },
+ {
+  "lente": "tiempo",
+  "severidad": "importante",
+  "donde": "version_b (t01 alternativo, 0–2,8)",
+  "problema": "La versión que se pauta, la única que recibe dinero en los anuncios, arranca con 2,8 s de pantalla negra y texto Didone. En un feed pago, un primer fotograma negro es el peor gancho posible. Los cortes de 60 y 30 s en versión B heredan el mismo problema.",
+  "arreglo": "En B, arrancar en el fotograma 0 con la celda de Lucía a pantalla completa, subiendo la cortina con su estruendo metálico. Encima, «¿Y si pudiéramos… unir Centroamérica?» en Didone y V00b en voz. A los 2,8 s la imagen se encoge a su celda de la retícula y sigue igual que la versión principal. El negro solo como corte de 0,3 s (t02)."
+ },
+ {
+  "lente": "tiempo",
+  "severidad": "importante",
+  "donde": "t05–t12, el golpe de las 06:00 (el momento compartible n.º 1 y la portada)",
+  "problema": "Los prompts piden «Wide shot, full body» y después se recorta un cuadrado de 768 que se escala a 356 px. En el teléfono cada persona queda de ≈80–120 px de alto: la cortina de Lucía, la tranca de Aurelio o la puerta del horno serán ilegibles, justo en la imagen pensada para compartir y en la portada. Los rótulos de país y hora de la columna derecha (Caribe, Nicaragua, Panamá; y 914–1270 en la fila 3) caen bajo la columna de botones de TikTok, e incluso «PANAMÁ · 06:59», el detalle de verdad que desarma la sospecha.",
+  "arreglo": "Rehacer los prompts de las celdas A como planos medios o planos de manos y objeto (manos en la tranca, la cortina a la altura del pecho, el portón que se abre), con 50 mm y la acción ocupando el 60 % del cuadro. Rótulos siempre abajo a la izquierda de cada celda. Probar la retícula exportada en un teléfono real antes de la GPU del resto."
+ },
+ {
+  "lente": "tiempo",
+  "severidad": "menor",
+  "donde": "Momentos compartibles (plan general)",
+  "problema": "El plan no declara los 3 momentos compartibles con su tiempo de código. De hecho solo hay dos claros: el golpe de las 06:00 (7,0) y «Si baja, baja» (≈35). El tercero, «Que el capital venga del mundo… y las reglas sigan siendo de casa», cae en 1:48, cuando queda muy poca audiencia. Entre 38 y 107 s no hay ningún pico pensado para compartir; la chispa del centavo a los 62 s podría serlo, pero no está diseñada como tal.",
+  "arreglo": "Declararlos: (1) 7,0, golpe de las 06:00; (2) 60,4–62,4, la chispa cruza la costura y el teléfono de Chepe vibra, con la tarjeta «US$ 0,01 · Recibido» legible 1,5 s; (3) 107,5–113,2, la frase de casa en Didone. Diseñar cada uno para que funcione sin sonido y usar el (2) como gancho alternativo de pauta."
+ },
+ {
+  "lente": "tiempo",
+  "severidad": "menor",
+  "donde": "Subtítulos de V05, V10, V15, V20 y V21",
+  "problema": "Líneas de 12 a 14 palabras (60–90 caracteres) no caben en 2 líneas de subtítulo grande (≈26–28 caracteres por línea a ese cuerpo). El plan no dice dónde se parte cada subtítulo.",
+  "arreglo": "Definir las tarjetas de subtítulo con su tiempo de código, 2 líneas máximo cada una. Ejemplo: V20 en «Cada parte lleva su pasaporte:» (94,4–96,4) y «quién la emite, qué hay detrás, cuánto riesgo tiene.» (96,4–100,5), partida en dos líneas de ≤ 28 caracteres. Hacer lo mismo con V05, V10, V15 y V21."
+ },
+ {
+  "lente": "tiempo",
+  "severidad": "menor",
+  "donde": "t31 y V14 (63,15–66,9)",
+  "problema": "V14 empieza en 64,25, apenas 1,1 s después del corte, pero la toma pide que primero lea, asienta, golpee dos veces el mostrador y recién después se dé vuelta. Con ese orden, llamaría a Mario mientras todavía mira de frente: la boca queda visible y rompe la regla de labios fuera.",
+  "arreglo": "Usar el clip desde ≈2,0 s (ya de espaldas) o correr V14 a 65,0–66,8 y cortar a la cocina en 66,9. En el prompt, que se dé vuelta en el primer segundo."
+ },
+ {
+  "lente": "tiempo",
+  "severidad": "menor",
+  "donde": "Fórmula 5 y t02–t11",
+  "problema": "El plan dice «4,6 s sin palabras después de Bukele», pero el hueco real va de 2,51 a 7,40: son 4,89 s. En ese tramo hay siete fotogramas congelados en el cuadro 0; el primero queda quieto 3,6 s. En visionado sin sonido (Reels) es un tramo sin texto ni movimiento real.",
+  "arreglo": "Corregir la cifra. Dar a cada celda congelada un microempuje del 2 % o un parpadeo de luz, y poner un rótulo pequeño «05:59» que titile en el reloj compartido para sostener la tensión sin audio."
+ },
+ {
+  "lente": "tiempo",
+  "severidad": "menor",
+  "donde": "V04 y V16 (anclas de toma)",
+  "problema": "V04 está anclada a t15 (0,8 s) pero se extiende hasta 22,95, por t16–t22. V16 está anclada a t33 pero termina en 78,1, dentro de t34, que tiene voz_ids vacío. En montaje esto puede hacer que la línea se recorte a la duración de su toma ancla.",
+  "arreglo": "Listar todas las tomas que cubre cada línea en voz_ids (V04 en t15–t22; V16 en t33–t34), o marcarlas como «voz sobre varias tomas» en las notas."
+ },
+ {
+  "lente": "jose_bukele",
+  "severidad": "bloqueante",
+  "donde": "t01, t52, notas_internas (Bukele), riesgos, publicación orgánica",
+  "problema": "Esta película abre con Bukele y dos segundos después habla de una moneda digital referenciada al oro. Es el mismo patrón que usan los anuncios estafa con deepfakes de Bukele promocionando cripto, que llevan años circulando en TikTok y Meta. Encima, toda la pieza va con la etiqueta «generado con IA», así que quien la vea va a sospechar que Bukele también es IA. El único aviso de que no hay relación con él está en la letra chica final (2,5 s, ilegible). Así, lo primero que activa la pieza es justo lo que el público ya dijo: «me huele a estafa cripto». Tampoco hay plan si el permiso no llega: los riesgos dicen «conseguir el permiso», pero la versión orgánica se publica igual. Si su equipo ve su cara abriendo un anuncio de token sin haber autorizado nada, lo más probable es rechazo, no «quiero saber de ellos».",
+  "arreglo": "1) Mientras no haya autorización escrita, la versión pública es la B (lámina de José). La versión con Bukele (o la «estadista») se usa solo para entregarla directo a su entorno, como homenaje y propuesta. 2) Si se publica con permiso, el rótulo va visible durante los 2,8 s y en tamaño legible: «ARCHIVO REAL · N. BUKELE · FORO ESQUIPULAS · 25-SEP-2018 · REGISTRO PÚBLICO». La primera línea de la descripción aclara: «Archivo real de 2018, sin relación con Orden Global; el resto son imágenes ilustrativas hechas con IA». 3) Nada dorado ni de la retícula se superpone a su ventana, y el primer fotograma de la publicación (autoplay) no es su cara."
+ },
+ {
+  "lente": "jose_bukele",
+  "severidad": "bloqueante",
+  "donde": "Retícula 3×3 (pantalla_dividida, t05–t12, prompts de celdas, portada)",
+  "problema": "Cada celda mide 356 px, unos 2,3 cm en un teléfono. Los prompts piden «Wide shot, full body», que en una celda deja a cada persona de ~1 cm. Andrés «visible a través del parabrisas» y Marcus junto a la lancha no se van a leer. Justo la imagen que pidió José («una persona abriendo su negocio… mirá los otros países») es la menos legible de la película. Además, de 3,4 a 7,0 s las celdas quedan congeladas en el cuadro 0: sumado a los 2,8 s de archivo y el negro, son unos 6,4 s sin movimiento propio al arranque de un TikTok. Y en el golpe de 7,0 nadie puede seguir siete acciones a la vez: en la práctica se va a ver un mosaico que parpadea. Hay otra contradicción de producción: se genera en 768×1344, se recorta un cuadrado central de 768 y a la vez se pide «full body» y «acción en el tercio medio». H3 no sabe que habrá recorte y va a cortar cabezas o pies.",
+  "arreglo": "Cambiar la gramática del arranque. Cada país entra a pantalla completa (o a media pantalla) 0,5–0,7 s en plano medio o de detalle: manos en la tranca, la cortina, el portón, el horno, la llave, el pedal. Con su nota, y ya en movimiento, se encoge a su celda. La retícula completa se ve en 7,0 como resultado, no como el lugar donde descubrir las acciones. El golpe de las 06:00 lo marcan el sonido (siete aperturas) y un único reloj grande en el centro («06:00», con «Panamá 07:00» chico), no siete relojes de 356 px. Reescribir los prompts de celda en plano medio, con el sujeto grande en el centro vertical, y quitar «full body» y «square centre crop» del texto del prompt."
+ },
+ {
+  "lente": "jose_bukele",
+  "severidad": "bloqueante",
+  "donde": "Secuencia 7 (t36–t42, V18–V23, tokenizacion)",
+  "problema": "La tokenización es el punto donde José pidió «pensá profundo», pero el ejemplo es un taller de tres costureras que abre partes «al capital del mundo» para comprar UNA máquina de coser. Eso se resuelve con un microcrédito. Para Bukele o para cualquier persona seria, ir a buscar «capital del mundo» para una máquina trivializa el «para desarrollo» de José y suena al pitch cripto clásico («invertí en un pequeño negocio desde cualquier lugar»). Además, la película «dura un día»: a mediodía falta la máquina y esa tarde ya está tokenizada, financiada, comprada, instalada y con Kevin contratado. La voz dice «podría» pero la imagen muestra el dinero instantáneo, que es lo que huele a estafa. Tampoco se ve la soberanía de CADA país: solo aparecen las reglas de Panamá, que hoy no tiene marco para emitir activos digitales. El Salvador sí lo tiene (la ley de 2023) y es el país de Bukele.",
+  "arreglo": "1) Subir la escala y poner a El Salvador primero, sin nombrar la ley ni al regulador. Tres empresas reales en tipo (ficticias en nombre), cada una con su pasaporte y las reglas de SU país: una cooperativa de café en Guatemala, una fábrica textil salvadoreña que quiere pasar de 30 a 120 puestos y el taller de Rosa como la más chica. Se ve que el mecanismo sirve para desarrollo y que cada país pone sus reglas. 2) Marcar el salto de tiempo o dejar el resultado como visión: «Meses después», o que la máquina nueva y Kevin aparezcan después de un corte a otra estación o luz, no el mismo día. 3) Cambiar V21 por «Y adentro viajan las reglas que decida cada país. Si no se cumplen… no pasa.» Es más exacto (hoy no todos tienen reglas) y es el argumento de soberanía más fuerte para un jefe de Estado: el país decide."
+ },
+ {
+  "lente": "jose_bukele",
+  "severidad": "importante",
+  "donde": "V24–V26 (final) y narradora en general",
+  "problema": "«Esto lo hicimos por vos» lo dice Lucía, una tapicera. Pero Lucía no construyó nada, así que el «nosotros» queda falso o suena a que la marca habla por boca de un personaje, y eso da tono de propaganda. Ya antes la voz salta de Lucía como personaje («mi proveedor») a narradora omnisciente («Ahora pensá en Rosa, en Panamá», «Te verificás…»), y quien no vio «Un martes» no sabe quién le habla. A esto se suma el cuchicheo [softly], la línea dorada y los siete mirando la luz al unísono en el cierre: es exactamente la zona de «secta».",
+  "arreglo": "Cambiar de voz en el cierre. V24 lo dice José con su voz real, grabada en el celular si hace falta, sin IA y sin susurro: «Esto lo hicimos por vos.» El fundador firmando es lo que haría a Bukele preguntar quiénes son. Otra opción es dejar V24 solo como texto Didone en silencio, sin voz. Lucía puede cerrar con «¿Y mañana… Latinoamérica?». Los siete que miran la luz, en cascada escalonada y no sincronizados en el mismo fotograma."
+ },
+ {
+  "lente": "jose_bukele",
+  "severidad": "importante",
+  "donde": "t24 (Golfo de Fonseca) y texto en pantalla de V07",
+  "problema": "El Golfo de Fonseca es una zona en disputa viva entre El Salvador y Honduras (isla Conejo), con historial ante la CIJ. El propio plan se prohíbe «zonas en disputa», y aquí aparece rotulada en la película que tiene que ver Bukele. Además, en 6,3 s conviven cuatro textos («GOLFO DE FONSECA», «1 ORIGEN = EL PRECIO DE 1/55 DE GRAMO DE ORO», «NO SE CANJEA POR METAL · FÓRMULA PÚBLICA» y el subtítulo) mientras la voz habla. Es el «no entendí nada» que ya dijo el público.",
+  "arreglo": "Cambiar el lugar por un horizonte neutro sin rótulo, por ejemplo el lago de Atitlán, que es la lámina 1 de José, o un amanecer sobre el Pacífico sin nombre. En pantalla solo el trazo dorado que sube y baja y una sola línea: «SIGUE EL PRECIO DEL ORO · NO SE CANJEA POR METAL». El 1/55 va a la web y a la descripción, no a la película."
+ },
+ {
+  "lente": "jose_bukele",
+  "severidad": "importante",
+  "donde": "Secuencia 3 ORIGEN (V04–V07) y secuencia 5 (t30–t31)",
+  "problema": "Falta el «para qué» de ORIGEN. La película presenta siete monedas como problema y después dice «cada país, con sus leyes y su moneda», pero nunca dice que ORIGEN es una unidad común que no reemplaza a nadie. Un espectador o un presidente puede entender que se propone sustituir el colón o el lempira. «Si baja, baja» abre la pregunta obvia de un comerciante: ¿por qué cobraría en algo que puede bajar? Y nada lo responde. En el pago, «120 ORIGEN» no dice cuánto es en plata conocida, y no queda claro qué hace don Chepe después con esos ORIGEN. Bukele va a preguntar las dos cosas.",
+  "arreglo": "V04: «¿Y si entre todos tuviéramos una moneda digital en común para comerciar… sin reemplazar la de nadie?» En V05 o en gráfico, la razón neutral: «una medida que no es de ningún país: la misma para los siete». En la tarjeta de Veta, debajo de 120 ORIGEN, «≈ US$ xxx (ilustrativo)» con el cálculo del día de montaje. El «después» de don Chepe (usarlo para pagar a su propio proveedor, o que le quede en la app) va en la web o en otra pieza. No prometer conversión en efectivo."
+ },
+ {
+  "lente": "jose_bukele",
+  "severidad": "importante",
+  "donde": "Secuencia 6 Genesis ID (V15–V17, t32–t35)",
+  "problema": "«Nuestra identidad digital como centroamericanos» dicho por una empresa privada choca con el mensaje de soberanía: la identidad es función del Estado (DUI, DPI, cédula), y un jefe de Estado lo lee como una empresa que se arroga una identidad regional. «Ecosistema» es jerga que el espectador no entiende. Y el arco de Kevin no tiene consecuencia: se verifica al alba y después lo contratan por la plata de Rosa, así que Genesis ID no cumple ninguna función en la historia (o peor, parece que verificarse te consigue trabajo). Además rompe la cronología del día: el alba de Kevin viene después del pago de las 10:14.",
+  "arreglo": "Redacción que respeta lo que pidió José: «Para entrar, Genesis ID: tu identidad digital en este sistema. Tu documento sigue siendo de tu país; aquí solo viaja la prueba.» Conectarlo con la trama: que quien se verifica sea la dueña de la empresa (el pasaporte dice «Emisor · Genesis ID ✓»), o que Kevin lo necesite para cobrar su primer sueldo en Veta. Mover su escena a media mañana (pausa en el trabajo, el bus) o marcarla como flashback."
+ },
+ {
+  "lente": "jose_bukele",
+  "severidad": "importante",
+  "donde": "version_60 y version_30",
+  "problema": "El corte de 60 s mantiene «Podría tokenizar su taller… al capital del mundo» y quita el pasaporte, «no pasa» y «sin dejar de ser siete». Queda la promesa sin los resguardos: el pitch de estafa y el mayor riesgo legal. También quita Genesis ID y la soberanía, que son el corazón para Bukele. El corte de 30 s nunca nombra ORIGEN ni dice qué moneda es: queda «un centavo» de algo desconocido.",
+  "arreglo": "60 s: si entra V19, entra V21 (las reglas de cada país) inmediatamente después. Si no, mejor quitar la tokenización y dejar V10 («sin dejar de ser siete») más V22. 30 s: agregar V06 («Ya existe. Se llama ORIGEN.») antes del pago, o una tarjeta Didone «ORIGEN» sobre la chispa."
+ },
+ {
+  "lente": "jose_bukele",
+  "severidad": "importante",
+  "donde": "version_b y notas_internas (pauta)",
+  "problema": "El plan solo prevé el bloqueo por anuncio político. Pero TikTok restringe o prohíbe publicitar criptomonedas y tokens en la mayoría de los mercados de Latinoamérica, y Meta exige autorización previa (licencias) para anuncios de cripto. Una pieza que presenta una moneda digital y la tokenización de empresas puede ser rechazada aunque no tenga a Bukele, y la estrategia de pauta queda sin plan.",
+  "arreglo": "Antes de producir la versión B, verificar las políticas vigentes de TikTok Ads y Meta (servicios financieros y cripto) para los siete países. Preparar una variante de pauta «de marca» sin tokenización ni moneda en primer plano (retícula, unión, soberanía, Genesis ID) que lleve a la película completa orgánica, y dejar la pauta de la versión completa sujeta a esa verificación."
+ },
+ {
+  "lente": "jose_bukele",
+  "severidad": "importante",
+  "donde": "Guion completo (densidad de voz y texto)",
+  "problema": "La voz ocupa unos 105 s de los 123 que van de 7,4 a 131 s (≈85 %): es un explicador de pared a pared, lo contrario de la referencia «Valemos Mucho» y de la fórmula 5 («sentir antes de entender»). En 50 s aparecen tres interfaces seguidas (tarjeta de Veta, Genesis ID con tres checks, pasaporte del activo), que es el «catálogo de servicios» que ya criticó el público. Hay dobles lecturas: en t37, «Tokenizar» más su definición más el subtítulo de V19 dicen lo mismo, y en t35 hay dos rótulos más el subtítulo.",
+  "arreglo": "Recortar unos 15 s de voz y convertirlos en respiración: fundir V02 y V03 («Siete monedas, siete fronteras… y en cada una perdemos tiempo.»), quitar V23 (la cena lo dice sola) y V18 («más pedidos que máquinas» se ve), y fundir V16 y V17. En pantalla, un solo texto por toma: cuando hay definición en Didone, no va subtítulo."
+ },
+ {
+  "lente": "jose_bukele",
+  "severidad": "importante",
+  "donde": "Motivo dorado (fórmulas 2, 6, 7; t15–t22, t30, t35, t37, t50, t51)",
+  "problema": "El oro está en todas partes: hilo que cose, barrido de sol, chispa del pago, sello del sobre, líneas desde otros continentes, costuras al anochecer, líneas a Latinoamérica. A eso se suman «siete» repetido en la voz (siete países, siete monedas, siete fronteras, los siete países, sin dejar de ser siete) y las siete notas más la octava. El conjunto se acerca a la numerología y al «parece de una secta» que ya dijo el público, aunque cada uso por separado esté bien.",
+  "arreglo": "El dorado tiene un solo papel: el hilo o costura, que es la unión. La chispa del pago, el sello de Genesis ID y las líneas de capital van en marfil o blanco cálido. En la voz, «siete» va como máximo tres veces (V01, V02 y V10)."
+ },
+ {
+  "lente": "jose_bukele",
+  "severidad": "importante",
+  "donde": "t36–t37 (la marca en el piso)",
+  "problema": "«A clean rectangular mark on the dusty floor where a machine used to stand» cuenta que había una máquina y ya no está (vendida, embargada, rota). Eso es pérdida, no «más pedidos que máquinas». El espectador va a leer que el taller va mal.",
+  "arreglo": "Cambiar la imagen de la carencia por una de plan. Un rectángulo marcado con cinta de enmascarar en el piso limpio y un tomacorriente nuevo esperando, o una pila de pedidos que ya no entra frente a las tres máquinas ocupadas. Actualizar los prompts de t36 y t37 y la fórmula 6 («la marca de la máquina que falta» pasa a ser «el lugar reservado»)."
+ },
+ {
+  "lente": "jose_bukele",
+  "severidad": "importante",
+  "donde": "Duración de los clips B de las celdas (t15–t22, t23)",
+  "problema": "Las celdas despiertan entre 18,35 y 21,4 s y tienen que seguir vivas hasta 29,1 s, y hasta 32,35 s al 15 %. La celda de Guatemala necesita ~11–14 s de clip y la de Panamá ~11 s. Un clip B de 7 s a 0,7× da 10 s. Faltan 1–4 s por celda. La cena de Kevin (t42, en Panamá hasta 124,85) necesita ~7,5 s de un clip de 7 s.",
+  "arreglo": "Generar los clips B a la duración máxima y planear un bucle de ida y vuelta (acciones cíclicas: rastrillar, remar, coser) o una transición a un segundo clip B por celda. Otra opción es acortar la permanencia de la retícula en t22 y t23. Volver a calcular los tiempos de GPU con eso."
+ },
+ {
+  "lente": "jose_bukele",
+  "severidad": "menor",
+  "donde": "Continuidad de luz y geografía (t14, t20, t43, t47, t42, relojes 18:00 y 19:00)",
+  "problema": "La fórmula 4 dice «la verdad como detalle», pero hay errores:\n- Dangriga mira al este, así que al atardecer el mar no brilla (t47 pide «glowing horizon» sobre el mar).\n- A las 19:00 en Panamá ya es noche cerrada, porque el sol se pone ~18:15 (t42 pide «last blue light»).\n- A las 18:00 en Costa Rica el sol ya se puso hace ~25 min.\n- Andrés sale de Limón a las 06:00, está a media mañana en la frontera con Nicaragua (más de 5 h por carretera), vuelve «a media mañana» a la costa de Limón (t20) y a las 18:00 está otra vez en su patio de Limón.",
+  "arreglo": "Relojes del anochecer en «17:45», con Panamá «18:45» y prompt de t42 como noche con foco. Marcus mirando tierra adentro, al oeste, con el mar en sombra azul. En t20 y t43, Andrés en la carretera, no en Limón, o t14 en la frontera de Las Tablillas y sin horario explícito."
+ },
+ {
+  "lente": "jose_bukele",
+  "severidad": "menor",
+  "donde": "Final (t51–t52) y V08",
+  "problema": "«Hoy, uniendo Centroamérica» choca con «Buscamos a los primeros países y aliados» dos segundos después. Además, para el público común no hay nada que hacer (la app nunca se nombra). «Morazán soñó» se queda corto: Morazán presidió la República Federal de Centro América, no solo la soñó. Belice y Panamá no formaban parte de ella.",
+  "arreglo": "V25: «Empezando a unir Centroamérica.» En la tarjeta final, dos niveles: «Buscamos a los primeros países y aliados» y, más chico, «Conocé ORIGEN y Genesis ID · ordenglobal.org». V08: «Morazán luchó por una Centroamérica unida.»"
+ },
+ {
+  "lente": "jose_bukele",
+  "severidad": "menor",
+  "donde": "musica",
+  "problema": "«La octava colgada» (re agudo en re mayor) es la nota más resuelta posible, no una pregunta. Además, varios golpes caen fuera de la grilla de 75 bpm (beat de 0,8 s desde 7,0): 24,9, 26,1, 27,3, 62,4 y 122,4. Con ElevenLabs Music es difícil clavarlos y el montaje se va a sentir desfasado.",
+  "arreglo": "Para «¿Y mañana… Latinoamérica?», cerrar en do# (sensible) o en un acorde sus2 o add9 sin resolver, y dejar el re final para el logo. Alinear los golpes a la grilla (24,6, 26,2, 27,8, 62,2 y 122,2) o marcar esos tramos como rubato sin pulso."
+ },
+ {
+  "lente": "jose_bukele",
+  "severidad": "menor",
+  "donde": "Prompts H3 y estimación de GPU",
+  "problema": "Varios detalles de los prompts:\n- La plantilla repite «true skin texture with visible pores» en tomas sin personas (t03, t04, t24, t37), lo que puede inducir figuras.\n- t03 pide a la vez «high oblique» y «straight down».\n- «Square centre crop…» es una instrucción que el modelo no puede usar.\n- La prueba de «7 clips A y 2 océanos (~45 min)» no cuenta las 3 tomas por celda que exige el golpe: son ~25 clips, unas 1,8 h.",
+  "arreglo": "Quitar el bloque de piel en tomas sin personas. En t03, elegir «top-down aerial». Sustituir la instrucción de recorte por composición explícita («subject centred, medium shot, head and hands in the centre of the frame»). Presupuestar la prueba con las 3 tomas por celda."
+ }
+]

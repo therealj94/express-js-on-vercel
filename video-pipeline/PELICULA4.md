@@ -1,512 +1,409 @@
-# Película 4 — «Abrir»
+# Película 4 — «Una misma mañana»
 
-**Una sola economía. Países soberanos.** Película de Orden Global para TikTok e
-Instagram, 9:16. Versión principal de 2:12 más cortes de 60 y 30 s. Arranca
-con el archivo auténtico de Nayib Bukele (Esquipulas, 2018), pasa por el sueño
-de Morazán y termina abriéndose a toda Latinoamérica.
+**2:13.7 en 9:16, con cortes de 60 y 30 s y una versión B sin archivo.** Es el plan para aprobar antes de encender la GPU.
 
-Materiales revisados completos:
-- la presentación *SFSP · Centroamérica* (12 láminas, solo imagen);
-- el clip de 33 s: Bukele habla 11,9 s y el resto es música y otras escenas;
-- la portada pública de ordenglobal.org;
-- el estudio del ecosistema (`ECOSISTEMA_MERCADEO.md`);
-- el spot de inspiración: «Valemos Mucho», de Banco Macro con Scaloni, dirigido por Juan Taratuto (nov-2025).
+**Cómo se hizo.** La estructura es la que pidió José: Bukele → siete países a la misma hora → ORIGEN → unir sin dejar de ser soberanos, con Morazán → un centavo y el pago llega en segundos → Genesis ID → tokenizar empresas con las reglas de cada país adentro → «Esto lo hicimos por vos».
 
----
+Se armó así:
+- tres directores, con enfoques de emoción, claridad y estadista, propusieron tres tratamientos;
+- un jurado de tres los comparó;
+- se sintetizó el plan;
+- cuatro críticos le encontraron 90 fallas, que se corrigieron;
+- después se grabó cada frase con la voz de Lucía y se midió.
 
-## 1. Concepto creativo
+Todo cabe: ninguna frase pisa a la siguiente.
 
-**Título de trabajo: «Abrir».**
+## Lo que José tiene que decidir
 
-Cada mañana, millones de centroamericanos abren algo: la cortina del taller,
-el puesto del mercado, el portón del cafetal, la puerta de un contenedor. La
-película propone lo mismo a escala de región: **abrir Centroamérica sin que
-nadie pierda su casa**. Bukele dice *«unamos»*; la primera imagen responde con
-un gesto que cualquiera reconoce: una mujer que levanta la cortina de su
-negocio.
+1. **Su voz para la firma.** «Esto lo hicimos por vos. Para unir Centroamérica.» La dice el fundador, grabada en un cuarto en silencio con el teléfono, sin IA. Si prefiere no hacerlo, la dice Lucía.
+2. **Cómo se dice «Genesis ID».** Hoy la voz dice «Génesis ai-dí». ¿Se dice así o «Génesis i-de»?
+3. **El archivo original de Bukele** (Foro Regional Esquipulas, 25-sep-2018) y su permiso. Sin eso, la versión que se publica es la B, que abre con la pregunta en la voz de Lucía.
+4. **«Un centavo de dólar»:** formalizar en acta la comisión de 0,01 USD (decisión D02) y confirmar que el costo de red no se suma. Si no, la frase cambia a «…desde tu teléfono…».
+5. **Casting de los personajes nuevos:**
+   - Rosa, taller de uniformes en Panamá;
+   - Aurelio, cooperativa de café en Guatemala;
+   - Marcus, pescador garífuna en Belice;
+   - Mercedes, panadería de rosquillas en Nicaragua;
+   - Andrés, transportista en Costa Rica.
 
-**Frase central:** *«Una oportunidad para una empresa puede convertirse en una
-oportunidad para toda una familia.»* No se dice al principio sino donde se
-demuestra: en la mesa de la familia del muchacho que acaba de ser contratado.
-La tesis llega cuando la imagen ya la probó.
+   Lucía y don Chepe ya tienen foto.
 
-**Motivo visual, las manos que abren.** La escala crece de la mano a la región:
-- una mano en la cortina;
-- una caja de telas;
-- un mapa geológico que se despliega;
-- un plano ferroviario;
-- el cuaderno de una niña;
-- el mapa de Latinoamérica.
+## Concepto
 
-**Rima de cierre.** La cortina sube al amanecer y baja al anochecer: la
-película es un día.
+Una película que dura un día. En 2018 Bukele dijo «Ya llegó el momento de que unamos Centroamérica», y la película le contesta con gente: a las 06:00 (07:00 en Panamá) siete personas abren su negocio en siete países, en una pantalla dividida que las junta sin borrar ninguna frontera. Un hilo dorado cose solo las fronteras reales, en zigzag, como baja el istmo.
 
-**Gancho sonoro.** Bukele termina *«…unamos Centroamérica»*. Siguen 0,35 s de
-silencio y luego el traqueteo metálico de una cortina que sube: el sonido de
-todas las mañanas de la región, a volumen de cine.
+Desde ahí, en el orden de José: pagarle al vecino tarda días; ORIGEN, una moneda digital en común que no reemplaza la de nadie y sigue el precio del oro; Morazán y más de cincuenta millones entre dos océanos, sin dejar de ser siete; un centavo, y le llega en segundos; Genesis ID, con el que te verificás una vez y tu documento sigue siendo de tu país; y tokenizar: las empresas de nuestros países podrían abrirse al capital del mundo con las reglas de cada país adentro.
 
-**Identidad musical: la marimba.** Es el instrumento que comparte el istmo, de
-Guatemala a Costa Rica. Un motivo de marimba grave con cuerdas y percusión
-contenida es, literalmente, una región tocando junta.
+Al anochecer, las mismas manos vuelven a las mismas puertas, ya cerradas, y José, el fundador, firma con su voz: «Esto lo hicimos por vos».
 
-**La protagonista es Lucía, la misma de «Un martes».** Tiene el mismo taller
-de tapicería en San Salvador, la misma cara y la misma voz. La campaña gana un
-rostro que se repite, y la voz de la película no es un locutor: es una
-centroamericana que abre su negocio.
+**Frase central:** Siete países. Una misma mañana. (Para compartir: «El capital, del mundo. El trabajo, aquí. Las reglas, de casa.»)
 
-**Qué tomamos de «Valemos Mucho»** (la inspiración, no la copia):
-- *la fuerza silenciosa que construye grandeza con el esfuerzo de las cosas simples*;
-- el orgullo que nace de la gente y no de la marca;
-- el cierre corto de marca.
+## Las fórmulas de dirección
 
-**Qué no tomamos:** la celebridad. Aquí la figura conocida aparece solo como
-archivo, con su fecha.
+1. LA RETÍCULA ES EL ORDEN DEL ISTMO, NO UN MAPA. Siete celdas en 2-3-2: las siete fronteras reales son lados compartidos y se cosen, y las demás separaciones quedan neutras.
 
-**El recorrido emocional:**
+2. LA FRONTERA SE VUELVE COSTURA. El hilo cruza la línea sin borrarla. El dorado es solo la unión; la chispa, el sello y el capital van en marfil.
 
-| Emoción | Qué la produce |
-|---|---|
-| Curiosidad | Bukele y la pregunta |
-| Reconocimiento | Morazán y siete países abriendo su día |
-| Esperanza | Pagar a Honduras en segundos |
-| Comprensión | Capital → máquina → empleo |
-| Grandeza | Recursos, tren, puertos |
-| Identificación | La mesa de una familia |
-| Ganas de compartir | ¿Por qué no toda Latinoamérica? |
+3. ANTICIPACIÓN Y GOLPE. Siete manos en siete puertas a las 05:59 y, a las 06:00, siete aperturas en el mismo fotograma, alineadas por el evento de cada clip.
 
-**Tres momentos que viven solos:**
-- «Una sola economía. Países soberanos.» (0:10)
-- «Una oportunidad para una empresa puede convertirse en una oportunidad para toda una familia.» (1:43)
-- «¿Por qué no toda Latinoamérica?» (2:07)
+4. PLANTEAR Y PAGAR. Don Chepe espera un pago y los rollos verdes no salen. A las 10:14 le llega en segundos y Mario se lleva el rollo: la tela que se acabó en el taller de Lucía.
 
----
+5. LA VERDAD COMO DETALLE. Relojes y luz reales, café verde en septiembre, las siete monedas con el balboa y la fórmula en pantalla justo cuando se dice que es pública.
 
-## 2. Guion definitivo
+6. UNA IDEA, UNA IMAGEN.
+- ORIGEN: la misma luz sobre los siete.
+- El centavo: la chispa que cruza la costura.
+- Genesis ID: el sobre que se queda y el sello que viaja.
+- Tokenizar: el capital que converge en un lugar reservado.
+- Soberanía: un portón por país.
 
-La voz es **Lucía**: cálida, cercana y firme, nunca de tráiler. Habla en
-voseo, que es la regla de la marca y el habla del istmo («Imaginá», «Para
-vos»). Las pausas están en el montaje: cada frase es un archivo y entra en su
-toma.
+7. EL ORO ES LUZ, NUNCA OBJETO NI GRÁFICO. Sube y baja en la cara de Lucía.
 
-**Pronunciación:**
-- *Morazán* se dice con seseo, como se dice en la región.
-- *DBNX* se dice letra por letra: *de, be, ene, equis*, igual que ONDK.
+8. LO QUE EXISTE SE AFIRMA; LA VISIÓN VA EN CONDICIONAL. El resultado se dibuja, no se muestra hecho.
 
-```
-[ARCHIVO · BUKELE, ESQUIPULAS 2018]  «Ya llegó el momento de que unamos Centroamérica.»
+9. SENTIR ANTES DE ENTENDER. 4,7 s sin palabras tras Bukele, respiros de 1,1 s y 0,4 s y el pico musical sin voz. Ningún tramo de más de 8 s sin una cara grande.
 
-        (silencio · la cortina sube)
+10. UNA FIRMA REAL Y UNA RIMA. Lucía lleva la película y el «hicimos» lo dice José. Lo que se abre al alba queda cerrado al anochecer; siete notas suben y bajan, y la octava, Latinoamérica, queda para el logo.
 
-LUCÍA   ¿Y si pudiéramos crear una sola economía…
-        (la calle despierta)
-        …sin que ningún país pierda su soberanía?
-                                        UNA SOLA ECONOMÍA. PAÍSES SOBERANOS.
-        Morazán soñó con una Centroamérica unida.
-        Hoy podemos empezar por conectar nuestras oportunidades.
-        Siete países. Más de cincuenta millones de personas… abriendo su día.
+## Estructura
 
-        Imaginá pagar y recibir con una misma moneda digital:
-        ORIGEN, referenciada al oro.
-        (la campana de pago · Honduras recibe)
-        Cada país conserva su moneda. Y entre nosotros, un mismo idioma para comerciar.
-        Personas y empresas, conectadas en el Sistema Financiero Social de Orden Global.
+| # | Secuencia | Tiempo | Para qué | Emoción |
+|---|---|---|---|---|
+| 1 | El llamado | 0:00.0–0:03.0 | La idea de 2018, en archivo real, rotulado y fechado. | Curiosidad. |
+| 2 | Una misma mañana | 0:03.0–0:19.9 | Siete países abren a la misma hora; siete monedas y siete fronteras; un pago al vecino tarda días. | Orgullo; después, espera. |
+| 3 | ORIGEN | 0:19.9–0:41.5 | Una moneda digital en común, sin reemplazar ninguna, que sigue el precio del oro; ya en marcha; sube y baja con él; fórmula pública. | Esperanza y confianza. |
+| 4 | Juntos, sin dejar de ser siete | 0:41.5–0:55.8 | Morazán; más de 50 millones entre dos océanos; cada país con sus leyes y su moneda. | Grandeza tranquila. |
+| 5 | Un centavo, en segundos | 0:55.8–1:10.7 | Lucía paga a don Chepe; le llega en segundos y el rollo sale. | Sorpresa y alivio. |
+| 6 | Genesis ID | 1:10.7–1:27.2 | Te verificás una vez, te aprueba una persona y tu documento sigue siendo de tu país. | Seguridad y dignidad. |
+| 7 | El capital, del mundo; las reglas, de casa | 1:27.2–2:00.0 | Tokenizar empresas de tres tamaños, con pasaporte y con las reglas que decida cada país; el resultado, dibujado. | Ambición y seguridad. |
+| 8 | Esto lo hicimos por vos | 2:00.0–2:13.7 | Las puertas cerradas al anochecer, la firma de José, el mapa y Latinoamérica. | Gratitud y ganas de saber de ellos. |
 
-        Crear con DBNX un mercado para nuestras empresas.
-        Acercar los proyectos al capital.
-        Abrir caminos para que un taller como el mío pueda crecer… y contratar.
-        (la máquina arranca · el primer día de Kevin · una mirada · sin palabras)
+## Guion con tiempos medidos
 
-        Conocer nuestra riqueza en oro y plata. Evaluarla con rigor.
-        Y estructurar proyectos que busquen financiación antes de iniciar la extracción.
-        Y pensar en grande: industria, comercio… un tren que una dos océanos.
-        Más acceso al capital. Más empleo.
+Voz de Lucía (la de «Un martes»), don Chepe con su voz de «Un martes» y José en la firma (provisional hasta que la grabe). Cada duración es la del audio generado.
 
-        (silencio · Kevin vuelve a casa · la película respira)
-        Más familias con ingresos para comer, estudiar… y salir adelante.
-        Porque una oportunidad para una empresa puede convertirse
-        en una oportunidad para toda una familia.
-        Y más oportunidades también ayudan a construir comunidades más seguras.
-
-        El primer paso ya existe: Orden Global.
-        El futuro lo construimos juntos.
-        Para vos. Para tu familia. Para todos.
-        Y si empezamos por Centroamérica…
-        (un segundo de silencio)
-        ¿por qué no toda Latinoamérica?
-
-                    ORDEN GLOBAL · Sistema Financiero Social · ordenglobal.org
-```
-
-**Lo que se mejoró del texto base, sin perder ninguna idea:**
-- **«Un mismo idioma para comerciar».** Explica en seis palabras que ORIGEN no reemplaza la moneda de nadie: es la soberanía dicha sin tecnicismo.
-- **«Un tren que *una* dos océanos».** Rima con el *«unamos»* de Bukele.
-- **La secuencia de la riqueza sigue el orden del rigor:** conocer, evaluar, estructurar y buscar capital. Nada se vuelve dinero por arte de magia.
-- **«Más acceso al capital. Más empleo.»** Queda en el pico de la música; «comer, estudiar, salir adelante» se oye en la mesa, donde se ve.
-- **«El tren que acerque nuevas oportunidades» salió.** Lo dice mejor la frase siguiente, y la versión principal baja de 2:17 a 2:12.
-
-<!-- TABLAS -->
-### Guion con tiempos medidos
-
-Duración total: **132,3 s** (2:12.3). Voz de Lucía: 91,3 s en 24 frases; el resto es respiración, sonido y música. Cada duración sale del audio generado, no de una estimación.
-
-| TC | Voz | Texto | Dura |
+| TC | Quién | Texto | Dura |
 |---|---|---|---|
-| 0:00.0 | **BUKELE (archivo, 2018)** | «Ya llegó el momento de que unamos Centroamérica.» | 2,3 s |
-| 0:04.9 | Lucía | ¿Y si pudiéramos crear una sola economía... | 2,8 s |
-| 0:09.0 | Lucía | sin que ningún país pierda su soberanía? | 2,5 s |
-| 0:12.8 | Lucía | Morazán soñó con una Centroamérica unida. | 2,5 s |
-| 0:16.1 | Lucía | Hoy podemos empezar por conectar nuestras oportunidades. | 4,0 s |
-| 0:20.9 | Lucía | Siete países. Más de cincuenta millones de personas... abriendo su día. | 5,6 s |
-| 0:28.0 | Lucía | Imaginá pagar y recibir con una misma moneda digital: | 3,4 s |
-| 0:31.7 | Lucía | ORIGEN, referenciada al oro. | 2,5 s |
-| 0:37.5 | Lucía | Cada país conserva su moneda. Y entre nosotros, un mismo idioma para comerciar. | 5,7 s |
-| 0:43.5 | Lucía | Personas y empresas, conectadas en el Sistema Financiero Social de Orden Global. | 4,9 s |
-| 0:48.7 | Lucía | Crear con DBNX un mercado para nuestras empresas. | 4,6 s |
-| 0:53.7 | Lucía | Acercar los proyectos al capital. | 2,0 s |
-| 0:56.0 | Lucía | Abrir caminos para que un taller como el mío pueda crecer... y contratar. | 4,6 s |
-| 1:07.2 | Lucía | Conocer nuestra riqueza en oro y plata. Evaluarla con rigor. | 4,3 s |
-| 1:12.6 | Lucía | Y estructurar proyectos que busquen financiación antes de iniciar la extracción. | 4,8 s |
-| 1:17.9 | Lucía | Y pensar en grande: industria, comercio... un tren que una dos océanos. | 6,2 s |
-| 1:27.0 | Lucía | Más acceso al capital. Más empleo. | 2,7 s |
-| 1:37.5 | Lucía | Más familias con ingresos para comer, estudiar... y salir adelante. | 5,2 s |
-| 1:43.0 | Lucía | Porque una oportunidad para una empresa puede convertirse en una oportunidad para toda una familia. | 6,6 s |
-| 1:49.9 | Lucía | Y más oportunidades también ayudan a construir comunidades más seguras. | 4,2 s |
-| 1:54.2 | Lucía | El primer paso ya existe: Orden Global. | 2,8 s |
-| 1:57.3 | Lucía | El futuro lo construimos juntos. | 2,2 s |
-| 1:59.9 | Lucía | Para vos. Para tu familia. Para todos. | 3,5 s |
-| 2:03.8 | Lucía | Y si empezamos por Centroamérica... | 1,9 s |
-| 2:06.8 | Lucía | ¿por qué no toda Latinoamérica? | 1,9 s |
+| 0:00.5 | Bukele | Ya llegó el momento de que unamos Centroamérica. | 2,3 s |
+| 0:07.5 | Lucía | Siete países. Una misma mañana. | 2,7 s |
+| 0:10.4 | Lucía | Siete monedas, siete fronteras… | 2,5 s |
+| 0:13.1 | Lucía | Pagarle al país vecino puede tardar días, y en cada cambio se queda un pedazo. | 5,0 s |
+| 0:20.2 | Lucía | ¿Y si entre todos tuviéramos una moneda digital en común para comerciar? | 4,2 s |
+| 0:25.9 | Lucía | Sin reemplazar la de nadie. Que siga el precio del oro. | 3,6 s |
+| 0:31.4 | Lucía | Ya está en marcha. Se llama ORIGEN. | 2,7 s |
+| 0:35.3 | Lucía | Si el oro sube, sube. Si baja, baja. Y la fórmula es pública. | 5,0 s |
+| 0:41.9 | Lucía | Morazán luchó por una Centroamérica unida. | 2,4 s |
+| 0:44.9 | Lucía | Hoy somos más de cincuenta millones, entre dos océanos. | 3,8 s |
+| 0:49.6 | Lucía | Juntos, sin dejar de ser siete: cada país, con sus leyes y su moneda. | 5,1 s |
+| 0:56.1 | Lucía | Imaginate pagarle a tu proveedor en Honduras… | 2,6 s |
+| 1:00.0 | Lucía | …con una comisión de un centavo de dólar… | 2,2 s |
+| 1:04.3 | Lucía | …y que le llegue en segundos. | 1,9 s |
+| 1:08.3 | Don Chepe | ¡Mario! Ya cayó lo de doña Lucía. | 2,4 s |
+| 1:11.0 | Lucía | Para entrar al sistema, Genesis ID: tu identidad digital, pensada para toda Centroamérica. | 6,6 s |
+| 1:17.8 | Lucía | Te verificás una vez, y te aprueba una persona. | 3,2 s |
+| 1:22.1 | Lucía | Tu documento sigue siendo de tu país: solo viaja la prueba. | 4,2 s |
+| 1:28.0 | Lucía | Y ahora pensá en grande: en las empresas de nuestros países. | 4,1 s |
+| 1:33.1 | Lucía | Podrían abrir una parte, en digital, al capital del mundo. Eso es tokenizar. | 5,8 s |
+| 1:39.9 | Lucía | Cada parte llevaría su pasaporte: quién la emite, qué hay detrás, cuánto riesgo tiene. | 5,9 s |
+| 1:46.3 | Lucía | Y adentro pueden viajar las reglas que decida cada país. Si no se cumplen, no pasa. | 6,8 s |
+| 1:53.6 | Lucía | El capital, del mundo. El trabajo, aquí. Las reglas, de casa. | 6,4 s |
+| 2:02.0 | José | Esto lo hicimos por vos. | 1,5 s |
+| 2:04.5 | José | Para unir Centroamérica. | 1,5 s |
+| 2:06.8 | Lucía | ¿Y mañana… Latinoamérica? | 1,9 s |
 
-### Tabla de producción por tiempo
+## La pantalla dividida en siete
 
-**Secuencia 1 — El llamado** (0:00.0–0:03.0)
+RETÍCULA 2-3-2 (lienzo 1080×1920, fondo #0B0B0A; zona y 160–1290; filas de 370 px con costuras de 10 px)
+- Fila 1: GUATEMALA (x 0–535) · BELICE (x 545–1080).
+- Fila 2: EL SALVADOR (x 0–355) · HONDURAS (x 365–715) · NICARAGUA (x 725–1080).
+- Fila 3: PANAMÁ (x 0–535) · COSTA RICA (x 545–1080).
+- Solo se cosen las siete fronteras reales, que son lados compartidos: GT–BZ, GT–SV, GT–HN, SV–HN, HN–NI, NI–CR, CR–PA. BZ/HN, BZ/NI, SV/PA, HN/PA y HN/CR son separaciones neutras, finas y sin hilo.
+- Panamá queda fuera de la columna de botones. En Nicaragua y Costa Rica la acción va a la izquierda.
+- Subtítulos y reloj en y 1310–1470, x 60–900. Marca fija «RECREACIÓN CON IA» (mono 22 px, y 196) desde t02.
 
-| TC | Toma | Fuente | Imagen y acción | Cámara | Voz | Texto | Sonido | Transición |
-|---|---|---|---|---|---|---|---|---|
-| 0:00.0 | s01 · 3,0 s | ARCHIVO | Nayib Bukele en el atril del VIII Foro Regional Esquipulas (2018): «Ya llegó el momento de que unamos Centroamérica.» | Plano medio del archivo, recorte 9:16 centrado en el rostro. Sin efectos: el archivo se respeta. | — | Subtítulo de la frase · rótulo mono «ARCHIVO · NAYIB BUKELE · FORO REGIONAL ESQUIPULAS · 2018» | Solo su audio original. Corte en seco 0,25 s después de «Centroamérica». | Corte seco a casi negro |
+HORA: un solo reloj. «05:59» durante las entradas; en 7,25 pasa a «06:00» («PANAMÁ 07:00» chico). Luz real de fines de septiembre. Al anochecer no hay reloj.
 
-**Secuencia 2 — La pregunta** (0:03.0–0:12.4)
+ENTRADA Y GOLPE: cada país entra 0,55 s a pantalla completa, con las manos en su puerta, y se encoge a su celda. En cada clip A se marca Fi, el fotograma en que la puerta se mueve; la celda se congela en Fi−6 y el clip se suelta en 7,25 − 6/24 s, así los siete eventos caen en 7,25 ± 1 fotograma. Se eligen tomas con Fi antes de 1,5 s y, si falta clip, se sigue a 0,85× como mínimo.
 
-| TC | Toma | Fuente | Imagen y acción | Cámara | Voz | Texto | Sonido | Transición |
-|---|---|---|---|---|---|---|---|---|
-| 0:03.0 | s02 · 1,8 s | GENERADA | Casi a oscuras, una mano de mujer agarra el tirador de una cortina metálica y tira hacia arriba; la primera franja de luz le cruza los nudillos. | Detalle extremo · 85 mm · fijo, la luz entra desde abajo · azul de madrugada que se vuelve cálido | — | — | 0,35 s de silencio de cuarto; luego el traqueteo metálico de la cortina, fuerte y cercano (el gancho sonoro) | Corte en el movimiento |
-| 0:04.8 | s03 · 4,0 s | GENERADA | Desde dentro del taller: la cortina sube y descubre la calle despertando (un bus, una vendedora, niños con uniforme). La silueta de Lucía a contraluz. | Plano general desde el interior · 24 mm · leve empuje hacia la calle · contraluz dorado de amanecer | «¿Y si pudiéramos crear una sola economía...» | — | Calle que despierta: bus, pájaros, un gallo lejano, un vendedor | Encadenado corto |
-| 0:08.8 | s04 · 3,6 s | GENERADA | Lucía de perfil a tres cuartos, respira el aire de la mañana y mira su calle. No sonríe a cámara: mira lo que tiene delante. | Primer plano · 50 mm · cámara en mano muy quieta · luz dorada rasante en la cara | «sin que ningún país pierda su soberanía?» | «Una sola economía.» / «Países soberanos.» (tipografía editorial, dos líneas) | Calle, respiración, el primer pulso grave de la música | Corte a textura de óleo |
+REUSO: el resto de cada clip A es la celda viva (t14, t16, t20, t36) y su rostro en t22, con bucle de ida y vuelta. Su still, regradado a hora azul, es la celda del anochecer (t39).
 
-**Secuencia 3 — El sueño y el presente** (0:12.4–0:27.7)
+SALIDAS: Honduras crece en 12,6; El Salvador, de 22,5 a 25,4; en 47,5 las celdas vuelan al mapa; en 106,2 vuelven como portones; en 124,3 vuelan de nuevo al mapa.
 
-| TC | Toma | Fuente | Imagen y acción | Cámara | Voz | Texto | Sonido | Transición |
-|---|---|---|---|---|---|---|---|---|
-| 0:12.4 | s05 · 3,4 s | ARCHIVO | Retrato de Francisco Morazán (óleo, dominio público). Textura de la pintura; una luz cálida lo recorre. | Detalle del óleo · empuje lento 8 % · barrido de luz en posproducción | «Morazán soñó con una Centroamérica unida.» | Rótulo: «Francisco Morazán (1792–1842)» | Un acorde de cuerdas muy bajo; el crujido de un lienzo | Disolvencia al papel del mapa |
-| 0:15.8 | s06 · 2,6 s | GRÁFICO | Mapa de Centroamérica en papel marfil (estética de la presentación). Una línea dorada se dibuja de Guatemala a Panamá. Las fronteras siguen visibles. | Cenital del mapa · la línea avanza · leve paralaje del papel | «Hoy podemos empezar por conectar nuestras oportunidades.» | Nombres de los 7 países en mono dorado | Trazo de lápiz sobre papel | La línea se funde con una carretera real |
-| 0:18.4 | s07 · 2,4 s | GENERADA | La línea del mapa se vuelve la Carretera Panamericana real: vista aérea al amanecer entre colinas volcánicas. | Aéreo alto que desciende · 24 mm equivalente · niebla baja, sol rasante | — | — | Viento alto, un camión lejano | Corte al primer país |
-| 0:20.8 | s08 · 1,1 s | GENERADA | GUATEMALA · Antigua: una mujer abre su puesto de textiles al amanecer, el Volcán de Agua al fondo. | Plano medio · 35 mm · en mano | «Siete países. Más de cincuenta millones de personas... abriendo su día.» | «GUATEMALA» (mono) | Mercado despertando | Corte a ritmo |
-| 0:21.9 | s09 · 1,1 s | GENERADA | HONDURAS · Tegucigalpa: un panadero saca una bandeja de pan del horno de leña. | Plano medio · 35 mm | — | «HONDURAS» | Horno, bandeja metálica | Corte a ritmo |
-| 0:23.1 | s10 · 1,1 s | GENERADA | NICARAGUA · Lago Cocibolca: un pescador empuja su lancha al agua; Ometepe al fondo. | General · 35 mm | — | «NICARAGUA» | Agua, madera | Corte a ritmo |
-| 0:24.2 | s11 · 1,1 s | GENERADA | COSTA RICA: una caficultora abre el portón de madera del cafetal en la neblina. | Plano medio · 35 mm | — | «COSTA RICA» | Portón, pájaros | Corte a ritmo |
-| 0:25.4 | s12 · 1,1 s | GENERADA | PANAMÁ: un trabajador portuario abre las puertas de un contenedor; grúas del puerto al fondo. | Plano medio · 35 mm | — | «PANAMÁ» | Cerrojo metálico, puerto | Corte a ritmo |
-| 0:26.6 | s13 · 1,1 s | GENERADA | BELICE · Belize City: una tendera abre las contraventanas azules de su tienda de madera. | Plano medio · 35 mm | — | «BELICE» | Madera, calle caribeña | Corte por acción: manos que abren → manos que abren una caja |
+PANTALLA EN DOS (59,75–67,0): EL SALVADOR (x 0–536) y HONDURAS (x 544–1080), con la frontera SV–HN como costura dorada. Las dos a las 10:14.
 
-**Secuencia 4 — La economía se vuelve cotidiana** (0:27.7–0:48.1)
+GENERACIÓN: 768×1344 a 24 fps, length 4n+1 (7 s = 169). Celdas: recorte de 768×526 (filas 1 y 3) o 512×526 (fila 2), a escala 0,70, con la ventana ubicada en cada clip. Clips A: still con ref2va (length 5 a 1 fps, 4 variantes) y después I2V de 7 s (h3_i2v_api.json, first_frame), 3 tomas. Una LUT común.
 
-| TC | Toma | Fuente | Imagen y acción | Cámara | Voz | Texto | Sonido | Transición |
-|---|---|---|---|---|---|---|---|---|
-| 0:27.7 | s14 · 3,6 s | GENERADA | Taller de Lucía: sus manos abren una caja de muestras de tela; fotografía un rollo con el teléfono para mandarlo. | Detalle de manos · 50 mm · cenital a 45° | «Imaginá pagar y recibir con una misma moneda digital:» | — | Cartón, tela, obturador del teléfono | Corte a Honduras |
-| 0:31.3 | s15 · 2,8 s | GENERADA | Don Chepe (el proveedor de «Un martes») en su bodega de San Pedro Sula mira la foto en su teléfono y asiente. | Plano medio · 35 mm · en mano · luz de bodega | «ORIGEN, referenciada al oro.» | «SAN PEDRO SULA, HONDURAS» | Bodega, montacargas lejano | Corte a la pantalla |
-| 0:34.1 | s16 · 3,0 s | CAPTURA | La app real (Veta Wallet) flotando sobre las manos de Lucía: pago en ORIGEN a Textiles del Valle, con su identidad Genesis ID verificada. Confirmación. | Tarjeta flotante sobre plano de manos (s14 extendido) · la app nunca a pantalla completa | — | Captura real · «Pagado a Honduras» (recorte: monto y confirmación, sin enlaces externos) | El sonido de pago de Orden Global (dos campanas: sol–si, el mismo de «Un martes») | Corte de sonido: la campana llama al camión |
-| 0:37.1 | s17 · 3,0 s | GENERADA | Don Chepe recibe la confirmación, hace una seña a sus trabajadores y suben el rollo al camión. | Plano general · 28 mm · en mano | «Cada país conserva su moneda. Y entre nosotros, un mismo idioma para comerciar.» | Tipografía: «quetzal · dólar beliceño · lempira · dólar · córdoba · colón · balboa» y, debajo, «ORIGEN» | Motor del camión, voces de trabajo | Corte al camión en ruta |
-| 0:40.1 | s18 · 3,0 s | GENERADA | El camión cruza un puesto fronterizo entre Honduras y El Salvador; banderas lejanas, fila de camiones. | Plano general · 50 mm comprimido | — | — | Camiones, sellos, viento | Corte a la puerta del taller |
-| 0:43.1 | s19 · 5,0 s | GENERADA | El rollo llega al taller de Lucía; ella lo recibe y pasa la mano por la tela. | Plano medio · 35 mm · en mano | «Personas y empresas, conectadas en el Sistema Financiero Social de Orden Global.» | — | Puerta, tela, calle | Corte a la noche |
+PLAN B: si una celda falla, va su still con empuje. La retícula se prueba en un teléfono real con la plantilla de TikTok e Instagram antes del resto.
 
-**Secuencia 5 — Del capital al empleo** (0:48.1–1:06.9)
+```
+   ┌───────────────┬───────────────┐
+   │   GUATEMALA   │    BELICE     │   ← GT–BZ cosida
+   ├─────────┬─────┴───┬───────────┤
+   │   EL    │HONDURAS │ NICARAGUA │   ← GT–SV, GT–HN, SV–HN, HN–NI cosidas
+   │SALVADOR │         │           │
+   ├─────────┴─────┬───┴───────────┤
+   │    PANAMÁ     │  COSTA RICA   │   ← NI–CR, CR–PA cosidas
+   └───────────────┴───────────────┘
+   05:59 → 06:00 (PANAMÁ 07:00): las siete puertas se abren en el mismo fotograma
+```
 
-| TC | Toma | Fuente | Imagen y acción | Cámara | Voz | Texto | Sonido | Transición |
-|---|---|---|---|---|---|---|---|---|
-| 0:48.1 | s20 · 3,6 s | GENERADA | De noche en el taller: Lucía revisa su plan de ampliación en un cuaderno, una cotización y el teléfono; bocetos de una máquina industrial. | Plano medio · 50 mm · lámpara de trabajo, penumbra cálida | «Crear con DBNX un mercado para nuestras empresas.» | «DBNX» / «Un mercado para nuestras empresas.» | Lámpara, lápiz, un perro lejano | Corte a la reunión |
-| 0:51.7 | s21 · 3,8 s | GENERADA | Lucía presenta su proyecto a dos evaluadores en una oficina sencilla: documentos, preguntas, una mujer que asiente y cierra la carpeta. | Plano medio · 35 mm · en mano · luz de ventana | «Acercar los proyectos al capital.» | — | Oficina, papeles | Corte a la máquina |
-| 0:55.5 | s22 · 3,0 s | GENERADA | Dos hombres entran por la cortina abierta cargando una máquina de coser industrial nueva; Lucía les indica dónde. | Plano general del taller · 28 mm | «Abrir caminos para que un taller como el mío pueda crecer... y contratar.» | — | Esfuerzo, ruedas, calle | Corte a la aguja |
-| 0:58.5 | s23 · 1,8 s | GENERADA | Macro: la aguja de la máquina nueva arranca sobre la tela verde. | Macro · 100 mm | — | — | El motor de la máquina arranca: golpe rítmico que entra en la música | Corte al primer día de Kevin |
-| 1:00.3 | s24 · 4,0 s | GENERADA | Primer día de Kevin: Lucía le entrega un delantal y unas tijeras. Se miran un segundo: confianza. Sin palabras. | Plano/contraplano en un solo encuadre · 50 mm · luz de mañana lateral | — | — | Taller, la música sube apenas | Corte a las manos |
-| 1:04.3 | s25 · 2,6 s | GENERADA | Lucía guía las manos de Kevin sobre la tela en la estación nueva. | Detalle de manos · 85 mm | — | — | Tela, tijeras | Corte al galpón de núcleos |
+## Tokenizar, con las reglas de cada país adentro
 
-**Secuencia 6 — Nuestra riqueza, evaluada** (1:06.9–1:17.7)
+LA IDEA: las empresas de nuestros países podrían abrir una parte, en digital, al capital del mundo sin entregar la llave. Cada parte llevaría un pasaporte y, adentro, las reglas que decida cada país; la cadena no deja pasar a quien no las cumple. El capital, del mundo. El trabajo, aquí. Las reglas, de casa.
 
-| TC | Toma | Fuente | Imagen y acción | Cámara | Voz | Texto | Sonido | Transición |
-|---|---|---|---|---|---|---|---|---|
-| 1:06.9 | s26 · 3,2 s | GENERADA | Ingrid, geóloga, en un galpón de núcleos de perforación: levanta un testigo de roca y lo examina con la lupa. | Plano medio · 50 mm · luz de galpón que entra por el techo | «Conocer nuestra riqueza en oro y plata. Evaluarla con rigor.» | — | Cajas de madera, roca | Corte al macro |
-| 1:10.1 | s27 · 2,4 s | GENERADA | Macro: una veta de cuarzo con motas de oro en el testigo; bolsas de muestra etiquetadas. | Macro · 100 mm · luz rasante | — | «Conocer → Evaluar → Estructurar → Buscar capital» (aparece palabra por palabra) | Tacto de roca, lupa | Corte al informe |
-| 1:12.5 | s28 · 3,0 s | GENERADA | Ingrid escribe su informe junto a los resultados de laboratorio; mapas geológicos en la pared. | Plano medio · 35 mm | «Y estructurar proyectos que busquen financiación antes de iniciar la extracción.» | — | Teclado, papeles | Corte al mapa |
-| 1:15.5 | s29 · 2,2 s | GENERADA | Ingrid despliega un mapa geológico grande sobre la mesa (el gesto que se empalma con el plano ferroviario). | Cenital · 35 mm · el papel se abre de izquierda a derecha | — | — | Papel que se despliega | EMPALME POR MOVIMIENTO: su mapa → el plano de Mariela |
+EN IMAGEN (t31–t38):
+1. Tres tamaños: una fábrica en El Salvador (primero, porque ese país ya legisló la emisión de activos digitales, sin nombrar la ley), una cooperativa de café en Guatemala y el taller de Rosa en Panamá.
+2. Líneas marfil del mundo convergen en el lugar reservado del taller.
+3. EL PASAPORTE, contra la estafa: emisor con Genesis ID ✓ (la identidad de Rosa pasa a su empresa), qué hay detrás, riesgo R1–R5 y quién puede tenerla según las reglas de su país.
+4. LOS PORTONES, contra el miedo a perder el país: cada país decide y una línea no pasa.
+5. El resultado queda en visión: una máquina dibujada y un taburete libre, un puesto que espera.
 
-**Secuencia 7 — Pensar a escala regional** (1:17.7–1:31.3)
+HONESTIDAD: todo en condicional y sin empresas reales, montos, reguladores ni leyes. Se dice «qué hay detrás». DBNX no se nombra.
 
-| TC | Toma | Fuente | Imagen y acción | Cámara | Voz | Texto | Sonido | Transición |
-|---|---|---|---|---|---|---|---|---|
-| 1:17.7 | s30 · 2,4 s | GENERADA | Mariela, ingeniera, despliega un plano ferroviario en la oficina de obra, mismo movimiento. | Cenital · 35 mm | «Y pensar en grande: industria, comercio... un tren que una dos océanos.» | — | Papel | La cámara sigue una línea del plano |
-| 1:20.1 | s31 · 1,8 s | GRÁFICO | La cámara corre sobre una línea del plano y el dibujo técnico se vuelve una vía real (paso a s32). | Empuje rápido sobre el papel · transición | — | — | Un zumbido que se vuelve riel | Se vuelve vía |
-| 1:21.9 | s32 · 3,0 s | GENERADA | Un tren de carga cruza un valle verde con un volcán al fondo, hora dorada. | Aéreo lateral · 24 mm | — | — | Riel, bocina lejana | Corte al puerto |
-| 1:24.9 | s33 · 2,0 s | GENERADA | Puerto al atardecer: grúas, contenedores, trabajadores caminando. | General · 50 mm | — | — | Puerto, grúas | Corte al mapa |
-| 1:26.9 | s34 · 2,4 s | GRÁFICO | Mapa (negro y oro, como la presentación): las fronteras siguen visibles y aparecen conexiones entre ciudades, de océano a océano. | Cenital · las líneas se encienden | «Más acceso al capital. Más empleo.» | «PACÍFICO» · «ATLÁNTICO» en mono | Pico de la música | Corte a planta |
-| 1:29.3 | s35 · 2,0 s | GENERADA | Cambio de turno en una planta: gente que sale caminando, con dignidad y cansancio bueno. | General · 35 mm · contraluz | — | — | La música corta en seco al final | Corte a silencio |
+## Tomas
 
-**Secuencia 8 — Lo que significa llegar a casa** (1:31.3–1:53.9)
+42 tomas: 25 generadas → 62 clips; el resto es archivo, gráfico o composición hecha en código.
 
-| TC | Toma | Fuente | Imagen y acción | Cámara | Voz | Texto | Sonido | Transición |
-|---|---|---|---|---|---|---|---|---|
-| 1:31.3 | s36 · 2,8 s | GENERADA | Kevin se lava las manos en el lavadero del taller al terminar la jornada; se quita el delantal. | Detalle de manos → plano medio · 50 mm · luz de atardecer | — | — | Agua, silencio: la música se va | Corte a la calle |
-| 1:34.1 | s37 · 3,0 s | GENERADA | Kevin camina a casa por su colonia al anochecer y compra pupusas en la esquina. | Plano general · 28 mm · en mano | — | — | Comal, colonia al anochecer | Corte a la mesa |
-| 1:37.1 | s38 · 5,0 s | GENERADA | En casa: su mamá sirve la comida (EMPALME: manos que reciben herramientas → manos que sirven); su hermana hace la tarea en la mesa. | Plano medio · 35 mm · luz de foco cálido | «Más familias con ingresos para comer, estudiar... y salir adelante.» | — | Platos, risa suave, una radio muy baja | Corte al cuaderno |
-| 1:42.1 | s39 · 5,0 s | GENERADA | Su hermana le enseña el cuaderno; Kevin lo mira con atención; la mamá se ríe. Nadie mira a cámara. | Primer plano de los tres · 50 mm | «Porque una oportunidad para una empresa puede convertirse en una oportunidad para toda una familia.» | «Una oportunidad para una empresa / puede convertirse en una oportunidad / para toda una familia.» | Voces de familia, cubiertos | Corte a la calle |
-| 1:47.1 | s40 · 3,4 s | GENERADA | Afuera, la calle de noche tranquila: vecinos conversando en las aceras, niños jugando, la luz de la pupusería. | General · 28 mm · fijo | «Y más oportunidades también ayudan a construir comunidades más seguras.» | — | Calle en calma, grillos, risas | Corte a los niños |
-| 1:50.5 | s40b · 3,4 s | GENERADA | Niños jugando fútbol con una pelota gastada bajo un farol; una vecina los mira desde su puerta. | General · 35 mm · en mano | — | — | Pelota, risas, grillos | Corte a la pantalla real |
 
-**Secuencia 9 — De nuestra gente a Latinoamérica** (1:53.9–2:12.3)
+**1. El llamado**
 
-| TC | Toma | Fuente | Imagen y acción | Cámara | Voz | Texto | Sonido | Transición |
-|---|---|---|---|---|---|---|---|---|
-| 1:53.9 | s41 · 2,8 s | GENERADA | Anochece: Lucía, en la puerta del taller, mira su teléfono con calma. Encima flota la app real: Veta Wallet, con el nombre de Orden Global. | Primer plano · 50 mm · hora azul con la luz cálida del taller detrás | «El primer paso ya existe: Orden Global.» | Tarjeta flotante: captura real de Veta Wallet (recortada sin cifras de precio ni enlaces externos) | La campana suave de la app | Corte: ella guarda el teléfono y baja la cortina |
-| 1:56.7 | s42 · 3,0 s | GENERADA | Anochece: Lucía baja la cortina de su taller y se queda mirando su calle (bookend del principio). | Plano medio · 35 mm · luz azul de anochecer + farol | «El futuro lo construimos juntos.» | — | Cortina que baja, calle | Corte a los rostros |
-| 1:59.7 | s43 · 1,2 s | GENERADA | Ingrid en una loma a la hora dorada, mira el valle. | Primer plano · 85 mm | «Para vos. Para tu familia. Para todos.» | — | Viento | Corte |
-| 2:00.9 | s44 · 1,2 s | GENERADA | Kevin abraza a su hermana en la puerta de la casa. | Plano medio · 50 mm | — | — | Colonia de noche | Corte |
-| 2:02.1 | s45 · 1,3 s | GENERADA | Mariela en el puerto, casco en la mano, mientras pasa un tren iluminado. | General · 35 mm · hora azul | — | — | Tren, puerto | Corte al mapa |
-| 2:03.4 | s46 · 5,4 s | GRÁFICO | Mapa: Centroamérica en oro sobre negro; la cámara se abre y aparece Latinoamérica entera. | Cenital · zoom out lento | «Y si empezamos por Centroamérica...» «¿por qué no toda Latinoamérica?» | «¿Por qué no toda Latinoamérica?» | Acorde sostenido; 1 s de silencio antes de la pregunta | Corte a negro |
-| 2:08.8 | s47 · 3,5 s | GRÁFICO | Cierre en negro: ORDEN GLOBAL · Sistema Financiero Social · ordenglobal.org | Fijo | — | ORDEN GLOBAL / Sistema Financiero Social / ordenglobal.org · letra chica: «Material informativo; no constituye oferta de valores ni de inversión. Imágenes ilustrativas generadas con IA.» | El motivo de marimba resuelve; las dos campanas de Orden Global | Fin |
+| TC | Toma | Fuente | Imagen y acción | Cámara | Texto en pantalla | Sonido | Transición |
+|---|---|---|---|---|---|---|---|
+| 0:00.0 | t01 · 3,0 s | ARCHIVO | 0–3,0. Negro con el rótulo (0–0,35) y luego Bukele en el atril del VIII Foro Regional Esquipulas (25-sep-2018), del ORIGINAL del foro, nunca del repost de @bukelord. Sin retoque ni IA; nada encima de su ventana. | Ventana 16:9 de 1080×608 (y 656–1264) sobre negro. | Todo el plano (mono 30 px, y 520–630): «ARCHIVO REAL · NAYIB BUKELE, ENTONCES CANDIDATO PRESIDENCIAL · FORO REGIONAL ESQUIPULAS, 25-SEP-2018 · SIN RELACIÓN CON ORDEN GLOBAL». Subtítulo. | Su audio y la sala; corte 0,29 s tras «Centroamérica». Sin música. | Corte a negro. |
 
-40 tomas generadas → 86 clips (3 tomas en las que sostienen la película, 2 en el resto).
-<!-- /TABLAS -->
+**2. Una misma mañana**
 
----
+| TC | Toma | Fuente | Imagen y acción | Cámara | Texto en pantalla | Sonido | Transición |
+|---|---|---|---|---|---|---|---|
+| 0:03.0 | t02 · 0,4 s | GRAFICO | 3,0–3,4. Negro; aparecen «HOY» y el reloj «05:59». | Fijo. | «HOY» y «05:59» (mono 110 px, y 1330–1450). | Silencio y un tic. | Entra Guatemala. |
+| 0:03.4 | t03 · 0,6 s | GENERADA · foto: AURELIO | 3,40–3,95. GUATEMALA a pantalla completa: don Aurelio con las manos en la tranca del portón de su cooperativa. Imagen quieta (Fi−6, empuje 3 %); en 3,80 se encoge a su celda. | Clip A: still y luego I2V de 7 s. Primera luz. | «GUATEMALA · HUEHUETENANGO» (mono 36 px, y 230); país en la celda (mono 28 px). Reloj «05:59». | Marimba: re. Tic. | Siguiente país. |
+| 0:04.0 | t04 · 0,6 s | GENERADA · foto: MARCUS | 3,95–4,50. BELICE a pantalla completa: Marcus, con botas, las manos en la proa de su lancha propia. Imagen quieta (Fi−6, empuje 3 %); en 4,35 se encoge a su celda. | Clip A: still y luego I2V de 7 s. Primera luz. | «BELICE · DANGRIGA» (mono 36 px, y 230); país en la celda (mono 28 px). Reloj «05:59». | Marimba: mi. Tic. | Siguiente país. |
+| 0:04.5 | t05 · 0,6 s | GENERADA · foto: LUCIA | 4,50–5,05. EL SALVADOR a pantalla completa: Lucía con las manos en el tirador de la cortina cerrada. Imagen quieta (Fi−6, empuje 3 %); en 4,90 se encoge a su celda. | Clip A: still y luego I2V de 7 s. Primera luz. | «EL SALVADOR · SAN SALVADOR» (mono 36 px, y 230); país en la celda (mono 28 px). Reloj «05:59». | Marimba: fa#. Tic. | Siguiente país. |
+| 0:05.0 | t06 · 0,6 s | GENERADA · foto: CHEPE | 5,05–5,60. HONDURAS a pantalla completa: don Chepe con las manos en la barra de las puertas cerradas. Imagen quieta (Fi−6, empuje 3 %); en 5,45 se encoge a su celda. | Clip A: still y luego I2V de 7 s. Primera luz. | «HONDURAS · SAN PEDRO SULA» (mono 36 px, y 230); país en la celda (mono 28 px). Reloj «05:59». | Marimba: sol. Tic. | Siguiente país. |
+| 0:05.6 | t07 · 0,6 s | GENERADA · foto: MERCEDES | 5,60–6,15. NICARAGUA a pantalla completa: Mercedes con un trapo en la manija del horno de barro. Imagen quieta (Fi−6, empuje 3 %); en 6,00 se encoge a su celda. | Clip A: still y luego I2V de 7 s. Primera luz. | «NICARAGUA · SOMOTO» (mono 36 px, y 230); país en la celda (mono 28 px). Reloj «05:59». | Marimba: la. Tic. | Siguiente país. |
+| 0:06.1 | t08 · 0,6 s | GENERADA · foto: ANDRES | 6,15–6,70. COSTA RICA a pantalla completa: Andrés al volante, en la cabina a oscuras. Imagen quieta (Fi−6, empuje 3 %); en 6,55 se encoge a su celda. | Clip A: still y luego I2V de 7 s. Primera luz. | «COSTA RICA · LIBERIA» (mono 36 px, y 230); país en la celda (mono 28 px). Reloj «05:59». | Marimba: si. Tic. | Siguiente país. |
+| 0:06.7 | t09 · 0,6 s | GENERADA · foto: ROSA | 6,70–7,25. PANAMÁ a pantalla completa: Rosa con las manos sobre una camisa blanca en su máquina; allá ya es de día. Imagen quieta (Fi−6, empuje 3 %); en 7,10 se encoge a su celda. | Clip A: still y luego I2V de 7 s. Primera luz. | «PANAMÁ · 06:59» (mono 36 px, y 230); país en la celda (mono 28 px). Reloj «05:59». | Marimba: do#. Tic. | El golpe. |
+| 0:07.2 | t10 · 3,0 s | COMPOSICION | 7,25–10,3. EL GOLPE: el reloj pasa a «06:00» («PANAMÁ 07:00» chico) y los siete abren en el mismo fotograma: portón, lancha, cortina, puertas, horno, tablero y máquina. Guatemala recién amanece; en Panamá ya es de día. | Retícula fija, empuje 2 %. | Reloj hasta 7,6; luego subtítulo V01. | Las siete aperturas juntas, la cortina al frente, y un re grave. Arranca el ostinato (75 bpm desde 7,25). | Continuo. |
+| 0:10.3 | t11 · 2,5 s | COMPOSICION | 10,3–12,85. Los rótulos pasan a monedas: QUETZAL · DÓLAR BELICEÑO · DÓLAR · LEMPIRA · CÓRDOBA · COLÓN · BALBOA. En «fronteras» (12,05) las siete costuras reales se vuelven negras de 24 px; las separaciones neutras no cambian. En 12,6 Honduras crece. | Retícula fija. | Monedas (mono 28 px). Subtítulo V02. | Si de chelo; sello grave en 12,05. | Honduras crece. |
+| 0:12.8 | t12 · 3,5 s | GENERADA · foto: CHEPE | 12,85–16,4. 06:40: don Chepe mira el teléfono (pantalla oculta), espera, lo deja boca abajo y exhala mirando los rollos junto a la puerta. | Plano medio, 50 mm, fijo; todo en los dos tercios izquierdos. | «HONDURAS · 06:40». Subtítulo V03. | Calle, ventilador, teléfono sobre madera; pedal grave. | Corte a los rollos. |
+| 0:16.4 | t13 · 3,5 s | GENERADA | 16,4–19,85. Tres rollos de tela verde envueltos, junto a una carretilla: el pedido listo que no sale hasta que llegue el pago. | Inserto, 35 mm, empuje lento; luz con polvo. | Subtítulo V03. | Tráfico afuera, una radio lejana. | A negro; vuelve la retícula. |
 
-## 3. Personajes, lugares y fuentes de cada toma
+**3. ORIGEN**
 
-**Pocos personajes, todos vuelven al final:**
+| TC | Toma | Fuente | Imagen y acción | Cámara | Texto en pantalla | Sonido | Transición |
+|---|---|---|---|---|---|---|---|
+| 0:19.8 | t14 · 2,9 s | COMPOSICION | 19,85–22,75. La retícula a oscuras. Un hilo dorado cose solo las siete fronteras reales en zigzag (GT–BZ, GT–SV, GT–HN, SV–HN, HN–NI, NI–CR, CR–PA), 0,35 s por puntada, sin borrar la línea; cada puntada despierta sus celdas con el resto de su clip A. | Retícula fija. | Subtítulo V04. | Una nota aguda por puntada (pista de acentos). | El Salvador crece (22,5). |
+| 0:22.7 | t15 · 2,9 s | GENERADA · foto: LUCIA | 22,75–25,65. Lucía estira tela verde sobre un sillón y la alisa con la palma. | Plano medio, 35 mm, fijo. | Subtítulo V04. | Tela que se tensa; calle. | Vuelve a su celda (25,4). |
+| 0:25.6 | t16 · 5,5 s | COMPOSICION | 25,65–31,15. La retícula viva. En «sin reemplazar la de nadie» cada costura late y las celdas siguen separadas. En «oro» (30,45) un barrido de luz cálida cruza de este a oeste: la misma luz sobre los siete. | Retícula fija. | Subtítulo V05. | Cuerdas; acorde en 30,45. | Corte a la calle de Lucía. |
+| 0:31.1 | t17 · 3,9 s | GENERADA · foto: LUCIA | 31,15–35,05. Lucía sale bajo la cortina con un café y se queda en el umbral, al sol. En «ORIGEN» la palabra entra por corte. | Plano medio, 50 mm, fijo. | «Ya está en marcha.»; luego, solo «ORIGEN» (Didone 120 px) y «LA MONEDA DEL SISTEMA» (mono). | Calle, un bus; nota sola en 33,65. | Corte al primer plano. |
+| 0:35.0 | t18 · 6,5 s | GENERADA · foto: LUCIA | 35,05–41,55. Primer plano de Lucía al sol. En «sube» (36,05) la luz se intensifica; en «baja» (37,65) se apaga como con una nube; en «pública», estable. Solo con fotogramas clave de color, nunca con una línea. | Primer plano, 85 mm, empuje muy lento. | En «la fórmula es pública» (39,4–41,5): «1 ORIGEN = EL PRECIO DE 1/55 DE GRAMO DE ORO · NO SE CANJEA POR METAL». Subtítulo en una línea. | Brisa; piano sube (36,05) y baja (37,65). | Corte al óleo. |
 
-| Personaje | Quién es | Continuidad |
-|---|---|---|
-| **Lucía**, 42 | Tapicera, San Salvador. Abre su taller, paga a Honduras, presenta su proyecto, contrata | Casting de «Un martes» (`lucia.png`) y su voz |
-| **Kevin**, 22 | El muchacho que entra a trabajar. Termina la jornada y llega a su casa | Casting nuevo |
-| **Doña Carmen y Keyla** | Su mamá y su hermana de 10 años, con uniforme de escuela pública | Descritas en el prompt, sin foto |
-| **Ingrid**, 34 | Geóloga. Testigos de perforación, laboratorio, informe, mapa | Casting nuevo |
-| **Mariela**, 38 | Ingeniera civil afropanameña. Plano ferroviario, puerto | Casting nuevo |
-| **Don Chepe** | El proveedor de San Pedro Sula de «Un martes» | Su casting (`proveedor.png`) |
+**4. Juntos, sin dejar de ser siete**
 
-**Qué es cada cosa en pantalla:**
+| TC | Toma | Fuente | Imagen y acción | Cámara | Texto en pantalla | Sonido | Transición |
+|---|---|---|---|---|---|---|---|
+| 0:41.5 | t19 · 3,0 s | ARCHIVO | 41,55–44,6. Óleo de Morazán de dominio público con ficha verificada (obra, autor o colección, fuente); una luz de amanecer lo recorre. Nunca la estatua de Tegucigalpa ni IA; sin ficha, pasa a tipografía. | Detalle, empuje 6 %. | «FRANCISCO MORAZÁN · 1792–1842». Subtítulo V08. | Chelo solo, sin pulso. | A la retícula. |
+| 0:44.6 | t20 · 2,9 s | COMPOSICION | 44,6–47,5. La retícula viva, los siete trabajando. El mapa de siete no aparece con Morazán, recién aquí. | Retícula fija. | Subtítulo V09. | Vuelve el pulso. | Al mapa. |
+| 0:47.5 | t21 · 2,0 s | GRAFICO | 47,5–49,5. Cada celda vuela a su país en un mapa marfil (Natural Earth: costas y fronteras de facto, finas); en «dos océanos» aparecen PACÍFICO y CARIBE. Sin límites marítimos ni zonas en disputa. | Cenital; se aleja. | «OCÉANO PACÍFICO» / «MAR CARIBE». Subtítulo V09. | Olas a los dos lados. | Corte a los rostros. |
+| 0:49.5 | t22 · 6,3 s | COMPOSICION | 49,5–55,8. Los siete rostros a pantalla completa, 0,9 s cada uno, en el orden del istmo, con el resto de sus clips A: Aurelio en el portón abierto, Marcus en el agua, Lucía mirando su taller, Chepe en la puerta con sol, Mercedes a la luz del fuego, Andrés al volante, Rosa cosiendo. | Pantalla completa; corte en cada golpe. | Didone en lugar de subtítulo: «Juntos, / sin dejar de ser siete:» y luego «cada país, / con sus leyes y su moneda.» | Una nota por rostro (re a do#). | Corte al taller de Lucía. |
 
-| Fuente | Tomas | Cómo se consigue |
-|---|---|---|
-| **Archivo auténtico** | s01 Bukele, s05 Morazán | Bukele: el discurso original, no el recorte de TikTok (§9). Morazán: óleo de dominio público; en Commons está a 307×467, hay que buscarlo en alta |
-| **Captura real** | s16 y s41: Veta Wallet (pago, Genesis ID, la cuenta de Lucía) | La web real de Veta con datos ficticios (`capturar_veta.py`), en tarjeta flotante y recortada sin cifras de precio ni enlaces externos. **OrdenScan no sale** |
-| **Gráfico** | s06, s31, s34, s46, s47 y tipografía | Mapas en código con Natural Earth (dominio público), estética de la presentación: marfil, negro, dorado. El logo nunca lo genera la IA |
-| **Recreación generada** | 40 tomas | MiniMax H3; con foto de casting (ref2va) donde hay personaje. Todas se rotulan como imágenes ilustrativas |
+**5. Un centavo, en segundos**
 
-**Estética, traída de la presentación a la vida:**
-- **Negro, marfil y dorado.** El dorado es luz (amanecer, atardecer, bombillo de la mesa) y trazo de mapa; nunca lingotes ni monedas.
-- **Pieles naturales, grano de 35 mm, contraste cuidado.**
-- **Tipografía:** la serif de alto contraste de la presentación para las tres frases grandes, mono espaciada dorada para rótulos de lugar y sans legible para subtítulos.
-- **Subtítulos:** grandes, de alto contraste y de dos líneas como máximo.
-- **Zona segura de TikTok e Instagram:** subtítulos entre y = 1300 y 1500 px; nada importante en la franja inferior ni en la columna derecha de los botones.
+| TC | Toma | Fuente | Imagen y acción | Cámara | Texto en pantalla | Sonido | Transición |
+|---|---|---|---|---|---|---|---|
+| 0:55.8 | t23 · 4,0 s | GENERADA · foto: LUCIA | 55,8–59,75. Lucía mira el tubo con las últimas vueltas de tela verde, lo aprieta, piensa y levanta el teléfono, boca abajo desde el primer fotograma. | Plano medio, 50 mm, fijo. | «EL SALVADOR · 10:14». En 58,9, tarjeta de Veta Wallet en código, datos ficticios (y 1000–1270): «Enviar a · Don Chepe · San Pedro Sula». Subtítulo V11. | Taller; piano y marimba suaves. | Pantalla en dos. |
+| 0:59.7 | t24 · 0,4 s | GENERADA · foto: LUCIA | 59,75–60,15. Pantalla en dos, vertical: a la izquierda EL SALVADOR (Lucía toca el teléfono, pantalla oculta), a la derecha HONDURAS; en medio, la frontera SV–HN como costura dorada. Esta mitad sigue hasta 67,0. | Mitad de 536×1130, 85 mm. | «EL SALVADOR · 10:14». | Toque sobre vidrio. | Entra Honduras. |
+| 1:00.1 | t25 · 6,8 s | GENERADA · foto: CHEPE | 60,15–67,0. HONDURAS: don Chepe mide tela verde; su teléfono, boca abajo. En 64,3 Lucía envía: una chispa marfil cruza la costura sin borrarla y llega en «segundos» (66,4); el teléfono vibra (2 px, 3 fotogramas, en montaje) y él lo mira. | Mitad de 536×1130, 35 mm, fijo; todo en los dos tercios izquierdos. | «HONDURAS · 10:14». Una tarjeta: «120 ORIGEN ≈ US$ … (ilustrativo) · Costo de la operación: US$ 0,01». Subtítulos V12 y V13. | Chispa; vibración seca en 66,4 sin música; la → re en 66,65. | Honduras llena la pantalla. |
+| 1:07.0 | t26 · 3,7 s | GENERADA · foto: CHEPE | 67,0–70,7. Por encima del hombro de don Chepe, de espaldas: lee el teléfono y alza el brazo hacia Mario, que se echa al hombro el rollo verde de t13. | Plano medio, 35 mm, fijo; su boca nunca se ve. | «Recibido · 120 ORIGEN · de Lucía» (67,0–68,45); luego V14 en cursiva. | Nudillos en la madera, su voz con eco, plástico. | Corte a Panamá. |
 
-### Prompts (continuidad)
+**6. Genesis ID**
 
-Los 40 prompts completos están en `prompts/pelicula4_abrir.json`. Salen de
-`montaje/plan_abrir.py`, con la misma biblia de personajes en cada uno.
+| TC | Toma | Fuente | Imagen y acción | Cámara | Texto en pantalla | Sonido | Transición |
+|---|---|---|---|---|---|---|---|
+| 1:10.7 | t27 · 3,3 s | GENERADA · foto: ROSA | 70,7–74,0. PANAMÁ, 11:40: Rosa apoya el teléfono contra un frasco de botones y respira. | Plano medio, 50 mm, fijo. | «PANAMÁ · 11:40». Tarjeta: «Genesis ID · beta · Verificá tu identidad». Subtítulo V15. | Máquinas al fondo; piano. | A la cámara del teléfono. |
+| 1:14.0 | t28 · 4,6 s | GENERADA · foto: ROSA | 74,0–78,6. Desde la cámara frontal: Rosa mira el lente (prueba de vida; la única mirada al lente de la película) y gira la cabeza despacio. | Primer plano, óptica de teléfono; óvalo en código. | «Documento ✓ · Prueba de vida ✓ · Listas internacionales ✓», de a uno. Subtítulos V15 y V16. | Tres tics. | A la revisora. |
+| 1:18.6 | t29 · 3,4 s | GENERADA | 78,6–82,0. Carmen, la revisora, compara con calma y presiona una tecla. El monitor nunca se ve. | Plano medio de costado, 50 mm, empuje lento. | «Genesis ID · Verificada · Aprobado por una persona». Subtítulo V16. | Una tecla; marimba apagada. | Al taller. |
+| 1:22.0 | t30 · 5,2 s | GENERADA · foto: ROSA | 82,0–87,2. Rosa vuelve a coser. Abajo flota una tarjeta marfil: un sobre con un documento se sella; el sobre se queda y solo el sello sale hacia la derecha. | Plano medio, 50 mm, fijo; tercio inferior limpio. | Tarjeta sin palabras. Subtítulo V17. | El sello viaja con una nota; respiro 86,9–88,0. | A la fábrica. |
 
-**Look común:**
+**7. El capital, del mundo; las reglas, de casa**
 
-> Live-action, cinematic documentary realism, natural practical light, true skin
-> texture with visible pores, real 35mm film grain, warm true colour with a
-> restrained gold accent in the light, vertical 9:16.
+| TC | Toma | Fuente | Imagen y acción | Cámara | Texto en pantalla | Sonido | Transición |
+|---|---|---|---|---|---|---|---|
+| 1:27.2 | t31 · 1,6 s | GENERADA | 87,2–88,75. FÁBRICA TEXTIL · EL SALVADOR: filas de puestos, decenas de costureras y sastres, ventanales. | General, 24 mm, lateral lento. | «FÁBRICA TEXTIL · EL SALVADOR» y, fijo en toda la secuencia, «EJEMPLO ILUSTRATIVO» (mono 24 px, arriba a la izquierda). | Máquinas; vuelve el pulso. | A Guatemala. |
+| 1:28.7 | t32 · 1,6 s | GENERADA · foto: AURELIO | 88,75–90,3. COOPERATIVA DE CAFÉ · GUATEMALA: don Aurelio y una socia joven revisan café verde de un saco. | Plano medio abierto, 35 mm, fijo. | «COOPERATIVA DE CAFÉ · GUATEMALA». | Granos, voces bajas. | A Panamá. |
+| 1:30.3 | t33 · 3,7 s | GENERADA · foto: ROSA | 90,3–94,0. TALLER DE UNIFORMES · PANAMÁ, mediodía: pedidos hasta el techo. Rosa mira el rincón: cinta azul en el piso y un taburete libre, el lugar reservado para una máquina que aún no existe. Su último fotograma sirve de base a t34 y t38. | General, 24 mm, empuje lento al rincón. | «TALLER DE UNIFORMES · PANAMÁ». Subtítulo V18; desde 93,1, Didone de V19. | Máquinas en ritmo. | Se oscurece. |
+| 1:34.0 | t34 · 5,8 s | COMPOSICION | 94,0–99,8. El último fotograma de t33, oscurecido, con empuje 2.5D: líneas marfil, el capital del mundo, llegan desde los bordes y convergen en el rincón. No se genera nada. | Empuje 2.5D. | Didone (93,1–98,4): «Abrir una parte, en digital, / al capital del mundo.»; luego «Tokenizar» (98,4–99,8). | Pulsos graves, cuerdas que suben. | A Rosa en su escritorio. |
+| 1:39.8 | t35 · 6,4 s | GENERADA · foto: ROSA | 99,8–106,2. Rosa, con el cuaderno de pedidos, levanta la vista al rincón. Abajo flota el PASAPORTE DEL ACTIVO, con un campo por frase: EMISOR · Taller de uniformes (Panamá) · Genesis ID ✓ / QUÉ HAY DETRÁS · máquinas, pedidos, contratos / RIESGO · R3 (de R1 a R5) / en 105,8: QUIÉN PUEDE TENERLA · según las reglas de su país. | Plano medio, 50 mm, fijo; tercio inferior limpio. | «PASAPORTE DEL ACTIVO · EJEMPLO ILUSTRATIVO». Subtítulo V20. | Tres sellos en sordina. | A la retícula. |
+| 1:46.2 | t36 · 7,7 s | COMPOSICION | 106,2–113,9. La retícula viva, con luz de tarde. Cada país tiene un portón en su borde exterior; entran líneas marfil de capital y pasan las que cumplen. En «no pasa» (113,4) una se detiene en seco en el portón de PANAMÁ. Las fronteras siguen. | Retícula fija. | Solo nombres de país, sin «REGLAS DE…». Subtítulo V21. | Golpe de madera en «no pasa» y 0,4 s de silencio. | A Rosa, por la tarde. |
+| 1:53.9 | t37 · 3,0 s | GENERADA · foto: ROSA | 113,9–116,9. Tarde dorada: Rosa, de perfil hacia la ventana, descansa y levanta la mirada a la calle. Manos fuera de cuadro. | Plano medio corto, 85 mm, empuje muy lento. | Didone: «El capital, del mundo.» y «El trabajo, aquí.» | Piano solo. | Al rincón. |
+| 1:56.9 | t38 · 3,1 s | COMPOSICION | 116,9–120,0. El rincón de t33 con luz de tarde: dentro de la cinta se dibuja en marfil una máquina de coser, junto al taburete vacío. Es un puesto que podría venir: un dibujo, no un objeto real. | Fijo, empuje 3 %. | Didone: «Las reglas, de casa.» | El gran tutti: el pico de la película. | Anochecer. |
 
-**El negativo prohíbe:**
-- sonrisa de catálogo y mirar a cámara;
-- objetos que aparecen de la nada (el celular del café de «Un martes»);
-- banderas, logos y texto legible;
-- lingotes y monedas;
-- policía, armas y crimen.
+**8. Esto lo hicimos por vos**
 
-**Personajes con foto:** van por *ref2va*, que es lo que mantuvo la cara de
-Lucía en «Un martes».
+| TC | Toma | Fuente | Imagen y acción | Cámara | Texto en pantalla | Sonido | Transición |
+|---|---|---|---|---|---|---|---|
+| 1:60.0 | t39 · 4,3 s | COMPOSICION | 120,0–124,3. Anochecer. La retícula se rearma de este a oeste (PA, CR, NI, HN, BZ, SV, GT; 0,25 s por celda) con los stills de los clips A regradados a hora azul: las mismas manos en las mismas puertas, cerradas al terminar el día. Resplandor cálido a la izquierda de cada celda. Sin relojes; nadie mira a cámara. | Retícula; empuje 2 %. | Didone: «Esto lo hicimos por vos.» y, chico, «JOSÉ · FUNDADOR DE ORDEN GLOBAL». | Las siete notas bajan; grillos; una nota sostenida bajo José. | Al mapa. |
+| 2:04.3 | t40 · 2,2 s | GRAFICO | 124,3–126,5. Cada celda vuela a su país en el mapa marfil; las costuras doradas quedan entre vecinos y las fronteras siguen. | Cenital; se aleja. | Didone: «Para unir Centroamérica.» | El acorde de los siete. | Sigue alejándose. |
+| 2:06.5 | t41 · 3,2 s | GRAFICO | 126,5–129,7. Latinoamérica, solo la costa en marfil, sin fronteras internas. Del istmo salen hilos dorados punteados que dudan en el silencio (127,45–128,35) y se abren con «Latinoamérica». | Se aleja al continente. | Didone: «¿Y mañana… / Latinoamérica?» | Silencio de 0,9 s; queda colgada la séptima (do#). | A negro. |
+| 2:09.7 | t42 · 4,0 s | GRAFICO | 129,7–133,7. Placa en dos tiempos. Primero (2 s) el logo quieto (archivo oficial, nunca generado) y «Buscamos a los primeros países y aliados.». Después (2 s), «ordenglobal.org», «Conocé ORIGEN y Genesis ID» y la letra chica. | Fijo. | Letra chica (mono 20 px, x 60–900): «Protocolo en desarrollo. Material informativo; no constituye oferta de valores ni de inversión. ORIGEN no es moneda de curso legal en ningún país. Genesis ID en beta. Personajes, imágenes y voces ilustrativos, generados con IA; voz final: José, fundador. Archivo de 2018 sin relación con Orden Global.» | Resuelve en re agudo (la octava); 0,5 s de silencio al final. | Fin. |
 
-**Voz:** toda en off. Ningún plano depende de sincronizar labios, que fue lo
-más frágil de «Un martes».
 
----
+## Música y sonido
 
-## 4. Música y sonido, sincronizados
+Marimba grave, cuerdas, chelo, piano y percusión contenida; sin coros. Re mayor. Siete notas, una por país (re, mi, fa#, sol, la, si, do#); la octava es Latinoamérica y se guarda para el logo. Capas sobre una grilla de 75 bpm desde 7,25; los acentos fuera de grilla van en otra pista.
 
-Música original compuesta a medida con la misma herramienta del tema de «Un
-martes», con marimba, cuerdas, piano y percusión contenida. Va de la intimidad
-a la expansión.
+GOLPES
+- 0–3,0: solo el archivo.
+- 3,40–6,70: las siete notas de las entradas.
+- 7,25: las siete aperturas y un re grave; arranca el ostinato.
+- 12,05: sello. 12,85–19,85: pedal grave de espera. 19,85–22,3: una nota por puntada. 30,45: acorde del barrido. 33,65: nota de ORIGEN. 36,05 y 37,65: el piano sube y baja.
+- 41,55: chelo solo, sin pulso. 49,5–55,8: una nota por rostro.
+- 66,40: vibración seca sin música; 66,65: la → re.
+- 70,7–88,0: casi nada; respiro con una nota.
+- 113,65–114,05: madera y silencio total. 116,9–120,0: el gran tutti, el pico de la película.
+- 120,0: las siete notas bajan y entran los grillos. 124,3: el acorde de los siete.
+- 127,45–128,35: silencio. 128,35: queda colgada la séptima (do#). 129,7: resuelve en re agudo sobre el logo.
 
-| Tramo | Música | Momento clavado |
-|---|---|---|
-| 0:00–0:03 | **Nada.** Solo el audio original de Bukele | Corte seco en 3,0 s |
-| 0:03–0:12 | Silencio → cortina → una nota grave de piano y un colchón | Cortina a los 3,35 s; primer pulso bajo «soberanía» |
-| 0:12–0:28 | Marimba grave en ostinato, cuerdas lejanas | Un golpe por país en el montaje de los siete |
-| 0:28–0:48 | Pulso orgánico (shaker, marimba), cálido | **La campana de pago de Orden Global a los 35,0 s**, la misma de «Un martes» (sol–si) |
-| 0:48–1:07 | Entran las cuerdas; crece | **El motor de la máquina a los 58,6 s** entra en el tempo de la música |
-| 1:07–1:18 | Textural, casi quieta: el rigor de la geóloga | — |
-| 1:18–1:31 | Expansión: cuerdas plenas, percusión, marimba al frente | **Pico en «Más acceso al capital» (1:27)**; corte en seco a 1:31 |
-| 1:31–1:54 | Casi nada: el cuarto, los platos, una radio muy baja. Un piano suave desde la frase central | La película respira |
-| 1:54–2:04 | Vuelve a crecer, hasta los rostros | — |
-| 2:04–2:12 | Acorde sostenido; **1 s de silencio** antes de «¿por qué no toda Latinoamérica?»; resuelve la marimba | Las dos campanas sobre el logo |
+MEZCLA: −14 LUFS, la música 8–10 dB bajo la voz y ambientes diseñados aparte (sin el audio nativo de H3).
 
-**Diseño sonoro:**
-- cortina metálica (el gancho);
-- calle que despierta: bus, gallo, vendedor;
-- cartón y tela;
-- campana de pago;
-- camión y frontera;
-- motor de máquina industrial;
-- cajas de núcleos y roca;
-- papel que se despliega (el mismo sonido une el mapa de Ingrid con el plano de Mariela);
-- riel y bocina lejana;
-- comal de la pupusería;
-- platos y risas;
-- grillos y pelota;
-- la campana suave de la app al final.
+## Versiones
 
-Los ambientes se diseñan aparte, no con el audio que trae el clip: en «Un
-martes» ese audio metía ruidos raros. La voz baja la música con compresión por
-cadena lateral y todo sale normalizado a −14 LUFS, el estándar de las redes.
-
----
-
-## 5. Versiones de 60 y 30 segundos
-
-Las mismas frases grabadas, así que las duraciones también son medidas.
-
-**60 s** (≈ 0:58):
+**60 s**
 
 | TC | Imagen | Voz |
 |---|---|---|
-| 0:00 | Archivo Bukele | «Ya llegó el momento de que unamos Centroamérica.» |
-| 0:03 | Cortina, calle, Lucía | ¿Y si pudiéramos crear una sola economía… sin que ningún país pierda su soberanía? · texto *Una sola economía. Países soberanos.* |
-| 0:11 | Morazán → mapa | Morazán soñó con una Centroamérica unida. |
-| 0:14 | Telas, don Chepe, pago en Veta | Imaginá pagar y recibir con una misma moneda digital: ORIGEN, referenciada al oro. · campana |
-| 0:21 | Plan de noche, evaluación, máquina | Crear con DBNX un mercado para nuestras empresas. Abrir caminos para que un taller como el mío pueda crecer… y contratar. |
-| 0:31 | El delantal: la mirada | (sin voz) |
-| 0:34 | La mesa de Kevin | Porque una oportunidad para una empresa puede convertirse en una oportunidad para toda una familia. |
-| 0:41 | Veta Wallet en el teléfono de Lucía; baja la cortina | El primer paso ya existe: Orden Global. |
-| 0:44 | Ingrid, Kevin, Mariela | Para vos. Para tu familia. Para todos. |
-| 0:48 | El mapa se abre | Y si empezamos por Centroamérica… ¿por qué no toda Latinoamérica? |
-| 0:54 | Cierre | — |
+| 0:00.0 | t01 Bukele rotulado | V00 |
+| 0:03.0 | t02 y las entradas (7 × 0,24 s) | — |
+| 0:04.9 | t10: el golpe | V01 |
+| 0:07.7 | t14 rápida y t15 | V04 |
+| 0:13.2 | t17 y la palabra ORIGEN | V06b (nueva): «Ya está en marcha: se llama ORIGEN, y sigue el precio del oro.» |
+| 0:19.1 | t18 | V07a: V07 cortada en «Si baja, baja.» |
+| 0:22.8 | t23 | V11 |
+| 0:26.6 | t24–t25: la chispa y la vibración | V12–V13 |
+| 0:33.6 | t26 «Recibido» (0,8 s) | — |
+| 0:34.4 | t28 con «Genesis ID · beta · te verificás una vez; te aprueba una persona» (0,8 s) | — |
+| 0:35.2 | t31–t34 | V19b (nueva): «Las empresas de nuestros países podrían tokenizarse: abrir una parte, en digital, al capital del mundo.» |
+| 0:42.4 | t36 portones | V21 |
+| 0:50.0 | t39 anochecer (tras 0,4 s de silencio) | V23 (José) |
+| 0:52.4 | t40, con «Para unir Centroamérica.» en Didone | — |
+| 0:53.4 | t41 | V25 |
+| 0:56.4 | t42: placa de 3,5 s; fin en 0:59.9 | — |
 
-**30 s** (≈ 0:30):
+**30 s**
 
 | TC | Imagen | Voz |
 |---|---|---|
-| 0:00 | Archivo Bukele | «Ya llegó el momento de que unamos Centroamérica.» |
-| 0:03 | Cortina y Lucía | ¿Y si pudiéramos crear una sola economía… sin que ningún país pierda su soberanía? |
-| 0:10 | La máquina entra, Kevin recibe el delantal | Abrir caminos para que un taller como el mío pueda crecer… y contratar. |
-| 0:15 | La mesa de Kevin | Porque una oportunidad para una empresa puede convertirse en una oportunidad para toda una familia. |
-| 0:22 | El mapa se abre | Y si empezamos por Centroamérica… ¿por qué no toda Latinoamérica? |
-| 0:27 | Cierre | — |
+| 0:00.0 | Entradas t03–t09 (7 × 0,4 s) con la pregunta en Didone (apertura B, sin Bukele) | V00b (Lucía, nueva): «¿Y si pudiéramos… unir Centroamérica?» |
+| 0:02.8 | t10: el golpe | V01 |
+| 0:05.2 | t23 y t24–t25, con la tarjeta «120 ORIGEN ≈ US$ … · Costo de la operación: US$ 0,01» | V11b (nueva): «Imaginate pagar a Honduras con un centavo de dólar… y que llegue en segundos.» |
+| 0:12.0 | t26 «Recibido» (0,8 s) | — |
+| 0:12.8 | t17 y la palabra ORIGEN | V06b |
+| 0:18.7 | t39 | V23 (José) |
+| 0:21.1 | t40, con «Para unir Centroamérica.» en Didone | — |
+| 0:22.3 | t41 | V25 |
+| 0:25.3 | t42: placa de 3,5 s; fin en 0:28.8 | — |
 
-**Versión B, sin Bukele.** Es la única que se puede pautar (§9). Empieza en
-la cortina, con la pregunta; lo demás no cambia.
+**Versión B (sin archivo):** VERSIÓN B, SIN ARCHIVO (≈ 130,3 s). Es la versión pública mientras no haya original del foro y autorización escrita, y la base del corte de 30 s.
+- Se quitan t01 y t02. Desde el fotograma 0 corren las entradas con «¿Y si pudiéramos… / …unir Centroamérica?» en Didone (la lámina 1 de José) y V00b en la voz de Lucía (0,15–2,75).
+- El golpe cae en 3,85 s y responde la pregunta. No hay primer fotograma negro. Desde ahí es igual, con todo corrido −3,40 s.
 
----
+PAUTA: primero revisar las políticas de productos financieros y cripto de TikTok y Meta. Si se pauta, que sea una pieza de marca de ~30 s (el golpe, los siete rostros, «sin dejar de ser siete», Genesis ID y la firma de José), sin «moneda digital», «tokenizar» ni «capital del mundo», que lleve a la película orgánica.
 
-## 6. Portada y publicación
+VERSIÓN ESTADISTA (opcional, solo envío directo): t01 sigue hasta «…así como la Unión Europea» (+8,9 s). Nunca se pauta.
 
-**Portada:**
-- **Imagen:** Lucía en la puerta, con la luz dorada de la cortina recién abierta (s04).
-- **Texto:** grande, en la serif de la presentación, dos líneas en el tercio superior:
+## Portada y publicación
 
-  **¿UNA SOLA
-  ECONOMÍA?**
+**Portada:** Del fotograma real ya alineado del golpe (≈ 7,4 s): los siete abriendo y la cortina de Lucía por la mitad. Encima, en Didone marfil de 96 px: «Siete países. / Una misma mañana.». Para que entre en el recorte 3:4 del perfil (y 240–1680), la retícula baja 80 px y el texto va en y 1400–1560. Sin Bukele ni logo.
 
-**Texto de la publicación:**
+**Texto de publicación:**
 
-> Morazán soñó con una Centroamérica unida. ¿Y si empezamos por conectar
-> nuestras oportunidades?
->
-> ¿Qué construirías vos con una Centroamérica más conectada?
->
-> *Visión de Orden Global · ordenglobal.org. Material informativo; no
-> constituye oferta de valores ni de inversión. Imágenes ilustrativas
-> generadas con IA.*
+> Archivo real de 2018, sin relación con Orden Global; lo demás son personajes, imágenes y voces ilustrativos hechos con IA.
+> 
+> Siete países abren su día a la misma hora. ¿Y si pudiéramos comerciar entre vecinos sin que ninguno deje de ser quien es? ¿Qué haría tu negocio si Centroamérica funcionara como un solo mercado?
+> 
+> Visión de Orden Global · ordenglobal.org
+> Protocolo en desarrollo. Material informativo; no constituye oferta de valores ni de inversión. ORIGEN no es moneda de curso legal en ningún país. Genesis ID en beta. Archivo: Nayib Bukele, entonces candidato, VIII Foro Regional Esquipulas, 25-sep-2018. (Lo mismo va en el primer comentario fijado.)
 
-Una sola pregunta y ninguna lista de «comentá, compartí, seguí». La historia
-es la razón para compartir.
+## Personajes
 
----
+| Quién | Rol | Casting |
+|---|---|---|
+| Lucia | Tapicera de San Salvador y voz de la película. | existente |
+| Chepe | Proveedor de telas de San Pedro Sula; una línea de diálogo, de espaldas. | existente |
+| Rosa | Dueña de un taller de uniformes en Calidonia: la celda de Panamá, Genesis ID y el pasaporte. | nuevo |
+| Aurelio | Caficultor de una cooperativa de Huehuetenango. | nuevo |
+| Marcus | Pescador garífuna de Dangriga, con lancha propia. | nuevo |
+| Mercedes | Joven al frente de la panadería familiar de rosquillas de Somoto. | nuevo |
+| Andres | Transportista de Liberia, Guanacaste. | nuevo |
+| Carmen | Revisora de Genesis ID (una toma). | solo_prompt |
+| Mario | Ayudante de don Chepe (una toma, al fondo). | solo_prompt |
 
-## 7. Cómo llega a Bukele (y a cualquiera)
+## Notas internas
 
-**La película le contesta con respeto.** Su discurso de 2018 sigue: *«Tal vez
-no logremos el proyecto completo, pero logremos al menos una integración
-aduanera o alguna especie parecida de comunidad de naciones, así como la Unión
-Europea.»* La película responde a eso:
-- una comunidad de naciones donde cada país conserva su moneda y su soberanía;
-- una herramienta que ya funciona.
+- José pidió abrir con Bukele y gana: la versión principal lo tiene. Pero solo se publica con el original del foro y autorización escrita; mientras tanto se entrega directo a su entorno y la pública es la B.
+- Cambios de redacción sobre lo que dijo José (reversibles):
+- Genesis ID: «tu identidad digital, pensada para toda Centroamérica» y «sistema» en lugar de «ecosistema». Si José prefiere su versión, se regraba V15 en el mismo hueco.
+- «Para unir Centroamérica» en lugar de «uniendo».
+- «Esto lo hicimos por vos» queda tal cual, pero lo dice José: en su boca es verdad.
+- D02: nada con «un centavo» sin acta y sin que el costo de red lo absorba el operador (o que el centavo sea el total).
+- Antes del montaje, medir en Veta Wallet el tiempo de «Enviar» a «Recibido». El «≈ US$» se calcula el día del montaje.
+- Tarjetas de Veta hechas en código, con datos ficticios: sin hash, sin enlace ni nombre de ningún explorador de bloques. Revisar fotograma a fotograma.
+- Voces:
+- Lucía: Rocío (eleven_v3). Regrabar V08.
+- Nuevas: V00b, V06b, V11b y V19b. V07a se recorta de V07.
+- V14: la voz de don Chepe de «Un martes».
+- V23–V24: José, en un cuarto silencioso y sin IA.
+- Casting nuevo, 4 fotos cada uno: Rosa, Aurelio, Marcus, Mercedes y Andrés. Carmen y Mario van solo con prompt.
+- Workflows:
+- Personajes: h3_ref2va_api.json.
+- Clips A: still con ref2va, luego h3_i2v_api.json con first_frame. En el I2V, subject_definitions = «<Subject 1> is the man/woman in the first frame.».
+- t13 y t31: h3_calidad_api.json.
+- GPU:
+1. Casting (20 stills, ~20 min).
+2. Prueba del golpe: 28 stills y 21 clips A (~2 h, ~$4), revisada en un teléfono.
+3. Resto: 41 clips (~3 h).
+Total: 62 clips y 48 stills, ≈ 5 h (~$10); con retomas, ~$15. Las retomas llevan ids nuevos.
+- Sin GPU y primero: voz → música por capas → gráficos → animática con las fotos de casting → aprobación de José en el teléfono.
+- Negativo: si se quiere, CFGGuider con un nodo NEGATIVE («looking at camera, smiling, text, letters, logo, flags, gold objects, extra fingers»), probado en la tanda de prueba.
+- Panamá va una hora adelante (07:00, 11:40): es a propósito. No aparece ningún explorador de bloques y los siete validadores no se presentan como «uno por país».
+- Momentos para compartir: 7,25 (el golpe); 64,3–68,45 (la chispa y el «Recibido», que funciona sin sonido); 114,1–120,0 (la frase de casa).
+- Subtítulos de dos líneas de 28 caracteres como máximo. Cortes: V03 en «días,», V04 en «digital», V10 en «siete:», V15 en «Genesis ID:», V20 en «pasaporte:» y V21 en «país.».
 
-Además, su frase va fechada y rotulada: nadie la puede leer como un anuncio
-suyo.
+**Nota técnica, corregida por nosotros:** Longitudes de H3 en nuestra cola: 17k+5 fotogramas a 24 fps (124 = 5,2 s; 175 = 7,3 s), no 4n+1. Lienzo 768×1344 verificado.
 
-**Lo que haría que su equipo pregunte por Orden Global:**
-- el nivel de la pieza;
-- que el primer paso ya funciona (Veta Wallet);
-- que respeta su idea sin apropiársela.
+## Riesgos
 
-**El camino de entrada:**
-- publicación orgánica de la versión con archivo;
-- un envío institucional de Orden Global con el enlace, la versión de 60 s y una página que explique qué existe hoy.
+- Bukele: sin el original del foro y autorización escrita, la versión pública es la B. Nunca el repost de @bukelord ni quitarle la marca de agua.
+- Estafas con deepfakes de Bukele: rótulo real visible los 3 s, nada de ORIGEN, oro ni app en los 10 s siguientes y la aclaración en la primera línea de la publicación.
+- «Un centavo»: solo con D02 en acta y el costo de red (~0,002 ORIGEN, ≈ medio centavo) absorbido. Si no, V12 = «…desde tu teléfono…».
+- «En segundos»: medirlo en Veta Wallet antes del montaje.
+- Tokenizar puede leerse como oferta: condicional, «ejemplo ilustrativo» fijo, sin montos, con letra chica y revisión legal. Legal decide si el ejemplo del pasaporte queda en Panamá o pasa a la fábrica de El Salvador (solo cambia el gráfico).
+- Genesis ID en beta: nunca «válida en los 7 países» ni identidad oficial.
+- ORIGEN no es moneda de curso legal: va en la letra chica y en la publicación.
+- Pauta: TikTok prohíbe casi todo anuncio de cripto y Meta pide licencias. Revisar antes de pautar.
+- Cifras: citar la fuente de «más de cincuenta millones» (≈ 52–53 M).
+- Morazán: solo un óleo con ficha verificada; sin ficha, tipografía.
+- Mapas de facto (Natural Earth), sin zonas en disputa ni límites marítimos.
+- IA: manos solo en planos medios, objetos presentes desde el cuadro 0, nada legible, sin banderas. El golpe depende de clips A con arranque temprano.
+- Los workflows ref2va e i2v usan BasicGuider, sin nodo NEGATIVE: el negativo no se aplica. Por eso los prompts van en afirmativo.
+- La cola puede seguir en 720×1280 (MINIMAX_H3.md): verificar 768×1344 y 4n+1 en el preflight; si no, recalcular los recortes.
+- Licencia de H3: excluye EE. UU., la UE, el Reino Unido y Corea. Leer la cláusula antes de publicar fuera de Latinoamérica.
+- Representación: dueños con equipo propio, sin carencia exhibida y Nicaragua sin símbolos políticos.
 
-Sin etiquetarlo y sin pautar con su imagen.
+## Qué cambió frente al plan anterior («Abrir»)
 
----
+- Retícula: de 3×3 (con océanos y fronteras falsas) a 2-3-2. Deja de llamarse mapa y solo se cosen las siete fronteras reales.
+- Golpe: still e I2V, alineado por el evento de cada clip, con entradas a pantalla completa. Los clips A también dan las celdas vivas, los siete rostros y el anochecer (salen 12 clips B y del anochecer).
+- El problema pasa de la fila de camiones a un pago que tarda días: don Chepe y los rollos. Andrés sale de la frontera y se muda a Liberia.
+- ORIGEN: «sin reemplazar la de nadie», «Ya está en marcha», sin «vale igual» y con la fórmula en pantalla. Salen el Golfo de Fonseca y la línea de cotización.
+- Morazán «luchó». El mapa de los siete va con los 50 millones y el «juntos», sobre siete rostros.
+- Genesis ID pasa de Kevin al alba a Rosa a media mañana, acotado al sistema y con «tu documento sigue siendo de tu país».
+- Tokenizar: tres empresas (El Salvador primero), el pasaporte sobre Rosa, portones sin «REGLAS DE…» y el resultado dibujado. Salen Kevin, su familia y la máquina real; la marca del piso pasa a ser cinta azul con un taburete libre.
+- Final: firma José. «Para unir» reemplaza a «Hoy, uniendo». Sin relojes ni miradas sincronizadas, con la séptima colgada y una placa de 4 s.
+- El dorado es solo para el hilo, «siete» se dice en tres líneas y los prompts van en afirmativo, con descripciones recortadas (Rosa sin lápiz).
+- Cortes rehechos: el de 60 s explica el oro y las reglas; el de 30 s nombra ORIGEN y usa la apertura B. Letra chica repartida por toda la pieza.
+- Duración: 133,7 s, con 26 líneas, 42 tomas y 25 generadas (62 clips y 28 stills).
 
-## 8. Producción: pasos, tiempo y costo
+## Prompts de generación
 
-1. **Casting** de Kevin, Ingrid y Mariela: 4 opciones cada uno. Unos 15 min de GPU, ~$1. Elijo yo, como en «Un martes».
-2. **Rodaje:** 40 tomas generadas → 86 clips (3 tomas en las seis que sostienen la película). Dos máquinas en Mumbai, ~3 h de reloj, **~$13 en Spot**. Se apagan solas.
-3. **En paralelo, sin GPU:**
-   - mapas;
-   - capturas reales de Veta Wallet;
-   - tipografía;
-   - música a medida y ambientes;
-   - la voz ya está grabada y medida.
-4. **Montaje** con el mismo motor de «Un martes», adaptado. Luego la revisión con transcripción del audio final y la medición de volumen.
-5. **Cortes de 60 y 30 s, versión B, portada.**
-
-**Total de GPU estimado: ~$14.** «Un martes» costó ~$21 con sus retomas;
-esta película evita el punto que más retomas pidió allí: los labios.
-
----
-
-## 9. Notas internas indispensables (antes de producir y publicar)
-
-1. **El clip de Bukele.**
-   - **Qué es el archivo que tenemos:** un recorte de la cuenta de TikTok **@bukelord**, con marca de agua, subtítulos quemados y música añadida.
-   - **Fuente real:** su intervención en el **VIII Foro Regional Esquipulas** (Guatemala, 25-sep-2018), cuando era candidato presidencial.
-   - **Cita verificada contra el audio:** *«Ya llegó el momento de que unamos Centroamérica.»* Va de 0,70 a 2,96 s en el recorte, en una frase completa. La entrada es 0,55 s y la salida 3,20 s.
-   - **Qué hace falta:** conseguir el material original en limpio (Fundación Esquipulas o la televisora) y su permiso de uso.
-   - **Cómo se trata:** no se le toca la cara ni la voz y nunca se genera con IA. Rótulo: «Archivo · Nayib Bukele · Foro Regional Esquipulas · 2018».
-2. **Pauta.**
-   - **TikTok no admite anuncios políticos:** la versión con archivo de un jefe de Estado es solo orgánica.
-   - **Meta** puede clasificarla como tema social o político y exigir autorización y «Pagado por».
-   - **Para pautar:** la versión B.
-3. **IA a la vista.**
-   - **Etiqueta de las plataformas:** activar la de «contenido generado con IA» en TikTok e Instagram, y poner «imágenes ilustrativas» en la letra chica.
-   - **El riesgo:** mezclar un archivo real con recreaciones sin avisarlo es lo que haría desconfiar a cualquiera, y más a su equipo.
-   - **Licencia de MiniMax H3:** excluye EE. UU., la UE, el Reino Unido y Corea. Revisarla antes de publicar para todo el mundo, o limitar la difusión a Latinoamérica.
-4. **Morazán.**
-   - **Qué se usa:** el óleo de dominio público o el monumento de San Salvador.
-   - **Qué se evita:** la estatua de Tegucigalpa, por la leyenda de que es otra persona.
-   - **Qué no se hace:** citas inventadas o atribuirle la propuesta financiera.
-5. **Lo que dice la película, contra lo que existe.**
-   - **ORIGEN:** solo «referenciada al oro». La web lo dice igual: no respaldada, no se canjea por metal, no promete ganancias.
-   - **De la presentación no pasa a la película:** «válida en los 7 países» (Genesis ID), «verificados y custodiados», «pensada para emitirse contra recursos reales» ni «una sola comisión mínima».
-   - **«El primer paso ya existe»:** apunta a lo que ya funciona: Veta Wallet con Genesis ID. **OrdenScan no se muestra.**
-   - **Las cifras «15 series · 11 contratos · 553 pruebas»:** solo si el equipo las confirma.
-6. **DBNX.** La web lo define como «quién puede emitir, admitido y supervisado». La película solo dice propósito («crear un mercado», «acercar proyectos al capital»): sin empresas listadas, cotizaciones ni capital captado.
-7. **Minería y tren.**
-   - **Minería:** en El Salvador es un tema sensible; la prohibición de 2017 se reemplazó por una ley nueva en diciembre de 2024. La secuencia muestra evaluación (núcleos, laboratorio, informe) y ninguna excavación, río ni país rotulado.
-   - **Tren:** sin ruta oficial ni obra aprobada, y sin confundirlo con proyectos reales como el Tren del Pacífico. Las fronteras quedan visibles en todos los mapas.
-8. **Dignidad.** «Comunidades más seguras» se dice sobre una calle en calma, nunca sobre imágenes de crimen. Ni pobreza ni desempleo se presentan como sinónimo de delito.
-9. **Reglas de cada país.** El Salvador tiene la Ley de Emisión de Activos Digitales (CNAD). Antes de pautar, que un abogado confirme si la pieza cuenta como publicidad de un activo digital. La letra chica del cierre repite la de la presentación.
-10. **Datos.**
-    - «Más de cincuenta millones» de centroamericanos es cierto (≈ 53 M en 2025).
-    - La presentación dice «7 monedas»: se sostiene solo contando el balboa, porque El Salvador y Panamá usan dólar. En la película se nombran las siete: quetzal, dólar beliceño, lempira, dólar, córdoba, colón y balboa.
+Completos en `prompts/pelicula4_una_misma_manana.json` (campo `prompt_h3` de cada toma). Las 90 fallas que encontró la crítica, con su arreglo, están en `prompts/pelicula4_hallazgos_critica.json`.

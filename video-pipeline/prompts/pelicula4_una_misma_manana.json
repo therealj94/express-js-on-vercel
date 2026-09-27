@@ -1,0 +1,1443 @@
+{
+ "titulo": "Una misma mañana",
+ "concepto": "Una película que dura un día. En 2018 Bukele dijo «Ya llegó el momento de que unamos Centroamérica», y la película le contesta con gente: a las 06:00 (07:00 en Panamá) siete personas abren su negocio en siete países, en una pantalla dividida que las junta sin borrar ninguna frontera. Un hilo dorado cose solo las fronteras reales, en zigzag, como baja el istmo.\n\nDesde ahí, en el orden de José: pagarle al vecino tarda días; ORIGEN, una moneda digital en común que no reemplaza la de nadie y sigue el precio del oro; Morazán y más de cincuenta millones entre dos océanos, sin dejar de ser siete; un centavo, y le llega en segundos; Genesis ID, con el que te verificás una vez y tu documento sigue siendo de tu país; y tokenizar: las empresas de nuestros países podrían abrirse al capital del mundo con las reglas de cada país adentro.\n\nAl anochecer, las mismas manos vuelven a las mismas puertas, ya cerradas, y José, el fundador, firma con su voz: «Esto lo hicimos por vos».",
+ "frase_central": "Siete países. Una misma mañana. (Para compartir: «El capital, del mundo. El trabajo, aquí. Las reglas, de casa.»)",
+ "formulas": [
+  "1. LA RETÍCULA ES EL ORDEN DEL ISTMO, NO UN MAPA. Siete celdas en 2-3-2: las siete fronteras reales son lados compartidos y se cosen, y las demás separaciones quedan neutras.",
+  "2. LA FRONTERA SE VUELVE COSTURA. El hilo cruza la línea sin borrarla. El dorado es solo la unión; la chispa, el sello y el capital van en marfil.",
+  "3. ANTICIPACIÓN Y GOLPE. Siete manos en siete puertas a las 05:59 y, a las 06:00, siete aperturas en el mismo fotograma, alineadas por el evento de cada clip.",
+  "4. PLANTEAR Y PAGAR. Don Chepe espera un pago y los rollos verdes no salen. A las 10:14 le llega en segundos y Mario se lleva el rollo: la tela que se acabó en el taller de Lucía.",
+  "5. LA VERDAD COMO DETALLE. Relojes y luz reales, café verde en septiembre, las siete monedas con el balboa y la fórmula en pantalla justo cuando se dice que es pública.",
+  "6. UNA IDEA, UNA IMAGEN.\n- ORIGEN: la misma luz sobre los siete.\n- El centavo: la chispa que cruza la costura.\n- Genesis ID: el sobre que se queda y el sello que viaja.\n- Tokenizar: el capital que converge en un lugar reservado.\n- Soberanía: un portón por país.",
+  "7. EL ORO ES LUZ, NUNCA OBJETO NI GRÁFICO. Sube y baja en la cara de Lucía.",
+  "8. LO QUE EXISTE SE AFIRMA; LA VISIÓN VA EN CONDICIONAL. El resultado se dibuja, no se muestra hecho.",
+  "9. SENTIR ANTES DE ENTENDER. 4,7 s sin palabras tras Bukele, respiros de 1,1 s y 0,4 s y el pico musical sin voz. Ningún tramo de más de 8 s sin una cara grande.",
+  "10. UNA FIRMA REAL Y UNA RIMA. Lucía lleva la película y el «hicimos» lo dice José. Lo que se abre al alba queda cerrado al anochecer; siete notas suben y bajan, y la octava, Latinoamérica, queda para el logo."
+ ],
+ "secuencias": [
+  {
+   "n": 1,
+   "nombre": "El llamado",
+   "inicio_s": 0,
+   "fin_s": 3,
+   "proposito": "La idea de 2018, en archivo real, rotulado y fechado.",
+   "emocion": "Curiosidad."
+  },
+  {
+   "n": 2,
+   "nombre": "Una misma mañana",
+   "inicio_s": 3,
+   "fin_s": 19.85,
+   "proposito": "Siete países abren a la misma hora; siete monedas y siete fronteras; un pago al vecino tarda días.",
+   "emocion": "Orgullo; después, espera."
+  },
+  {
+   "n": 3,
+   "nombre": "ORIGEN",
+   "inicio_s": 19.85,
+   "fin_s": 41.55,
+   "proposito": "Una moneda digital en común, sin reemplazar ninguna, que sigue el precio del oro; ya en marcha; sube y baja con él; fórmula pública.",
+   "emocion": "Esperanza y confianza."
+  },
+  {
+   "n": 4,
+   "nombre": "Juntos, sin dejar de ser siete",
+   "inicio_s": 41.55,
+   "fin_s": 55.8,
+   "proposito": "Morazán; más de 50 millones entre dos océanos; cada país con sus leyes y su moneda.",
+   "emocion": "Grandeza tranquila."
+  },
+  {
+   "n": 5,
+   "nombre": "Un centavo, en segundos",
+   "inicio_s": 55.8,
+   "fin_s": 70.7,
+   "proposito": "Lucía paga a don Chepe; le llega en segundos y el rollo sale.",
+   "emocion": "Sorpresa y alivio."
+  },
+  {
+   "n": 6,
+   "nombre": "Genesis ID",
+   "inicio_s": 70.7,
+   "fin_s": 87.2,
+   "proposito": "Te verificás una vez, te aprueba una persona y tu documento sigue siendo de tu país.",
+   "emocion": "Seguridad y dignidad."
+  },
+  {
+   "n": 7,
+   "nombre": "El capital, del mundo; las reglas, de casa",
+   "inicio_s": 87.2,
+   "fin_s": 120,
+   "proposito": "Tokenizar empresas de tres tamaños, con pasaporte y con las reglas que decida cada país; el resultado, dibujado.",
+   "emocion": "Ambición y seguridad."
+  },
+  {
+   "n": 8,
+   "nombre": "Esto lo hicimos por vos",
+   "inicio_s": 120,
+   "fin_s": 133.7,
+   "proposito": "Las puertas cerradas al anochecer, la firma de José, el mapa y Latinoamérica.",
+   "emocion": "Gratitud y ganas de saber de ellos."
+  }
+ ],
+ "guion": [
+  {
+   "id": "V00",
+   "quien": "BUKELE",
+   "escrito": "Ya llegó el momento de que unamos Centroamérica.",
+   "dicho": "(audio original, sin tocar y sin IA)",
+   "secuencia": 1,
+   "toma_ancla": "t01",
+   "nota": "TC 0,45–2,71 (se vuelve a medir sobre el original). Corte antes de «Tal vez…»."
+  },
+  {
+   "id": "V01",
+   "quien": "LUCÍA",
+   "escrito": "Siete países. Una misma mañana.",
+   "dicho": "Siete países. Una misma mañana.",
+   "secuencia": 2,
+   "toma_ancla": "t10",
+   "nota": "TC 7,70–10,20. Íntima, casi en voz baja. Frase central."
+  },
+  {
+   "id": "V02",
+   "quien": "LUCÍA",
+   "escrito": "Siete monedas, siete fronteras…",
+   "dicho": "Siete monedas, siete fronteras…",
+   "secuencia": 2,
+   "toma_ancla": "t11",
+   "nota": "TC 10,50–12,75. En suspenso; «fronteras» con el sello."
+  },
+  {
+   "id": "V03",
+   "quien": "LUCÍA",
+   "escrito": "Pagarle al país vecino puede tardar días, y en cada cambio se queda un pedazo.",
+   "dicho": "Pagarle al país vecino puede tardar días, y en cada cambio se queda un pedazo.",
+   "secuencia": 2,
+   "toma_ancla": "t12",
+   "nota": "TC 13,10–19,65 (t12–t13). Constatación sin queja: el problema es la plata, no la aduana."
+  },
+  {
+   "id": "V04",
+   "quien": "LUCÍA",
+   "escrito": "¿Y si entre todos tuviéramos una moneda digital en común para comerciar?",
+   "dicho": "¿Y si entre todos tuviéramos una moneda digital en común para comerciar?",
+   "secuencia": 3,
+   "toma_ancla": "t14",
+   "nota": "TC 20,25–25,50 (t14–t15). Pregunta sincera."
+  },
+  {
+   "id": "V05",
+   "quien": "LUCÍA",
+   "escrito": "Sin reemplazar la de nadie. Que siga el precio del oro.",
+   "dicho": "Sin reemplazar la de nadie. Que siga el precio del oro.",
+   "secuencia": 3,
+   "toma_ancla": "t16",
+   "nota": "TC 25,90–31,00. Respiración entre las dos ideas; el barrido entra en «oro»."
+  },
+  {
+   "id": "V06",
+   "quien": "LUCÍA",
+   "escrito": "Ya está en marcha. Se llama ORIGEN.",
+   "dicho": "Ya está en marcha. Se llama Origen.",
+   "secuencia": 3,
+   "toma_ancla": "t17",
+   "nota": "TC 31,45–34,80. Revelación tranquila; afirma solo lo construido."
+  },
+  {
+   "id": "V07",
+   "quien": "LUCÍA",
+   "escrito": "Si el oro sube, sube. Si baja, baja. Y la fórmula es pública.",
+   "dicho": "Si el oro sube, sube. Si baja, baja. Y la fórmula es pública.",
+   "secuencia": 3,
+   "toma_ancla": "t18",
+   "nota": "TC 35,30–41,45. Franqueza llana, contra «me huele a estafa»."
+  },
+  {
+   "id": "V08",
+   "quien": "LUCÍA",
+   "escrito": "Morazán luchó por una Centroamérica unida.",
+   "dicho": "Morasán luchó por una Centroamérica unida.",
+   "secuencia": 4,
+   "toma_ancla": "t19",
+   "nota": "TC 41,85–44,50. Regrabar (la L02 decía «soñó»). Sin épica."
+  },
+  {
+   "id": "V09",
+   "quien": "LUCÍA",
+   "escrito": "Hoy somos más de cincuenta millones, entre dos océanos.",
+   "dicho": "Hoy somos más de cincuenta millones, entre dos océanos.",
+   "secuencia": 4,
+   "toma_ancla": "t20",
+   "nota": "TC 44,85–48,80 (t20–t21). Orgullo tranquilo."
+  },
+  {
+   "id": "V10",
+   "quien": "LUCÍA",
+   "escrito": "Juntos, sin dejar de ser siete: cada país, con sus leyes y su moneda.",
+   "dicho": "Juntos, sin dejar de ser siete: cada país, con sus leyes y su moneda.",
+   "secuencia": 4,
+   "toma_ancla": "t22",
+   "nota": "TC 49,65–55,75. Lenta, un rostro por golpe."
+  },
+  {
+   "id": "V11",
+   "quien": "LUCÍA",
+   "escrito": "Imaginate pagarle a tu proveedor en Honduras…",
+   "dicho": "Imagináte pagarle a tu proveedor en Honduras…",
+   "secuencia": 5,
+   "toma_ancla": "t23",
+   "nota": "TC 56,10–59,65. Voseo (imagi-NÁ-te), complicidad."
+  },
+  {
+   "id": "V12",
+   "quien": "LUCÍA",
+   "escrito": "…con una comisión de un centavo de dólar…",
+   "dicho": "con una comisión de un centavo de dólar…",
+   "secuencia": 5,
+   "toma_ancla": "t25",
+   "nota": "TC 60,00–64,00 (t24–t25). «Un centavo», despacio. Solo con D02 en acta y el costo de red absorbido."
+  },
+  {
+   "id": "V13",
+   "quien": "LUCÍA",
+   "escrito": "…y que le llegue en segundos.",
+   "dicho": "y que le llegue en segundos.",
+   "secuencia": 5,
+   "toma_ancla": "t25",
+   "nota": "TC 64,30–66,95. «Segundos» con la vibración (66,40)."
+  },
+  {
+   "id": "V14",
+   "quien": "DON CHEPE",
+   "escrito": "¡Mario! Ya cayó lo de doña Lucía.",
+   "dicho": "¡Mario! Ya cayó lo de doña Lucía.",
+   "secuencia": 5,
+   "toma_ancla": "t26",
+   "nota": "TC 68,30–70,70. Su voz de «Un martes»; de espaldas. «Ya cayó» es como se dice en Honduras que llegó la plata (rima con «Ya me cayó» de «Un martes»)."
+  },
+  {
+   "id": "V15",
+   "quien": "LUCÍA",
+   "escrito": "Para entrar al sistema, Genesis ID: tu identidad digital, pensada para toda Centroamérica.",
+   "dicho": "Para entrar al sistema, Génesis ai-dí: tu identidad digital, pensada para toda Centroamérica.",
+   "secuencia": 6,
+   "toma_ancla": "t27",
+   "nota": "TC 71,00–76,70 (t27–t28). La idea de José, acotada a la beta. Confirmar cómo se dice «ID»."
+  },
+  {
+   "id": "V16",
+   "quien": "LUCÍA",
+   "escrito": "Te verificás una vez, y te aprueba una persona.",
+   "dicho": "Te verificás una vez, y te aprueba una persona.",
+   "secuencia": 6,
+   "toma_ancla": "t28",
+   "nota": "TC 77,10–81,05 (t28–t29). El corte cae en la coma (78,55)."
+  },
+  {
+   "id": "V17",
+   "quien": "LUCÍA",
+   "escrito": "Tu documento sigue siendo de tu país: solo viaja la prueba.",
+   "dicho": "Tu documento sigue siendo de tu país: solo viaja la prueba.",
+   "secuencia": 6,
+   "toma_ancla": "t30",
+   "nota": "TC 82,10–86,90. En confianza; también es soberanía."
+  },
+  {
+   "id": "V18",
+   "quien": "LUCÍA",
+   "escrito": "Y ahora pensá en grande: en las empresas de nuestros países.",
+   "dicho": "Y ahora pensá en grande: en las empresas de nuestros países.",
+   "secuencia": 7,
+   "toma_ancla": "t31",
+   "nota": "TC 88,00–92,80 (t31–t33). Sube la energía."
+  },
+  {
+   "id": "V19",
+   "quien": "LUCÍA",
+   "escrito": "Podrían abrir una parte, en digital, al capital del mundo. Eso es tokenizar.",
+   "dicho": "Podrían abrir una parte, en digital, al capital del mundo. Eso es tokenizar.",
+   "secuencia": 7,
+   "toma_ancla": "t34",
+   "nota": "TC 93,10–99,05 (t33–t34). «Podrían»: visión, no oferta."
+  },
+  {
+   "id": "V20",
+   "quien": "LUCÍA",
+   "escrito": "Cada parte llevaría su pasaporte: quién la emite, qué hay detrás, cuánto riesgo tiene.",
+   "dicho": "Cada parte llevaría su pasaporte: quién la emite, qué hay detrás, cuánto riesgo tiene.",
+   "secuencia": 7,
+   "toma_ancla": "t35",
+   "nota": "TC 99,90–106,00. Ritmo de sello."
+  },
+  {
+   "id": "V21",
+   "quien": "LUCÍA",
+   "escrito": "Y adentro pueden viajar las reglas que decida cada país. Si no se cumplen, no pasa.",
+   "dicho": "Y adentro pueden viajar las reglas que decida cada país. Si no se cumplen, no pasa.",
+   "secuencia": 7,
+   "toma_ancla": "t36",
+   "nota": "TC 106,35–113,65. «No pasa», seco; después 0,4 s de silencio."
+  },
+  {
+   "id": "V22",
+   "quien": "LUCÍA",
+   "escrito": "El capital, del mundo. El trabajo, aquí. Las reglas, de casa.",
+   "dicho": "El capital, del mundo. El trabajo, aquí. Las reglas, de casa.",
+   "secuencia": 7,
+   "toma_ancla": "t37",
+   "nota": "TC 114,10–119,60 (t37–t38). Tres golpes; deseo, no promesa. Frase para compartir."
+  },
+  {
+   "id": "V23",
+   "quien": "JOSÉ",
+   "escrito": "Esto lo hicimos por vos.",
+   "dicho": "Esto lo hicimos por vos.",
+   "secuencia": 8,
+   "toma_ancla": "t39",
+   "nota": "TC 121,95–124,15. Voz real de José, sin IA ni susurro: la firma del fundador, a una sola persona. Plan B: solo el texto."
+  },
+  {
+   "id": "V24",
+   "quien": "JOSÉ",
+   "escrito": "Para unir Centroamérica.",
+   "dicho": "Para unir Centroamérica.",
+   "secuencia": 8,
+   "toma_ancla": "t40",
+   "nota": "TC 124,50–126,40. Voz real de José. Propósito, no balance."
+  },
+  {
+   "id": "V25",
+   "quien": "LUCÍA",
+   "escrito": "¿Y mañana… Latinoamérica?",
+   "dicho": "¿Y mañana… Latinoamérica?",
+   "secuencia": 8,
+   "toma_ancla": "t41",
+   "nota": "TC 126,75–129,65. «¿Y mañana…», 0,9 s de silencio y «…Latinoamérica?». Pregunta abierta."
+  }
+ ],
+ "tomas": [
+  {
+   "id": "t01",
+   "secuencia": 1,
+   "dur_s": 3,
+   "fuente": "ARCHIVO",
+   "imagen": "0–3,0. Negro con el rótulo (0–0,35) y luego Bukele en el atril del VIII Foro Regional Esquipulas (25-sep-2018), del ORIGINAL del foro, nunca del repost de @bukelord. Sin retoque ni IA; nada encima de su ventana.",
+   "camara": "Ventana 16:9 de 1080×608 (y 656–1264) sobre negro.",
+   "texto_pantalla": "Todo el plano (mono 30 px, y 520–630): «ARCHIVO REAL · NAYIB BUKELE, ENTONCES CANDIDATO PRESIDENCIAL · FORO REGIONAL ESQUIPULAS, 25-SEP-2018 · SIN RELACIÓN CON ORDEN GLOBAL». Subtítulo.",
+   "sonido": "Su audio y la sala; corte 0,29 s tras «Centroamérica». Sin música.",
+   "transicion": "Corte a negro.",
+   "voz_ids": [
+    "V00"
+   ],
+   "prompt_h3": "",
+   "ref": "",
+   "tomas_a_generar": 0
+  },
+  {
+   "id": "t02",
+   "secuencia": 2,
+   "dur_s": 0.4,
+   "fuente": "GRAFICO",
+   "imagen": "3,0–3,4. Negro; aparecen «HOY» y el reloj «05:59».",
+   "camara": "Fijo.",
+   "texto_pantalla": "«HOY» y «05:59» (mono 110 px, y 1330–1450).",
+   "sonido": "Silencio y un tic.",
+   "transicion": "Entra Guatemala.",
+   "voz_ids": [],
+   "prompt_h3": "",
+   "ref": "",
+   "tomas_a_generar": 0
+  },
+  {
+   "id": "t03",
+   "secuencia": 2,
+   "dur_s": 0.55,
+   "fuente": "GENERADA",
+   "imagen": "3,40–3,95. GUATEMALA a pantalla completa: don Aurelio con las manos en la tranca del portón de su cooperativa. Imagen quieta (Fi−6, empuje 3 %); en 3,80 se encoge a su celda.",
+   "camara": "Clip A: still y luego I2V de 7 s. Primera luz.",
+   "texto_pantalla": "«GUATEMALA · HUEHUETENANGO» (mono 36 px, y 230); país en la celda (mono 28 px). Reloj «05:59».",
+   "sonido": "Marimba: re. Tic.",
+   "transicion": "Siguiente país.",
+   "voz_ids": [],
+   "prompt_h3": "subject_definitions:\n<Subject 1> is the man in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light. First light at the wooden gate of a coffee cooperative's yard in the highlands of Huehuetenango, Guatemala, coffee slope beyond, low mist. <Subject 1>, a 60 year old Guatemalan coffee grower of Maya descent, deep-brown weathered skin, thin grey mustache, worn straw hat, faded olive-green work jacket over a checked flannel shirt, dark work trousers, stands side-on, both hands on the gate's crossbar, completely still in the first frame. Within the first second he lifts the bar and swings the gate open, then stays in the gateway, eyes on the slope. Medium shot from the side, 35mm, locked-off. Centre-crop framing: knees up, head top one third down, hands and action at the vertical centre, upper third only mist and sky; after the action the subject stays in place, calm.\n\noverall_soundscape: a wooden bar lifted, a gate creaking, a distant rooster\n\nnon_diegetic_music: none.",
+   "ref": "AURELIO",
+   "tomas_a_generar": 3
+  },
+  {
+   "id": "t04",
+   "secuencia": 2,
+   "dur_s": 0.55,
+   "fuente": "GENERADA",
+   "imagen": "3,95–4,50. BELICE a pantalla completa: Marcus, con botas, las manos en la proa de su lancha propia. Imagen quieta (Fi−6, empuje 3 %); en 4,35 se encoge a su celda.",
+   "camara": "Clip A: still y luego I2V de 7 s. Primera luz.",
+   "texto_pantalla": "«BELICE · DANGRIGA» (mono 36 px, y 230); país en la celda (mono 28 px). Reloj «05:59».",
+   "sonido": "Marimba: mi. Tic.",
+   "transicion": "Siguiente país.",
+   "voz_ids": [],
+   "prompt_h3": "subject_definitions:\n<Subject 1> is the man in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light. Sunrise on the beach at Dangriga, Belize, the sun just above the calm Caribbean. <Subject 1>, a 35 year old Garifuna fisherman from Belize, dark-brown skin, lean and strong, short black beard, cropped hair, faded red sleeveless t-shirt, grey work shorts, white rubber fishing boots, stands ankle-deep beside his well-kept painted wooden boat with an outboard motor, both hands on its bow, completely still in the first frame. Within the first second he shoves the boat off the sand into the water and stays in place, eyes on the sea. Medium shot from the side, 35mm, locked-off. Centre-crop framing: knees up, head top one third down, hands and action at the vertical centre, upper third only sky and sea; after the action the subject stays in place, calm.\n\noverall_soundscape: a hull sliding off wet sand, small waves, seabirds\n\nnon_diegetic_music: none.",
+   "ref": "MARCUS",
+   "tomas_a_generar": 3
+  },
+  {
+   "id": "t05",
+   "secuencia": 2,
+   "dur_s": 0.55,
+   "fuente": "GENERADA",
+   "imagen": "4,50–5,05. EL SALVADOR a pantalla completa: Lucía con las manos en el tirador de la cortina cerrada. Imagen quieta (Fi−6, empuje 3 %); en 4,90 se encoge a su celda.",
+   "camara": "Clip A: still y luego I2V de 7 s. Primera luz.",
+   "texto_pantalla": "«EL SALVADOR · SAN SALVADOR» (mono 36 px, y 230); país en la celda (mono 28 px). Reloj «05:59».",
+   "sonido": "Marimba: fa#. Tic.",
+   "transicion": "Siguiente país.",
+   "voz_ids": [],
+   "prompt_h3": "subject_definitions:\n<Subject 1> is the woman in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light. Early morning on a working-class street in San Salvador, first low sun. <Subject 1>, a 42 year old Central American woman, warm light-brown skin, faint freckles, dark wavy hair in a low loose bun, small silver hoops, no makeup, rust-orange linen shirt with rolled sleeves over a white t-shirt, dark jeans, stands at the closed metal roll-up shutter of her small upholstery workshop, both hands on its bottom handle at waist height, completely still in the first frame. Within the first second she pulls it up to chest height in one strong motion; the shutter keeps rising out of frame while she stays in place, looking in at fabric rolls and an old armchair. Medium shot from the side, 35mm, locked-off. Centre-crop framing: knees up, head top one third down, hands and action at the vertical centre, upper third only the shutter, subject centred; after the action the subject stays in place, calm.\n\noverall_soundscape: the loud rattle of a metal roll-up shutter, early birds\n\nnon_diegetic_music: none.",
+   "ref": "LUCIA",
+   "tomas_a_generar": 3
+  },
+  {
+   "id": "t06",
+   "secuencia": 2,
+   "dur_s": 0.55,
+   "fuente": "GENERADA",
+   "imagen": "5,05–5,60. HONDURAS a pantalla completa: don Chepe con las manos en la barra de las puertas cerradas. Imagen quieta (Fi−6, empuje 3 %); en 5,45 se encoge a su celda.",
+   "camara": "Clip A: still y luego I2V de 7 s. Primera luz.",
+   "texto_pantalla": "«HONDURAS · SAN PEDRO SULA» (mono 36 px, y 230); país en la celda (mono 28 px). Reloj «05:59».",
+   "sonido": "Marimba: sol. Tic.",
+   "transicion": "Siguiente país.",
+   "voz_ids": [],
+   "prompt_h3": "subject_definitions:\n<Subject 1> is the man in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light. First light inside his small textile shop-warehouse in San Pedro Sula, Honduras: a worn wooden counter, fabric rolls on tall shelves, double metal doors to the street; the metal doors are closed, a line of daylight between them. <Subject 1>, a 56 year old Central American man, weathered brown face, short salt-and-pepper mustache, faded navy baseball cap, short-sleeved checked work shirt with a pen in the pocket, faces the doors with both hands on the door bar, completely still in the first frame. Within the first second he pushes both doors open and sunlight floods over his face and the fabric rolls; he stays in the doorway, eyes on the street. Camera inside beside the doors, angled back at his three-quarter face, 35mm, locked-off. Centre-crop framing: knees up, head top one third down, hands and action at the vertical centre, upper third only the doors and wall, subject centred; after the action the subject stays in place, calm.\n\noverall_soundscape: metal doors creaking open, the street waking up\n\nnon_diegetic_music: none.",
+   "ref": "CHEPE",
+   "tomas_a_generar": 3
+  },
+  {
+   "id": "t07",
+   "secuencia": 2,
+   "dur_s": 0.55,
+   "fuente": "GENERADA",
+   "imagen": "5,60–6,15. NICARAGUA a pantalla completa: Mercedes con un trapo en la manija del horno de barro. Imagen quieta (Fi−6, empuje 3 %); en 6,00 se encoge a su celda.",
+   "camara": "Clip A: still y luego I2V de 7 s. Primera luz.",
+   "texto_pantalla": "«NICARAGUA · SOMOTO» (mono 36 px, y 230); país en la celda (mono 28 px). Reloj «05:59».",
+   "sonido": "Marimba: la. Tic.",
+   "transicion": "Siguiente país.",
+   "voz_ids": [],
+   "prompt_h3": "subject_definitions:\n<Subject 1> is the woman in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light. First light in the backyard of a family rosquilla bakery in Somoto, Nicaragua, smoky sun through a tin roof, a waist-high clay oven with a closed iron door. <Subject 1>, a 34 year old Nicaraguan woman, light-brown skin, oval face, black hair in a low bun, small silver studs, short-sleeved floral blouse under a white apron dusted with flour, stands beside it, a folded cloth on the door handle, completely still in the first frame. Within the first second she swings the door open and the ember glow lights her face; she stays in place, eyes on the fire. Medium shot, 35mm, locked-off. Centre-crop framing: knees up, head top one third down, hands and action at the vertical centre, upper third only tin roof and smoke, subject in the left two thirds; after the action the subject stays in place, calm.\n\noverall_soundscape: an iron door creaking, crackling embers, a rooster\n\nnon_diegetic_music: none.",
+   "ref": "MERCEDES",
+   "tomas_a_generar": 3
+  },
+  {
+   "id": "t08",
+   "secuencia": 2,
+   "dur_s": 0.55,
+   "fuente": "GENERADA",
+   "imagen": "6,15–6,70. COSTA RICA a pantalla completa: Andrés al volante, en la cabina a oscuras. Imagen quieta (Fi−6, empuje 3 %); en 6,55 se encoge a su celda.",
+   "camara": "Clip A: still y luego I2V de 7 s. Primera luz.",
+   "texto_pantalla": "«COSTA RICA · LIBERIA» (mono 36 px, y 230); país en la celda (mono 28 px). Reloj «05:59».",
+   "sonido": "Marimba: si. Tic.",
+   "transicion": "Siguiente país.",
+   "voz_ids": [],
+   "prompt_h3": "subject_definitions:\n<Subject 1> is the man in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light. Early morning in a gravel truck yard in Liberia, Guanacaste, Costa Rica, dry-season trees. Seen from outside the open driver's window: <Subject 1>, a 30 year old Costa Rican truck driver, tan olive skin, short dark hair, trimmed short beard, faded dark-green polo shirt, plain grey cap, sits at the wheel of a plain white cargo truck with blank sides in the dim cab, completely still in the first frame. Within the first second the dashboard lights come on, glowing on his face, and the engine shakes the cab; he grips the wheel, eyes on the road. Medium shot, 35mm, locked-off. Centre-crop framing: knees up, head top one third down, hands and action at the vertical centre, upper third only cab roof and sky, subject in the left two thirds; after the action the subject stays in place, calm.\n\noverall_soundscape: a diesel engine starting, the cab rattling\n\nnon_diegetic_music: none.",
+   "ref": "ANDRES",
+   "tomas_a_generar": 3
+  },
+  {
+   "id": "t09",
+   "secuencia": 2,
+   "dur_s": 0.55,
+   "fuente": "GENERADA",
+   "imagen": "6,70–7,25. PANAMÁ a pantalla completa: Rosa con las manos sobre una camisa blanca en su máquina; allá ya es de día. Imagen quieta (Fi−6, empuje 3 %); en 7,10 se encoge a su celda.",
+   "camara": "Clip A: still y luego I2V de 7 s. Primera luz.",
+   "texto_pantalla": "«PANAMÁ · 06:59» (mono 36 px, y 230); país en la celda (mono 28 px). Reloj «05:59».",
+   "sonido": "Marimba: do#. Tic.",
+   "transicion": "El golpe.",
+   "voz_ids": [],
+   "prompt_h3": "subject_definitions:\n<Subject 1> is the woman in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light. Bright morning daylight through the tall window of her uniform workshop in Calidonia, Panama City, white shirts in clear bags on shelves. <Subject 1>, a 38 year old Panamanian woman, medium-brown skin, round face with laugh lines, dark curly hair in a high puff, a yellow tailor's tape around her neck, pearl studs, sleeveless mint-green blouse, sits at an old industrial sewing machine in three-quarter profile, hands flat on a white shirt under the presser foot, completely still in the first frame. Within the first second the machine runs and she guides the fabric, eyes on the seam, and keeps sewing. Medium shot, 50mm, locked-off. Centre-crop framing: knees up, head top one third down, hands and action at the vertical centre, upper third only window and shelves; after the action the subject stays in place, calm.\n\noverall_soundscape: an industrial sewing machine starting, a fan\n\nnon_diegetic_music: none.",
+   "ref": "ROSA",
+   "tomas_a_generar": 3
+  },
+  {
+   "id": "t10",
+   "secuencia": 2,
+   "dur_s": 3.05,
+   "fuente": "COMPOSICION",
+   "imagen": "7,25–10,3. EL GOLPE: el reloj pasa a «06:00» («PANAMÁ 07:00» chico) y los siete abren en el mismo fotograma: portón, lancha, cortina, puertas, horno, tablero y máquina. Guatemala recién amanece; en Panamá ya es de día.",
+   "camara": "Retícula fija, empuje 2 %.",
+   "texto_pantalla": "Reloj hasta 7,6; luego subtítulo V01.",
+   "sonido": "Las siete aperturas juntas, la cortina al frente, y un re grave. Arranca el ostinato (75 bpm desde 7,25).",
+   "transicion": "Continuo.",
+   "voz_ids": [
+    "V01"
+   ],
+   "prompt_h3": "",
+   "ref": "",
+   "tomas_a_generar": 0
+  },
+  {
+   "id": "t11",
+   "secuencia": 2,
+   "dur_s": 2.55,
+   "fuente": "COMPOSICION",
+   "imagen": "10,3–12,85. Los rótulos pasan a monedas: QUETZAL · DÓLAR BELICEÑO · DÓLAR · LEMPIRA · CÓRDOBA · COLÓN · BALBOA. En «fronteras» (12,05) las siete costuras reales se vuelven negras de 24 px; las separaciones neutras no cambian. En 12,6 Honduras crece.",
+   "camara": "Retícula fija.",
+   "texto_pantalla": "Monedas (mono 28 px). Subtítulo V02.",
+   "sonido": "Si de chelo; sello grave en 12,05.",
+   "transicion": "Honduras crece.",
+   "voz_ids": [
+    "V02"
+   ],
+   "prompt_h3": "",
+   "ref": "",
+   "tomas_a_generar": 0
+  },
+  {
+   "id": "t12",
+   "secuencia": 2,
+   "dur_s": 3.55,
+   "fuente": "GENERADA",
+   "imagen": "12,85–16,4. 06:40: don Chepe mira el teléfono (pantalla oculta), espera, lo deja boca abajo y exhala mirando los rollos junto a la puerta.",
+   "camara": "Plano medio, 50 mm, fijo; todo en los dos tercios izquierdos.",
+   "texto_pantalla": "«HONDURAS · 06:40». Subtítulo V03.",
+   "sonido": "Calle, ventilador, teléfono sobre madera; pedal grave.",
+   "transicion": "Corte a los rollos.",
+   "voz_ids": [
+    "V03"
+   ],
+   "prompt_h3": "subject_definitions:\n<Subject 1> is the man in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light, vertical 9:16. Early morning in his small textile shop-warehouse in San Pedro Sula, Honduras: a worn wooden counter, fabric rolls on tall shelves, double metal doors to the street, doors open, daylight on the floor. <Subject 1>, a 56 year old Central American man, weathered brown face, short salt-and-pepper mustache, faded navy baseball cap, short-sleeved checked work shirt with a pen in the pocket, stands behind the counter holding his phone low, screen turned away from the camera. He looks at it, waits, sets it face down on the counter and exhales, eyes on the fabric rolls by the door. Medium shot, 50mm, locked-off, face in the upper half, everything in the left two thirds.\n\noverall_soundscape: street waking up, a fan, a phone set on wood\n\nnon_diegetic_music: none.",
+   "ref": "CHEPE",
+   "tomas_a_generar": 2
+  },
+  {
+   "id": "t13",
+   "secuencia": 2,
+   "dur_s": 3.45,
+   "fuente": "GENERADA",
+   "imagen": "16,4–19,85. Tres rollos de tela verde envueltos, junto a una carretilla: el pedido listo que no sale hasta que llegue el pago.",
+   "camara": "Inserto, 35 mm, empuje lento; luz con polvo.",
+   "texto_pantalla": "Subtítulo V03.",
+   "sonido": "Tráfico afuera, una radio lejana.",
+   "transicion": "A negro; vuelve la retícula.",
+   "voz_ids": [
+    "V03"
+   ],
+   "prompt_h3": "subject_definitions:\n\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, 35mm grain, warm true colour, restrained gold in the light, vertical 9:16. Early morning inside a small textile shop-warehouse in San Pedro Sula, Honduras: three rolls of deep-green fabric wrapped in clear plastic stand upright by a steel hand truck near open metal doors, a slanted beam of morning light with floating dust, plain unmarked walls, nobody in the room. Very slow push-in, 35mm.\n\noverall_soundscape: street traffic outside, a fan, a distant radio\n\nnon_diegetic_music: none.",
+   "ref": "",
+   "tomas_a_generar": 2
+  },
+  {
+   "id": "t14",
+   "secuencia": 3,
+   "dur_s": 2.9,
+   "fuente": "COMPOSICION",
+   "imagen": "19,85–22,75. La retícula a oscuras. Un hilo dorado cose solo las siete fronteras reales en zigzag (GT–BZ, GT–SV, GT–HN, SV–HN, HN–NI, NI–CR, CR–PA), 0,35 s por puntada, sin borrar la línea; cada puntada despierta sus celdas con el resto de su clip A.",
+   "camara": "Retícula fija.",
+   "texto_pantalla": "Subtítulo V04.",
+   "sonido": "Una nota aguda por puntada (pista de acentos).",
+   "transicion": "El Salvador crece (22,5).",
+   "voz_ids": [
+    "V04"
+   ],
+   "prompt_h3": "",
+   "ref": "",
+   "tomas_a_generar": 0
+  },
+  {
+   "id": "t15",
+   "secuencia": 3,
+   "dur_s": 2.9,
+   "fuente": "GENERADA",
+   "imagen": "22,75–25,65. Lucía estira tela verde sobre un sillón y la alisa con la palma.",
+   "camara": "Plano medio, 35 mm, fijo.",
+   "texto_pantalla": "Subtítulo V04.",
+   "sonido": "Tela que se tensa; calle.",
+   "transicion": "Vuelve a su celda (25,4).",
+   "voz_ids": [
+    "V04"
+   ],
+   "prompt_h3": "subject_definitions:\n<Subject 1> is the woman in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light, vertical 9:16. Mid-morning in her small upholstery workshop in San Salvador: a metal roll-up shutter to the street, a worktable with fabric rolls, an old armchair being reupholstered, daylight through the fully raised shutter, dust in the air. <Subject 1>, a 42 year old Central American woman, warm light-brown skin, faint freckles, dark wavy hair in a low loose bun, small silver hoops, no makeup, rust-orange linen shirt with rolled sleeves over a white t-shirt, dark jeans, pulls deep-green fabric taut over the seat of the old armchair and smooths it with her palm, again and again, eyes on the fabric. Medium shot, 35mm, locked-off, head one third down the frame, hands at the centre.\n\noverall_soundscape: fabric being stretched, street noise\n\nnon_diegetic_music: none.",
+   "ref": "LUCIA",
+   "tomas_a_generar": 2
+  },
+  {
+   "id": "t16",
+   "secuencia": 3,
+   "dur_s": 5.5,
+   "fuente": "COMPOSICION",
+   "imagen": "25,65–31,15. La retícula viva. En «sin reemplazar la de nadie» cada costura late y las celdas siguen separadas. En «oro» (30,45) un barrido de luz cálida cruza de este a oeste: la misma luz sobre los siete.",
+   "camara": "Retícula fija.",
+   "texto_pantalla": "Subtítulo V05.",
+   "sonido": "Cuerdas; acorde en 30,45.",
+   "transicion": "Corte a la calle de Lucía.",
+   "voz_ids": [
+    "V05"
+   ],
+   "prompt_h3": "",
+   "ref": "",
+   "tomas_a_generar": 0
+  },
+  {
+   "id": "t17",
+   "secuencia": 3,
+   "dur_s": 3.9,
+   "fuente": "GENERADA",
+   "imagen": "31,15–35,05. Lucía sale bajo la cortina con un café y se queda en el umbral, al sol. En «ORIGEN» la palabra entra por corte.",
+   "camara": "Plano medio, 50 mm, fijo.",
+   "texto_pantalla": "«Ya está en marcha.»; luego, solo «ORIGEN» (Didone 120 px) y «LA MONEDA DEL SISTEMA» (mono).",
+   "sonido": "Calle, un bus; nota sola en 33,65.",
+   "transicion": "Corte al primer plano.",
+   "voz_ids": [
+    "V06"
+   ],
+   "prompt_h3": "subject_definitions:\n<Subject 1> is the woman in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light, vertical 9:16. Morning sun on the street outside her upholstery workshop in San Salvador, the shutter fully raised. <Subject 1>, a 42 year old Central American woman, warm light-brown skin, faint freckles, dark wavy hair in a low loose bun, small silver hoops, no makeup, rust-orange linen shirt with rolled sleeves over a white t-shirt, dark jeans, holding a small cup of coffee in both hands from the first frame, steps out under the shutter into the low sun and stands still on the threshold, looking down the street, warm light on her face. Medium shot, 50mm, locked-off, face in the upper half.\n\noverall_soundscape: a street waking up, a bus passing, birds\n\nnon_diegetic_music: none.",
+   "ref": "LUCIA",
+   "tomas_a_generar": 2
+  },
+  {
+   "id": "t18",
+   "secuencia": 3,
+   "dur_s": 6.5,
+   "fuente": "GENERADA",
+   "imagen": "35,05–41,55. Primer plano de Lucía al sol. En «sube» (36,05) la luz se intensifica; en «baja» (37,65) se apaga como con una nube; en «pública», estable. Solo con fotogramas clave de color, nunca con una línea.",
+   "camara": "Primer plano, 85 mm, empuje muy lento.",
+   "texto_pantalla": "En «la fórmula es pública» (39,4–41,5): «1 ORIGEN = EL PRECIO DE 1/55 DE GRAMO DE ORO · NO SE CANJEA POR METAL». Subtítulo en una línea.",
+   "sonido": "Brisa; piano sube (36,05) y baja (37,65).",
+   "transicion": "Corte al óleo.",
+   "voz_ids": [
+    "V07"
+   ],
+   "prompt_h3": "subject_definitions:\n<Subject 1> is the woman in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light, vertical 9:16. Morning at the threshold of her workshop in San Salvador. Close-up of <Subject 1>, a 42 year old Central American woman, warm light-brown skin, faint freckles, dark wavy hair in a low loose bun, small silver hoops, no makeup, rust-orange linen shirt over a white t-shirt, standing still, eyes on the street, steady low sun on one side of her face, breathing calmly, a breeze in the loose strands of her hair. 85mm, very slow push-in, face centred.\n\noverall_soundscape: soft street ambience, a breeze\n\nnon_diegetic_music: none.",
+   "ref": "LUCIA",
+   "tomas_a_generar": 2
+  },
+  {
+   "id": "t19",
+   "secuencia": 4,
+   "dur_s": 3.05,
+   "fuente": "ARCHIVO",
+   "imagen": "41,55–44,6. Óleo de Morazán de dominio público con ficha verificada (obra, autor o colección, fuente); una luz de amanecer lo recorre. Nunca la estatua de Tegucigalpa ni IA; sin ficha, pasa a tipografía.",
+   "camara": "Detalle, empuje 6 %.",
+   "texto_pantalla": "«FRANCISCO MORAZÁN · 1792–1842». Subtítulo V08.",
+   "sonido": "Chelo solo, sin pulso.",
+   "transicion": "A la retícula.",
+   "voz_ids": [
+    "V08"
+   ],
+   "prompt_h3": "",
+   "ref": "",
+   "tomas_a_generar": 0
+  },
+  {
+   "id": "t20",
+   "secuencia": 4,
+   "dur_s": 2.9,
+   "fuente": "COMPOSICION",
+   "imagen": "44,6–47,5. La retícula viva, los siete trabajando. El mapa de siete no aparece con Morazán, recién aquí.",
+   "camara": "Retícula fija.",
+   "texto_pantalla": "Subtítulo V09.",
+   "sonido": "Vuelve el pulso.",
+   "transicion": "Al mapa.",
+   "voz_ids": [
+    "V09"
+   ],
+   "prompt_h3": "",
+   "ref": "",
+   "tomas_a_generar": 0
+  },
+  {
+   "id": "t21",
+   "secuencia": 4,
+   "dur_s": 2,
+   "fuente": "GRAFICO",
+   "imagen": "47,5–49,5. Cada celda vuela a su país en un mapa marfil (Natural Earth: costas y fronteras de facto, finas); en «dos océanos» aparecen PACÍFICO y CARIBE. Sin límites marítimos ni zonas en disputa.",
+   "camara": "Cenital; se aleja.",
+   "texto_pantalla": "«OCÉANO PACÍFICO» / «MAR CARIBE». Subtítulo V09.",
+   "sonido": "Olas a los dos lados.",
+   "transicion": "Corte a los rostros.",
+   "voz_ids": [
+    "V09"
+   ],
+   "prompt_h3": "",
+   "ref": "",
+   "tomas_a_generar": 0
+  },
+  {
+   "id": "t22",
+   "secuencia": 4,
+   "dur_s": 6.3,
+   "fuente": "COMPOSICION",
+   "imagen": "49,5–55,8. Los siete rostros a pantalla completa, 0,9 s cada uno, en el orden del istmo, con el resto de sus clips A: Aurelio en el portón abierto, Marcus en el agua, Lucía mirando su taller, Chepe en la puerta con sol, Mercedes a la luz del fuego, Andrés al volante, Rosa cosiendo.",
+   "camara": "Pantalla completa; corte en cada golpe.",
+   "texto_pantalla": "Didone en lugar de subtítulo: «Juntos, / sin dejar de ser siete:» y luego «cada país, / con sus leyes y su moneda.»",
+   "sonido": "Una nota por rostro (re a do#).",
+   "transicion": "Corte al taller de Lucía.",
+   "voz_ids": [
+    "V10"
+   ],
+   "prompt_h3": "",
+   "ref": "",
+   "tomas_a_generar": 0
+  },
+  {
+   "id": "t23",
+   "secuencia": 5,
+   "dur_s": 3.95,
+   "fuente": "GENERADA",
+   "imagen": "55,8–59,75. Lucía mira el tubo con las últimas vueltas de tela verde, lo aprieta, piensa y levanta el teléfono, boca abajo desde el primer fotograma.",
+   "camara": "Plano medio, 50 mm, fijo.",
+   "texto_pantalla": "«EL SALVADOR · 10:14». En 58,9, tarjeta de Veta Wallet en código, datos ficticios (y 1000–1270): «Enviar a · Don Chepe · San Pedro Sula». Subtítulo V11.",
+   "sonido": "Taller; piano y marimba suaves.",
+   "transicion": "Pantalla en dos.",
+   "voz_ids": [
+    "V11"
+   ],
+   "prompt_h3": "subject_definitions:\n<Subject 1> is the woman in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light, vertical 9:16. Mid-morning in her small upholstery workshop in San Salvador: a metal roll-up shutter to the street, a worktable with fabric rolls, an old armchair being reupholstered. <Subject 1>, a 42 year old Central American woman, warm light-brown skin, faint freckles, dark wavy hair in a low loose bun, small silver hoops, no makeup, rust-orange linen shirt with rolled sleeves over a white t-shirt, dark jeans, stands at her worktable looking at a cardboard tube with only the last turns of deep-green fabric; she presses it with her palm, thinks, then picks up her phone, lying face down on the table from the first frame, and holds it with the screen turned away. Medium shot, 50mm, locked-off, face in the upper half.\n\noverall_soundscape: a quiet workshop, street noise\n\nnon_diegetic_music: none.",
+   "ref": "LUCIA",
+   "tomas_a_generar": 3
+  },
+  {
+   "id": "t24",
+   "secuencia": 5,
+   "dur_s": 0.4,
+   "fuente": "GENERADA",
+   "imagen": "59,75–60,15. Pantalla en dos, vertical: a la izquierda EL SALVADOR (Lucía toca el teléfono, pantalla oculta), a la derecha HONDURAS; en medio, la frontera SV–HN como costura dorada. Esta mitad sigue hasta 67,0.",
+   "camara": "Mitad de 536×1130, 85 mm.",
+   "texto_pantalla": "«EL SALVADOR · 10:14».",
+   "sonido": "Toque sobre vidrio.",
+   "transicion": "Entra Honduras.",
+   "voz_ids": [
+    "V12"
+   ],
+   "prompt_h3": "subject_definitions:\n<Subject 1> is the woman in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light, vertical 9:16. Mid-morning in her upholstery workshop in San Salvador. Close-up, three-quarter profile, of <Subject 1>, a 42 year old Central American woman, warm light-brown skin, faint freckles, dark wavy hair in a low loose bun, small silver hoops, no makeup, rust-orange linen shirt over a white t-shirt, holding her phone from the first frame, screen turned away. She taps it twice, pauses, taps once more firmly and breathes out, eyes on the phone. 85mm, locked-off, shallow depth of field, face and phone centred.\n\noverall_soundscape: a soft tap on glass\n\nnon_diegetic_music: none.",
+   "ref": "LUCIA",
+   "tomas_a_generar": 2
+  },
+  {
+   "id": "t25",
+   "secuencia": 5,
+   "dur_s": 6.85,
+   "fuente": "GENERADA",
+   "imagen": "60,15–67,0. HONDURAS: don Chepe mide tela verde; su teléfono, boca abajo. En 64,3 Lucía envía: una chispa marfil cruza la costura sin borrarla y llega en «segundos» (66,4); el teléfono vibra (2 px, 3 fotogramas, en montaje) y él lo mira.",
+   "camara": "Mitad de 536×1130, 35 mm, fijo; todo en los dos tercios izquierdos.",
+   "texto_pantalla": "«HONDURAS · 10:14». Una tarjeta: «120 ORIGEN ≈ US$ … (ilustrativo) · Costo de la operación: US$ 0,01». Subtítulos V12 y V13.",
+   "sonido": "Chispa; vibración seca en 66,4 sin música; la → re en 66,65.",
+   "transicion": "Honduras llena la pantalla.",
+   "voz_ids": [
+    "V12",
+    "V13"
+   ],
+   "prompt_h3": "subject_definitions:\n<Subject 1> is the man in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light, vertical 9:16. Mid-morning at the counter of his small textile shop-warehouse in San Pedro Sula, Honduras: a worn wooden counter, fabric rolls on tall shelves, double metal doors to the street. <Subject 1>, a 56 year old Central American man, weathered brown face, short salt-and-pepper mustache, faded navy baseball cap, short-sleeved checked work shirt with a pen in the pocket, measures deep-green fabric against a wooden yardstick, calm, repeating the motion; his phone lies face down near his hand for the whole clip. Medium shot, 35mm, locked-off, face in the upper half, everything in the left two thirds.\n\noverall_soundscape: fabric on wood, shop ambience\n\nnon_diegetic_music: none.",
+   "ref": "CHEPE",
+   "tomas_a_generar": 2
+  },
+  {
+   "id": "t26",
+   "secuencia": 5,
+   "dur_s": 3.7,
+   "fuente": "GENERADA",
+   "imagen": "67,0–70,7. Por encima del hombro de don Chepe, de espaldas: lee el teléfono y alza el brazo hacia Mario, que se echa al hombro el rollo verde de t13.",
+   "camara": "Plano medio, 35 mm, fijo; su boca nunca se ve.",
+   "texto_pantalla": "«Recibido · 120 ORIGEN · de Lucía» (67,0–68,45); luego V14 en cursiva.",
+   "sonido": "Nudillos en la madera, su voz con eco, plástico.",
+   "transicion": "Corte a Panamá.",
+   "voz_ids": [
+    "V14"
+   ],
+   "prompt_h3": "subject_definitions:\n<Subject 1> is the man in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light, vertical 9:16. Mid-morning in his small textile shop-warehouse in San Pedro Sula, Honduras: a worn wooden counter, fabric rolls on tall shelves, double metal doors to the street. Over the right shoulder of <Subject 1>, a 56 year old Central American man, weathered brown face, short salt-and-pepper mustache, faded navy baseball cap, short-sleeved checked work shirt with a pen in the pocket: from the first frame he stands with his back to the camera, holding his phone low, screen hidden by his body. In the background, facing us by a shelf, a 19 year old Honduran young man with short black hair, plain yellow t-shirt and jeans, a roll of deep-green fabric in clear plastic standing beside him from the first frame. <Subject 1> lifts his head and raises an arm toward him; the young man nods and lifts the roll onto his shoulder. 35mm, locked-off.\n\noverall_soundscape: shop ambience, plastic rustling\n\nnon_diegetic_music: none.",
+   "ref": "CHEPE",
+   "tomas_a_generar": 3
+  },
+  {
+   "id": "t27",
+   "secuencia": 6,
+   "dur_s": 3.3,
+   "fuente": "GENERADA",
+   "imagen": "70,7–74,0. PANAMÁ, 11:40: Rosa apoya el teléfono contra un frasco de botones y respira.",
+   "camara": "Plano medio, 50 mm, fijo.",
+   "texto_pantalla": "«PANAMÁ · 11:40». Tarjeta: «Genesis ID · beta · Verificá tu identidad». Subtítulo V15.",
+   "sonido": "Máquinas al fondo; piano.",
+   "transicion": "A la cámara del teléfono.",
+   "voz_ids": [
+    "V15"
+   ],
+   "prompt_h3": "subject_definitions:\n<Subject 1> is the woman in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light, vertical 9:16. Late morning at a desk by the window of her small uniform workshop in Calidonia, Panama City: three industrial sewing machines, white school shirts in clear bags on shelves, a tall window, and in the corner a rectangle of blue masking tape on the floor with a spare stool beside it. <Subject 1>, a 38 year old Panamanian woman, medium-brown skin, round face with laugh lines, dark curly hair in a high puff, a yellow tailor's tape around her neck, pearl studs, sleeveless mint-green blouse, sits with her phone propped against a jar of buttons from the first frame, screen facing away from the camera; she straightens up, looks at it and breathes in, two seamstresses sewing out of focus behind her. Medium shot, 50mm, locked-off, face in the upper half.\n\noverall_soundscape: sewing machines in the background, a fan\n\nnon_diegetic_music: none.",
+   "ref": "ROSA",
+   "tomas_a_generar": 2
+  },
+  {
+   "id": "t28",
+   "secuencia": 6,
+   "dur_s": 4.6,
+   "fuente": "GENERADA",
+   "imagen": "74,0–78,6. Desde la cámara frontal: Rosa mira el lente (prueba de vida; la única mirada al lente de la película) y gira la cabeza despacio.",
+   "camara": "Primer plano, óptica de teléfono; óvalo en código.",
+   "texto_pantalla": "«Documento ✓ · Prueba de vida ✓ · Listas internacionales ✓», de a uno. Subtítulos V15 y V16.",
+   "sonido": "Tres tics.",
+   "transicion": "A la revisora.",
+   "voz_ids": [
+    "V15",
+    "V16"
+   ],
+   "prompt_h3": "subject_definitions:\n<Subject 1> is the woman in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light, vertical 9:16. Close-up of <Subject 1>, a 38 year old Panamanian woman, medium-brown skin, round face with laugh lines, dark curly hair in a high puff, a yellow tailor's tape around her neck, pearl studs, sleeveless mint-green blouse, seen from the front camera of her phone propped on the desk, slight low angle, window light and a soft screen glow on her face. She looks into the phone lens, slowly turns her head left, back, right, back, and breathes out, lips closed. Locked-off, face centred, the workshop soft behind her.\n\noverall_soundscape: a quiet workshop, a fan\n\nnon_diegetic_music: none.",
+   "ref": "ROSA",
+   "tomas_a_generar": 3
+  },
+  {
+   "id": "t29",
+   "secuencia": 6,
+   "dur_s": 3.4,
+   "fuente": "GENERADA",
+   "imagen": "78,6–82,0. Carmen, la revisora, compara con calma y presiona una tecla. El monitor nunca se ve.",
+   "camara": "Plano medio de costado, 50 mm, empuje lento.",
+   "texto_pantalla": "«Genesis ID · Verificada · Aprobado por una persona». Subtítulo V16.",
+   "sonido": "Una tecla; marimba apagada.",
+   "transicion": "Al taller.",
+   "voz_ids": [
+    "V16"
+   ],
+   "prompt_h3": "subject_definitions:\n\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light, vertical 9:16. Late morning in a quiet verification office with a desk lamp and plain walls. A 55 year old Central American woman with short grey hair and rectangular reading glasses, white blouse under a grey cardigan sits at a desk, seen from beside her monitor so its screen stays out of view; she compares carefully, adjusts her glasses and presses one key firmly, eyes on the monitor. Medium shot, 50mm, slow push-in.\n\noverall_soundscape: one firm key press, room tone\n\nnon_diegetic_music: none.",
+   "ref": "",
+   "tomas_a_generar": 2
+  },
+  {
+   "id": "t30",
+   "secuencia": 6,
+   "dur_s": 5.2,
+   "fuente": "GENERADA",
+   "imagen": "82,0–87,2. Rosa vuelve a coser. Abajo flota una tarjeta marfil: un sobre con un documento se sella; el sobre se queda y solo el sello sale hacia la derecha.",
+   "camara": "Plano medio, 50 mm, fijo; tercio inferior limpio.",
+   "texto_pantalla": "Tarjeta sin palabras. Subtítulo V17.",
+   "sonido": "El sello viaja con una nota; respiro 86,9–88,0.",
+   "transicion": "A la fábrica.",
+   "voz_ids": [
+    "V17"
+   ],
+   "prompt_h3": "subject_definitions:\n<Subject 1> is the woman in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light, vertical 9:16. Late morning in her small uniform workshop in Calidonia, Panama City: three industrial sewing machines, white school shirts in clear bags on shelves, a tall window, and in the corner a rectangle of blue masking tape on the floor with a spare stool beside it. <Subject 1>, a 38 year old Panamanian woman, medium-brown skin, round face with laugh lines, dark curly hair in a high puff, a yellow tailor's tape around her neck, pearl studs, sleeveless mint-green blouse, sits back at her sewing machine and sews a white school shirt, calm, eyes on the seam, two seamstresses sewing behind her. Medium shot, 50mm, locked-off, face in the upper half, the lower third only table and white fabric.\n\noverall_soundscape: sewing machines, a fan\n\nnon_diegetic_music: none.",
+   "ref": "ROSA",
+   "tomas_a_generar": 2
+  },
+  {
+   "id": "t31",
+   "secuencia": 7,
+   "dur_s": 1.55,
+   "fuente": "GENERADA",
+   "imagen": "87,2–88,75. FÁBRICA TEXTIL · EL SALVADOR: filas de puestos, decenas de costureras y sastres, ventanales.",
+   "camara": "General, 24 mm, lateral lento.",
+   "texto_pantalla": "«FÁBRICA TEXTIL · EL SALVADOR» y, fijo en toda la secuencia, «EJEMPLO ILUSTRATIVO» (mono 24 px, arriba a la izquierda).",
+   "sonido": "Máquinas; vuelve el pulso.",
+   "transicion": "A Guatemala.",
+   "voz_ids": [
+    "V18"
+   ],
+   "prompt_h3": "subject_definitions:\n\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light, vertical 9:16. Late morning on the floor of a mid-size garment factory in San Salvador: long rows of sewing stations, dozens of seamstresses and tailors at work, eyes on the fabric, high windows with daylight, carts of cut fabric, plain unmarked walls. Wide shot, 24mm, slow lateral move.\n\noverall_soundscape: dozens of sewing machines, a large fan\n\nnon_diegetic_music: none.",
+   "ref": "",
+   "tomas_a_generar": 2
+  },
+  {
+   "id": "t32",
+   "secuencia": 7,
+   "dur_s": 1.55,
+   "fuente": "GENERADA",
+   "imagen": "88,75–90,3. COOPERATIVA DE CAFÉ · GUATEMALA: don Aurelio y una socia joven revisan café verde de un saco.",
+   "camara": "Plano medio abierto, 35 mm, fijo.",
+   "texto_pantalla": "«COOPERATIVA DE CAFÉ · GUATEMALA».",
+   "sonido": "Granos, voces bajas.",
+   "transicion": "A Panamá.",
+   "voz_ids": [
+    "V18"
+   ],
+   "prompt_h3": "subject_definitions:\n<Subject 1> is the man in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light, vertical 9:16. Late morning in the storehouse of a coffee cooperative in Huehuetenango, Guatemala: stacked jute sacks of green coffee, a sorting table, light from a high window. <Subject 1>, a 60 year old Guatemalan coffee grower of Maya descent, deep-brown weathered skin, thin grey mustache, worn straw hat, faded olive-green work jacket over a checked flannel shirt, dark work trousers, and a young member, a 26 year old Guatemalan woman in a blue work apron with a long braid, open a sack and look at a handful of green coffee beans; she explains, he nods. Medium-wide, 35mm, locked-off.\n\noverall_soundscape: beans poured, quiet voices\n\nnon_diegetic_music: none.",
+   "ref": "AURELIO",
+   "tomas_a_generar": 2
+  },
+  {
+   "id": "t33",
+   "secuencia": 7,
+   "dur_s": 3.7,
+   "fuente": "GENERADA",
+   "imagen": "90,3–94,0. TALLER DE UNIFORMES · PANAMÁ, mediodía: pedidos hasta el techo. Rosa mira el rincón: cinta azul en el piso y un taburete libre, el lugar reservado para una máquina que aún no existe. Su último fotograma sirve de base a t34 y t38.",
+   "camara": "General, 24 mm, empuje lento al rincón.",
+   "texto_pantalla": "«TALLER DE UNIFORMES · PANAMÁ». Subtítulo V18; desde 93,1, Didone de V19.",
+   "sonido": "Máquinas en ritmo.",
+   "transicion": "Se oscurece.",
+   "voz_ids": [
+    "V18",
+    "V19"
+   ],
+   "prompt_h3": "subject_definitions:\n<Subject 1> is the woman in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light, vertical 9:16. Midday in her small uniform workshop in Calidonia, Panama City: three industrial sewing machines, white school shirts in clear bags on shelves, a tall window, and in the corner a rectangle of blue masking tape on the floor with a spare stool beside it. Three seamstresses sew in a row, bags of uniforms stacked to the ceiling. <Subject 1>, a 38 year old Panamanian woman, medium-brown skin, round face with laugh lines, dark curly hair in a high puff, a yellow tailor's tape around her neck, pearl studs, sleeveless mint-green blouse, black work trousers, stands mid-room with her hands on her hips, looks at the orders, then at the taped rectangle and the spare stool in the corner. Wide shot, 24mm, slow push-in toward the corner, which ends clearly framed in the lower half.\n\noverall_soundscape: sewing machines in rhythm, a fan\n\nnon_diegetic_music: none.",
+   "ref": "ROSA",
+   "tomas_a_generar": 3
+  },
+  {
+   "id": "t34",
+   "secuencia": 7,
+   "dur_s": 5.8,
+   "fuente": "COMPOSICION",
+   "imagen": "94,0–99,8. El último fotograma de t33, oscurecido, con empuje 2.5D: líneas marfil, el capital del mundo, llegan desde los bordes y convergen en el rincón. No se genera nada.",
+   "camara": "Empuje 2.5D.",
+   "texto_pantalla": "Didone (93,1–98,4): «Abrir una parte, en digital, / al capital del mundo.»; luego «Tokenizar» (98,4–99,8).",
+   "sonido": "Pulsos graves, cuerdas que suben.",
+   "transicion": "A Rosa en su escritorio.",
+   "voz_ids": [
+    "V19"
+   ],
+   "prompt_h3": "",
+   "ref": "",
+   "tomas_a_generar": 0
+  },
+  {
+   "id": "t35",
+   "secuencia": 7,
+   "dur_s": 6.4,
+   "fuente": "GENERADA",
+   "imagen": "99,8–106,2. Rosa, con el cuaderno de pedidos, levanta la vista al rincón. Abajo flota el PASAPORTE DEL ACTIVO, con un campo por frase: EMISOR · Taller de uniformes (Panamá) · Genesis ID ✓ / QUÉ HAY DETRÁS · máquinas, pedidos, contratos / RIESGO · R3 (de R1 a R5) / en 105,8: QUIÉN PUEDE TENERLA · según las reglas de su país.",
+   "camara": "Plano medio, 50 mm, fijo; tercio inferior limpio.",
+   "texto_pantalla": "«PASAPORTE DEL ACTIVO · EJEMPLO ILUSTRATIVO». Subtítulo V20.",
+   "sonido": "Tres sellos en sordina.",
+   "transicion": "A la retícula.",
+   "voz_ids": [
+    "V20"
+   ],
+   "prompt_h3": "subject_definitions:\n<Subject 1> is the woman in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light, vertical 9:16. Midday at the desk by the window of her small uniform workshop in Calidonia, Panama City: three industrial sewing machines, white school shirts in clear bags on shelves, a tall window, and in the corner a rectangle of blue masking tape on the floor with a spare stool beside it. <Subject 1>, a 38 year old Panamanian woman, medium-brown skin, round face with laugh lines, dark curly hair in a high puff, a yellow tailor's tape around her neck, pearl studs, sleeveless mint-green blouse, sits with an open order notebook from the first frame, reads, then looks up toward the taped corner, thinking. Medium shot, 50mm, locked-off, face in the upper half, the lower third only the desk.\n\noverall_soundscape: sewing machines in the background, pages turning\n\nnon_diegetic_music: none.",
+   "ref": "ROSA",
+   "tomas_a_generar": 2
+  },
+  {
+   "id": "t36",
+   "secuencia": 7,
+   "dur_s": 7.7,
+   "fuente": "COMPOSICION",
+   "imagen": "106,2–113,9. La retícula viva, con luz de tarde. Cada país tiene un portón en su borde exterior; entran líneas marfil de capital y pasan las que cumplen. En «no pasa» (113,4) una se detiene en seco en el portón de PANAMÁ. Las fronteras siguen.",
+   "camara": "Retícula fija.",
+   "texto_pantalla": "Solo nombres de país, sin «REGLAS DE…». Subtítulo V21.",
+   "sonido": "Golpe de madera en «no pasa» y 0,4 s de silencio.",
+   "transicion": "A Rosa, por la tarde.",
+   "voz_ids": [
+    "V21"
+   ],
+   "prompt_h3": "",
+   "ref": "",
+   "tomas_a_generar": 0
+  },
+  {
+   "id": "t37",
+   "secuencia": 7,
+   "dur_s": 3,
+   "fuente": "GENERADA",
+   "imagen": "113,9–116,9. Tarde dorada: Rosa, de perfil hacia la ventana, descansa y levanta la mirada a la calle. Manos fuera de cuadro.",
+   "camara": "Plano medio corto, 85 mm, empuje muy lento.",
+   "texto_pantalla": "Didone: «El capital, del mundo.» y «El trabajo, aquí.»",
+   "sonido": "Piano solo.",
+   "transicion": "Al rincón.",
+   "voz_ids": [
+    "V22"
+   ],
+   "prompt_h3": "subject_definitions:\n<Subject 1> is the woman in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Cinematic documentary realism, natural light, true skin texture, 35mm grain, warm true colour, restrained gold in the light, vertical 9:16. Late afternoon in her small uniform workshop in Calidonia, Panama City: three industrial sewing machines, white school shirts in clear bags on shelves, a tall window, and in the corner a rectangle of blue masking tape on the floor with a spare stool beside it, golden light through the window, dust in the air. Medium close-up, 85mm, very slow push-in: <Subject 1>, a 38 year old Panamanian woman, medium-brown skin, round face with laugh lines, dark curly hair in a high puff, a yellow tailor's tape around her neck, pearl studs, sleeveless mint-green blouse, seated at her old sewing machine, its chipped paint along the bottom edge of the frame, face in profile toward the window on the left, warm backlight, hands below the frame. She rests, then slowly lifts her eyes to the street.\n\noverall_soundscape: a quiet workshop, street sounds\n\nnon_diegetic_music: none.",
+   "ref": "ROSA",
+   "tomas_a_generar": 3
+  },
+  {
+   "id": "t38",
+   "secuencia": 7,
+   "dur_s": 3.1,
+   "fuente": "COMPOSICION",
+   "imagen": "116,9–120,0. El rincón de t33 con luz de tarde: dentro de la cinta se dibuja en marfil una máquina de coser, junto al taburete vacío. Es un puesto que podría venir: un dibujo, no un objeto real.",
+   "camara": "Fijo, empuje 3 %.",
+   "texto_pantalla": "Didone: «Las reglas, de casa.»",
+   "sonido": "El gran tutti: el pico de la película.",
+   "transicion": "Anochecer.",
+   "voz_ids": [
+    "V22"
+   ],
+   "prompt_h3": "",
+   "ref": "",
+   "tomas_a_generar": 0
+  },
+  {
+   "id": "t39",
+   "secuencia": 8,
+   "dur_s": 4.3,
+   "fuente": "COMPOSICION",
+   "imagen": "120,0–124,3. Anochecer. La retícula se rearma de este a oeste (PA, CR, NI, HN, BZ, SV, GT; 0,25 s por celda) con los stills de los clips A regradados a hora azul: las mismas manos en las mismas puertas, cerradas al terminar el día. Resplandor cálido a la izquierda de cada celda. Sin relojes; nadie mira a cámara.",
+   "camara": "Retícula; empuje 2 %.",
+   "texto_pantalla": "Didone: «Esto lo hicimos por vos.» y, chico, «JOSÉ · FUNDADOR DE ORDEN GLOBAL».",
+   "sonido": "Las siete notas bajan; grillos; una nota sostenida bajo José.",
+   "transicion": "Al mapa.",
+   "voz_ids": [
+    "V23"
+   ],
+   "prompt_h3": "",
+   "ref": "",
+   "tomas_a_generar": 0
+  },
+  {
+   "id": "t40",
+   "secuencia": 8,
+   "dur_s": 2.2,
+   "fuente": "GRAFICO",
+   "imagen": "124,3–126,5. Cada celda vuela a su país en el mapa marfil; las costuras doradas quedan entre vecinos y las fronteras siguen.",
+   "camara": "Cenital; se aleja.",
+   "texto_pantalla": "Didone: «Para unir Centroamérica.»",
+   "sonido": "El acorde de los siete.",
+   "transicion": "Sigue alejándose.",
+   "voz_ids": [
+    "V24"
+   ],
+   "prompt_h3": "",
+   "ref": "",
+   "tomas_a_generar": 0
+  },
+  {
+   "id": "t41",
+   "secuencia": 8,
+   "dur_s": 3.2,
+   "fuente": "GRAFICO",
+   "imagen": "126,5–129,7. Latinoamérica, solo la costa en marfil, sin fronteras internas. Del istmo salen hilos dorados punteados que dudan en el silencio (127,45–128,35) y se abren con «Latinoamérica».",
+   "camara": "Se aleja al continente.",
+   "texto_pantalla": "Didone: «¿Y mañana… / Latinoamérica?»",
+   "sonido": "Silencio de 0,9 s; queda colgada la séptima (do#).",
+   "transicion": "A negro.",
+   "voz_ids": [
+    "V25"
+   ],
+   "prompt_h3": "",
+   "ref": "",
+   "tomas_a_generar": 0
+  },
+  {
+   "id": "t42",
+   "secuencia": 8,
+   "dur_s": 4,
+   "fuente": "GRAFICO",
+   "imagen": "129,7–133,7. Placa en dos tiempos. Primero (2 s) el logo quieto (archivo oficial, nunca generado) y «Buscamos a los primeros países y aliados.». Después (2 s), «ordenglobal.org», «Conocé ORIGEN y Genesis ID» y la letra chica.",
+   "camara": "Fijo.",
+   "texto_pantalla": "Letra chica (mono 20 px, x 60–900): «Protocolo en desarrollo. Material informativo; no constituye oferta de valores ni de inversión. ORIGEN no es moneda de curso legal en ningún país. Genesis ID en beta. Personajes, imágenes y voces ilustrativos, generados con IA; voz final: José, fundador. Archivo de 2018 sin relación con Orden Global.»",
+   "sonido": "Resuelve en re agudo (la octava); 0,5 s de silencio al final.",
+   "transicion": "Fin.",
+   "voz_ids": [],
+   "prompt_h3": "",
+   "ref": "",
+   "tomas_a_generar": 0
+  }
+ ],
+ "pantalla_dividida": "RETÍCULA 2-3-2 (lienzo 1080×1920, fondo #0B0B0A; zona y 160–1290; filas de 370 px con costuras de 10 px)\n- Fila 1: GUATEMALA (x 0–535) · BELICE (x 545–1080).\n- Fila 2: EL SALVADOR (x 0–355) · HONDURAS (x 365–715) · NICARAGUA (x 725–1080).\n- Fila 3: PANAMÁ (x 0–535) · COSTA RICA (x 545–1080).\n- Solo se cosen las siete fronteras reales, que son lados compartidos: GT–BZ, GT–SV, GT–HN, SV–HN, HN–NI, NI–CR, CR–PA. BZ/HN, BZ/NI, SV/PA, HN/PA y HN/CR son separaciones neutras, finas y sin hilo.\n- Panamá queda fuera de la columna de botones. En Nicaragua y Costa Rica la acción va a la izquierda.\n- Subtítulos y reloj en y 1310–1470, x 60–900. Marca fija «RECREACIÓN CON IA» (mono 22 px, y 196) desde t02.\n\nHORA: un solo reloj. «05:59» durante las entradas; en 7,25 pasa a «06:00» («PANAMÁ 07:00» chico). Luz real de fines de septiembre. Al anochecer no hay reloj.\n\nENTRADA Y GOLPE: cada país entra 0,55 s a pantalla completa, con las manos en su puerta, y se encoge a su celda. En cada clip A se marca Fi, el fotograma en que la puerta se mueve; la celda se congela en Fi−6 y el clip se suelta en 7,25 − 6/24 s, así los siete eventos caen en 7,25 ± 1 fotograma. Se eligen tomas con Fi antes de 1,5 s y, si falta clip, se sigue a 0,85× como mínimo.\n\nREUSO: el resto de cada clip A es la celda viva (t14, t16, t20, t36) y su rostro en t22, con bucle de ida y vuelta. Su still, regradado a hora azul, es la celda del anochecer (t39).\n\nSALIDAS: Honduras crece en 12,6; El Salvador, de 22,5 a 25,4; en 47,5 las celdas vuelan al mapa; en 106,2 vuelven como portones; en 124,3 vuelan de nuevo al mapa.\n\nPANTALLA EN DOS (59,75–67,0): EL SALVADOR (x 0–536) y HONDURAS (x 544–1080), con la frontera SV–HN como costura dorada. Las dos a las 10:14.\n\nGENERACIÓN: 768×1344 a 24 fps, length 4n+1 (7 s = 169). Celdas: recorte de 768×526 (filas 1 y 3) o 512×526 (fila 2), a escala 0,70, con la ventana ubicada en cada clip. Clips A: still con ref2va (length 5 a 1 fps, 4 variantes) y después I2V de 7 s (h3_i2v_api.json, first_frame), 3 tomas. Una LUT común.\n\nPLAN B: si una celda falla, va su still con empuje. La retícula se prueba en un teléfono real con la plantilla de TikTok e Instagram antes del resto.",
+ "tokenizacion": "LA IDEA: las empresas de nuestros países podrían abrir una parte, en digital, al capital del mundo sin entregar la llave. Cada parte llevaría un pasaporte y, adentro, las reglas que decida cada país; la cadena no deja pasar a quien no las cumple. El capital, del mundo. El trabajo, aquí. Las reglas, de casa.\n\nEN IMAGEN (t31–t38):\n1. Tres tamaños: una fábrica en El Salvador (primero, porque ese país ya legisló la emisión de activos digitales, sin nombrar la ley), una cooperativa de café en Guatemala y el taller de Rosa en Panamá.\n2. Líneas marfil del mundo convergen en el lugar reservado del taller.\n3. EL PASAPORTE, contra la estafa: emisor con Genesis ID ✓ (la identidad de Rosa pasa a su empresa), qué hay detrás, riesgo R1–R5 y quién puede tenerla según las reglas de su país.\n4. LOS PORTONES, contra el miedo a perder el país: cada país decide y una línea no pasa.\n5. El resultado queda en visión: una máquina dibujada y un taburete libre, un puesto que espera.\n\nHONESTIDAD: todo en condicional y sin empresas reales, montos, reguladores ni leyes. Se dice «qué hay detrás». DBNX no se nombra.",
+ "musica": "Marimba grave, cuerdas, chelo, piano y percusión contenida; sin coros. Re mayor. Siete notas, una por país (re, mi, fa#, sol, la, si, do#); la octava es Latinoamérica y se guarda para el logo. Capas sobre una grilla de 75 bpm desde 7,25; los acentos fuera de grilla van en otra pista.\n\nGOLPES\n- 0–3,0: solo el archivo.\n- 3,40–6,70: las siete notas de las entradas.\n- 7,25: las siete aperturas y un re grave; arranca el ostinato.\n- 12,05: sello. 12,85–19,85: pedal grave de espera. 19,85–22,3: una nota por puntada. 30,45: acorde del barrido. 33,65: nota de ORIGEN. 36,05 y 37,65: el piano sube y baja.\n- 41,55: chelo solo, sin pulso. 49,5–55,8: una nota por rostro.\n- 66,40: vibración seca sin música; 66,65: la → re.\n- 70,7–88,0: casi nada; respiro con una nota.\n- 113,65–114,05: madera y silencio total. 116,9–120,0: el gran tutti, el pico de la película.\n- 120,0: las siete notas bajan y entran los grillos. 124,3: el acorde de los siete.\n- 127,45–128,35: silencio. 128,35: queda colgada la séptima (do#). 129,7: resuelve en re agudo sobre el logo.\n\nMEZCLA: −14 LUFS, la música 8–10 dB bajo la voz y ambientes diseñados aparte (sin el audio nativo de H3).",
+ "riesgos": [
+  "Bukele: sin el original del foro y autorización escrita, la versión pública es la B. Nunca el repost de @bukelord ni quitarle la marca de agua.",
+  "Estafas con deepfakes de Bukele: rótulo real visible los 3 s, nada de ORIGEN, oro ni app en los 10 s siguientes y la aclaración en la primera línea de la publicación.",
+  "«Un centavo»: solo con D02 en acta y el costo de red (~0,002 ORIGEN, ≈ medio centavo) absorbido. Si no, V12 = «…desde tu teléfono…».",
+  "«En segundos»: medirlo en Veta Wallet antes del montaje.",
+  "Tokenizar puede leerse como oferta: condicional, «ejemplo ilustrativo» fijo, sin montos, con letra chica y revisión legal. Legal decide si el ejemplo del pasaporte queda en Panamá o pasa a la fábrica de El Salvador (solo cambia el gráfico).",
+  "Genesis ID en beta: nunca «válida en los 7 países» ni identidad oficial.",
+  "ORIGEN no es moneda de curso legal: va en la letra chica y en la publicación.",
+  "Pauta: TikTok prohíbe casi todo anuncio de cripto y Meta pide licencias. Revisar antes de pautar.",
+  "Cifras: citar la fuente de «más de cincuenta millones» (≈ 52–53 M).",
+  "Morazán: solo un óleo con ficha verificada; sin ficha, tipografía.",
+  "Mapas de facto (Natural Earth), sin zonas en disputa ni límites marítimos.",
+  "IA: manos solo en planos medios, objetos presentes desde el cuadro 0, nada legible, sin banderas. El golpe depende de clips A con arranque temprano.",
+  "Los workflows ref2va e i2v usan BasicGuider, sin nodo NEGATIVE: el negativo no se aplica. Por eso los prompts van en afirmativo.",
+  "La cola puede seguir en 720×1280 (MINIMAX_H3.md): verificar 768×1344 y 4n+1 en el preflight; si no, recalcular los recortes.",
+  "Licencia de H3: excluye EE. UU., la UE, el Reino Unido y Corea. Leer la cláusula antes de publicar fuera de Latinoamérica.",
+  "Representación: dueños con equipo propio, sin carencia exhibida y Nicaragua sin símbolos políticos."
+ ],
+ "personajes": [
+  {
+   "id": "LUCIA",
+   "rol": "Tapicera de San Salvador y voz de la película.",
+   "descripcion_prompt_en": "a 42 year old Central American woman, warm light-brown skin, faint freckles, dark wavy hair in a low loose bun, small silver hoops, no makeup, rust-orange linen shirt with rolled sleeves over a white t-shirt, dark jeans",
+   "casting": "existente"
+  },
+  {
+   "id": "CHEPE",
+   "rol": "Proveedor de telas de San Pedro Sula; una línea de diálogo, de espaldas.",
+   "descripcion_prompt_en": "a 56 year old Central American man, weathered brown face, short salt-and-pepper mustache, faded navy baseball cap, short-sleeved checked work shirt with a pen in the pocket",
+   "casting": "existente"
+  },
+  {
+   "id": "ROSA",
+   "rol": "Dueña de un taller de uniformes en Calidonia: la celda de Panamá, Genesis ID y el pasaporte.",
+   "descripcion_prompt_en": "a 38 year old Panamanian woman, medium-brown skin, round face with laugh lines, dark curly hair in a high puff, a yellow tailor's tape around her neck, pearl studs, sleeveless mint-green blouse",
+   "casting": "nuevo"
+  },
+  {
+   "id": "AURELIO",
+   "rol": "Caficultor de una cooperativa de Huehuetenango.",
+   "descripcion_prompt_en": "a 60 year old Guatemalan coffee grower of Maya descent, deep-brown weathered skin, thin grey mustache, worn straw hat, faded olive-green work jacket over a checked flannel shirt, dark work trousers",
+   "casting": "nuevo"
+  },
+  {
+   "id": "MARCUS",
+   "rol": "Pescador garífuna de Dangriga, con lancha propia.",
+   "descripcion_prompt_en": "a 35 year old Garifuna fisherman from Belize, dark-brown skin, lean and strong, short black beard, cropped hair, faded red sleeveless t-shirt, grey work shorts, white rubber fishing boots",
+   "casting": "nuevo"
+  },
+  {
+   "id": "MERCEDES",
+   "rol": "Joven al frente de la panadería familiar de rosquillas de Somoto.",
+   "descripcion_prompt_en": "a 34 year old Nicaraguan woman, light-brown skin, oval face, black hair in a low bun, small silver studs, short-sleeved floral blouse under a white apron dusted with flour",
+   "casting": "nuevo"
+  },
+  {
+   "id": "ANDRES",
+   "rol": "Transportista de Liberia, Guanacaste.",
+   "descripcion_prompt_en": "a 30 year old Costa Rican truck driver, tan olive skin, short dark hair, trimmed short beard, faded dark-green polo shirt, plain grey cap",
+   "casting": "nuevo"
+  },
+  {
+   "id": "CARMEN",
+   "rol": "Revisora de Genesis ID (una toma).",
+   "descripcion_prompt_en": "a 55 year old Central American woman with short grey hair and rectangular reading glasses, white blouse under a grey cardigan",
+   "casting": "solo_prompt"
+  },
+  {
+   "id": "MARIO",
+   "rol": "Ayudante de don Chepe (una toma, al fondo).",
+   "descripcion_prompt_en": "a 19 year old Honduran young man with short black hair, plain yellow t-shirt and jeans",
+   "casting": "solo_prompt"
+  }
+ ],
+ "version_60": [
+  {
+   "tc": "0:00.0",
+   "imagen": "t01 Bukele rotulado",
+   "voz": "V00"
+  },
+  {
+   "tc": "0:03.0",
+   "imagen": "t02 y las entradas (7 × 0,24 s)",
+   "voz": "—"
+  },
+  {
+   "tc": "0:04.9",
+   "imagen": "t10: el golpe",
+   "voz": "V01"
+  },
+  {
+   "tc": "0:07.7",
+   "imagen": "t14 rápida y t15",
+   "voz": "V04"
+  },
+  {
+   "tc": "0:13.2",
+   "imagen": "t17 y la palabra ORIGEN",
+   "voz": "V06b (nueva): «Ya está en marcha: se llama ORIGEN, y sigue el precio del oro.»"
+  },
+  {
+   "tc": "0:19.1",
+   "imagen": "t18",
+   "voz": "V07a: V07 cortada en «Si baja, baja.»"
+  },
+  {
+   "tc": "0:22.8",
+   "imagen": "t23",
+   "voz": "V11"
+  },
+  {
+   "tc": "0:26.6",
+   "imagen": "t24–t25: la chispa y la vibración",
+   "voz": "V12–V13"
+  },
+  {
+   "tc": "0:33.6",
+   "imagen": "t26 «Recibido» (0,8 s)",
+   "voz": "—"
+  },
+  {
+   "tc": "0:34.4",
+   "imagen": "t28 con «Genesis ID · beta · te verificás una vez; te aprueba una persona» (0,8 s)",
+   "voz": "—"
+  },
+  {
+   "tc": "0:35.2",
+   "imagen": "t31–t34",
+   "voz": "V19b (nueva): «Las empresas de nuestros países podrían tokenizarse: abrir una parte, en digital, al capital del mundo.»"
+  },
+  {
+   "tc": "0:42.4",
+   "imagen": "t36 portones",
+   "voz": "V21"
+  },
+  {
+   "tc": "0:50.0",
+   "imagen": "t39 anochecer (tras 0,4 s de silencio)",
+   "voz": "V23 (José)"
+  },
+  {
+   "tc": "0:52.4",
+   "imagen": "t40, con «Para unir Centroamérica.» en Didone",
+   "voz": "—"
+  },
+  {
+   "tc": "0:53.4",
+   "imagen": "t41",
+   "voz": "V25"
+  },
+  {
+   "tc": "0:56.4",
+   "imagen": "t42: placa de 3,5 s; fin en 0:59.9",
+   "voz": "—"
+  }
+ ],
+ "version_30": [
+  {
+   "tc": "0:00.0",
+   "imagen": "Entradas t03–t09 (7 × 0,4 s) con la pregunta en Didone (apertura B, sin Bukele)",
+   "voz": "V00b (Lucía, nueva): «¿Y si pudiéramos… unir Centroamérica?»"
+  },
+  {
+   "tc": "0:02.8",
+   "imagen": "t10: el golpe",
+   "voz": "V01"
+  },
+  {
+   "tc": "0:05.2",
+   "imagen": "t23 y t24–t25, con la tarjeta «120 ORIGEN ≈ US$ … · Costo de la operación: US$ 0,01»",
+   "voz": "V11b (nueva): «Imaginate pagar a Honduras con un centavo de dólar… y que llegue en segundos.»"
+  },
+  {
+   "tc": "0:12.0",
+   "imagen": "t26 «Recibido» (0,8 s)",
+   "voz": "—"
+  },
+  {
+   "tc": "0:12.8",
+   "imagen": "t17 y la palabra ORIGEN",
+   "voz": "V06b"
+  },
+  {
+   "tc": "0:18.7",
+   "imagen": "t39",
+   "voz": "V23 (José)"
+  },
+  {
+   "tc": "0:21.1",
+   "imagen": "t40, con «Para unir Centroamérica.» en Didone",
+   "voz": "—"
+  },
+  {
+   "tc": "0:22.3",
+   "imagen": "t41",
+   "voz": "V25"
+  },
+  {
+   "tc": "0:25.3",
+   "imagen": "t42: placa de 3,5 s; fin en 0:28.8",
+   "voz": "—"
+  }
+ ],
+ "version_b": "VERSIÓN B, SIN ARCHIVO (≈ 130,3 s). Es la versión pública mientras no haya original del foro y autorización escrita, y la base del corte de 30 s.\n- Se quitan t01 y t02. Desde el fotograma 0 corren las entradas con «¿Y si pudiéramos… / …unir Centroamérica?» en Didone (la lámina 1 de José) y V00b en la voz de Lucía (0,15–2,75).\n- El golpe cae en 3,85 s y responde la pregunta. No hay primer fotograma negro. Desde ahí es igual, con todo corrido −3,40 s.\n\nPAUTA: primero revisar las políticas de productos financieros y cripto de TikTok y Meta. Si se pauta, que sea una pieza de marca de ~30 s (el golpe, los siete rostros, «sin dejar de ser siete», Genesis ID y la firma de José), sin «moneda digital», «tokenizar» ni «capital del mundo», que lleve a la película orgánica.\n\nVERSIÓN ESTADISTA (opcional, solo envío directo): t01 sigue hasta «…así como la Unión Europea» (+8,9 s). Nunca se pauta.",
+ "portada": "Del fotograma real ya alineado del golpe (≈ 7,4 s): los siete abriendo y la cortina de Lucía por la mitad. Encima, en Didone marfil de 96 px: «Siete países. / Una misma mañana.». Para que entre en el recorte 3:4 del perfil (y 240–1680), la retícula baja 80 px y el texto va en y 1400–1560. Sin Bukele ni logo.",
+ "publicacion": "Archivo real de 2018, sin relación con Orden Global; lo demás son personajes, imágenes y voces ilustrativos hechos con IA.\n\nSiete países abren su día a la misma hora. ¿Y si pudiéramos comerciar entre vecinos sin que ninguno deje de ser quien es? ¿Qué haría tu negocio si Centroamérica funcionara como un solo mercado?\n\nVisión de Orden Global · ordenglobal.org\nProtocolo en desarrollo. Material informativo; no constituye oferta de valores ni de inversión. ORIGEN no es moneda de curso legal en ningún país. Genesis ID en beta. Archivo: Nayib Bukele, entonces candidato, VIII Foro Regional Esquipulas, 25-sep-2018. (Lo mismo va en el primer comentario fijado.)",
+ "notas_internas": [
+  "José pidió abrir con Bukele y gana: la versión principal lo tiene. Pero solo se publica con el original del foro y autorización escrita; mientras tanto se entrega directo a su entorno y la pública es la B.",
+  "Cambios de redacción sobre lo que dijo José (reversibles):\n- Genesis ID: «tu identidad digital, pensada para toda Centroamérica» y «sistema» en lugar de «ecosistema». Si José prefiere su versión, se regraba V15 en el mismo hueco.\n- «Para unir Centroamérica» en lugar de «uniendo».\n- «Esto lo hicimos por vos» queda tal cual, pero lo dice José: en su boca es verdad.",
+  "D02: nada con «un centavo» sin acta y sin que el costo de red lo absorba el operador (o que el centavo sea el total).",
+  "Antes del montaje, medir en Veta Wallet el tiempo de «Enviar» a «Recibido». El «≈ US$» se calcula el día del montaje.",
+  "Tarjetas de Veta hechas en código, con datos ficticios: sin hash, sin enlace ni nombre de ningún explorador de bloques. Revisar fotograma a fotograma.",
+  "Voces:\n- Lucía: Rocío (eleven_v3). Regrabar V08.\n- Nuevas: V00b, V06b, V11b y V19b. V07a se recorta de V07.\n- V14: la voz de don Chepe de «Un martes».\n- V23–V24: José, en un cuarto silencioso y sin IA.",
+  "Casting nuevo, 4 fotos cada uno: Rosa, Aurelio, Marcus, Mercedes y Andrés. Carmen y Mario van solo con prompt.",
+  "Workflows:\n- Personajes: h3_ref2va_api.json.\n- Clips A: still con ref2va, luego h3_i2v_api.json con first_frame. En el I2V, subject_definitions = «<Subject 1> is the man/woman in the first frame.».\n- t13 y t31: h3_calidad_api.json.",
+  "GPU:\n1. Casting (20 stills, ~20 min).\n2. Prueba del golpe: 28 stills y 21 clips A (~2 h, ~$4), revisada en un teléfono.\n3. Resto: 41 clips (~3 h).\nTotal: 62 clips y 48 stills, ≈ 5 h (~$10); con retomas, ~$15. Las retomas llevan ids nuevos.",
+  "Sin GPU y primero: voz → música por capas → gráficos → animática con las fotos de casting → aprobación de José en el teléfono.",
+  "Negativo: si se quiere, CFGGuider con un nodo NEGATIVE («looking at camera, smiling, text, letters, logo, flags, gold objects, extra fingers»), probado en la tanda de prueba.",
+  "Panamá va una hora adelante (07:00, 11:40): es a propósito. No aparece ningún explorador de bloques y los siete validadores no se presentan como «uno por país».",
+  "Momentos para compartir: 7,25 (el golpe); 64,3–68,45 (la chispa y el «Recibido», que funciona sin sonido); 114,1–120,0 (la frase de casa).",
+  "Subtítulos de dos líneas de 28 caracteres como máximo. Cortes: V03 en «días,», V04 en «digital», V10 en «siete:», V15 en «Genesis ID:», V20 en «pasaporte:» y V21 en «país.»."
+ ],
+ "cambios_vs_plan_anterior": [
+  "Retícula: de 3×3 (con océanos y fronteras falsas) a 2-3-2. Deja de llamarse mapa y solo se cosen las siete fronteras reales.",
+  "Golpe: still e I2V, alineado por el evento de cada clip, con entradas a pantalla completa. Los clips A también dan las celdas vivas, los siete rostros y el anochecer (salen 12 clips B y del anochecer).",
+  "El problema pasa de la fila de camiones a un pago que tarda días: don Chepe y los rollos. Andrés sale de la frontera y se muda a Liberia.",
+  "ORIGEN: «sin reemplazar la de nadie», «Ya está en marcha», sin «vale igual» y con la fórmula en pantalla. Salen el Golfo de Fonseca y la línea de cotización.",
+  "Morazán «luchó». El mapa de los siete va con los 50 millones y el «juntos», sobre siete rostros.",
+  "Genesis ID pasa de Kevin al alba a Rosa a media mañana, acotado al sistema y con «tu documento sigue siendo de tu país».",
+  "Tokenizar: tres empresas (El Salvador primero), el pasaporte sobre Rosa, portones sin «REGLAS DE…» y el resultado dibujado. Salen Kevin, su familia y la máquina real; la marca del piso pasa a ser cinta azul con un taburete libre.",
+  "Final: firma José. «Para unir» reemplaza a «Hoy, uniendo». Sin relojes ni miradas sincronizadas, con la séptima colgada y una placa de 4 s.",
+  "El dorado es solo para el hilo, «siete» se dice en tres líneas y los prompts van en afirmativo, con descripciones recortadas (Rosa sin lápiz).",
+  "Cortes rehechos: el de 60 s explica el oro y las reglas; el de 30 s nombra ORIGEN y usa la apertura B. Letra chica repartida por toda la pieza.",
+  "Duración: 133,7 s, con 26 líneas, 42 tomas y 25 generadas (62 clips y 28 stills)."
+ ],
+ "voz_medida": [
+  {
+   "id": "V00",
+   "quien": "BUKELE",
+   "t": 0.45,
+   "dur": 2.26,
+   "escrito": "Ya llegó el momento de que unamos Centroamérica."
+  },
+  {
+   "id": "V01",
+   "quien": "LUCÍA",
+   "t": 7.55,
+   "dur": 2.72,
+   "escrito": "Siete países. Una misma mañana."
+  },
+  {
+   "id": "V02",
+   "quien": "LUCÍA",
+   "t": 10.45,
+   "dur": 2.48,
+   "escrito": "Siete monedas, siete fronteras…"
+  },
+  {
+   "id": "V03",
+   "quien": "LUCÍA",
+   "t": 13.1,
+   "dur": 4.96,
+   "escrito": "Pagarle al país vecino puede tardar días, y en cada cambio se queda un pedazo."
+  },
+  {
+   "id": "V04",
+   "quien": "LUCÍA",
+   "t": 20.25,
+   "dur": 4.24,
+   "escrito": "¿Y si entre todos tuviéramos una moneda digital en común para comerciar?"
+  },
+  {
+   "id": "V05",
+   "quien": "LUCÍA",
+   "t": 25.9,
+   "dur": 3.57,
+   "escrito": "Sin reemplazar la de nadie. Que siga el precio del oro."
+  },
+  {
+   "id": "V06",
+   "quien": "LUCÍA",
+   "t": 31.45,
+   "dur": 2.73,
+   "escrito": "Ya está en marcha. Se llama ORIGEN."
+  },
+  {
+   "id": "V07",
+   "quien": "LUCÍA",
+   "t": 35.3,
+   "dur": 5.04,
+   "escrito": "Si el oro sube, sube. Si baja, baja. Y la fórmula es pública."
+  },
+  {
+   "id": "V08",
+   "quien": "LUCÍA",
+   "t": 41.85,
+   "dur": 2.4,
+   "escrito": "Morazán luchó por una Centroamérica unida."
+  },
+  {
+   "id": "V09",
+   "quien": "LUCÍA",
+   "t": 44.85,
+   "dur": 3.75,
+   "escrito": "Hoy somos más de cincuenta millones, entre dos océanos."
+  },
+  {
+   "id": "V10",
+   "quien": "LUCÍA",
+   "t": 49.65,
+   "dur": 5.12,
+   "escrito": "Juntos, sin dejar de ser siete: cada país, con sus leyes y su moneda."
+  },
+  {
+   "id": "V11",
+   "quien": "LUCÍA",
+   "t": 56.1,
+   "dur": 2.64,
+   "escrito": "Imaginate pagarle a tu proveedor en Honduras…"
+  },
+  {
+   "id": "V12",
+   "quien": "LUCÍA",
+   "t": 60.0,
+   "dur": 2.23,
+   "escrito": "…con una comisión de un centavo de dólar…"
+  },
+  {
+   "id": "V13",
+   "quien": "LUCÍA",
+   "t": 64.3,
+   "dur": 1.92,
+   "escrito": "…y que le llegue en segundos."
+  },
+  {
+   "id": "V14",
+   "quien": "DON CHEPE",
+   "t": 68.3,
+   "dur": 2.44,
+   "escrito": "¡Mario! Ya cayó lo de doña Lucía."
+  },
+  {
+   "id": "V15",
+   "quien": "LUCÍA",
+   "t": 71.0,
+   "dur": 6.56,
+   "escrito": "Para entrar al sistema, Genesis ID: tu identidad digital, pensada para toda Centroamérica."
+  },
+  {
+   "id": "V16",
+   "quien": "LUCÍA",
+   "t": 77.75,
+   "dur": 3.18,
+   "escrito": "Te verificás una vez, y te aprueba una persona."
+  },
+  {
+   "id": "V17",
+   "quien": "LUCÍA",
+   "t": 82.1,
+   "dur": 4.24,
+   "escrito": "Tu documento sigue siendo de tu país: solo viaja la prueba."
+  },
+  {
+   "id": "V18",
+   "quien": "LUCÍA",
+   "t": 88.0,
+   "dur": 4.07,
+   "escrito": "Y ahora pensá en grande: en las empresas de nuestros países."
+  },
+  {
+   "id": "V19",
+   "quien": "LUCÍA",
+   "t": 93.1,
+   "dur": 5.75,
+   "escrito": "Podrían abrir una parte, en digital, al capital del mundo. Eso es tokenizar."
+  },
+  {
+   "id": "V20",
+   "quien": "LUCÍA",
+   "t": 99.9,
+   "dur": 5.91,
+   "escrito": "Cada parte llevaría su pasaporte: quién la emite, qué hay detrás, cuánto riesgo tiene."
+  },
+  {
+   "id": "V21",
+   "quien": "LUCÍA",
+   "t": 106.35,
+   "dur": 6.78,
+   "escrito": "Y adentro pueden viajar las reglas que decida cada país. Si no se cumplen, no pasa."
+  },
+  {
+   "id": "V22",
+   "quien": "LUCÍA",
+   "t": 113.6,
+   "dur": 6.36,
+   "escrito": "El capital, del mundo. El trabajo, aquí. Las reglas, de casa."
+  },
+  {
+   "id": "V23",
+   "quien": "JOSÉ",
+   "t": 121.95,
+   "dur": 1.52,
+   "escrito": "Esto lo hicimos por vos."
+  },
+  {
+   "id": "V24",
+   "quien": "JOSÉ",
+   "t": 124.5,
+   "dur": 1.52,
+   "escrito": "Para unir Centroamérica."
+  },
+  {
+   "id": "V25",
+   "quien": "LUCÍA",
+   "t": 126.75,
+   "dur": 1.95,
+   "escrito": "¿Y mañana… Latinoamérica?"
+  }
+ ],
+ "_nota_tecnica": "Longitudes de H3 en nuestra cola: 17k+5 fotogramas a 24 fps (124 = 5,2 s; 175 = 7,3 s), no 4n+1. Lienzo 768×1344 verificado."
+}
