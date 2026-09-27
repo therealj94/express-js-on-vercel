@@ -464,7 +464,7 @@
    "fuente": "CAPTURA",
    "accion": "La app real (Veta Wallet) flotando sobre las manos de Lucía: pago en ORIGEN a Textiles del Valle, con su identidad Genesis ID verificada. Confirmación.",
    "camara": "Tarjeta flotante sobre plano de manos (s14 extendido) · la app nunca a pantalla completa",
-   "texto": "Captura real · «Pagado a Honduras»",
+   "texto": "Captura real · «Pagado a Honduras» (recorte: monto y confirmación, sin enlaces externos)",
    "sonido": "El sonido de pago de Orden Global (dos campanas: sol–si, el mismo de «Un martes»)",
    "transicion": "Corte de sonido: la campana llama al camión",
    "voz": [],
@@ -918,16 +918,19 @@
    "secuencia": 9,
    "t": 113.9,
    "dur": 2.8,
-   "fuente": "CAPTURA",
-   "accion": "OrdenScan en vivo: los bloques de la cadena 5550 entrando uno tras otro; la app Veta Wallet.",
-   "camara": "Tarjeta flotante sobre negro · captura real",
-   "texto": "«Cadena 5550 · siete validadores · un bloque cada diez segundos» · «ordenscan.com»",
-   "sonido": "Un tic suave por bloque",
-   "transicion": "Corte a Lucía",
+   "fuente": "GENERADA",
+   "accion": "Anochece: Lucía, en la puerta del taller, mira su teléfono con calma. Encima flota la app real: Veta Wallet, con el nombre de Orden Global.",
+   "camara": "Primer plano · 50 mm · hora azul con la luz cálida del taller detrás",
+   "texto": "Tarjeta flotante: captura real de Veta Wallet (recortada sin cifras de precio ni enlaces externos)",
+   "sonido": "La campana suave de la app",
+   "transicion": "Corte: ella guarda el teléfono y baja la cortina",
    "voz": [
     "L15"
    ],
-   "tomas_a_generar": 0
+   "tomas_a_generar": 2,
+   "prompt": "subject_definitions:\n<Subject 1> is the woman in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Live-action, cinematic documentary realism, natural practical light, true skin texture with visible pores, real 35mm film grain, warm true colour with a restrained gold accent in the light, vertical 9:16 composition. At dusk in the doorway of her upholstery workshop, <Subject 1>, a 42 year old Central American woman with warm light-brown skin, faint freckles across the cheekbones, fine lines at the corners of her eyes, dark brown wavy hair pulled back in a low loose bun with loose strands at the temples, thick dark eyebrows, small silver hoop earrings, no makeup, wearing a rust-orange linen shirt with sleeves rolled to the elbow over a plain white t-shirt, dark blue jeans, a thin black hair tie on her left wrist, holds her phone in both hands and looks at it with a calm, satisfied expression; the screen faces away from the camera. Medium close-up, 50mm, blue hour outside with warm light from the workshop behind her.\n\noverall_soundscape: evening street, a soft notification chime\n\nnon_diegetic_music: none.",
+   "negative": "cartoon, illustration, 3d render, cgi, plastic skin, waxy skin, airbrushed, beauty filter, smooth poreless face, dead eyes, mannequin, uncanny, oversaturated, gold bars, coins, piles of money, luxury, stock photo smile, posed, looking at camera, deformed hands, extra fingers, floating objects, objects appearing from nowhere, morphing, watermark, text overlay, readable text, logo, brand names, flags, subtitles, ui elements, phone screen content, holograms, crypto imagery, charts, police, weapons, crime, blurry, horizontal composition, black bars, music",
+   "ref": "lucia.png"
   },
   {
    "id": "s42",

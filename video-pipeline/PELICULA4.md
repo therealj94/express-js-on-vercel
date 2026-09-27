@@ -213,7 +213,7 @@ Duración total: **132,3 s** (2:12.3). Voz de Lucía: 91,3 s en 24 frases; el re
 |---|---|---|---|---|---|---|---|---|
 | 0:27.7 | s14 · 3,6 s | GENERADA | Taller de Lucía: sus manos abren una caja de muestras de tela; fotografía un rollo con el teléfono para mandarlo. | Detalle de manos · 50 mm · cenital a 45° | «Imaginá pagar y recibir con una misma moneda digital:» | — | Cartón, tela, obturador del teléfono | Corte a Honduras |
 | 0:31.3 | s15 · 2,8 s | GENERADA | Don Chepe (el proveedor de «Un martes») en su bodega de San Pedro Sula mira la foto en su teléfono y asiente. | Plano medio · 35 mm · en mano · luz de bodega | «ORIGEN, referenciada al oro.» | «SAN PEDRO SULA, HONDURAS» | Bodega, montacargas lejano | Corte a la pantalla |
-| 0:34.1 | s16 · 3,0 s | CAPTURA | La app real (Veta Wallet) flotando sobre las manos de Lucía: pago en ORIGEN a Textiles del Valle, con su identidad Genesis ID verificada. Confirmación. | Tarjeta flotante sobre plano de manos (s14 extendido) · la app nunca a pantalla completa | — | Captura real · «Pagado a Honduras» | El sonido de pago de Orden Global (dos campanas: sol–si, el mismo de «Un martes») | Corte de sonido: la campana llama al camión |
+| 0:34.1 | s16 · 3,0 s | CAPTURA | La app real (Veta Wallet) flotando sobre las manos de Lucía: pago en ORIGEN a Textiles del Valle, con su identidad Genesis ID verificada. Confirmación. | Tarjeta flotante sobre plano de manos (s14 extendido) · la app nunca a pantalla completa | — | Captura real · «Pagado a Honduras» (recorte: monto y confirmación, sin enlaces externos) | El sonido de pago de Orden Global (dos campanas: sol–si, el mismo de «Un martes») | Corte de sonido: la campana llama al camión |
 | 0:37.1 | s17 · 3,0 s | GENERADA | Don Chepe recibe la confirmación, hace una seña a sus trabajadores y suben el rollo al camión. | Plano general · 28 mm · en mano | «Cada país conserva su moneda. Y entre nosotros, un mismo idioma para comerciar.» | Tipografía: «quetzal · dólar beliceño · lempira · dólar · córdoba · colón · balboa» y, debajo, «ORIGEN» | Motor del camión, voces de trabajo | Corte al camión en ruta |
 | 0:40.1 | s18 · 3,0 s | GENERADA | El camión cruza un puesto fronterizo entre Honduras y El Salvador; banderas lejanas, fila de camiones. | Plano general · 50 mm comprimido | — | — | Camiones, sellos, viento | Corte a la puerta del taller |
 | 0:43.1 | s19 · 5,0 s | GENERADA | El rollo llega al taller de Lucía; ella lo recibe y pasa la mano por la tela. | Plano medio · 35 mm · en mano | «Personas y empresas, conectadas en el Sistema Financiero Social de Orden Global.» | — | Puerta, tela, calle | Corte a la noche |
@@ -264,7 +264,7 @@ Duración total: **132,3 s** (2:12.3). Voz de Lucía: 91,3 s en 24 frases; el re
 
 | TC | Toma | Fuente | Imagen y acción | Cámara | Voz | Texto | Sonido | Transición |
 |---|---|---|---|---|---|---|---|---|
-| 1:53.9 | s41 · 2,8 s | CAPTURA | OrdenScan en vivo: los bloques de la cadena 5550 entrando uno tras otro; la app Veta Wallet. | Tarjeta flotante sobre negro · captura real | «El primer paso ya existe: Orden Global.» | «Cadena 5550 · siete validadores · un bloque cada diez segundos» · «ordenscan.com» | Un tic suave por bloque | Corte a Lucía |
+| 1:53.9 | s41 · 2,8 s | GENERADA | Anochece: Lucía, en la puerta del taller, mira su teléfono con calma. Encima flota la app real: Veta Wallet, con el nombre de Orden Global. | Primer plano · 50 mm · hora azul con la luz cálida del taller detrás | «El primer paso ya existe: Orden Global.» | Tarjeta flotante: captura real de Veta Wallet (recortada sin cifras de precio ni enlaces externos) | La campana suave de la app | Corte: ella guarda el teléfono y baja la cortina |
 | 1:56.7 | s42 · 3,0 s | GENERADA | Anochece: Lucía baja la cortina de su taller y se queda mirando su calle (bookend del principio). | Plano medio · 35 mm · luz azul de anochecer + farol | «El futuro lo construimos juntos.» | — | Cortina que baja, calle | Corte a los rostros |
 | 1:59.7 | s43 · 1,2 s | GENERADA | Ingrid en una loma a la hora dorada, mira el valle. | Primer plano · 85 mm | «Para vos. Para tu familia. Para todos.» | — | Viento | Corte |
 | 2:00.9 | s44 · 1,2 s | GENERADA | Kevin abraza a su hermana en la puerta de la casa. | Plano medio · 50 mm | — | — | Colonia de noche | Corte |
@@ -272,7 +272,7 @@ Duración total: **132,3 s** (2:12.3). Voz de Lucía: 91,3 s en 24 frases; el re
 | 2:03.4 | s46 · 5,4 s | GRÁFICO | Mapa: Centroamérica en oro sobre negro; la cámara se abre y aparece Latinoamérica entera. | Cenital · zoom out lento | «Y si empezamos por Centroamérica...» «¿por qué no toda Latinoamérica?» | «¿Por qué no toda Latinoamérica?» | Acorde sostenido; 1 s de silencio antes de la pregunta | Corte a negro |
 | 2:08.8 | s47 · 3,5 s | GRÁFICO | Cierre en negro: ORDEN GLOBAL · Sistema Financiero Social · ordenglobal.org | Fijo | — | ORDEN GLOBAL / Sistema Financiero Social / ordenglobal.org · letra chica: «Material informativo; no constituye oferta de valores ni de inversión. Imágenes ilustrativas generadas con IA.» | El motivo de marimba resuelve; las dos campanas de Orden Global | Fin |
 
-39 tomas generadas → 84 clips (3 tomas en las que sostienen la película, 2 en el resto).
+40 tomas generadas → 86 clips (3 tomas en las que sostienen la película, 2 en el resto).
 <!-- /TABLAS -->
 
 ---
@@ -295,9 +295,9 @@ Duración total: **132,3 s** (2:12.3). Voz de Lucía: 91,3 s en 24 frases; el re
 | Fuente | Tomas | Cómo se consigue |
 |---|---|---|
 | **Archivo auténtico** | s01 Bukele, s05 Morazán | Bukele: el discurso original, no el recorte de TikTok (§9). Morazán: óleo de dominio público; en Commons está a 307×467, hay que buscarlo en alta |
-| **Captura real** | s16 Veta Wallet (pago y Genesis ID), s41 OrdenScan en vivo | La web real de Veta con datos ficticios (`capturar_veta.py`); OrdenScan se graba en vivo |
+| **Captura real** | s16 y s41: Veta Wallet (pago, Genesis ID, la cuenta de Lucía) | La web real de Veta con datos ficticios (`capturar_veta.py`), en tarjeta flotante y recortada sin cifras de precio ni enlaces externos. **OrdenScan no sale** |
 | **Gráfico** | s06, s31, s34, s46, s47 y tipografía | Mapas en código con Natural Earth (dominio público), estética de la presentación: marfil, negro, dorado. El logo nunca lo genera la IA |
-| **Recreación generada** | 39 tomas | MiniMax H3; con foto de casting (ref2va) donde hay personaje. Todas se rotulan como imágenes ilustrativas |
+| **Recreación generada** | 40 tomas | MiniMax H3; con foto de casting (ref2va) donde hay personaje. Todas se rotulan como imágenes ilustrativas |
 
 **Estética, traída de la presentación a la vida:**
 - **Negro, marfil y dorado.** El dorado es luz (amanecer, atardecer, bombillo de la mesa) y trazo de mapa; nunca lingotes ni monedas.
@@ -308,7 +308,7 @@ Duración total: **132,3 s** (2:12.3). Voz de Lucía: 91,3 s en 24 frases; el re
 
 ### Prompts (continuidad)
 
-Los 39 prompts completos están en `prompts/pelicula4_abrir.json`. Salen de
+Los 40 prompts completos están en `prompts/pelicula4_abrir.json`. Salen de
 `montaje/plan_abrir.py`, con la misma biblia de personajes en cada uno.
 
 **Look común:**
@@ -364,7 +364,7 @@ a la expansión.
 - comal de la pupusería;
 - platos y risas;
 - grillos y pelota;
-- un tic por cada bloque de la cadena.
+- la campana suave de la app al final.
 
 Los ambientes se diseñan aparte, no con el audio que trae el clip: en «Un
 martes» ese audio metía ruidos raros. La voz baja la música con compresión por
@@ -387,7 +387,7 @@ Las mismas frases grabadas, así que las duraciones también son medidas.
 | 0:21 | Plan de noche, evaluación, máquina | Crear con DBNX un mercado para nuestras empresas. Abrir caminos para que un taller como el mío pueda crecer… y contratar. |
 | 0:31 | El delantal: la mirada | (sin voz) |
 | 0:34 | La mesa de Kevin | Porque una oportunidad para una empresa puede convertirse en una oportunidad para toda una familia. |
-| 0:41 | OrdenScan en vivo, Lucía cierra | El primer paso ya existe: Orden Global. |
+| 0:41 | Veta Wallet en el teléfono de Lucía; baja la cortina | El primer paso ya existe: Orden Global. |
 | 0:44 | Ingrid, Kevin, Mariela | Para vos. Para tu familia. Para todos. |
 | 0:48 | El mapa se abre | Y si empezamos por Centroamérica… ¿por qué no toda Latinoamérica? |
 | 0:54 | Cierre | — |
@@ -447,7 +447,7 @@ suyo.
 
 **Lo que haría que su equipo pregunte por Orden Global:**
 - el nivel de la pieza;
-- que el primer paso es comprobable (la cadena y OrdenScan);
+- que el primer paso ya funciona (Veta Wallet);
 - que respeta su idea sin apropiársela.
 
 **El camino de entrada:**
@@ -461,10 +461,10 @@ Sin etiquetarlo y sin pautar con su imagen.
 ## 8. Producción: pasos, tiempo y costo
 
 1. **Casting** de Kevin, Ingrid y Mariela: 4 opciones cada uno. Unos 15 min de GPU, ~$1. Elijo yo, como en «Un martes».
-2. **Rodaje:** 39 tomas generadas → 84 clips (3 tomas en las seis que sostienen la película). Dos máquinas en Mumbai, ~3 h de reloj, **~$13 en Spot**. Se apagan solas.
+2. **Rodaje:** 40 tomas generadas → 86 clips (3 tomas en las seis que sostienen la película). Dos máquinas en Mumbai, ~3 h de reloj, **~$13 en Spot**. Se apagan solas.
 3. **En paralelo, sin GPU:**
    - mapas;
-   - capturas reales de Veta y OrdenScan;
+   - capturas reales de Veta Wallet;
    - tipografía;
    - música a medida y ambientes;
    - la voz ya está grabada y medida.
@@ -499,7 +499,7 @@ esta película evita el punto que más retomas pidió allí: los labios.
 5. **Lo que dice la película, contra lo que existe.**
    - **ORIGEN:** solo «referenciada al oro». La web lo dice igual: no respaldada, no se canjea por metal, no promete ganancias.
    - **De la presentación no pasa a la película:** «válida en los 7 países» (Genesis ID), «verificados y custodiados», «pensada para emitirse contra recursos reales» ni «una sola comisión mínima».
-   - **«El primer paso ya existe»:** apunta a lo comprobable hoy: Veta Wallet, OrdenScan y la cadena 5550 con siete validadores y un bloque cada diez segundos. Se verifica el día del montaje.
+   - **«El primer paso ya existe»:** apunta a lo que ya funciona: Veta Wallet con Genesis ID. **OrdenScan no se muestra.**
    - **Las cifras «15 series · 11 contratos · 553 pruebas»:** solo si el equipo las confirma.
 6. **DBNX.** La web lo define como «quién puede emitir, admitido y supervisado». La película solo dice propósito («crear un mercado», «acercar proyectos al capital»): sin empresas listadas, cotizaciones ni capital captado.
 7. **Minería y tren.**
