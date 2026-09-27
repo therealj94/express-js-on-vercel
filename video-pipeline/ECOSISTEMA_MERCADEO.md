@@ -97,9 +97,9 @@ puede es **publicarla** hasta que cada escena sea verdad.
 
 | Escena | Enseña | Se publica cuando… |
 |---|---|---|
-| 6:40 envío a la hija | Veta: mandar ORIGEN a otro país | …la hija pueda **usar** lo que recibe allá: el puente a moneda local de su país (AuCorp/Ordenex) opera con gente real. Hoy la lista veta «remesas» y «tu familia lo cobra en efectivo» |
+| 6:40 envío a la hija | Veta: mandar ORIGEN a otro país (El Salvador → Madrid) | …la hija pueda **usar** lo que recibe allá: el puente a moneda local de su país (AuCorp/Ordenex) opera con gente real. Hoy la lista veta «remesas» y «tu familia lo cobra en efectivo» |
 | 6:40 boleto | Visa virtual en línea | …la tarjeta recarga bien (§4.1), D15 aprobada y se confirma el emisor |
-| 10:15 floristería | MyTokenPay: QR | …hay al menos un comercio real cobrando. Mejor aún: **ese comercio sale en el vídeo** |
+| 10:15 floristería | MyTokenPay: QR | …hay al menos un comercio real cobrando **en El Salvador y en USD** (hoy MyTokenPay solo liquida en lempiras; las capturas del vídeo muestran «$» por edición). Mejor aún: **ese comercio sale en el vídeo** |
 | 13:30 almuerzo | Dividir la cuenta | …igual que la floristería |
 | 15:40 proveedor | Pago a otro país | …el proveedor pueda pasarlo a su moneda en su país |
 | 18:30 florista cierra | Retiro a lempiras | …el retiro deja de ser manual o, si sigue manual, llega el mismo día |

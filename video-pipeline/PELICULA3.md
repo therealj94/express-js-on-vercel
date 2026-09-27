@@ -27,6 +27,45 @@ al revés.
 noche con otra. Todo lo de en medio —la floristería, el almuerzo, el
 proveedor— es la vida que pasa entre esas dos notas.
 
+### Versión 4 (27-sep, tras ver el primer corte)
+
+José vio el corte y señaló lo que un espectador nota en un segundo. Qué cambió:
+
+- **Contexto antes de la emoción.** Abre en **San Salvador · 6:40 a. m.** (la
+  ciudad despierta, luego la cocina) con la nota de voz de la hija encima; la
+  hija vive en **Madrid**. Su escena dice «Madrid · 5:10 a. m.» y el final
+  «San Salvador · 18 de diciembre». Se entiende sin explicarlo: son 8 h de
+  diferencia y un océano.
+- **Las voces salen de las bocas.** Los planos donde alguien habla se ruedan
+  con ref2va: foto de casting + la voz elegida como referencia de timbre, y la
+  línea dentro del prompt. El modelo mueve los labios con esa voz. Una nota de
+  voz se ve como una nota de voz: habla al teléfono y luego lo mira.
+- **La app ya no tapa el plano.** Las pantallas son tarjetas flotantes en el
+  tercio inferior; las notas de voz, una onda con la frase en cursiva que
+  aparece al ritmo de la voz; el chat final, burbujas.
+- **Tipografía de cine, no de presentación.** Fuera las palabras gigantes
+  (ENVIAR.). Hora en mono espaciada con una línea dorada; citas en Fraunces
+  Italic.
+- **Almuerzo que se entiende.** Primero el regalo (los girasoles de la mañana
+  eran para la amiga del cumpleaños: el ramo ya no aparece de la nada); la
+  amiga habla, el escéptico pregunta, el dueño mira su teléfono y levanta el
+  pulgar.
+- **Boleto en el teléfono**, no en una laptop con captura de celular.
+- **Fuera la toma del teléfono pegado a la camisa.**
+
+| Hora | Plano |
+|---|---|
+| San Salvador · 6:40 a. m. | Ciudad → cocina; nota de voz de la hija; envía y compra el boleto |
+| 10:15 | Floristería: girasoles, paga con QR |
+| 12:10 | Pausa en el taller: ONDK |
+| 1:30 p. m. | Regalo, cuenta, cada uno paga lo suyo; diálogo sincronizado; el dueño confirma |
+| 3:40 | Llamada del proveedor, pago, él lo ve y lo dice a cámara de su bodega |
+| 9:10 p. m. / Madrid · 5:10 a. m. | Sofá; la hija, en su cuarto, habla; burbujas «¿Cómo te fue hoy?» — «Bien, mija. Un martes.» |
+| San Salvador · 18 de diciembre | Aeropuerto y abrazo |
+
+**Duración:** 89,8 s (`prompts/pelicula3_montaje.json` v4). Música recompuesta
+a 90,5 s con el acorde abriéndose cuando aparece la hija (67,2 s).
+
 ### Versión 2 (27-sep, tras la crítica)
 
 Qué cambió y por qué:
