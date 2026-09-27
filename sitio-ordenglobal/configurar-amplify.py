@@ -26,7 +26,11 @@ for pat in ["/seq/**","/audio/**","/assets/fuentes/**","/assets/*.png","/assets/
 # Los videos, sus pósteres y el logo en SVG no llevan versión: una semana.
 for pat in ["/assets/*.css","/assets/*.js","/assets/*.svg","/assets/medios/**"]:
     headers.append({"pattern":pat,"headers":cache("public, max-age=604800")})
-rules=[{"source":"/<*>","target":"/404.html","status":"404"}]
+# "404-200" es la reescritura: sirve 404.html con estado 404 en la misma
+# dirección. "404" a secas Amplify lo ejecuta como redirección (302 a
+# /404.html, que termina en 200). El 301 que agrega la barra final a las
+# direcciones sin extensión es de Amplify y ninguna regla lo quita.
+rules=[{"source":"/<*>","target":"/404.html","status":"404-200"}]
 r=am.update_app(appId=A, customHeaders=json.dumps({"customHeaders": headers}), customRules=rules)
 app=am.get_app(appId=A)['app']
 print("rules:", app.get('customRules'))
