@@ -52,6 +52,10 @@ export interface WellDef {
   lente?: string
   zoom?: number
   natura: Natura
+  /* En qué plano orbita y en qué ángulo empezó: de ahí sale dónde está en
+     cada cuadro (ver LAS ÓRBITAS). */
+  banda: 0 | 1
+  ang: number
 }
 
 /* LA FUSIÓN CON ORDEN GLOBAL. Los pozos son las casas REALES del ecosistema:
@@ -200,7 +204,7 @@ const PLANO = {
    a 31 — dos centros bien separados y una casa igualmente imposible de tocar. */
 const ESTIRAR = 1.05
 
-function anillo(lista: Casa[], i: number, banda: 0 | 1): THREE.Vector3 {
+function anguloDe(lista: Casa[], i: number, banda: 0 | 1): number {
   const enBanda = lista.filter((c) => c.banda === banda)
   const idx = enBanda.findIndex((c) => c.key === lista[i].key)
   const n = Math.max(1, enBanda.length)
@@ -211,7 +215,12 @@ function anillo(lista: Casa[], i: number, banda: 0 | 1): THREE.Vector3 {
      plano termina de cruzarlos, para que una casa de arriba no caiga sobre la
      de abajo. */
   const giro = 0.65 + Math.PI / n + (banda === 1 ? Math.PI / (n * 2) : 0) + P.fase
-  const a = giro + (idx / n) * Math.PI * 2
+  return giro + (idx / n) * Math.PI * 2
+}
+
+/* Dónde cae una casa de ese plano cuando está en el ángulo `a`. */
+function enOrbita(banda: 0 | 1, a: number, out: THREE.Vector3): THREE.Vector3 {
+  const P = PLANO[banda]
   const r = RADIO_ANILLO * P.r
   /* Y dentro de cada plano, las casas siguen sin estar todas a la misma
      altura: el vaivén le da hondura al conjunto y evita que se lea como dos
@@ -219,7 +228,11 @@ function anillo(lista: Casa[], i: number, banda: 0 | 1): THREE.Vector3 {
   const onda = banda === 0
     ? -Math.cos(a - 0.65) * 1.15
     : Math.sin(a * 2 + 1.7) * 1.2
-  return new THREE.Vector3(Math.cos(a) * r, P.alto + onda * 1.5, Math.sin(a) * r * ESTIRAR)
+  return out.set(Math.cos(a) * r, P.alto + onda * 1.5, Math.sin(a) * r * ESTIRAR)
+}
+
+function anillo(lista: Casa[], i: number, banda: 0 | 1): THREE.Vector3 {
+  return enOrbita(banda, anguloDe(lista, i, banda), new THREE.Vector3())
 }
 
 export function buildWellDefs(gal: Galaxy): WellDef[] {
@@ -239,6 +252,8 @@ export function buildWellDefs(gal: Galaxy): WellDef[] {
       intent: c.intent,
       arch: c.arch,
       anchor: anillo(lista, i, c.banda),
+      banda: c.banda,
+      ang: anguloDe(lista, i, c.banda),
       pathIdx: node.pathIdx,
       t: node.t,
       scale: c.peso,
@@ -323,8 +338,129 @@ const tmpQ = new THREE.Vector3()
    Cada mundo deja aquí su círculo en píxeles en cada cuadro; el rótulo lee el
    de los demás. Se usa el del cuadro ANTERIOR, que a sesenta por segundo es
    invisible y evita depender del orden en que React dibuje los mundos. */
-const enPantalla = new Map<string, { x: number; y: number; r: number }>()
+const enPantalla = new Map<string, { x: number; y: number; r: number; d: number; k: number }>()
 const tmpA = new THREE.Vector3()
+
+/* ── LAS ÓRBITAS DE VERDAD, Y LOS CHOQUES ────────────────────────────────────
+ *
+ * Hasta el 27-sep las casas estaban clavadas: giraba la cámara, no el sistema.
+ * José pidió «giros gravitacionales y que choquen las esferas entre sí para
+ * evitar que se crucen». Así que ahora:
+ *
+ *  · ORBITAN alrededor de AU-RA con el ritmo de Kepler: la velocidad angular
+ *    cae con el radio a la 1,5, así que el plano de adentro adelanta al de
+ *    afuera como en un sistema de verdad. Cada plano gira entero, de modo que
+ *    dentro de un plano nadie alcanza a nadie.
+ *  · CHOCAN. Lo que se ve mal no es que dos esferas se toquen en el espacio
+ *    —los planos están a seis unidades de altura— sino que se ENCIMEN EN
+ *    PANTALLA al pasar una por delante de otra. Así que el choque se mide
+ *    donde se ve: si dos discos proyectados se van a montar, la esfera de
+ *    atrás recibe un empujón en el plano de la cámara, y un resorte con poco
+ *    amortiguamiento la devuelve a su órbita cuando queda libre. Se lee como
+ *    dos cuerpos que se apartan, no como un salto. El sol cuenta como un
+ *    cuerpo más: nadie le tapa la ventana a AU-RA.
+ *  · SE QUEDAN QUIETAS cuando moverse estorba: durante el vuelo a una casa
+ *    (la cámara va hacia un punto fijo), con una casa abierta, durante la
+ *    película de presentación y con «reducir movimiento».
+ */
+const VUELTA_ADENTRO_S = 150
+const OMEGA: Record<0 | 1, number> = {
+  0: (Math.PI * 2) / VUELTA_ADENTRO_S,
+  1: ((Math.PI * 2) / VUELTA_ADENTRO_S) * Math.pow(PLANO[0].r / PLANO[1].r, 1.5) * 0.8,
+}
+const orbita = { reloj: 0, marcha: 0, cuadro: -1 }
+const empujes = new Map<string, { p: THREE.Vector3; v: THREE.Vector3 }>()
+/* La caja de cada nombre en el cuadro anterior, para que dos nombres no se
+   escriban uno encima del otro cuando las órbitas los juntan. */
+const cajasNombre = new Map<string, { x: number; y: number; w: number; h: number; d: number; op: number }>()
+const derecha = new THREE.Vector3()
+const arriba = new THREE.Vector3()
+const tmpO = new THREE.Vector3()
+
+function empujeDe(key: string) {
+  let e = empujes.get(key)
+  if (!e) empujes.set(key, (e = { p: new THREE.Vector3(), v: new THREE.Vector3() }))
+  return e
+}
+
+/* Un paso del sistema por cuadro, lo pida el mundo que lo pida primero. */
+function avanzarSistema(state: { clock: THREE.Clock; camera: THREE.Camera; size: { width: number; height: number } }, dt: number) {
+  if (orbita.cuadro === state.clock.elapsedTime) return
+  orbita.cuadro = state.clock.elapsedTime
+  const paso = Math.min(dt, 0.1)
+
+  const quieto = sim.reducedMotion || !rig.enabled || sim.pelicula !== 0
+    || !!useUiStore.getState().activeId
+  /* Parar es al instante (el vuelo apunta a donde ESTÁ la casa); arrancar,
+     de a poco, como algo con masa. */
+  orbita.marcha = quieto ? 0 : Math.min(1, orbita.marcha + paso * 0.6)
+  orbita.reloj += paso * orbita.marcha
+
+  /* Los choques, medidos sobre los discos del cuadro anterior. */
+  derecha.setFromMatrixColumn(state.camera.matrixWorld, 0)
+  arriba.setFromMatrixColumn(state.camera.matrixWorld, 1)
+  const cuerpos = [...enPantalla.entries()]
+  const nucleo = (window as any).__AE_NUCLEO as { r: number } | undefined
+  if (nucleo) {
+    tmpN.set(0, 0, 0).project(state.camera)
+    const dN = state.camera.position.length()
+    const k = state.size.height
+      / (2 * Math.tan((state.camera as THREE.PerspectiveCamera).fov * Math.PI / 360) * Math.max(0.001, dN))
+    if (tmpN.z < 1) cuerpos.push(['__nucleo', {
+      x: (tmpN.x * 0.5 + 0.5) * state.size.width, y: (-tmpN.y * 0.5 + 0.5) * state.size.height,
+      r: nucleo.r * k, d: -Infinity, k }])
+  }
+  // solo para medir cuánto aportan los choques: una prueba los apaga
+  const conChoques = !(window as any).__AE_SIN_CHOQUES
+  for (let i = 0; conChoques && i < cuerpos.length; i++) {
+    for (let j = i + 1; j < cuerpos.length; j++) {
+      const [ka, a] = cuerpos[i]
+      const [kb, b] = cuerpos[j]
+      // se aparta el de ATRÁS; el núcleo no se mueve nunca
+      const [kLejos, lejos, cerca] = a.d > b.d ? [ka, a, b] : [kb, b, a]
+      if (kLejos === '__nucleo') continue
+      const hace = (a.r + b.r) * 1.08 + 8
+      let dx = lejos.x - cerca.x
+      let dy = lejos.y - cerca.y
+      const dist = Math.hypot(dx, dy)
+      if (dist >= hace) continue
+      if (dist < 0.5) { dx = 0; dy = 1 } else { dx /= dist; dy /= dist }
+      // píxeles que sobran -> unidades del mundo a la distancia de esa casa
+      const mundo = (hace - dist) / Math.max(1e-3, lejos.k)
+      const e = empujeDe(kLejos)
+      e.v.addScaledVector(derecha, dx * mundo * 20 * paso)
+      e.v.addScaledVector(arriba, -dy * mundo * 20 * paso)
+    }
+  }
+  /* El resorte que devuelve cada casa a su órbita. Poco amortiguado a
+     propósito: un rebote corto es lo que hace que se lea como un choque. */
+  for (const e of empujes.values()) {
+    e.v.addScaledVector(e.p, -2.2 * paso)
+    e.v.multiplyScalar(Math.exp(-2.6 * paso))
+    e.p.addScaledVector(e.v, paso)
+    if (e.p.length() > 3.2) e.p.setLength(3.2)
+  }
+}
+
+/* Para que una prueba pueda recorrer las órbitas sin esperar minutos: adelanta
+   el reloj, y enseña los discos en pantalla del último cuadro. */
+if (typeof window !== 'undefined') {
+  const w = window as any
+  w.__AE_ORBITA = (seg?: number) => {
+    if (typeof seg === 'number') orbita.reloj += seg
+    return { reloj: orbita.reloj, marcha: orbita.marcha }
+  }
+  w.__AE_DISCOS = () => Object.fromEntries([...enPantalla.entries()].map(([k, o]) => [k, { x: o.x, y: o.y, r: o.r, d: o.d }]))
+}
+
+/* Dónde está una casa AHORA: su órbita más el empujón que le quede. */
+function dondeEsta(def: WellDef, out: THREE.Vector3): THREE.Vector3 {
+  enOrbita(def.banda, def.ang + OMEGA[def.banda] * orbita.reloj, out)
+  const e = empujes.get(def.key)
+  if (e) out.add(e.p)
+  return out
+}
+const tmpN = new THREE.Vector3()
 
 function makeAtmoMaterial(color: string, density: number) {
   return new THREE.ShaderMaterial({
@@ -424,6 +560,8 @@ function WellView({ def }: { def: WellDef }) {
   const halo = useRef<THREE.Sprite>(null)
   const emblema = useRef<THREE.Sprite>(null)
   const letrero = useRef<THREE.Sprite>(null)
+  // 1 = el nombre está libre, 0 = cae sobre otro mundo (suavizado entre cuadros)
+  const tapaSuave = useRef(1)
 
   const selected = useUiStore((s) => s.selectedId === def.key)
 
@@ -479,8 +617,10 @@ function WellView({ def }: { def: WellDef }) {
     const vivo = 1 - sim.vacio
     g.scale.setScalar(Math.max(0.001, vivo))
     g.visible = vivo > 0.01
+    avanzarSistema(state, dt)
+    const ahora = dondeEsta(def, tmpO)
     const bob = Math.sin(sim.now * 0.5 + seed) * 0.14
-    tmpV.copy(sim.tuLuz).sub(def.anchor)
+    tmpV.copy(sim.tuLuz).sub(ahora)
     const dist = tmpV.length()
     const falloff = Math.max(0, 1 - dist / 14)
     tmpV.normalize().multiplyScalar(0.3 * falloff)
@@ -490,7 +630,7 @@ function WellView({ def }: { def: WellDef }) {
        mezclada. Por eso se acomodan mientras la cámara se acerca, en un solo
        movimiento. */
     const q = sim.acomodo
-    const base = q > 0.001 ? tmpA.copy(def.anchor).lerp(disperso, q) : def.anchor
+    const base = q > 0.001 ? tmpA.copy(ahora).lerp(disperso, q) : ahora
     g.position.set(
       base.x + tmpV.x,
       base.y + bob + tmpV.y * 0.5,
@@ -603,7 +743,7 @@ function WellView({ def }: { def: WellDef }) {
         / (2 * Math.tan((state.camera as THREE.PerspectiveCamera).fov * Math.PI / 360) * d)
       const miX = (tmpP.x * 0.5 + 0.5) * state.size.width
       const miY = (-tmpP.y * 0.5 + 0.5) * state.size.height
-      enPantalla.set(def.key, { x: miX, y: miY, r: R * porMundo })
+      enPantalla.set(def.key, { x: miX, y: miY, r: R * porMundo, d, k: porMundo })
 
       /* EL LETRERO NO CRECE CON EL PLANETA. Su tamaño en PANTALLA es el mismo
          para todas las casas —proporcional a la distancia, nada más—, así que
@@ -683,7 +823,17 @@ function WellView({ def }: { def: WellDef }) {
          mueva las órbitas — y también al zoom, que es la misma pregunta. */
       const d0 = Math.max(6, rig.radius * 0.89)
       const estrechez = THREE.MathUtils.clamp(1200 / Math.max(1, state.size.width), 1, 3)
-      const lejania = THREE.MathUtils.clamp(1 - (d - d0) / (22 / estrechez), 0, 1)
+      const lejaniaCruda = THREE.MathUtils.clamp(1 - (d - d0) / (22 / estrechez), 0, 1)
+      /* NÍTIDO O AUSENTE. La caída dejaba nombres a 0,2-0,4 de opacidad: ni se
+         leían ni se iban, y en el teléfono «ORDENSCAN» y «DBNX» parecían
+         manchas o un fallo de pantalla. Ahora un nombre que se enseña se lee
+         (0,9 como mínimo) y uno que no, se va; la franja entre los dos es corta
+         y suave para que no parpadeen al girar. Quiénes se ven sigue saliendo
+         de la misma cuenta, así que el reparto que evita que se monten no se
+         toca. El logo del planeta sigue diciendo qué casa es. */
+      const lejania = lejaniaCruda >= 0.3
+        ? Math.max(0.9, lejaniaCruda)
+        : THREE.MathUtils.smoothstep(lejaniaCruda, 0.15, 0.3) * 0.9
       /* En la puerta el sistema se mira de lejos y en silencio: los nombres
          aparecen recién cuando la persona entra. */
       const puerta = (window as any).__AE_PUERTA ? 0 : 1
@@ -693,27 +843,13 @@ function WellView({ def }: { def: WellDef }) {
          revés — no hay HTML, así que este es el único que hay. */
       const cineL = sim.pelicula === 1 ? 0
         : sim.pelicula === 2 ? (selected ? 1 : 0) : 1
-      const op = puerta * cineL * (1 - sim.noche)
-        * (alBorde ? Math.min(0.12, lejania) : selected ? 1 : lejania)
-      ;(letrero.current.material as THREE.SpriteMaterial).opacity = op
-      /* Para que una prueba pueda ver lo que una foto no distingue: un
-         rótulo apagado y uno fuera de cuadro se ven igual. */
       const w = window as any
-      ;(w.__AE_ROTULO_OP ||= {})[def.key] = op
-      /* Y QUÉ DICE. Un rótulo que enseña una palabra que no debería —«NULL»,
-         por ejemplo— es de las pocas cosas que arruinan un cielo entero, y
-         desde fuera no hay manera de leerlo: está pintado en una textura. */
-      ;(w.__AE_ROTULO_TXT ||= {})[def.key] = def.name
-      /* Y a qué distancia está. Sin esto, calibrar el desvanecido es adivinar:
-         la opacidad sale de `d` y desde fuera `d` no se ve. */
-      ;(w.__AE_ROTULO_D ||= {})[def.key] = d
-      /* ── Y DÓNDE CAE, EN PÍXELES DE PANTALLA ────────────────────────────
+      /* ── DÓNDE CAE, EN PÍXELES DE PANTALLA ──────────────────────────────
          Con la opacidad sola no se puede saber si dos nombres se pisan: son
          texturas 3D, no hay caja del DOM que medir, y una foto no distingue
          «montado» de «justo al lado». Acá se proyecta el letrero —su centro y
-         sus dos esquinas— y se publica la caja en píxeles. Con eso una prueba
-         puede afirmar que ningún nombre se monta sobre otro ni sobre un
-         planeta, que es lo que se ve mal y hasta hoy se juzgaba a ojo. */
+         su alto— y se publica la caja en píxeles. Va ANTES de la opacidad
+         porque de la caja sale si el nombre se puede enseñar. */
       const anchoM = letrero.current.scale.x / 2
       const altoM = letrero.current.scale.y / 2
       letrero.current.getWorldPosition(tmpP)
@@ -727,8 +863,60 @@ function WellView({ def }: { def: WellDef }) {
       tmpQ.addScaledVector(state.camera.up, altoM)
       tmpQ.project(state.camera)
       const hpx = Math.abs((-tmpQ.y * 0.5 + 0.5) * state.size.height - cy) * 2
-      ;(w.__AE_ROTULO_CAJA ||= {})[def.key] =
-        { x: cx, y: cy, w: (hpx * anchoM) / Math.max(0.001, altoM), h: hpx, op }
+      const wpx = (hpx * anchoM) / Math.max(0.001, altoM)
+
+      /* ── UN NOMBRE NO SE ESCRIBE SOBRE OTRO MUNDO ───────────────────────
+         Con los nombres nítidos, uno que caía encima de un planeta ajeno se
+         leía como el nombre de ESE planeta: «ORDENSCAN» atravesando Veta
+         Wallet, «DBNX» sobre Genesis Core, «ORDENEX» cortado por el sol. Si la
+         caja del letrero entra en el disco de una casa MÁS CERCANA que la suya
+         —o del núcleo—, se calla. Sobre una casa de más atrás el nombre sigue:
+         es de un mundo de delante y se lee como tal, y apagarlo dejaba a Veta
+         Wallet sin nombre en el teléfono por rozar a AuCorp; vuelve sola cuando el giro lo despeja. El de la casa elegida se
+         enseña siempre. Los círculos son los del cuadro anterior (ver
+         `enPantalla`), y se encogen un poco: rozar el borde de un halo no es
+         taparlo. */
+      let tapa = 0
+      const pisa = (o: { x: number; y: number; r: number }) => {
+        const rr = o.r * 0.82
+        const dx = Math.max(Math.abs(cx - o.x) - wpx * 0.42, 0)
+        const dy = Math.max(Math.abs(cy - o.y) - hpx * 0.32, 0)
+        return dx * dx + dy * dy < rr * rr
+      }
+      for (const [k, o] of enPantalla) if (k !== def.key && o.d < d && pisa(o)) { tapa = 1; break }
+      /* Y tampoco sobre el nombre de una casa más cercana que se esté leyendo:
+         con las órbitas, dos nombres pueden coincidir en el mismo renglón. */
+      if (!tapa) for (const [k, c] of cajasNombre) {
+        if (k === def.key || c.d >= d || c.op < 0.3) continue
+        if (Math.abs(c.x - cx) < (c.w + wpx) * 0.5 + 6 && Math.abs(c.y - cy) < (c.h + hpx) * 0.5 + 2) { tapa = 1; break }
+      }
+      const nucleo = w.__AE_NUCLEO as { r: number } | undefined
+      if (!tapa && nucleo) {
+        tmpN.set(0, 0, 0).project(state.camera)
+        const dN = state.camera.position.length()
+        const pxN = state.size.height
+          / (2 * Math.tan((state.camera as THREE.PerspectiveCamera).fov * Math.PI / 360) * Math.max(0.001, dN))
+        if (tmpN.z < 1 && pisa({ x: (tmpN.x * 0.5 + 0.5) * state.size.width,
+          y: (-tmpN.y * 0.5 + 0.5) * state.size.height, r: nucleo.r * pxN })) tapa = 1
+      }
+      /* Suave al irse y al volver, para que girar no los haga parpadear. */
+      const libre = tapaSuave.current += ((1 - tapa) - tapaSuave.current) * 0.18
+
+      const op = puerta * cineL * (1 - sim.noche)
+        * (alBorde ? Math.min(0.12, lejania) : selected ? 1 : lejania * libre)
+      ;(letrero.current.material as THREE.SpriteMaterial).opacity = op
+      /* Para que una prueba pueda ver lo que una foto no distingue: un
+         rótulo apagado y uno fuera de cuadro se ven igual. */
+      ;(w.__AE_ROTULO_OP ||= {})[def.key] = op
+      /* Y QUÉ DICE. Un rótulo que enseña una palabra que no debería —«NULL»,
+         por ejemplo— es de las pocas cosas que arruinan un cielo entero, y
+         desde fuera no hay manera de leerlo: está pintado en una textura. */
+      ;(w.__AE_ROTULO_TXT ||= {})[def.key] = def.name
+      /* Y a qué distancia está. Sin esto, calibrar el desvanecido es adivinar:
+         la opacidad sale de `d` y desde fuera `d` no se ve. */
+      ;(w.__AE_ROTULO_D ||= {})[def.key] = d
+      ;(w.__AE_ROTULO_CAJA ||= {})[def.key] = { x: cx, y: cy, w: wpx, h: hpx, op }
+      cajasNombre.set(def.key, { x: cx, y: cy, w: wpx, h: hpx, d, op })
     }
 
     if (halo.current) {

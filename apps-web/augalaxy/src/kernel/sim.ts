@@ -120,7 +120,10 @@ export interface MareaPalette {
 }
 
 export const PALETTES: Record<Marea, MareaPalette> = {
-  alba: { filament: '#59d9ff', dust: '#9fe8ff', fog: 0.0075, expo: 1.0 },
+  /* La marea de siempre es la de la casa: órbitas de oro viejo y polvo
+     champán sobre negro. Era cian eléctrico, que no es de Orden Global y
+     peleaba con el oro de cada logo. */
+  alba: { filament: '#c9a961', dust: '#efe3c4', fog: 0.0075, expo: 1.0 },
   pleamar: { filament: '#b96bff', dust: '#e2c4ff', fog: 0.0105, expo: 0.92 },
   bajamar: { filament: '#2a5f8f', dust: '#35506b', fog: 0.0055, expo: 0.8 },
 }

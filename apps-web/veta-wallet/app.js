@@ -6281,7 +6281,7 @@ const VETA = (() => {
   const VETA_V = 'a685349818';
   const VETA_FECHA = '2026-09-24';
 
-  const AET_V = '87c5807a96';
+  const AET_V = '5a41b77ab2';
 
   function aetCargar() {
     if (aetCarga) return aetCarga;

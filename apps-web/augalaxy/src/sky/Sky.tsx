@@ -53,7 +53,9 @@ function Nebulae() {
   const tex = getRadialTexture()
   const g1 = useRef<THREE.Mesh>(null)
   const g2 = useRef<THREE.Mesh>(null)
-  const base = useRef([0.16, 0.12])
+  /* Oro tenue, no azul: la nebulosa daba al Inicio un fondo azul rey de
+     salvapantallas. Ahora es un calor apenas visible detrás del sistema. */
+  const base = useRef([0.1, 0.07])
   useFrame((_, dt) => {
     if (g1.current) g1.current.rotation.z += dt * 0.008
     if (g2.current) g2.current.rotation.z -= dt * 0.006
@@ -65,7 +67,7 @@ function Nebulae() {
   const mkMat = (op: number) => (
     <meshBasicMaterial
       map={tex}
-      color="#3a5cff"
+      color="#8a6a2a"
       transparent
       opacity={op}
       depthWrite={false}

@@ -47,7 +47,7 @@ export function DustLayer({ count, spread, yFlat, size, opacity, dim = 1 }: Dust
         uniforms: {
           uTime: { value: 0 },
           uPixelRatio: { value: 1 },
-          uColor: { value: new THREE.Color('#9fe8ff') },
+          uColor: { value: new THREE.Color('#efe3c4') },
           uOpacity: { value: opacity },
         },
       }),
