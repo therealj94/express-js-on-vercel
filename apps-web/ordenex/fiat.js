@@ -74,7 +74,7 @@ const VFIAT = (() => {
      el módulo y se elige con idiomaActivo(). Español con voseo, como la casa. */
   const TXT = {
     es: {
-      titulo: 'Fiat', sub: 'Entrada y salida en lempiras o dólares, de persona a persona, con agentes verificados.',
+      titulo: 'Fiat', sub: 'Entrada y salida en lempiras o dólares, de persona a persona, con agentes verificados.', subPronto: 'Próximamente: se abre con los primeros agentes.',
       legal: 'El cambio fiat es entre personas con identidad verificada en Genesis ID. Ordenex custodia la garantía en ORIGEN y arbitra si hace falta; el dinero fiat viaja de banco a banco entre las partes — la casa no lo toca.',
       tabComprar: 'Comprar', tabVender: 'Vender', tabSolicitudes: 'Mis solicitudes',
 
@@ -144,7 +144,7 @@ const VFIAT = (() => {
       historiaT: 'Historia',
     },
     en: {
-      titulo: 'Fiat', sub: 'Cash in and out in lempiras or dollars, person to person, through verified agents.',
+      titulo: 'Fiat', sub: 'Cash in and out in lempiras or dollars, person to person, through verified agents.', subPronto: 'Coming soon: it opens with the first agents.',
       legal: 'Fiat exchange happens between people with a verified Genesis ID identity. Ordenex holds the ORIGEN collateral in escrow and arbitrates if needed; fiat money travels bank to bank between the parties — the house never touches it.',
       tabComprar: 'Buy', tabVender: 'Sell', tabSolicitudes: 'My requests',
 
@@ -326,7 +326,7 @@ const VFIAT = (() => {
   function vista() {
     const t = tx();
     return `${ESTILO}
-      <div class="cab"><div><h2>${esc(t.titulo)}</h2><div class="sub">${esc(t.sub)}</div></div></div>
+      <div class="cab"><div><h2>${esc(t.titulo)}</h2><div class="sub">${esc(t.sub)}<span id="ft-pronto">${esc(prontoTxt())}</span></div></div></div>
       <div class="vidrio ft-legal">${esc(t.legal)}</div>
       <div class="ft-tabs" role="tablist">
         ${botonTab('comprar', t.tabComprar)}
@@ -334,6 +334,17 @@ const VFIAT = (() => {
         ${botonTab('solicitudes', t.tabSolicitudes)}
       </div>
       <div id="ft-zona">${zonaHTML()}</div>`;
+  }
+
+  /* «Próximamente» sale de la lista real de agentes, no del texto: con la
+     lista cargada y vacía se dice; en cuanto la casa da de alta al primero,
+     desaparece sola, sin volver a publicar. Mientras no se sabe, nada. */
+  function prontoTxt() {
+    return Array.isArray(agentesCache) && agentesCache.length === 0 ? ' ' + tx().subPronto : '';
+  }
+  function pintarPronto() {
+    const el = document.getElementById('ft-pronto');
+    if (el) el.textContent = prontoTxt();
   }
 
   const botonTab = (cual, texto) =>
@@ -811,6 +822,7 @@ const VFIAT = (() => {
       if (mia !== carga || pestana === 'solicitudes') return;
       agentesCache = Array.isArray(lista) ? lista : [];
       falloAgentes = false;
+      pintarPronto();
     } catch {
       if (mia !== carga || pestana === 'solicitudes') return;
       // Se dice «no llegaron», no «no hay»: si había una lista vieja se deja.
