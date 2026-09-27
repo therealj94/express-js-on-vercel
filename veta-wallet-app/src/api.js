@@ -540,6 +540,12 @@ export async function apiReenviarConfirmacion() {
   return req('/auth/reenviarConfirmacion', { method: 'POST' });
 }
 
+// ¿Ya está confirmada? El dato de la sesión se toma al entrar y queda viejo si
+// la persona confirma desde el correo con la app abierta. Devuelve { confirmado }.
+export async function apiEstadoCorreo() {
+  return req('/auth/estadoCorreo');
+}
+
 export async function apiRegister({ name, email, password }) {
   const body = { name, email, password, fullName: name };
   const rutas = [PATHS.register, '/auth/signup', '/register', '/signup', '/users/register', '/api/auth/register', '/api/register'];

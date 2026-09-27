@@ -114,6 +114,8 @@ export async function importarBilletera(req, res) {
         role: "user",
         isVerified: false,
         verificationToken,
+        // Desde aquí cuentan los 7 días del enlace (lib/reenvioConfirmacion.js).
+        confirmacionEnviadaEn: new Date(),
       });
     } catch (e) {
       /* El índice único es lo que de verdad decide, y gana la carrera que las
@@ -135,13 +137,15 @@ export async function importarBilletera(req, res) {
       asunto: "Confirmá tu cuenta de Veta Wallet",
       texto: `Trajiste tu billetera a Veta Wallet.\n\nConfirmá tu correo para terminar: ${enlace}\n\n` +
         `La dirección que trajiste es ${salida}.\n\n` +
-        `Si no fuiste vos, no hace falta que hagas nada: sin confirmar, el enlace caduca solo.`,
+        `El enlace vale 7 días; si vence, pedí otro desde la app (Ajustes → Reenviar correo de confirmación).\n\n` +
+        `Si no fuiste vos, no hace falta que hagas nada.`,
       html: marco("Confirmá tu cuenta", `
         <p style="margin:0 0 12px;">Trajiste tu billetera a Veta Wallet. Confirmá tu correo para terminar.</p>
         ${botonCorreo("Confirmar mi correo", enlace)}
         <p style="margin:0 0 10px;font-size:13px;">La dirección que trajiste es
           <span style="font-family:ui-monospace,monospace;color:#F3ECD9;">${salida}</span>.</p>
-        <p style="margin:12px 0 0;font-size:13px;">Si no fuiste vos, no hace falta que hagas nada: sin confirmar, el enlace caduca solo.</p>`),
+        <p style="margin:12px 0 0;font-size:13px;">El enlace vale 7 días; si vence, pedí otro desde la app (Ajustes → Reenviar correo de confirmación).</p>
+        <p style="margin:8px 0 0;font-size:13px;">Si no fuiste vos, no hace falta que hagas nada.</p>`),
     });
     if (!r?.ok) console.error("[importar] el correo de confirmación no salió:", r?.motivo);
 

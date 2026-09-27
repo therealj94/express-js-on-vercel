@@ -78,8 +78,27 @@ if (!cuenta.ok) {
 }
 
 // ── 2. las pruebas ─────────────────────────────────────────────────────────
-paso('Las pruebas');
-console.log('  · esta casa todavía no tiene suite propia. Se despliega sin red debajo.');
+paso('Las pruebas, antes de tocar nada');
+/* Decía «esta casa todavía no tiene suite propia» cuando ya había más de cien
+   pruebas en pruebas/. Ahora se corren y, si una falla, no se despliega. Van
+   con TAP (node --test): se cuenta el resumen «# pass / # fail».
+   `--sin-pruebas` existe para una urgencia, y lo dice en voz alta. */
+if (process.argv.includes('--sin-pruebas')) {
+  rojo('  --sin-pruebas: se despliega SIN correr las pruebas.');
+} else {
+  try {
+    const { stdout } = await correr('npm', ['run', 'probar'], {
+      cwd: join(RAIZ, PREFIJO), maxBuffer: 1 << 24,
+    });
+    const pasan = (stdout.match(/^# pass (\d+)$/m) || [])[1] || '?';
+    verde(`✓ ${pasan} pruebas en verde`);
+  } catch (e) {
+    rojo('Las pruebas fallaron. NO se despliega.');
+    const salida = String(e.stdout || e.message);
+    console.log(salida.split('\n').filter((l) => /^not ok|^# (pass|fail)/.test(l)).join('\n'));
+    process.exit(1);
+  }
+}
 
 // ── 3. el paquete ───────────────────────────────────────────────────────────
 paso('Armando el paquete');

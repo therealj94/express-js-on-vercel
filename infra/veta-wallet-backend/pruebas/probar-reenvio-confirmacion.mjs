@@ -104,3 +104,57 @@ test("el alta usa el mismo correo", () => {
   const alta = auth.match(/export const registerUserWallet[\s\S]*?\n};/)?.[0];
   assert.match(alta, /correoConfirmacion\(verificationLink/);
 });
+
+// ── el enlace vence a los 7 días ─────────────────────────────────────────────
+const { enlaceVencido, VIGENCIA_MS } = await import("../lib/reenvioConfirmacion.js");
+
+test("el enlace vale 7 días desde el último envío", () => {
+  const justo = new Date(AHORA.getTime() - VIGENCIA_MS);
+  const pasado = new Date(AHORA.getTime() - VIGENCIA_MS - 1);
+  assert.equal(enlaceVencido({ confirmacionEnviadaEn: justo }, AHORA), false);
+  assert.equal(enlaceVencido({ confirmacionEnviadaEn: pasado }, AHORA), true);
+});
+
+test("sin fecha de envío cuenta desde el alta; sin ninguna, no se bloquea", () => {
+  assert.equal(enlaceVencido({ createdAt: new Date("2023-06-01") }, AHORA), true);
+  assert.equal(enlaceVencido({ createdAt: new Date(AHORA.getTime() - 3600e3) }, AHORA), false);
+  assert.equal(enlaceVencido({}, AHORA), false);
+});
+
+test("un reenvío renueva la vigencia de un enlace viejo", () => {
+  const user = { isVerified: false, verificationToken: TOKEN, createdAt: new Date("2023-06-01") };
+  assert.equal(enlaceVencido(user, AHORA), true);
+  Object.assign(user, decidirReenvio(user, AHORA).cambios);
+  assert.equal(enlaceVencido(user, AHORA), false);
+});
+
+test("el correo ya no promete que el enlace «caduca solo»: dice cuánto dura", () => {
+  const c = correoConfirmacion("https://x.test/v?token=1", { marco: (_t, b) => b, botonCorreo: () => "" });
+  assert.doesNotMatch(c.texto + c.html, /caduca solo/);
+  assert.match(c.texto, /vale 7 días/);
+  assert.doesNotMatch(sinComentarios(leer("controller", "importarController.js")), /caduca solo/);
+});
+
+test("el alta y la importación anotan cuándo salió el enlace", () => {
+  assert.match(sinComentarios(leer("controller", "authController.js")).match(/export const registerUserWallet[\s\S]*?\n};/)[0], /confirmacionEnviadaEn: new Date\(\)/);
+  assert.match(sinComentarios(leer("controller", "importarController.js")), /confirmacionEnviadaEn: new Date\(\)/);
+});
+
+// ── la página de confirmación ────────────────────────────────────────────────
+test("verifyMail responde siempre con una página, también si falla", () => {
+  const auth = sinComentarios(leer("controller", "authController.js"));
+  const trozo = auth.match(/export const verifyMail[\s\S]*?\n};/)[0];
+  for (const e of ["ok", "invalido", "vencido", "error"]) assert.match(trozo, new RegExp(`paginaConfirmacion\\("${e}"\\)`), e);
+  assert.doesNotMatch(trozo, /Email verified successfully/);
+  // vence ANTES de marcar como confirmada
+  assert.ok(trozo.indexOf("enlaceVencido(user)") < trozo.indexOf("user.isVerified = true"));
+});
+
+test("la app sabe al momento si la cuenta ya está confirmada", () => {
+  assert.match(sinComentarios(leer("routes", "auth.js")), /router\.get\('\/estadoCorreo',\s*verifyTokenUser,\s*estadoCorreo\)/);
+});
+
+test("entrar con llave usa la misma vara que el puente: solo `true` es confirmado", () => {
+  const llave = sinComentarios(leer("controller", "llaveController.js"));
+  assert.match(llave, /correoConfirmado:\s*user\.isVerified === true/);
+});

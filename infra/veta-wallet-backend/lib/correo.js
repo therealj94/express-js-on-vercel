@@ -105,12 +105,56 @@ function firmar(cuerpo, fecha = new Date()) {
   };
 }
 
+/* Cómo van los envíos, para /salud. El 27-sep-2026 se descubrió que SES
+   rechazaba la llave desde hacía un tiempo indeterminado: como enviarCorreo no
+   lanza nunca —a propósito, para que un alta no dependa del correo—, el fallo
+   solo quedaba en el registro y nadie lo miraba. Esto lo saca a la vista.
+
+   Vive en memoria: se reinicia con el dyno y cuenta solo lo de este proceso.
+   Un «sin_envios» tras desplegar no es malo; un «fallando» siempre lo es. */
+const ALERTA_TRAS = 3;
+const estado = { ultimoOk: null, ultimoFallo: null, motivo: null, fallosSeguidos: 0 };
+
+function anotar(r) {
+  if (r.ok) {
+    estado.ultimoOk = new Date().toISOString();
+    estado.fallosSeguidos = 0;
+    return;
+  }
+  // Una carta mal armada no dice nada de SES: no cuenta.
+  if (r.motivo === "destinatario sin dirección") return;
+  estado.ultimoFallo = new Date().toISOString();
+  estado.motivo = r.motivo;
+  estado.fallosSeguidos += 1;
+  if (estado.fallosSeguidos === ALERTA_TRAS) {
+    console.error(`[correo] ALERTA: ${ALERTA_TRAS} envíos seguidos fallaron (${r.motivo}). No sale ningún correo: ni confirmaciones ni recuperación de contraseña.`);
+  }
+}
+
+/** Para /salud. Nunca lleva direcciones ni detalles de la cuenta de AWS. */
+export function estadoCorreo() {
+  const situacion = !correoEncendido() ? "apagado"
+    : estado.fallosSeguidos >= ALERTA_TRAS ? "fallando"
+      : estado.ultimoOk || estado.ultimoFallo ? (estado.fallosSeguidos ? "dudoso" : "ok")
+        : "sin_envios";
+  return { estado: situacion, fallosSeguidos: estado.fallosSeguidos, ultimoOk: estado.ultimoOk, ultimoFallo: estado.ultimoFallo, motivo: estado.motivo };
+}
+
+/** Para las pruebas. */
+export const _reiniciarEstadoCorreo = () => Object.assign(estado, { ultimoOk: null, ultimoFallo: null, motivo: null, fallosSeguidos: 0 });
+
 /**
  * Manda un correo. NO lanza nunca: devuelve { ok, id?, motivo? }.
  *
  * @param {{para:string, asunto:string, texto:string, html?:string}} carta
  */
 export async function enviarCorreo(carta) {
+  const r = await enviarCorreoCrudo(carta);
+  anotar(r);
+  return r;
+}
+
+async function enviarCorreoCrudo(carta) {
   if (!correoEncendido()) {
     console.warn("[correo] apagado: faltan SES_DE / SES_LLAVE / SES_SECRETO");
     return { ok: false, motivo: "correo apagado" };

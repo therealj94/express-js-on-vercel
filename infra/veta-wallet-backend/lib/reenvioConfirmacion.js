@@ -16,6 +16,7 @@
 
 export const ESPERA_MS = 2 * 60 * 1000; // entre un envío y el siguiente
 export const MAX_POR_DIA = 5;           // por cuenta y día (UTC)
+export const VIGENCIA_MS = 7 * 24 * 3600 * 1000; // lo que vale un enlace
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -59,6 +60,20 @@ export function decidirReenvio(user, ahora = new Date()) {
   };
 }
 
+/**
+ * ¿Venció el enlace? El correo decía «sin confirmar, el enlace caduca solo» y
+ * no caducaba nunca: un enlace de 2023 seguía confirmando. Ahora vale 7 días
+ * desde el último envío (alta, importación o reenvío). Sin fecha de envío se
+ * cuenta desde el alta. Sin ninguna de las dos no se bloquea: mejor dejar
+ * confirmar que dejar a alguien fuera por un dato que falta.
+ */
+export function enlaceVencido(user, ahora = new Date()) {
+  const base = user?.confirmacionEnviadaEn || user?.createdAt;
+  const t = base ? new Date(base).getTime() : NaN;
+  if (isNaN(t)) return false;
+  return ahora.getTime() - t > VIGENCIA_MS;
+}
+
 /** El correo a medias para mostrarlo en la app: «jo***@gmail.com». */
 export function correoTapado(correo) {
   const c = String(correo || "");
@@ -76,7 +91,9 @@ export function correoConfirmacion(enlace, { marco, botonCorreo }) {
 Para confirmar tu cuenta, entrá en este enlace:
 ${enlace}
 
-Si no creaste esta cuenta, no hagas nada: sin confirmar, el enlace caduca solo.
+El enlace vale 7 días. Si vence, pedí otro desde la app: Ajustes → Reenviar correo de confirmación.
+
+Si no creaste esta cuenta, no hagas nada.
 
 --
 Orden Global Corp
@@ -85,6 +102,7 @@ Nunca te vamos a pedir por correo tu contraseña ni tu frase de respaldo.`,
         <h1 style="margin:0 0 6px;font:700 24px/1.2 Georgia,serif;color:#F3ECD9;">Bienvenido a Veta Wallet</h1>
         <p style="margin:14px 0 0;">Falta un paso: confirmá que este correo es tuyo.</p>
         ${botonCorreo("Confirmar mi cuenta", enlace)}
-        <p style="margin:12px 0 0;font-size:13px;">Si no creaste esta cuenta, no hace falta que hagas nada: sin confirmar, el enlace caduca solo.</p>`),
+        <p style="margin:12px 0 0;font-size:13px;">El enlace vale 7 días. Si vence, pedí otro desde la app: Ajustes → Reenviar correo de confirmación.</p>
+        <p style="margin:8px 0 0;font-size:13px;">Si no creaste esta cuenta, no hace falta que hagas nada.</p>`),
   };
 }

@@ -13,7 +13,16 @@ let fallos = 0
 const ok = (que, cond) => { console.log(`${cond ? '  ok  ' : ' FALLA'}  ${que}`); if (!cond) fallos++ }
 const plano = (s) => s.replace(/\s+/g, ' ')
 
-const c = cartaNovedades({ nombre: 'José Enamorado', correo: 'jose@ordenglobal.org' })
+/* La carta cambia sola con la fecha: el bloque del sorteo (con AUKA, el +18 y
+   las bases) desaparece cuando cierra, el 10-sep-2026. Esta prueba miraba el
+   reloj real y se puso en rojo sola ese día, sin que la carta cambiara. Ahora
+   se miran las dos cartas con la fecha fijada: la del sorteo abierto con todas
+   sus reglas, y la del sorteo cerrado sin rastro de él. */
+const conFecha = (ms, f) => { const real = Date.now; Date.now = () => ms; try { return f() } finally { Date.now = real } }
+const JOSE = { nombre: 'José Enamorado', correo: 'jose@ordenglobal.org' }
+const c = conFecha(Date.UTC(2026, 8, 1), () => cartaNovedades(JOSE))
+const cerrada = conFecha(Date.UTC(2026, 8, 11), () => cartaNovedades(JOSE))
+const todoCerrada = plano(cerrada.html + ' ' + cerrada.texto)
 const todo = plano(c.html + ' ' + c.texto)
 
 console.log('\nLa regla de cobre (Decisión 4 de la Junta)\n')
@@ -27,6 +36,12 @@ ok('lleva el +18', /18 años/.test(todo))
 ok('lleva el enlace a las bases', /sorteo-orden-global/.test(todo))
 ok('dice cuándo cierra', /9 de septiembre/.test(todo))
 ok('dice que no hay que comprar nada', /no hay que comprar nada/i.test(todo))
+
+console.log('\nCon el sorteo cerrado, la carta no lo nombra\n')
+ok('no invita al sorteo', !/sorteo/i.test(todoCerrada))
+ok('no lleva las bases', !/sorteo-orden-global/.test(todoCerrada))
+ok('tampoco dice «respaldado»', !/respaldad/i.test(todoCerrada))
+ok('sigue avisando de que nunca se pide la contraseña', /nunca te vamos a pedir/i.test(todoCerrada))
 
 console.log('\nNo se vende lo que no está abierto\n')
 ok('avisa de que comprar y cambiar siguen en obra', /todavía no están abiertos/.test(todo))

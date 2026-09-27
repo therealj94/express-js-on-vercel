@@ -129,6 +129,7 @@ app.use(helmet({ crossOriginResourcePolicy: false }));
 // ningun freno cualquiera la usaria para hacerles ruido.
 const mongoose = require("mongoose");
 const { JsonRpcProvider } = require("ethers");
+const { estadoCorreo } = require("./lib/correo");
 
 // Sin plazo, un Mongo que no responde —que es distinto de uno que rechaza— deja
 // la peticion colgada, y el monitor marca "tiempo agotado" sin decir de que.
@@ -178,7 +179,10 @@ app.get(
     // cadena — nunca un cero de consuelo, que se confunde con una cadena
     // parada en el bloque cero.
     const ok = mongo && cadena;
-    res.status(ok ? 200 : 503).json({ ok, mongo, cadena, bloque });
+    // El correo va aparte y NO tumba el `ok`: sin correo la billetera sigue
+    // moviendo dinero, y un 503 aquí haría que el guion de despliegue diera
+    // por muerta una versión sana. Se mira `correo.estado`: «fallando» es alarma.
+    res.status(ok ? 200 : 503).json({ ok, mongo, cadena, bloque, correo: estadoCorreo() });
   }
 );
 

@@ -202,7 +202,10 @@ export async function entrarConLlave(req, res) {
       refreshToken,
       user: { id: user._id, email: user.email, name: user.name, address: user.address },
       // Para que la app pueda recordarle que confirme, sin impedirle entrar.
-      correoConfirmado: user.isVerified !== false,
+      // Misma vara que el puente de Genesis (middleware/sesionGenesis.js):
+      // confirmado es `true` y nada más. Antes un dato ausente contaba como
+      // confirmado aquí y como no confirmado en el puente.
+      correoConfirmado: user.isVerified === true,
     });
   } catch (e) {
     console.error("[llave] entrar:", e?.message);

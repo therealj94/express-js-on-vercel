@@ -12,7 +12,8 @@ import crypto from "crypto";
 import { enviarCorreo, marco, botonCorreo } from "../lib/correo";
 import { cartaBienvenida } from "../lib/cartaBienvenida.js";
 import { v4 as uuidv4 } from "uuid";
-import { decidirReenvio, correoConfirmacion, correoTapado } from "../lib/reenvioConfirmacion.js";
+import { decidirReenvio, correoConfirmacion, correoTapado, enlaceVencido } from "../lib/reenvioConfirmacion.js";
+import { paginaConfirmacion } from "../lib/paginaConfirmacion.js";
 require("dotenv").config();
 
 // Credenciales de correo: solo desde el entorno, sin respaldo literal.
@@ -92,6 +93,8 @@ export const registerUserWallet = async (req, res) => {
       role: "user",
       isVerified: false,
       verificationToken: token,
+      // Desde aquí cuentan los 7 días del enlace (lib/reenvioConfirmacion.js).
+      confirmacionEnviadaEn: new Date(),
     });
     await user.save();
 
@@ -112,12 +115,15 @@ export const verifyMail = async (req, res) => {
     // Mismo riesgo que en resetPassword pero por query: sin castear, un
     // ?token[$ne]=* marcaba como verificado a un usuario cualquiera.
     if (typeof token !== "string" || !token.trim() || token === "*") {
-      return res.status(400).json({ message: "invalid verification token" });
+      return res.status(400).type("html").send(paginaConfirmacion("invalido"));
     }
     const user = await User.findOne({ verificationToken: token.trim() });
 
     if (!user) {
-      return res.status(400).json({ message: "invalid verification token" });
+      return res.status(400).type("html").send(paginaConfirmacion("invalido"));
+    }
+    if (enlaceVencido(user)) {
+      return res.status(410).type("html").send(paginaConfirmacion("vencido"));
     }
 
     const eraNuevo = !user.bienvenidaEn;
@@ -158,9 +164,32 @@ export const verifyMail = async (req, res) => {
         .catch((e) => console.error(`[bienvenida] ${user.email}: ${e?.message}`));
     }
 
-    return res.send("Email verified successfully");
+    return res.type("html").send(paginaConfirmacion("ok"));
+  } catch (error) {
+    // Antes aquí no se respondía nada y el navegador se quedaba cargando.
+    console.log(error);
+    return res.status(500).type("html").send(paginaConfirmacion("error"));
+  }
+};
+
+/* GET /auth/estadoCorreo — con sesion. { confirmado }
+ *
+ * La app sabia si la cuenta estaba confirmada solo por lo que traia el token
+ * al entrar. Quien confirmaba desde el correo seguia viendo «correo sin
+ * confirmar» hasta volver a iniciar sesion. Esto se lo dice al momento. */
+export const estadoCorreo = async (req, res) => {
+  try {
+    const decodedToken = jwt.verify(
+      req.headers.authorization.split(" ")[1],
+      process.env.PASS_TOKEN,
+      { algorithms: ["HS256"] }
+    );
+    const user = await User.findOne({ _id: decodedToken.userId }).select("isVerified").lean();
+    if (!user) return res.status(401).json({ message: "invalid user" });
+    return res.json({ confirmado: user.isVerified === true });
   } catch (error) {
     console.log(error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 

@@ -8,7 +8,7 @@ import * as Clipboard from 'expo-clipboard';
 import { C, G } from '../theme';
 import { Header, Button3D, ListRow, Toggle, Glass, useToast, useAccount, hap } from '../ui';
 import { money, qtyFmt } from '../data';
-import { getPrivateKey, apiReenviarConfirmacion } from '../api';
+import { getPrivateKey, apiReenviarConfirmacion, apiEstadoCorreo } from '../api';
 import PedirClave from '../PedirClave';
 import { genesis } from '../genesis';
 import { setPassport } from '../accounts';
@@ -169,6 +169,22 @@ export function Settings({ nav }) {
   // Correo sin confirmar: solo cuentas del servidor (no las de solo mirar).
   const sinConfirmar = !!(acc.fromApi && acc.email && acc.verify === false);
   const [reenviando, setReenviando] = useState(false);
+  // Al abrir Ajustes se pregunta al servidor: quien confirmó desde el correo
+  // no tiene que volver a entrar para que desaparezca el aviso. Si falla la
+  // red no pasa nada: se queda como estaba.
+  useEffect(() => {
+    if (!sinConfirmar) return;
+    let vivo = true;
+    apiEstadoCorreo()
+      .then(async (r) => {
+        if (!vivo || !r?.confirmado) return;
+        const actualizada = await updateAccount(acc.email, { verify: true });
+        if (vivo && actualizada) login(actualizada);
+      })
+      .catch(() => {});
+    return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sinConfirmar, acc.email]);
   async function reenviarConfirmacion() {
     if (reenviando) return;
     setReenviando(true);
