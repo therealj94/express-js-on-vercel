@@ -208,6 +208,26 @@ Commit `7a738a9`.
 | `ordenex-api` | v45 (Heroku-24) → **v46** (Heroku-26) | `/salud` ok (cadena, mongo, entrega, venta). `/compras` y `/portafolio` existen. SSO falso: 401 `SSO_INVALIDO`. Banderas sin tocar: BARRIDO, COMPRAS y VENTAS en 1; `SFSP410_EMISION` ausente | Roll back a **v45**; ídem |
 | `mytokenpay-api` | ya en Heroku-26 (v30) | | |
 
+### Llave nueva de SES y primera tanda (27-sep, noche)
+
+- 03:00–03:01: José pone la llave nueva (`vetawallet` v126/v127).
+  `GetAccount`: acceso de producción, envío activo, `HEALTHY`, cuota
+  50 000/día, **0 enviados en 24 h**.
+- Prueba en el simulador de SES con el correo real de confirmación:
+  aceptada. Prueba real con `--a=` a una cuenta de José: llegó, el enlace
+  confirmó y la base la marca confirmada. Confirmados: 4 → **5**.
+- Ensayo de la tanda: 70 cuentas activas sin confirmar (21–22 de la casa
+  saltadas).
+- **Tanda 1: 30 de 30 salieron.**
+- **Entre 03:18 y 03:28 UTC, la llave dejó de valer** («security token
+  invalid»), sin ningún cambio en Heroku. Es lo mismo que le pasó a la
+  anterior: algo la borra o la desactiva en AWS. **Tandas paradas.**
+  Quedan 40 activas y después el resto.
+- Mirar en CloudTrail `DeleteAccessKey`, `UpdateAccessKey` y
+  `AttachUserPolicy` sobre ese usuario en esa ventana. Ver si el usuario
+  tiene la política `AWSCompromisedKeyQuarantine`: AWS la pone sola cuando
+  detecta una llave publicada.
+
 ## Pendiente
 
 1. ~~Cambiar `ADMIN_PASSWORD` en `mytokenpay-api`~~: hecho por José el 27-sep.
