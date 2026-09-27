@@ -1,5 +1,5 @@
 {
- "armadoEn": "2026-09-26T16:16:52.135Z",
+ "armadoEn": "2026-09-27T00:39:58.324Z",
  "fuentes": [
   {
    "ruta": "ECOSISTEMA-ORDEN-GLOBAL.md",
@@ -17,7 +17,7 @@
    "ruta": "LEEME.md",
    "tema": "El repositorio",
    "secciones": 1,
-   "bytes": 2364
+   "bytes": 2594
   },
   {
    "ruta": "README.md",
@@ -227,7 +227,7 @@
  "huellas": {
   "ECOSISTEMA-ORDEN-GLOBAL.md": "2bc1d068c1bfa18150a8eaf131cae1595f331100",
   "TRASPASO-CONOCIMIENTO.md": "a62d6266959950ef401193317b516893cf9a9622",
-  "LEEME.md": "05480432166bb4be4193a235a36575446b3a965e",
+  "LEEME.md": "bd43ddb3ccab26353abe68c0a03ef1b58137cc89",
   "README.md": "e1f9854ad4508ed4e766dbaf9569ef95550a5d62",
   "AUCORP.md": "39d4e628ac4d659478f38896310a0f0f5fdde029",
   "VETA_WALLET_README.md": "13363951cfbf3fdf7b6e6c209a9f3801fa9cc128",
@@ -264,5 +264,5 @@
   "infra/cerebro/conocimiento/saber.json": "fc2508a76361021d2f6c0cf2f06e845afa79bab2"
  },
  "total": 679,
- "bytes": 450656
+ "bytes": 450886
 }
