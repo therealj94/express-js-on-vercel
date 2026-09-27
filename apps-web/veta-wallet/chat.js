@@ -865,8 +865,19 @@ const CHAT = (() => {
     }
     /* Sin poder cerrar, la llave del archivo NO se manda: iría en claro al
        lado de los bytes cifrados, que es exactamente lo mismo que no cifrar
-       pero con más pasos y aparentando lo contrario. El archivo se queda
-       ilegible y el mensaje sale marcado sin cifrar. */
+       pero con más pasos y aparentando lo contrario.
+
+       Y un archivo que ya subió CERRADO tampoco se manda así: el mensaje
+       apuntaría a bytes que nadie puede abrir. Pasa si entre la subida y este
+       envío cambió lo que se sabe de los aparatos del otro lado (la consulta
+       de antes falló y se asumió que sí había). Se corta con error, que la
+       pantalla enseña, y al reintentar la subida ya sale en claro y se puede
+       abrir. Revisión de Codex en #31. */
+    if (adj.llave) {
+      const e = new Error('no se pudo cifrar: el archivo subió cerrado y no hay a quién darle la llave');
+      e.motivo = 'sin-aparatos';
+      throw e;
+    }
     await pedir('/enviar', firmado({ ...meta, texto: texto || '' }));
     return { ok: true, e2e: false };
   }

@@ -109,6 +109,22 @@ const sinAparatos = await pag.evaluate(async () => {
 })
 ok('sin aparatos del otro lado, la nota sube en claro y se puede oír', !sinAparatos.llave && sinAparatos.enClaro, JSON.stringify(sinAparatos))
 
+// Y si el archivo YA subió cerrado (la consulta de aparatos falló y se asumió
+// que sí había) pero al enviar resulta que no hay a quién darle la llave, no se
+// manda un mensaje que apunte a bytes que nadie puede abrir: se corta con error.
+// Segunda revisión de Codex en el PR #31.
+const enviadosAntes = subidas.filter(s=>s.enviado).length
+const corte = await pag.evaluate(async () => {
+  const hayAntes = CANDADO.hay
+  CANDADO.hay = () => true
+  try {
+    const adj = { id: 'arch9', tipo: 'voz', nombre: 'voz-3s', llave: 'AAAA', iv: 'BBBB' }
+    try { await CHAT.enviarAdjunto('ana@ordenglobal.link', adj, ''); return { lanzo: false } }
+    catch (e) { return { lanzo: true, motivo: e.motivo } }
+  } finally { CANDADO.hay = hayAntes }
+})
+ok('un adjunto cerrado sin nadie a quien darle la llave no se manda', corte.lanzo && subidas.filter(s=>s.enviado).length === enviadosAntes, JSON.stringify(corte))
+
 ok('sin errores de javascript', err.length===0)
 if(err.length) console.log(err.slice(0,3))
 await nav.close()
