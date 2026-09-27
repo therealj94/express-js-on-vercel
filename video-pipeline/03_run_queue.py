@@ -11,6 +11,7 @@ Convención: en el workflow exportado en formato *API* se renombran los nodos
     CFG        -> inputs.cfg
     LATENT     -> inputs.width / height / length   (length = duration_s * fps)
     IMAGE      -> inputs.image                     (i2v / primer frame)
+    AUDIO      -> inputs.audio                     (ref2va: timbre de voz)
     SAVE       -> inputs.filename_prefix           (= id del job)
 
 Uso:
@@ -87,8 +88,11 @@ def a_entrada(nombre: str) -> str:
     if origen is None:
         return nombre  # ya está en input/ o ComfyUI lo resolverá
     entrada.mkdir(parents=True, exist_ok=True)
-    destino = entrada / (origen.stem + ".png")
-    if origen.suffix.lower() in (".mp4", ".webm", ".mov"):
+    es_video = origen.suffix.lower() in (".mp4", ".webm", ".mov")
+    # Un audio de referencia (timbre de voz) conserva su extensión; un still de
+    # vídeo se convierte en PNG.
+    destino = entrada / (origen.stem + (".png" if es_video else origen.suffix.lower()))
+    if es_video:
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(origen),
                         "-frames:v", "1", str(destino)], check=True)
     elif origen.resolve() != destino.resolve():
@@ -129,6 +133,10 @@ def build(workflow_path: Path, job: dict) -> dict:
     # impide que el color y la identidad deriven al encadenar segmentos.
     if job.get("image_last"):
         set_input(wf, t.get("LAST_IMAGE"), "image", a_entrada(job["image_last"]))
+    # Referencia de voz (ref2va): el personaje habla con ese timbre y la boca
+    # sale sincronizada porque imagen y audio se generan juntos.
+    if job.get("audio"):
+        set_input(wf, t.get("AUDIO"), "audio", a_entrada(job["audio"]))
     set_input(wf, t.get("SAVE"), "filename_prefix", job["id"])
     return wf
 

@@ -1,5 +1,5 @@
 {
- "_nota": "Montaje de «Un martes» v2: arranca en negro con la voz de la hija, 6 pantallas legibles (2,5 s) con una palabra encima, final en el aeropuerto. Corte seco, velocidad natural; clips de 5,17 s usados desde 'desde'.",
+ "_nota": "Montaje de «Un martes» v3: sin pantallas completas. La app aparece como tarjeta flotante sobre la escena; las voces como nota de voz o llamada, siempre con subtítulo; nadie habla a cámara.",
  "cierre": {
   "frase": "Orden Global. Un sistema financiero que se puede comprobar.",
   "direccion": "ordenglobal.org"
@@ -8,328 +8,331 @@
   "ancho": 1080,
   "alto": 1920,
   "fps": 30,
-  "dur_s": 83.4
+  "dur_s": 79.2
  },
  "bloques": [
   {
    "plano": "negro",
    "t": 0,
    "dur": 2.0,
-   "tipo": "negro",
-   "voz": {
-    "id": "hija_1",
-    "linea": "Nota de voz de la hija: «Ma, buen día… ya me cobraron la renta de este mes. Y fijate que los vuelos de diciembre todavía están baratos.»"
-   }
+   "tipo": "negro"
   },
   {
    "plano": "02_cocina_nota",
    "t": 2.0,
-   "dur": 3.6,
+   "dur": 4.0,
    "desde": 0.4,
-   "rotulos": [
-    {
-     "t": 2.3,
-     "dur": 1.8,
-     "texto": "6:40",
-     "tipo": "dato"
-    }
-   ]
+   "hora": "6:40 a. m."
   },
   {
    "plano": "03_manos_enviar",
-   "t": 5.6,
-   "dur": 2.0,
+   "t": 6.0,
+   "dur": 4.3,
    "desde": 0.4
-  },
-  {
-   "plano": "A",
-   "t": 7.6,
-   "dur": 2.5,
-   "tipo": "pantalla",
-   "rotulos": [
-    {
-     "t": 7.8,
-     "dur": 2.1,
-     "texto": "ENVIAR.",
-     "tipo": "titular"
-    }
-   ]
   },
   {
    "plano": "04_mesa_boleto",
-   "t": 10.1,
-   "dur": 2.6,
+   "t": 10.3,
+   "dur": 4.3,
    "desde": 0.4
   },
   {
-   "plano": "B",
-   "t": 12.7,
-   "dur": 2.5,
-   "tipo": "pantalla",
-   "rotulos": [
-    {
-     "t": 12.9,
-     "dur": 2.1,
-     "texto": "COMPRAR.",
-     "tipo": "titular"
-    }
-   ]
-  },
-  {
    "plano": "05_calle_floristeria",
-   "t": 15.2,
+   "t": 14.6,
    "dur": 2.6,
    "desde": 0.4,
-   "rotulos": [
-    {
-     "t": 15.5,
-     "dur": 1.8,
-     "texto": "10:15",
-     "tipo": "dato"
-    }
-   ]
+   "hora": "10:15 a. m."
   },
   {
    "plano": "06_florista_ramo",
-   "t": 17.8,
-   "dur": 2.0,
+   "t": 17.2,
+   "dur": 2.2,
    "desde": 0.4
   },
   {
    "plano": "07_qr_mostrador",
-   "t": 19.8,
-   "dur": 1.6,
+   "t": 19.4,
+   "dur": 3.6,
    "desde": 0.4
   },
   {
-   "plano": "C",
-   "t": 21.4,
-   "dur": 2.5,
-   "tipo": "pantalla",
-   "rotulos": [
-    {
-     "t": 21.6,
-     "dur": 2.1,
-     "texto": "PAGAR.",
-     "tipo": "titular"
-    }
-   ]
-  },
-  {
    "plano": "08_florista_cobra",
-   "t": 23.9,
-   "dur": 2.0,
+   "t": 23.0,
+   "dur": 2.4,
    "desde": 0.4
   },
   {
    "plano": "08b_taller_pausa",
-   "t": 25.9,
-   "dur": 3.2,
+   "t": 25.4,
+   "dur": 4.4,
    "desde": 0.4,
-   "rotulos": [
-    {
-     "t": 26.2,
-     "dur": 1.8,
-     "texto": "12:10",
-     "tipo": "dato"
-    }
-   ]
-  },
-  {
-   "plano": "J",
-   "t": 29.1,
-   "dur": 2.5,
-   "tipo": "pantalla",
-   "rotulos": [
-    {
-     "t": 29.3,
-     "dur": 2.1,
-     "texto": "LO SUYO.",
-     "tipo": "titular"
-    }
-   ]
+   "hora": "12:10 p. m."
   },
   {
    "plano": "09_almuerzo_mesa",
-   "t": 31.6,
+   "t": 29.8,
    "dur": 2.6,
    "desde": 0.4,
-   "rotulos": [
-    {
-     "t": 31.9,
-     "dur": 1.8,
-     "texto": "13:30",
-     "tipo": "dato"
-    }
-   ]
+   "hora": "1:30 p. m."
   },
   {
    "plano": "10_llega_cuenta",
-   "t": 34.2,
+   "t": 32.4,
    "dur": 2.0,
    "desde": 0.4
   },
   {
    "plano": "11_un_qr_cada_uno",
-   "t": 36.2,
-   "dur": 2.6,
+   "t": 34.4,
+   "dur": 4.0,
    "desde": 0.4
   },
   {
-   "plano": "E",
-   "t": 38.8,
-   "dur": 2.5,
-   "tipo": "pantalla",
-   "rotulos": [
-    {
-     "t": 39.0,
-     "dur": 2.1,
-     "texto": "DIVIDIR.",
-     "tipo": "titular"
-    }
-   ]
-  },
-  {
    "plano": "12_amiga_brinda",
-   "t": 41.3,
-   "dur": 1.8,
-   "desde": 0.4,
-   "voz": {
-    "id": "amiga",
-    "linea": "Amiga: «¡Ya no hay “te lo paso luego”!»"
-   }
-  },
-  {
-   "plano": "13_dueno_restaurante",
-   "t": 43.1,
-   "dur": 2.6,
-   "desde": 0.4,
-   "voz": {
-    "id": "esceptico",
-    "linea": "Amigo (fuera de cuadro, escéptico): «¿Y cómo sé que le llegó?» — Lucía le gira el teléfono con el comprobante; el dueño levanta dos dedos desde la caja."
-   }
-  },
-  {
-   "plano": "14_taller",
-   "t": 45.7,
-   "dur": 2.2,
-   "desde": 0.4,
-   "rotulos": [
-    {
-     "t": 46.0,
-     "dur": 1.8,
-     "texto": "15:40",
-     "tipo": "dato"
-    }
-   ]
-  },
-  {
-   "plano": "15_llamada",
-   "t": 47.9,
-   "dur": 3.4,
-   "desde": 0.4,
-   "voz": {
-    "id": "proveedor_1",
-    "linea": "Proveedor: «Doña Lucía, buenas. El camión sale a las cuatro. Si me entra el pago hoy, la tela le llega el jueves; si no, hasta la otra semana.»"
-   }
-  },
-  {
-   "plano": "16_bodega",
-   "t": 51.3,
+   "t": 38.4,
    "dur": 2.0,
    "desde": 0.4
   },
   {
-   "plano": "17_manos_pago",
-   "t": 53.3,
-   "dur": 1.8,
+   "plano": "13_dueno_restaurante",
+   "t": 40.4,
+   "dur": 2.8,
    "desde": 0.4
   },
   {
-   "plano": "G",
-   "t": 55.1,
-   "dur": 2.5,
-   "tipo": "pantalla",
-   "rotulos": [
-    {
-     "t": 55.3,
-     "dur": 2.1,
-     "texto": "COMPROBAR.",
-     "tipo": "titular"
-    }
-   ]
+   "plano": "14_taller",
+   "t": 43.2,
+   "dur": 2.4,
+   "desde": 0.4,
+   "hora": "3:40 p. m."
+  },
+  {
+   "plano": "15_llamada",
+   "t": 45.6,
+   "dur": 3.6,
+   "desde": 0.4
+  },
+  {
+   "plano": "16_bodega",
+   "t": 49.2,
+   "dur": 2.2,
+   "desde": 0.4
+  },
+  {
+   "plano": "17_manos_pago",
+   "t": 51.4,
+   "dur": 4.2,
+   "desde": 0.4
   },
   {
    "plano": "18_proveedor_ya",
-   "t": 57.6,
+   "t": 55.6,
    "dur": 2.6,
-   "desde": 0.4,
-   "voz": {
-    "id": "proveedor_2",
-    "linea": "Proveedor: «…Aquí lo estoy viendo. Ya me cayó. ¡Súbanla!»"
-   }
-  },
-  {
-   "plano": "20_sofa_noche",
-   "t": 60.2,
-   "dur": 2.2,
-   "desde": 0.4,
-   "rotulos": [
-    {
-     "t": 60.5,
-     "dur": 1.8,
-     "texto": "21:10",
-     "tipo": "dato"
-    }
-   ]
-  },
-  {
-   "plano": "21_hija_cuarto",
-   "t": 62.4,
-   "dur": 3.8,
-   "desde": 0.4,
-   "voz": {
-    "id": "hija_2",
-    "linea": "Hija: «Ma, ya pagué la renta. Y ya vi el vuelo… ¡llego el dieciocho! ¿Cómo te fue hoy?»"
-   }
-  },
-  {
-   "plano": "22_lucia_sonrie",
-   "t": 66.2,
-   "dur": 3.4,
    "desde": 0.4
   },
   {
-   "plano": "H",
-   "t": 69.6,
-   "dur": 2.6,
-   "tipo": "pantalla"
+   "plano": "20_sofa_noche",
+   "t": 58.2,
+   "dur": 2.4,
+   "desde": 0.4,
+   "hora": "9:10 p. m."
+  },
+  {
+   "plano": "21_hija_cuarto",
+   "t": 60.6,
+   "dur": 3.6,
+   "desde": 0.4
+  },
+  {
+   "plano": "22_lucia_sonrie",
+   "t": 64.2,
+   "dur": 3.8,
+   "desde": 0.4
   },
   {
    "plano": "23a_aeropuerto",
-   "t": 72.2,
+   "t": 68.0,
    "dur": 3.0,
    "desde": 0.4,
-   "rotulos": [
-    {
-     "t": 72.5,
-     "dur": 1.8,
-     "texto": "18 de diciembre",
-     "tipo": "dato"
-    }
-   ]
+   "hora": "18 de diciembre"
   },
   {
    "plano": "23b_abrazo",
-   "t": 75.2,
+   "t": 71.0,
    "dur": 4.2,
    "desde": 0.4
   },
   {
    "plano": "cierre",
-   "t": 79.4,
+   "t": 75.2,
    "dur": 4.0,
    "tipo": "cierre"
+  }
+ ],
+ "capas": [
+  {
+   "tipo": "nota",
+   "t": 0.3,
+   "dur": 6.2,
+   "quien": "Sofía",
+   "voz": "hija_1",
+   "texto": "Ma, buen día… ya me cobraron la renta de este mes. Y fijate que los vuelos de diciembre todavía están baratos."
+  },
+  {
+   "tipo": "tarjeta",
+   "t": 7.6,
+   "dur": 2.5,
+   "pantalla": "A_enviar.png",
+   "recortes": [
+    [
+     20,
+     400,
+     1060,
+     1010
+    ]
+   ],
+   "pie": "Enviado a Sofía"
+  },
+  {
+   "tipo": "tarjeta",
+   "t": 11.8,
+   "dur": 2.6,
+   "pantalla": "B_tarjeta.png",
+   "recortes": [
+    [
+     20,
+     20,
+     1060,
+     780
+    ],
+    [
+     20,
+     1440,
+     1060,
+     1650
+    ]
+   ],
+   "pie": "Boleto de diciembre"
+  },
+  {
+   "tipo": "tarjeta",
+   "t": 20.6,
+   "dur": 2.3,
+   "pantalla": "C_pagar.png",
+   "recortes": [
+    [
+     20,
+     520,
+     1060,
+     1180
+    ],
+    [
+     20,
+     1450,
+     1060,
+     1620
+    ]
+   ]
+  },
+  {
+   "tipo": "tarjeta",
+   "t": 26.8,
+   "dur": 2.8,
+   "pantalla": "J_ondk.png",
+   "recortes": [
+    [
+     20,
+     20,
+     1060,
+     720
+    ]
+   ],
+   "pie": "Lo suyo"
+  },
+  {
+   "tipo": "tarjeta",
+   "t": 35.8,
+   "dur": 2.4,
+   "pantalla": "E_dividir_pagado.png",
+   "recortes": [
+    [
+     20,
+     520,
+     1060,
+     1180
+    ],
+    [
+     20,
+     1450,
+     1060,
+     1620
+    ]
+   ],
+   "pie": "Cada uno, su parte"
+  },
+  {
+   "tipo": "sub",
+   "t": 38.45,
+   "dur": 2.0,
+   "voz": "amiga",
+   "texto": "¡Ya no hay «te lo paso luego»!"
+  },
+  {
+   "tipo": "sub",
+   "t": 40.45,
+   "dur": 1.8,
+   "voz": "esceptico",
+   "texto": "¿Y cómo sé que le llegó?"
+  },
+  {
+   "tipo": "llamada",
+   "t": 45.85,
+   "dur": 7.2,
+   "quien": "Textiles del Valle",
+   "voz": "proveedor_1",
+   "texto": "Doña Lucía, buenas. El camión sale a las cuatro. Si me entra el pago hoy, la tela le llega el jueves; si no, hasta la otra semana."
+  },
+  {
+   "tipo": "tarjeta",
+   "t": 52.8,
+   "dur": 2.6,
+   "pantalla": "G_comprobante.png",
+   "recortes": [
+    [
+     20,
+     20,
+     1060,
+     690
+    ],
+    [
+     20,
+     1470,
+     1060,
+     1610
+    ]
+   ],
+   "pie": "Comprobado en cadena"
+  },
+  {
+   "tipo": "sub",
+   "t": 54.9,
+   "dur": 3.4,
+   "voz": "proveedor_2",
+   "texto": "…Aquí lo estoy viendo. Ya me cayó. ¡Súbanla!"
+  },
+  {
+   "tipo": "nota",
+   "t": 58.8,
+   "dur": 5.4,
+   "quien": "Sofía",
+   "voz": "hija_2",
+   "texto": "Ma, ya pagué la renta. Y ya vi el vuelo… ¡llego el dieciocho! ¿Cómo te fue hoy?"
+  },
+  {
+   "tipo": "mensaje",
+   "t": 66.2,
+   "dur": 1.8,
+   "texto": "Bien, mija. Un martes."
   }
  ]
 }

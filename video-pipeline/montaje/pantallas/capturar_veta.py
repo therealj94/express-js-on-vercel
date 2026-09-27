@@ -58,7 +58,7 @@ HOSTS_MOCK = {
 }
 
 # ── el personaje (todo ficticio) ─────────────────────────────────────────────
-TZ = 'America/Tegucigalpa'           # UTC-6, sin horario de verano
+TZ = 'America/El_Salvador'           # UTC-6, sin horario de verano
 DIA = '2026-09-27'
 MIA = '0x7e3b5a1c9d2f4e6a8b0c1d2e3f4a5b6c7d8e9f01'
 SOFIA = '0x5fa0c3e19b7d24a6e8c01f3b5d7e9a2c4b6d8f10'
@@ -71,8 +71,10 @@ ORIGEN_SALDO = 612.40
 ONDK_SALDO = 250
 PRECIO_ORIGEN = 2.50
 ORO = PRECIO_ORIGEN * 31.1035 * 55          # la formula de cadena.js a la inversa
-HNL_POR_USD = 26.30
-HNL_POR_ORIGEN = round(PRECIO_ORIGEN * HNL_POR_USD, 4)   # 65.75
+# El Salvador: la moneda local ES el dolar. Los campos de MyTokenPay se
+# siguen llamando *Hnl* en la API; aqui llevan dolares (tasa local 1:1).
+HNL_POR_USD = 1.0
+HNL_POR_ORIGEN = round(PRECIO_ORIGEN * HNL_POR_USD, 4)   # 2.50
 CONTRATO_ONDK = '0xfb83eea4b384a4b18e5a1eba7a4bb4c0b7ca19c1'
 
 
@@ -104,9 +106,9 @@ HASH = {
     'textiles': '0xc3f1a8e2d4b6907a5c3e1f9d7b5a3c1e9f7d5b3a1c9e7f5d3b1a9c7e5f3d1b09',
 }
 
-MONTO_FLOR_HNL = 450.00
-MONTO_COMEDOR_TOTAL_HNL = 1540.00
-MONTO_COMEDOR_PARTE_HNL = 385.00
+MONTO_FLOR_HNL = 18.00          # USD
+MONTO_COMEDOR_TOTAL_HNL = 62.00 # USD
+MONTO_COMEDOR_PARTE_HNL = 15.50 # USD
 o = lambda hnl: round(hnl / HNL_POR_ORIGEN, 4)
 MONTO_TEXTILES = 120.0
 
@@ -281,7 +283,7 @@ class Mocks:
             return 200, {'prices': []}
         if host == 'open.er-api.com':
             return 200, {'result': 'success', 'base_code': 'USD', 'time_last_update_unix': epoch('00:05'),
-                         'rates': {'USD': 1, 'HNL': HNL_POR_USD, 'GTQ': 7.72, 'MXN': 18.6, 'EUR': 0.91,
+                         'rates': {'USD': 1, 'HNL': 26.30, 'GTQ': 7.72, 'MXN': 18.6, 'EUR': 0.91,
                                    'NIO': 36.8, 'CRC': 512.0, 'COP': 4020.0, 'SVC': 8.75}}
         if host == 'ordenex-api-ba4b27b8b51a.herokuapp.com':
             if p.startswith('/precio-declarado/'):
@@ -381,7 +383,7 @@ def main():
 
         def pagina(nombre, hora, mocks):
             ctx = nav.new_context(viewport={'width': 360, 'height': 640}, device_scale_factor=3,
-                                  locale='es-HN', timezone_id=TZ, service_workers='block',
+                                  locale='es-SV', timezone_id=TZ, service_workers='block',
                                   is_mobile=True, has_touch=True)
             pg = ctx.new_page()
             pg.clock.install(time=iso(hora))
@@ -450,6 +452,29 @@ def main():
                 ]));
               }} catch (e) {{}}
             """)
+            # MyTokenPay en la web REAL solo sabe lempiras: `mtpHnl()` escribe
+            # 'L ' fijo en el codigo. Para El Salvador (dolar) se reescribe en
+            # pantalla todo «L 12.34» como «$12.34». Es texto, no datos: ver LEEME.
+            pg.add_init_script(r"""
+              (() => {
+                const RX = /(^|[^A-Za-z\u00C0-\u024F])L\s(\d[\d,]*\.\d{2})/g;
+                const pasar = (raiz) => {
+                  const w = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT);
+                  let n; while ((n = w.nextNode())) {
+                    if (RX.test(n.nodeValue)) { RX.lastIndex = 0; n.nodeValue = n.nodeValue.replace(RX, '$1$$$2'); }
+                    RX.lastIndex = 0;
+                  }
+                };
+                const arrancar = () => {
+                  pasar(document.body);
+                  new MutationObserver(ms => ms.forEach(m => {
+                    m.addedNodes.forEach(x => x.nodeType === 3 ? pasar(x.parentNode || document.body) : x.nodeType === 1 && pasar(x));
+                    if (m.type === 'characterData' && m.target.parentNode) pasar(m.target.parentNode);
+                  })).observe(document.body, { childList: true, subtree: true, characterData: true });
+                };
+                if (document.body) arrancar(); else document.addEventListener('DOMContentLoaded', arrancar);
+              })();
+            """)
             pg.goto(sitio, wait_until='domcontentloaded')
             pg.add_style_tag(content=CSS_LIMPIEZA)
             pg.wait_for_timeout(3500)
@@ -465,6 +490,11 @@ def main():
             elif scroll is not None:
                 pg.evaluate(f'window.scrollTo(0, {scroll})')
             pg.wait_for_timeout(700)
+            vis = pg.evaluate("""() => document.body.innerText""")
+            import re as _re
+            malos = _re.findall(r'(?:^|[^A-Za-zÀ-ɏ])L\s?\d|[Ll]empira|HNL', vis)
+            if malos:
+                print('  !! texto en lempiras visible:', malos[:5])
             destino = salida / f'{nombre}.png'
             pg.screenshot(path=str(destino))
             print('  ->', destino)
