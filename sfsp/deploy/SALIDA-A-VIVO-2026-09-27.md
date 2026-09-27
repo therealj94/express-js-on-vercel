@@ -154,12 +154,32 @@ Qué hacer, en orden:
 4. Activar `GENESIS_PUENTE_EXIGE_CORREO_CONFIRMADO` solo cuando la mayoría de
    los activos esté confirmada.
 
+### Reenvío de la confirmación (27-sep, más tarde)
+
+- `vetawallet` **v123** (`44b55f1`): `POST /auth/reenviarConfirmacion`, con
+  sesión. El correo va solo a la dirección de la cuenta. Freno: uno cada 2
+  minutos y 5 por día, guardado en la cuenta, más el limitador por IP.
+  `/salud` ok; la ruta responde 401 sin sesión. **Cómo revertir:** roll back
+  a **v122**.
+- App Veta: botón «Reenviar correo de confirmación» en Ajustes, visible solo
+  si la cuenta no está confirmada. **Falta publicarlo** (EAS `preview`).
+- `scripts/reenviar-confirmacion.js`: la tanda para los activos sin
+  confirmar. Por omisión es un ensayo y no manda nada; `--a=` manda uno solo;
+  `--de-verdad --tope=30` manda una tanda. Salta los dominios de la casa, a
+  quien pidió no recibir avisos y a quien ya recibió una confirmación en los
+  últimos 7 días, y se para si SES rechaza los tres primeros. Se corre en un
+  dyno puntual de `vetawallet` una vez desplegado:
+  `npx babel-node scripts/reenviar-confirmacion.js`.
+- Mientras SES rechace la llave, el botón y el guion responden «no salió».
+
 ## Pendiente
 
 1. ~~Cambiar `ADMIN_PASSWORD` en `mytokenpay-api`~~: hecho por José el 27-sep.
 2. **José:** decidir `MTP_OCULTAR_TOKEN_RESETEO=si`. Cierra la toma de cuentas
    por «olvidé mi contraseña», pero rompe el reseteo desde la app.
-3. La llave de SES de Veta y el reenvío de la confirmación (ver arriba).
+3. **José:** poner la llave nueva de SES en `vetawallet` (`SES_LLAVE`/`SES_SECRETO`).
+   Después: comprobarla, probar con una cuenta propia, publicar la app y
+   mandar la tanda en partes cortas.
 
 Contratos SFSP en la 5550: nada que desplegar. Siguen en `BLOCKED_DECISION`
 hasta D07 (firmantes), D24–D27 y las llaves en KMS.

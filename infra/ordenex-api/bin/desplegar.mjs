@@ -222,6 +222,13 @@ for (const ruta of ['/compras', '/portafolio']) {
 if (mal) process.exit(1);
 
 paso('Listo');
-console.log('El vigía ya está mirando. El barrido y la entrega siguen APAGADOS:');
-console.log(`  BARRIDO=1   cuando hayas visto una semana de depósitos`);
-console.log(`  COMPRAS=1   después de probar el barrido con poco dinero`);
+/* Se lee el estado REAL de las banderas en vez de afirmarlo. Antes decía
+   «siguen APAGADOS» siempre, y el 27-sep-2026 BARRIDO y COMPRAS llevaban
+   tiempo puestas a 1 en producción. De la respuesta solo se imprimen estas
+   banderas: las demás variables son secretos. */
+const vars = await heroku(`/apps/${APP}/config-vars`);
+const bandera = (k) => (vars.ok ? (vars.json?.[k] ?? '(ausente)') : '(no se pudo leer)');
+console.log('El vigía ya está mirando. Banderas en producción (este guion no las toca):');
+console.log(`  BARRIDO=${bandera('BARRIDO')}   se enciende cuando hayas visto una semana de depósitos`);
+console.log(`  COMPRAS=${bandera('COMPRAS')}   se enciende después de probar el barrido con poco dinero`);
+console.log(`  VENTAS=${bandera('VENTAS')}   SFSP410_EMISION=${bandera('SFSP410_EMISION')}`);
