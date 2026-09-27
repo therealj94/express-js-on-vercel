@@ -5,7 +5,7 @@
 > el cierre (comprobante + ordenscan) es publicable tal cual.
 
 **27-sep-2026.** Guion y plan de rodaje. Planos: `prompts/pelicula3_un_martes.json`
-(lint: 0 PARA). Cola de la primera sesión: `prompts/q_p3_sesion1.json` (110
+(lint: 0 PARA). Cola de la primera sesión: `prompts/q_p3_sesion1.json` (114
 trabajos). Se rueda en AWS Mumbai cuando llegue el cupo Spot (`AWS.md`).
 
 ---
@@ -33,6 +33,7 @@ proveedor— es la vida que pasa entre esas dos notas.
 |---|---|---|
 | **6:40** | La hija manda una nota de voz: le cobraron la renta, y fijate que los vuelos de diciembre están baratos. Lucía, con el café, le manda el dinero y compra el boleto para que vuelva en diciembre. | Veta Wallet: envío a otro país · Tarjeta Visa virtual en línea |
 | **10:15** | Pasa por la floristería del barrio por girasoles para el cumpleaños de una amiga. Paga con el teléfono; al florista le suena el suyo y asiente. | MyTokenPay: pagar con QR · panel del comercio: cobro recibido |
+| **12:10** | Pausa en el taller: mango con sal, el teléfono, y la mirada a su propio taller. Tiene su ONDK y el acta que lo respalda. | Veta Wallet: ONDK |
 | **13:30** | Almuerzo de cumpleaños, cuatro amigos, risa. Llega la cuenta y cuatro manos saltan a la vez. Cada uno paga su parte con su QR. «¡Ya no hay “te lo paso luego”!». El amigo que nunca lo ha usado pregunta, fuera de cuadro: «¿Y cómo sé que le llegó?». Lucía le gira el teléfono con el comprobante, y el dueño levanta dos dedos desde la caja. | MyTokenPay: dividir cuenta, un QR por persona · cobro completo |
 | **15:40** | En el taller, entre rollos de tela, llama el proveedor de otro país: el camión sale a las cuatro; si no le entra el pago hoy, la tela llega hasta la otra semana. Lucía paga ahí mismo. Corte a la bodega: el proveedor no confía, **mira**: *«…Aquí lo estoy viendo. Ya me cayó. ¡Súbanla!»*. El camión sale. | Veta Wallet: pago al proveedor; comprobante con hora |
 | **18:30** | El florista baja la cortina del local y, bajo el alero, pasa lo del día a su cuenta en lempiras. Nadie lo dice: se ve. | MyTokenPay: retiro a moneda local |
@@ -91,18 +92,19 @@ perfil. No es una limitación escondida: es cómo se habla hoy con quien quieres
 | La tarjeta Visa existe y está activa; es **virtual**, la emite CryptoMate | Se usa **en línea**, para el boleto. No se enseña pagando en un datáfono |
 | La licencia de H3 excluye EE. UU., UE, RU y Corea | Pautar solo fuera de esos territorios |
 
-### La escena que dejé fuera, y por qué
+### 12:10 — ONDK: dueña de algo más grande
 
-**«Invertir en el token de una empresa y ver cómo se mueve el precio en VICO».**
-No encontré VICO en ninguno de los dos repos. Y aunque exista, enseñar a una
-persona invirtiendo y mirando un precio que se mueve **construye la promesa de
-ganancia** que las reglas prohíben, igual que el oro se construía sin decirlo.
-Está preparada para entrar entre las 10:15 y las 13:30 si José decide:
-1. qué es VICO y si está en producción con operaciones reales, y
-2. con visto bueno legal para mostrar un producto de inversión.
+Pausa en el taller. Lucía come mango con sal en la puerta, mira el teléfono y
+después levanta los ojos hacia su propio taller, con un orgullo callado. En la
+pantalla, su ONDK y el acta que lo respalda. La idea que vende: **igual que es
+dueña de su taller, es dueña de un pedazo de algo más grande, y lo puede
+comprobar.** La bolsa siempre fue para otros; aquí la tiene una tapicera un
+martes a mediodía.
 
-Si entra, va sin cifras de rendimiento, con una línea de precio que sube **y
-baja**, y sin cara de alegría al mirarla.
+Cómo se cuenta para que venda y no se caiga: sin cifra, sin gráfica y sin botón
+de comprar en pantalla. Lo que se enseña es que **lo tiene** y el acta que lo
+respalda. El ONDK no sube ni baja entre actas, y eso también vende: es lo
+contrario de la montaña rusa que el público asocia con «cripto».
 
 ---
 
@@ -110,8 +112,8 @@ baja**, y sin cara de alegría al mirarla.
 
 | Pieza | Cómo | Coste |
 |---|---|---|
-| 23 planos humanos | MiniMax H3 en AWS, still → vídeo (i2v) | GPU |
-| Pantallas A–I | **Capturas de las apps reales** con cuentas demo, igual que el tráiler de MyTokenPay. Nunca generadas: el modelo inventa letras | 0 |
+| 24 planos humanos | MiniMax H3 en AWS, still → vídeo (i2v) | GPU |
+| Pantallas A–J | **Capturas de las apps reales** con cuentas demo, igual que el tráiler de MyTokenPay. Nunca generadas: el modelo inventa letras | 0 |
 | Voces | ElevenLabs: Lucía, la hija, el proveedor, la amiga. Diseñadas, no de biblioteca | créditos EL |
 | Música | Compuesta aquí (`musica_cine.py`), sin licencias | 0 |
 | Rótulos de hora | PNG con Pillow (no hay `drawtext`) | 0 |
@@ -147,9 +149,9 @@ sesión 1 no genera la película: genera **lo necesario para decidir**.
 
 ### Sesión 1 — casting, stills y la prueba que decide el método (~3 h)
 
-`prompts/q_p3_sesion1.json`, 110 trabajos:
+`prompts/q_p3_sesion1.json`, 114 trabajos:
 - **Casting:** 8 Lucías, 4 hijas, 4 proveedores.
-- **Stills:** los 23 planos × 4 opciones.
+- **Stills:** los 24 planos × 4 opciones.
 - **La prueba:** el plano 02 dos veces a 124 fotogramas: desde su still (i2v)
   y desde texto (t2v, el camino probado).
 
@@ -163,8 +165,8 @@ qué still de cada plano. Y viendo la prueba decidimos el método de la sesión 
 
 ### Sesión 2 — la película a calidad (~9 h, desde la caché)
 
-23 planos × 2 semillas, y × 3 en los cuatro que sostienen la historia (02, 11,
-15 y 22): 50 clips. Tope `--horas 10`. Mientras corre, aquí se hacen las
+24 planos × 2 semillas, y × 3 en los cuatro que sostienen la historia (02, 11,
+15 y 22): 52 clips. Tope `--horas 10`. Mientras corre, aquí se hacen las
 capturas de pantalla, las voces y la música. No hace falta esperar a la GPU.
 
 ### Sesión 3 — retomas (~1–2 h)
@@ -223,8 +225,7 @@ a uno), y el siguiente `create` retoma sin repetirlos.
 | Cupo Spot en Mumbai (pedido 27-sep, en revisión manual de AWS) | AWS | Sesión 1 (o se hace On-Demand) |
 | `HF_TOKEN` con escritura | José | Sesión 1 |
 | ¿D02 aprobada? ¿La comisión se puede enseñar? | José | Solo el inserto G |
-| ¿Qué es VICO? ¿Entra la inversión? | José + legal | Solo la escena opcional |
 | El envío a otro país existe como transferencia de ORIGEN, pero **nadie puede pasarlo a moneda local fuera de Honduras** (y el retiro es manual, solo lempiras). ¿Cuándo? | José | Publicar 6:40 y 15:40 |
-| Capturas A–I de las apps reales | aquí, sin GPU, **cuando cada pantalla funcione de verdad** | Montaje |
+| Capturas A–J de las apps reales | aquí, sin GPU, **cuando cada pantalla funcione de verdad** | Montaje |
 | Que cada escena sea verdad para gente real | el equipo | **Publicar** (ver `ECOSISTEMA_MERCADEO.md` §5) |
 | Voces y música | aquí, sin GPU | Montaje |

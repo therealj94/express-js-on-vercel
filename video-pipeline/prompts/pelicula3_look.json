@@ -163,6 +163,26 @@
       "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
     },
     {
+      "id": "08b_taller_pausa",
+      "escena": "2b · 12:10",
+      "still": "a 42 year old Central American woman with warm light-brown skin, faint freckles across the cheekbones, fine lines at the corners of her eyes, dark brown wavy hair pulled back in a low loose bun with loose strands at the temples, thick dark eyebrows, small silver hoop earrings, no makeup except a little lip balm, wearing a rust-orange linen shirt with sleeves rolled to the elbow over a plain white t-shirt, dark blue jeans, a thin black hair tie on her left wrist. She sits on a tall wooden stool in the doorway of her small upholstery workshop during a short break, eating slices of green mango with salt from a small plastic bag, rolls of fabric and a half-upholstered armchair behind her, midday light on the street outside. She looks at her phone, then lifts her eyes and looks slowly around her own workshop, a quiet private pride. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "she looks down at her phone for a moment, then lifts her eyes and slowly takes in her own workshop, chewing, a small proud half-smile, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "static",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        801,
+        802,
+        803,
+        804
+      ],
+      "pick": null,
+      "_personaje": "lucia",
+      "insert_despues": "J · Veta Wallet: su ONDK, y el acta que lo respalda abierta (pantalla real, sin cifras)",
+      "_nota": "ONDK: ella es dueña de un pedazo de algo más grande, igual que es dueña de su taller. Sin precio, sin gráfica, sin comprar: solo lo tiene y lo puede comprobar.",
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
       "id": "09_almuerzo_mesa",
       "escena": "3 · 13:30",
       "still": "a 42 year old Central American woman with warm light-brown skin, faint freckles across the cheekbones, fine lines at the corners of her eyes, dark brown wavy hair pulled back in a low loose bun with loose strands at the temples, thick dark eyebrows, small silver hoop earrings, no makeup except a little lip balm, wearing a rust-orange linen shirt with sleeves rolled to the elbow over a plain white t-shirt, dark blue jeans, a thin black hair tie on her left wrist. She sits at a lunch table in a busy, loud local restaurant with plastic tablecloths and ceiling fans, with three friends around 40: a heavyset woman with short curly black hair and big laugh lines in a mustard blouse, a tall thin man with a shaved head and a trimmed grey beard in a light blue guayabera, a woman with a straight black bob, tortoiseshell glasses and a black sleeveless top. The sunflowers in kraft paper lie across the table, plates with the remains of lunch, sweating glasses of horchata. Everyone is laughing at something the curly-haired woman just said. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",

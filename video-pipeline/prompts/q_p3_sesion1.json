@@ -1,7 +1,7 @@
 {
  "version": 1,
  "defaults": {},
- "_nota": "Sesion 1 de «Un martes»: casting (16) + stills de los 23 planos (92) + dos pruebas de video del plano 02 (i2v desde su still 01, y t2v) a 124 fotogramas. Al acabar la cola el pod espera ESPERA_MIN y se apaga solo.",
+ "_nota": "Sesion 1 de «Un martes»: casting (16) + stills de los 24 planos (96) + dos pruebas de video del plano 02 (i2v desde su still 01, y t2v) a 124 fotogramas. Al acabar la cola el pod espera ESPERA_MIN y se apaga solo.",
  "jobs": [
   {
    "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts",
@@ -664,6 +664,62 @@
   {
    "id": "still_08_florista_cobra_04",
    "prompt": "a 64 year old Central American man with a grey mustache, thick forearms and a dark green canvas apron with no lettering, reading glasses pushed up on his forehead. Behind his counter, his phone lying on the counter next to the cash drawer vibrates and lights up; he glances down at it over his glasses, then up, and gives a small satisfied nod to someone off-camera. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Close framing with shallow depth of field, natural light, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+   "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts",
+   "seed": 1003,
+   "workflow": "workflows/h3_calidad_api.json",
+   "width": 720,
+   "height": 1280,
+   "steps": 28,
+   "cfg": 3.5,
+   "duration_s": 5,
+   "fps": 1,
+   "retries": 1
+  },
+  {
+   "id": "still_08b_taller_pausa_01",
+   "prompt": "a 42 year old Central American woman with warm light-brown skin, faint freckles across the cheekbones, fine lines at the corners of her eyes, dark brown wavy hair pulled back in a low loose bun with loose strands at the temples, thick dark eyebrows, small silver hoop earrings, no makeup except a little lip balm, wearing a rust-orange linen shirt with sleeves rolled to the elbow over a plain white t-shirt, dark blue jeans, a thin black hair tie on her left wrist. She sits on a tall wooden stool in the doorway of her small upholstery workshop during a short break, eating slices of green mango with salt from a small plastic bag, rolls of fabric and a half-upholstered armchair behind her, midday light on the street outside. She looks at her phone, then lifts her eyes and looks slowly around her own workshop, a quiet private pride. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+   "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts",
+   "seed": 1000,
+   "workflow": "workflows/h3_calidad_api.json",
+   "width": 720,
+   "height": 1280,
+   "steps": 28,
+   "cfg": 3.5,
+   "duration_s": 5,
+   "fps": 1,
+   "retries": 1
+  },
+  {
+   "id": "still_08b_taller_pausa_02",
+   "prompt": "a 42 year old Central American woman with warm light-brown skin, faint freckles across the cheekbones, fine lines at the corners of her eyes, dark brown wavy hair pulled back in a low loose bun with loose strands at the temples, thick dark eyebrows, small silver hoop earrings, no makeup except a little lip balm, wearing a rust-orange linen shirt with sleeves rolled to the elbow over a plain white t-shirt, dark blue jeans, a thin black hair tie on her left wrist. She sits on a tall wooden stool in the doorway of her small upholstery workshop during a short break, eating slices of green mango with salt from a small plastic bag, rolls of fabric and a half-upholstered armchair behind her, midday light on the street outside. She looks at her phone, then lifts her eyes and looks slowly around her own workshop, a quiet private pride. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+   "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts",
+   "seed": 1001,
+   "workflow": "workflows/h3_calidad_api.json",
+   "width": 720,
+   "height": 1280,
+   "steps": 28,
+   "cfg": 3.5,
+   "duration_s": 5,
+   "fps": 1,
+   "retries": 1
+  },
+  {
+   "id": "still_08b_taller_pausa_03",
+   "prompt": "a 42 year old Central American woman with warm light-brown skin, faint freckles across the cheekbones, fine lines at the corners of her eyes, dark brown wavy hair pulled back in a low loose bun with loose strands at the temples, thick dark eyebrows, small silver hoop earrings, no makeup except a little lip balm, wearing a rust-orange linen shirt with sleeves rolled to the elbow over a plain white t-shirt, dark blue jeans, a thin black hair tie on her left wrist. She sits on a tall wooden stool in the doorway of her small upholstery workshop during a short break, eating slices of green mango with salt from a small plastic bag, rolls of fabric and a half-upholstered armchair behind her, midday light on the street outside. She looks at her phone, then lifts her eyes and looks slowly around her own workshop, a quiet private pride. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+   "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts",
+   "seed": 1002,
+   "workflow": "workflows/h3_calidad_api.json",
+   "width": 720,
+   "height": 1280,
+   "steps": 28,
+   "cfg": 3.5,
+   "duration_s": 5,
+   "fps": 1,
+   "retries": 1
+  },
+  {
+   "id": "still_08b_taller_pausa_04",
+   "prompt": "a 42 year old Central American woman with warm light-brown skin, faint freckles across the cheekbones, fine lines at the corners of her eyes, dark brown wavy hair pulled back in a low loose bun with loose strands at the temples, thick dark eyebrows, small silver hoop earrings, no makeup except a little lip balm, wearing a rust-orange linen shirt with sleeves rolled to the elbow over a plain white t-shirt, dark blue jeans, a thin black hair tie on her left wrist. She sits on a tall wooden stool in the doorway of her small upholstery workshop during a short break, eating slices of green mango with salt from a small plastic bag, rolls of fabric and a half-upholstered armchair behind her, midday light on the street outside. She looks at her phone, then lifts her eyes and looks slowly around her own workshop, a quiet private pride. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
    "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts",
    "seed": 1003,
    "workflow": "workflows/h3_calidad_api.json",

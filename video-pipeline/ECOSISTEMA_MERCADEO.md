@@ -103,6 +103,7 @@ puede es **publicarla** hasta que cada escena sea verdad.
 | 13:30 almuerzo | Dividir la cuenta | …igual que la floristería |
 | 15:40 proveedor | Pago a otro país | …el proveedor pueda pasarlo a su moneda en su país |
 | 18:30 florista cierra | Retiro a lempiras | …el retiro deja de ser manual o, si sigue manual, llega el mismo día |
+| 12:10 ONDK | Tenerlo y ver el acta | …la ficha de ONDK en Veta enseña el acta sin cifras |
 | 21:10 historial | Comprobante y ordenscan | **Ya se puede**: ordenscan está vivo |
 | Cierre | «…se puede comprobar» | Ya se puede |
 
@@ -129,10 +130,11 @@ ahorro en grupo; el directorio o el mapa de comercios; «cambiá en Ordenex»;
 construcción «no es X, es Y»; ONDK con precio o invitación a comprar. Y el
 costo por operación, hasta D02.
 
-**VICO:** no aparece en ningún archivo ni commit de los dos repos. Lo más
-parecido es *Sport Kapital* (tokens de equipos de fútbol con precio en vivo,
-**simulado**) y *Tesorería* (interna, para la Junta). Ninguno está vivo para el
-público.
+**ONDK, para vender:** es la pieza con más fuerza aspiracional: una persona
+normal dueña de un pedazo de algo grande, con un acta que lo respalda y que se
+puede abrir. Se cuenta así: que **lo tiene** y que **lo puede comprobar**. Sin
+cifra, sin gráfica y sin «comprá» en pantalla. Que no se mueva entre actas es
+un argumento a favor frente a la montaña rusa de las cripto.
 
 ---
 
