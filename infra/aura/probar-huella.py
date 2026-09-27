@@ -56,11 +56,13 @@ def casa():
     """Una casa de mentira con un prompt y un asistente dentro."""
     d = pathlib.Path(tempfile.mkdtemp())
     (d / 'PROMPT-AURA.md').write_text('```\nsoy el prompt\n```')
+    (d / 'cabecera-de-la-casa.md').write_text('soy la cabecera')
     mio = d / 'asistente-falso.py'
     mio.write_text('cuerpo del asistente')
     g = cargar(RAIZ / 'asistente.py', ('huella_viva', 'dejar_huella'), {
         'os': os, 'time': time, 'json': json,
         'DATOS': d, 'RUTA_PROMPT': d / 'PROMPT-AURA.md',
+        'RUTA_CABECERA': d / 'cabecera-de-la-casa.md',
         'MODELO_RAPIDA': 'qwen2.5:7b', 'MODELO_PENSADORA': 'gemma2:9b',
         'probadores': lambda: None, 'log': lambda *a: None,
         '__file__': str(mio),
