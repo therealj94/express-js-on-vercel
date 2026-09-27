@@ -13120,6 +13120,12 @@ const VETA = (() => {
              </div>`;
     }
 
+    /* Un mensaje que este aparato no pudo abrir (o que se borró) no trae la
+       llave de su archivo: pintar el adjunto con la dirección del relevo
+       enseñaría bytes cerrados como una imagen o un audio roto, al lado del
+       aviso que ya explica qué pasó. Revisión de Codex en #31. */
+    if (m.cerrado || m.borrado) adj = '';
+
     // En un grupo hace falta saber quien habla; en un cara a cara sobra.
     const firma = (!mio && chatSt.con?.esGrupo)
       ? `<span class="cha-de">${esc(m.de.split('@')[0])}</span>` : '';

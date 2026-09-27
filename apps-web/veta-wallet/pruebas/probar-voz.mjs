@@ -125,6 +125,23 @@ const corte = await pag.evaluate(async () => {
 })
 ok('un adjunto cerrado sin nadie a quien darle la llave no se manda', corte.lanzo && subidas.filter(s=>s.enviado).length === enviadosAntes, JSON.stringify(corte))
 
+// Un mensaje con adjunto que este aparato NO pudo abrir (llegó cerrado para
+// otro aparato): se dice con su aviso, pero no se pinta el adjunto con la
+// dirección del relevo, que serían bytes cerrados como una imagen rota.
+// Tercera revisión de Codex en el PR #31.
+const sinAbrir = await pag.evaluate(async () => {
+  CHAT.bandeja = async () => ({ mensajes: [{ id: 'mx1', de: 'ana@ordenglobal.link', para: 'jose@ordenglobal.link',
+    cuando: Date.now(), tipo: 'imagen', archivo: 'arch7', nombre: 'foto.jpg', cerrado: true, e2e: true, texto: '' }],
+    enLinea: false, leidoHasta: 0 })
+  CHAT.listo = () => true
+  VETA.vista('chat')
+  await VETA.chatAbrir('ana@ordenglobal.link')
+  await new Promise(r => setTimeout(r, 800))
+  return { aviso: !!document.querySelector('.cha-cerrado'),
+    roto: !!document.querySelector('img[src*="arch7"], a[href*="arch7"], video[src*="arch7"], audio[src*="arch7"]') }
+})
+ok('un adjunto que este aparato no pudo abrir se avisa y no se pinta roto', sinAbrir.aviso && !sinAbrir.roto, JSON.stringify(sinAbrir))
+
 ok('sin errores de javascript', err.length===0)
 if(err.length) console.log(err.slice(0,3))
 await nav.close()
