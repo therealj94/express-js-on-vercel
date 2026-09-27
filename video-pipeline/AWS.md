@@ -7,6 +7,36 @@ de pagar 25–55 minutos de instalación en cada encendido.
 Nada de esto se ha ejecutado todavía. Lo que está marcado **[medido]** se leyó
 hoy de la cuenta; lo marcado **[estimado]** hay que medirlo en la primera sesión.
 
+> ## ⚠️ Corrección del 27-sep (misma tarde): la licencia cambia la región
+>
+> La licencia de MiniMax H3 (§ Definiciones 3 y 5, § IV.4) **excluye Estados
+> Unidos, la Unión Europea, Reino Unido y Corea del Sur**: no autoriza a usar,
+> reproducir ni *mostrar* el modelo **ni sus resultados** en esos territorios.
+>
+> - **`us-east-1` queda descartada**: correr los pesos en un servidor de EE. UU.
+>   es usarlos en territorio excluido. Todo lo de abajo con precios de
+>   `us-east-1` vale como referencia técnica, no como plan.
+> - Regiones de AWS con `g7e.2xlarge` **fuera** de territorio excluido: Tokio
+>   (`ap-northeast-1`, cupo On-Demand G = **0**) y Mumbai (`ap-south-1`, cupo
+>   On-Demand G = 384). Mumbai: **$5.49/h** On-Demand, ~$2.04/h Spot (cupo Spot
+>   = 0). São Paulo solo tiene H100 a $11.56/h.
+> - A $5.49/h, AWS cuesta **~4–5× Vast**. Con esto la recomendación pasa a ser
+>   **Vast filtrando hosts por país** (`vast_api.py search` muestra la
+>   `geolocation` pero hoy no filtra por ella) y AWS Mumbai solo como respaldo.
+> - Los anuncios generados **no se pueden mostrar** en EE. UU./UE/RU/Corea sin
+>   una autorización aparte de MiniMax (`api@minimax.io`). Para público en
+>   Honduras y Latinoamérica no aplica esta exclusión. Confirmar con un abogado
+>   antes de pautar.
+> - Se revisó Hugging Face a esta fecha: **H3 sigue siendo el último modelo de
+>   vídeo de MiniMax** (27-jul-2026). Lo nuevo aprovechable está en
+>   `Comfy-Org/MiniMax-H3`: modo **ref2va** (hasta 9 imágenes de referencia:
+>   logo, producto, misma persona en todos los planos), LoRA turbo de 8 pasos y
+>   ControlNet Union 2.0 (24-sep). La resolución nativa es **768 px** de lado
+>   corto; hoy se genera a 720.
+> - H100 (`p5`) no ejecuta nvfp4 de forma nativa, y el codificador de texto que
+>   usa el pipeline es `nvfp4_awq`: si se usa AWS, la tarjeta es `g7e`
+>   (Blackwell), no `p5`.
+
 ---
 
 ## 0. Respuesta corta
