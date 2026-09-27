@@ -1,0 +1,62 @@
+{
+  "defaults": {},
+  "jobs": [
+    {
+      "id": "01_la_casa_1985_aws1",
+      "workflow": "workflows/h3_calidad_api.json",
+      "prompt": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off with the smallest organic drift, natural practical light only, real 35mm grain, documentary realism, calm observational framing, no advertising gloss, Latin American neighbourhood. A modest single storey Latin American house with a low garden wall and a metal gate, painted in a faded pastel colour, seen from the pavement in warm morning light, an old boxy car of the early eighties parked in front, a bougainvillea over the wall, no people in frame and no readable signs anywhere, real film grain, framing slightly off centre, observational documentary realism, the mild warmth and soft grain of that decade.\n\nTimeline:\n[0s-4s] the bougainvillea moves very slightly in the air and the light shifts across the wall, nothing else in the frame changes\n\nSingle continuous shot, one take, no cuts, vertical 9:16 framing.\n\nAudio: natural ambience of the location, no music, no voice.",
+      "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, embroidered logo, signage with readable words, readable documents, readable forms, screens with readable text, readable user interface, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, model looks, big smile, celebration, crying, tears, looking at camera, addressing the camera, talking, speaking, moving lips, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker, crooked teeth, deformed teeth, distorted mouth",
+      "seed": 1007,
+      "steps": 20,
+      "cfg": 1.0,
+      "width": 720,
+      "height": 1280,
+      "duration_s": 4,
+      "fps": 24,
+      "post": null
+    },
+    {
+      "id": "02_la_firma_1985_aws1",
+      "workflow": "workflows/h3_calidad_api.json",
+      "prompt": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off with the smallest organic drift, natural practical light only, real 35mm grain, documentary realism, calm observational framing, no advertising gloss, Latin American neighbourhood. Looking down at a wooden desk in 1985, a pair of young hands signing the last line of a single sheet of paper with a cheap ballpoint pen, a second older hand resting at the edge of the page, a rotary telephone and a metal stamp on the desk beside them, no faces in frame and nothing readable on the paper, warm dusty light from a window, floating dust motes hanging in the air, real film grain, framing slightly off centre, observational documentary realism, visible skin texture and wood grain.\n\nTimeline:\n[0s-4s] the pen finishes the signature in one movement and lifts, and the older hand slides the sheet a few centimetres away\n\nSingle continuous shot, one take, no cuts, vertical 9:16 framing.\n\nAudio: natural ambience of the location, no music, no voice.",
+      "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, embroidered logo, signage with readable words, readable documents, readable forms, screens with readable text, readable user interface, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, model looks, big smile, celebration, crying, tears, looking at camera, addressing the camera, talking, speaking, moving lips, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker, crooked teeth, deformed teeth, distorted mouth",
+      "seed": 1014,
+      "steps": 20,
+      "cfg": 1.0,
+      "width": 720,
+      "height": 1280,
+      "duration_s": 4,
+      "fps": 24,
+      "post": null
+    },
+    {
+      "id": "03_la_llave_1985_aws1",
+      "workflow": "workflows/h3_calidad_api.json",
+      "prompt": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off with the smallest organic drift, natural practical light only, real 35mm grain, documentary realism, calm observational framing, no advertising gloss, Latin American neighbourhood. Extreme close on a hand putting an old brass key into the lock of a wooden front door painted a faded colour, the metal of the lock scratched and worn, warm morning light raking across the door, the grain of the paint and the small dents of years clearly visible, no faces in frame, razor-thin depth of field, real film grain, framing slightly off centre, observational documentary realism.\n\nTimeline:\n[0s-4s] the key slides into the lock and turns, and the door moves a few centimetres inward as the hand withdraws\n\nSingle continuous shot, one take, no cuts, vertical 9:16 framing.\n\nAudio: natural ambience of the location, no music, no voice.",
+      "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, embroidered logo, signage with readable words, readable documents, readable forms, screens with readable text, readable user interface, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, model looks, big smile, celebration, crying, tears, looking at camera, addressing the camera, talking, speaking, moving lips, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker, crooked teeth, deformed teeth, distorted mouth",
+      "seed": 1021,
+      "steps": 20,
+      "cfg": 1.0,
+      "width": 720,
+      "height": 1280,
+      "duration_s": 4,
+      "fps": 24,
+      "post": null
+    },
+    {
+      "id": "04_entran_1985_aws1",
+      "workflow": "workflows/h3_calidad_api.json",
+      "prompt": "shot on full-frame cinema camera, vintage 35mm spherical prime, T2.8, locked off with the smallest organic drift, natural practical light only, real 35mm grain, documentary realism, calm observational framing, no advertising gloss, Latin American neighbourhood. A young Latin American couple in mid eighties clothes stepping through the open front door of a modest empty house carrying a cardboard box between them, bare walls and a bare floor beyond, warm morning light falling in from the doorway behind them, natural skin texture with visible pores, facial asymmetry, no beauty retouching, no posing, documentary realism, the mild warmth and soft grain of that decade, floating dust motes hanging in the air, real film grain, framing slightly off centre, observational documentary realism. Vertical portrait of a young Latin American couple in 1985, he in a short-sleeved shirt and she in a simple printed dress, both in their mid twenties, plain haircuts of the period, no makeup, tired hopeful faces, warm morning light, visible pores and facial asymmetry, even natural teeth, the mild warmth and soft grain of that decade.\n\nTimeline:\n[0s-4s] they carry the box through the doorway and set it down on the bare floor, and she straightens up and looks around the empty room\n\nSingle continuous shot, one take, no cuts, vertical 9:16 framing.\n\nAudio: natural ambience of the location, no music, no voice.",
+      "negative": "text, letters, numbers, subtitles, captions, watermark, brand names, logos, embroidered logo, signage with readable words, readable documents, readable forms, screens with readable text, readable user interface, horizontal composition, letterboxing, black bars, cartoon, animation, 3D render, drone shot, gimbal glide, slow motion, orange and teal grading, glossy advertising lighting, beauty retouching, poreless skin, model looks, big smile, celebration, crying, tears, looking at camera, addressing the camera, talking, speaking, moving lips, plastic skin, waxy face, deformed hands, extra fingers, morphing, flicker, crooked teeth, deformed teeth, distorted mouth",
+      "seed": 1028,
+      "steps": 20,
+      "cfg": 1.0,
+      "width": 720,
+      "height": 1280,
+      "duration_s": 4,
+      "fps": 24,
+      "post": null
+    }
+  ],
+  "nota": "Prueba de AWS: 4 planos de q_llave.json, iguales en todo salvo el id, para comparar con los de Vast."
+}
