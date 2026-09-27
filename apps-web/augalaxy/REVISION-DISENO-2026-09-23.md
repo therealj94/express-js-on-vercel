@@ -243,3 +243,21 @@ José: «giros gravitacionales y que choquen las esferas entre sí para evitar q
 
 - `claude/sfsp410-ondk-saldos-ox2fba` tiene cambios de la wallet sin publicar: la edad del precio, el oro de Londres y el fin de los precios `FIJOS`. Pero trae el motor de texturas y le faltan las tipografías propias y la limpieza del sorteo que producción sí tiene. Subirla tal cual deshace esto; primero hay que unir esta rama.
 - **www.vetawallet.com** (un solo archivo, `d7ofsbyqsj3d9`) no se tocó: su última subida es del 21-ago.
+
+---
+
+## 11 · Pendientes cerrados (27-sep)
+
+| Pendiente | Qué pasó |
+|---|---|
+| **F6** pruebas rotas | `aetherion-inicio.mjs` y `galaxia-entrada.mjs` cortaban la ruta vieja `aetherion/`. El motor 3D cargaba igual y no probaban el respaldo. Ahora cortan `augalaxy/` y pasan en verde. Tenían el mismo error `airtouch-nucleo`, `probar-esfera-toque`, `probar-envio-comprobante`, `probar-boton-confirma`, `probar-nucleo-profundidad` y `probar-nucleo-toques`, también corregidas. |
+| **D10** AuCorp y Ordenex en marco vacío | No era la app. AuCorp manda `frame-ancestors` con `app.vetawallet.com` y Ordenex no pone restricción. La CSP de la wallet (`frame-src`) permite los dos. Era la red del entorno de prueba. |
+| **D11** «frase semilla» en la entrada | Se había perdido en producción. Vuelve «Ya tengo una billetera: importarla». |
+| **D12** seis capas de `.world-label` | Esa hoja es de la galaxia de texturas (`src/experience/`), que ya no se sirve. Se cerrará si esa galaxia vuelve. |
+| **El lema del chat** | Era falso en un punto: las **notas de voz** se subían en claro. Ahora se cierran con el candado, como las fotos, y el adjunto abierto lleva su tipo para que Safari lo reproduzca. Con eso el lema es cierto. Lo que no se puede cerrar sale marcado en su burbuja. Se corrigieron los comentarios que decían «no hay cifrado». |
+| **Entrada en teléfonos chicos** | El botón de entrar volvía a quedar fuera de la vista en producción. Vuelve el contenedor desplazable y la regla de pantallas cortas; comprobado a 320×568, 375×667 y 390×844. |
+| **www.vetawallet.com** | Nada que subir. `www` y el dominio principal devuelven 301 hacia `app.vetawallet.com` desde el balanceador `OrdenKapital`, con certificado para los dos. Si desde una sesión de Claude se ve un 502, es el proxy de la sesión: tiene una regla que intenta firmar ese host con AWS. |
+
+**Queda abierto:** en el Inicio clásico de respaldo (solo sin 3D), a 320×568, el nombre de MINAS queda tapado por otra esfera; su centro sí se toca. Lo mide `probar-nucleo-toques.mjs`.
+
+**Publicado:** app.vetawallet.com con `VETA_V e4917e4986`, primero en ensayo. `comparar-publicado.py` dice que coinciden.
