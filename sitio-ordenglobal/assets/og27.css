@@ -1,0 +1,364 @@
+@font-face{font-family:'Fraunces';font-style:italic;font-weight:100 900;font-display:swap;src:url(/assets/fuentes/fraunces-italic-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face{font-family:'Fraunces';font-style:italic;font-weight:100 900;font-display:swap;src:url(/assets/fuentes/fraunces-italic-latin.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:'Fraunces';font-style:normal;font-weight:100 900;font-display:swap;src:url(/assets/fuentes/fraunces-normal-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face{font-family:'Fraunces';font-style:normal;font-weight:100 900;font-display:swap;src:url(/assets/fuentes/fraunces-normal-latin.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:100 800;font-display:swap;src:url(/assets/fuentes/jetbrainsmono-normal-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:100 800;font-display:swap;src:url(/assets/fuentes/jetbrainsmono-normal-latin.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:'Manrope';font-style:normal;font-weight:200 800;font-display:swap;src:url(/assets/fuentes/manrope-normal-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face{font-family:'Manrope';font-style:normal;font-weight:200 800;font-display:swap;src:url(/assets/fuentes/manrope-normal-latin.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   ORDEN GLOBAL · portada 27
+
+   La página se cuenta como la empresa: del desorden al orden, y de tu
+   teléfono hasta la roca. Tres momentos cargan todo el movimiento:
+     · la apertura, donde el enredo cobrizo se ordena en el OG;
+     · el descenso por las seis capas del sistema;
+     · la cadena latiendo en vivo, un bloque cada diez segundos.
+   Todo lo demás es tipografía quieta.
+
+   Sin JavaScript, o con movimiento reducido, la página se lee entera de
+   arriba abajo: las escenas fijas solo existen bajo html.anima.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+:root{
+  --negro:#060505; --negro-2:#0E0C0A; --tierra:#15100A;
+  --crema:#F4EFE4; --gris:#9A9285; --gris-2:#5F584F;
+  --oro:#F5E4AB; --oro-hondo:#D9B45F; --ambar:#E8963C; --frontera:#B8412F;
+  --linea:rgba(217,180,95,.24);
+  --f-disp:'Fraunces',Georgia,'Times New Roman',serif;
+  --f-texto:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-dato:'JetBrains Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+  --margen:clamp(20px,5vw,80px);
+  --entra:cubic-bezier(.16,1,.3,1);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;overflow-x:clip}
+body{margin:0;background:var(--negro);color:var(--crema);font:400 1.0625rem/1.62 var(--f-texto);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow-x:clip}
+/* Grano de película: el negro liso es lo que delata a una pantalla. */
+body::after{content:'';position:fixed;inset:0;z-index:50;pointer-events:none;opacity:.07;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)'/%3E%3C/svg%3E")}
+img,svg,video,canvas{display:block;max-width:100%}
+figure{margin:0}
+a{color:inherit}
+p{margin:0}
+h1,h2,h3{margin:0;font-family:var(--f-disp);font-weight:300;font-variation-settings:'opsz' 144;letter-spacing:-.025em;color:var(--crema)}
+h1,h2,h3{text-wrap:balance}
+p,li,dd{text-wrap:pretty}
+em{font-style:italic;color:var(--oro)}
+:focus-visible{outline:2px solid var(--oro);outline-offset:3px;border-radius:2px}
+.oculto{position:absolute!important;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.saltar{position:absolute;left:var(--margen);top:-60px;z-index:60;background:var(--oro);color:var(--negro);padding:10px 14px;font-weight:600;text-decoration:none}
+.saltar:focus{top:12px}
+.dato{font-family:var(--f-dato);font-variant-numeric:tabular-nums}
+.marco{padding-inline:var(--margen)}
+
+.boton{display:inline-flex;align-items:center;gap:.7em;background:var(--oro-hondo);color:var(--negro);
+  font:600 1rem/1 var(--f-texto);padding:17px 24px;border-radius:2px;text-decoration:none;transition:background .25s}
+.boton:hover{background:var(--oro)}
+.enlace{color:var(--oro-hondo);font-weight:500;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:.3em;transition:color .2s;display:inline-block;padding-block:8px}
+.enlace:hover{color:var(--oro)}
+
+/* ── Cabecera: se va al bajar, vuelve al subir ─────────────────────────────── */
+.techo{position:fixed;inset:0 0 auto;z-index:40;display:flex;align-items:center;justify-content:space-between;gap:24px;
+  padding:18px var(--margen);transition:transform .5s var(--entra),background .4s}
+.techo.fondo{background:linear-gradient(to bottom,rgba(6,5,5,.92),rgba(6,5,5,.72));backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.techo.fuera{transform:translateY(-110%)}
+.marca{display:flex;align-items:center;gap:12px;text-decoration:none}
+.marca img{height:26px;width:auto}
+.marca span{font:600 .8125rem/1 var(--f-texto);letter-spacing:.2em;color:var(--crema)}
+.techo nav{display:flex;align-items:center;gap:clamp(14px,2vw,30px);font-size:.9375rem}
+.techo nav .secciones{display:contents}
+.techo nav a{text-decoration:none;color:var(--gris);transition:color .2s}
+.techo nav a:hover{color:var(--crema)}
+.techo nav a.idioma{font-size:.8125rem;letter-spacing:.06em}
+.techo nav a.boton{padding:12px 16px;font-size:.875rem;color:var(--negro)}
+
+/* ── La apertura ───────────────────────────────────────────────────────────── */
+.apertura{position:fixed;inset:0;z-index:45;background:var(--negro);display:none}
+.anima .apertura.activa{display:block}
+.apertura canvas{position:absolute;inset:0;width:100%;height:100%}
+.apertura button{position:absolute;right:var(--margen);bottom:28px;background:none;border:0;color:var(--gris);
+  font:500 .875rem/1 var(--f-texto);padding:12px 4px;cursor:pointer}
+.apertura button:hover{color:var(--crema)}
+.apertura.sale{background:transparent;transition:background .9s ease}
+
+/* ── Portada: el título es el paisaje ─────────────────────────────────────── */
+.portada{min-height:100svh;display:grid;grid-template-rows:1fr auto;padding-top:clamp(96px,14vh,150px)}
+.portada h1{font-size:clamp(3.4rem,13.2vw,15rem);line-height:.86;letter-spacing:-.045em;font-weight:250}
+.portada h1 .l{display:block;overflow:hidden;padding-bottom:.06em}
+.portada h1 .l > span{display:block}
+.portada h1 .l2{padding-left:clamp(0px,11vw,220px)}
+.portada-pie{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,26rem);gap:32px 64px;align-items:end;margin-top:clamp(32px,5vh,64px)}
+.portada-pie p{color:rgba(244,239,228,.86);font-size:1.125rem;max-width:30em}
+.acciones{display:flex;flex-wrap:wrap;align-items:center;gap:14px 28px;margin-top:26px}
+.tira{display:flex;flex-wrap:wrap;gap:8px 36px;margin-top:clamp(40px,7vh,72px);padding-block:18px 22px;border-top:1px solid var(--linea);
+  font-size:.875rem;color:var(--gris)}
+.tira b{font-weight:400;color:var(--oro)}
+.tira .pulso{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--oro-hondo);margin-right:10px;vertical-align:middle;
+  animation:late 10s linear infinite}
+@keyframes late{0%{box-shadow:0 0 0 0 rgba(217,180,95,.7)}12%{box-shadow:0 0 0 9px rgba(217,180,95,0)}100%{box-shadow:0 0 0 0 rgba(217,180,95,0)}}
+
+/* Entrada del título tras la apertura: cada línea sube desde su máscara. */
+.anima .portada h1 .l > span{transform:translateY(105%)}
+.anima .portada .portada-pie,.anima .portada .tira{opacity:0;transform:translateY(24px)}
+.anima.listo .portada h1 .l > span{transform:none;transition:transform 1.2s var(--entra)}
+.anima.listo .portada h1 .l2 > span{transition-delay:.12s}
+.anima.listo .portada .portada-pie{opacity:1;transform:none;transition:opacity 1s .45s,transform 1.2s .45s var(--entra)}
+.anima.listo .portada .tira{opacity:1;transform:none;transition:opacity 1s .7s,transform 1.2s .7s var(--entra)}
+
+/* ── Secciones ─────────────────────────────────────────────────────────────── */
+.seccion{padding-block:clamp(110px,16vw,220px) 0}
+.grande{font-size:clamp(2.5rem,6.4vw,6.6rem);line-height:.98;max-width:14em}
+.medio{font-size:clamp(2rem,4.2vw,4rem);line-height:1.02;max-width:16em}
+.texto{max-width:34em;margin-top:26px;color:rgba(244,239,228,.84);font-size:1.1875rem}
+
+/* Aparición al entrar en pantalla. */
+.anima .aparece{opacity:0;transform:translateY(34px);transition:opacity 1s,transform 1.2s var(--entra)}
+.anima .aparece.visto{opacity:1;transform:none}
+
+/* ── El manifiesto: las palabras se encienden al leerlas ───────────────────── */
+.manifiesto p{font:italic 300 clamp(1.9rem,4.4vw,4.1rem)/1.14 var(--f-disp);font-variation-settings:'opsz' 144;letter-spacing:-.02em;max-width:18em;color:var(--crema)}
+.manifiesto p + p{margin-top:.9em}
+.manifiesto .roto{color:var(--ambar)}
+.anima .manifiesto{height:340vh;padding-block:0}
+.anima .manifiesto .escena{position:sticky;top:0;height:100svh;display:flex;flex-direction:column;justify-content:center}
+.anima .manifiesto .w{opacity:.13;transition:opacity .35s}
+.anima .manifiesto .w.on{opacity:1}
+.respuesta{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,300px);gap:clamp(32px,6vw,100px);align-items:end}
+.respuesta .medio em{white-space:nowrap}
+
+/* El tráiler. */
+.pieza{max-width:300px}
+.pieza .marco-v{position:relative;aspect-ratio:9/16;background:var(--negro-2);border:1px solid var(--linea);overflow:hidden}
+.pieza video{width:100%;height:100%;object-fit:cover}
+.reproducir{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;gap:12px;padding:16px 18px;border:0;cursor:pointer;
+  background:linear-gradient(to top,rgba(6,5,5,.94),rgba(6,5,5,0));color:var(--crema);font:500 .9375rem/1 var(--f-texto);text-align:left}
+.reproducir::before{content:'';width:38px;height:38px;border-radius:50%;border:1px solid var(--oro-hondo);flex:none}
+.reproducir::after{content:'';position:absolute;left:34px;top:50%;transform:translateY(-50%);width:0;height:0;border-left:10px solid var(--oro);border-block:6px solid transparent}
+.reproducir .dato{margin-left:auto;color:var(--gris);font-size:.8125rem}
+.pieza figcaption{margin-top:12px;color:var(--gris);font-size:.875rem}
+
+/* ── El descenso: seis capas, de tu teléfono a la roca ─────────────────────── */
+.capas-lista{list-style:none;margin:48px 0 0;padding:0}
+.capas-lista li{padding:28px 0;border-top:1px solid var(--linea)}
+.capas-lista h3{font-size:clamp(1.8rem,3vw,2.6rem)}
+.capas-lista p{margin-top:8px;color:rgba(244,239,228,.82);max-width:32em}
+.capas-lista .piezas{margin-top:10px;color:var(--oro-hondo);font-size:.9375rem}
+
+.anima .descenso{height:720vh;padding-block:0;position:relative}
+.anima .descenso .escena{position:sticky;top:0;height:100svh;overflow:hidden;
+  display:grid;grid-template-columns:minmax(0,1fr) 120px;align-items:center;
+  background:
+    radial-gradient(120% 70% at 50% 120%,rgba(217,180,95,calc(var(--hondo,0) * .2)),transparent 60%),
+    linear-gradient(to bottom,var(--negro),color-mix(in srgb,var(--tierra) calc(var(--hondo,0) * 100%),var(--negro)))}
+.anima .descenso .titulo-fijo{position:absolute;top:clamp(92px,13vh,130px);left:var(--margen);right:var(--margen);
+  font-size:clamp(1.1rem,1.6vw,1.35rem);font-family:var(--f-texto);font-weight:500;letter-spacing:0;color:var(--gris);max-width:none}
+.anima .capas-lista{position:relative;height:60vh;margin:0}
+.anima .capas-lista li{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;border:0;padding:0;
+  opacity:0;transform:translateY(8vh);transition:opacity .6s,transform .9s var(--entra);pointer-events:none}
+.anima .capas-lista li.antes{transform:translateY(-8vh)}
+.anima .capas-lista li.aqui{opacity:1;transform:none;pointer-events:auto}
+.anima .capas-lista h3{font-size:clamp(3.2rem,10.5vw,11rem);line-height:.9;letter-spacing:-.045em;font-weight:250}
+.anima .capas-lista p{font-size:clamp(1.1rem,1.6vw,1.4rem);margin-top:22px;max-width:28em}
+.anima .capas-lista .piezas{font-size:1rem;margin-top:18px;color:color-mix(in srgb,var(--oro) calc(55% + var(--hondo,0) * 45%),var(--gris))}
+.sonda{display:none}
+.anima .sonda{display:block;position:relative;height:60vh;justify-self:end;width:1px;background:var(--linea)}
+.anima .sonda span{position:absolute;right:14px;transform:translateY(-50%);font-size:.8125rem;color:var(--gris-2);white-space:nowrap;transition:color .4s}
+.anima .sonda span.aqui{color:var(--oro)}
+.anima .sonda i{position:absolute;left:-4px;width:9px;height:9px;border-radius:50%;background:var(--oro);top:calc(var(--prof,0) * 100%);transform:translateY(-50%);
+  box-shadow:0 0 18px 2px rgba(245,228,171,.45)}
+
+/* ── ORIGEN: el gramo partido en 55 ────────────────────────────────────────── */
+.origen{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.9fr);gap:clamp(40px,7vw,120px);align-items:center}
+.cuenta{margin-top:40px;max-width:26rem;font-size:.9375rem}
+.cuenta div{display:flex;justify-content:space-between;padding:13px 0;border-top:1px solid var(--linea)}
+.cuenta .res{border-bottom:1px solid var(--linea);color:var(--oro)}
+.cuenta small{display:block;margin-top:14px;color:var(--gris);font-size:.8125rem;line-height:1.55;font-family:var(--f-texto)}
+.disco{width:100%;max-width:480px;justify-self:center;color:var(--oro-hondo);overflow:visible}
+.disco text{font:500 13px var(--f-dato);fill:var(--oro)}
+.anima .disco .radios path{stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset 2.2s cubic-bezier(.65,0,.35,1)}
+.anima .disco .cuna{opacity:0;transform:translateY(18px);transition:opacity .8s 1.6s,transform 1.2s 1.6s var(--entra)}
+.anima .disco .rotulo{opacity:0;transition:opacity .8s 2.2s}
+.anima .disco.visto .radios path{stroke-dashoffset:0}
+.anima .disco.visto .cuna{opacity:1;transform:none}
+.anima .disco.visto .rotulo{opacity:1}
+
+.monedas{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin-top:clamp(80px,10vw,140px);border-top:1px solid var(--linea)}
+.monedas div{padding:28px 24px 0 0}
+.monedas dt{font:300 clamp(2rem,3.4vw,3.2rem)/1 var(--f-disp);font-variation-settings:'opsz' 144;letter-spacing:-.02em;color:var(--oro)}
+.monedas dt .simbolo{display:inline-block;height:.9em;width:auto;margin-right:.3em;vertical-align:-.08em}
+.monedas dd{margin:14px 0 0;color:rgba(244,239,228,.8);font-size:.9875rem;max-width:18em}
+
+/* ── Las casas: una galería que se recorre de costado ───────────────────────── */
+.casas-cabeza{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:end;gap:24px 48px}
+.casas-cabeza .texto{margin-top:0}
+.pista{display:flex;gap:clamp(16px,2vw,28px);margin-top:56px;padding-inline:var(--margen);overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding-bottom:8px}
+.pista::-webkit-scrollbar{display:none}
+.casa{flex:none;width:min(84vw,460px);min-height:520px;scroll-snap-align:start;display:flex;flex-direction:column;
+  padding:34px 32px 30px;background:linear-gradient(160deg,#120F0B,#0A0807);border:1px solid rgba(217,180,95,.16);border-radius:3px}
+.casa h3{font-size:clamp(2.2rem,3.4vw,3.2rem);line-height:1;letter-spacing:-.03em}
+.casa .etq{display:inline-block;margin-top:14px;font-size:.8125rem;color:var(--ambar)}
+.casa .etq.pronto{color:var(--gris)}
+.casa .que{margin-top:22px;font:italic 300 1.35rem/1.3 var(--f-disp);color:var(--oro)}
+.casa ul{list-style:none;margin:22px 0 0;padding:0}
+.casa li{padding:10px 0;border-top:1px solid rgba(217,180,95,.12);color:rgba(244,239,228,.8);font-size:.9875rem}
+.casa .pie-casa{margin-top:auto;padding-top:24px}
+.casa .pieza{max-width:140px;margin-top:20px}
+.casa .pieza figcaption{display:none}
+.casa .pieza .marco-v{aspect-ratio:4/5}
+.casa .reproducir{padding:12px;gap:10px;font-size:.8125rem}
+.casa .reproducir::before{width:30px;height:30px}
+.casa .reproducir::after{left:24px;border-left-width:8px;border-block-width:5px}
+.anima .casas{height:var(--alto-casas,420vh);padding-block:0}
+.anima .casas .escena{position:sticky;top:0;height:100svh;display:flex;flex-direction:column;justify-content:flex-start;overflow:hidden;padding-top:clamp(96px,13vh,130px)}
+.anima .casas:not(.sin-pin) .grande{font-size:clamp(2.4rem,4.6vw,4.6rem)}
+.anima .casas:not(.sin-pin) .pista{margin-top:36px}
+.anima .casas:not(.sin-pin) .casa{min-height:min(470px,62vh)}
+.anima .casas .pista{overflow:visible;scroll-snap-type:none;transform:translate3d(var(--corre,0px),0,0)}
+.aura{margin-top:48px;max-width:40em;color:rgba(244,239,228,.84)}
+
+/* ── La cadena, en vivo ────────────────────────────────────────────────────── */
+.cadena .numero{font:250 clamp(4.6rem,19vw,20rem)/.85 var(--f-disp);font-variation-settings:'opsz' 144;letter-spacing:-.05em;
+  color:var(--oro);font-variant-numeric:tabular-nums;margin-top:36px;white-space:nowrap}
+.cadena .numero.nuevo{animation:bloque 1.2s var(--entra)}
+@keyframes bloque{0%{color:var(--crema);text-shadow:0 0 40px rgba(245,228,171,.55)}100%{color:var(--oro);text-shadow:none}}
+.latido{height:1px;background:var(--linea);margin-top:28px;position:relative;overflow:hidden}
+.latido i{position:absolute;inset:0;background:var(--oro-hondo);transform-origin:left;transform:scaleX(var(--late,0))}
+.cadena-pie{display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px 40px;margin-top:18px;color:var(--gris);font-size:.9375rem}
+.cadena-pie .hash{font-size:.75rem;word-break:break-all;max-width:40em}
+.cadena .texto{margin-top:48px}
+
+/* ── SFSP: el pasaporte del activo ─────────────────────────────────────────── */
+.sfsp-cuerpo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(40px,7vw,110px);align-items:start;margin-top:64px}
+.pasaporte{position:relative;overflow:hidden;padding:34px 32px;background:#0D0B08;border-radius:4px;
+  box-shadow:0 30px 80px -30px rgba(0,0,0,.9)}
+/* Guilloché: las líneas finas de los billetes y los títulos valores. */
+.pasaporte::before{content:'';position:absolute;inset:8px;border-radius:2px;pointer-events:none;
+  border:1px solid rgba(217,180,95,.35);
+  background:repeating-radial-gradient(circle at 100% 0,rgba(217,180,95,.07) 0 1px,transparent 1px 7px),
+             repeating-radial-gradient(circle at 0 100%,rgba(217,180,95,.05) 0 1px,transparent 1px 9px)}
+.pasaporte > *{position:relative}
+.pasaporte h3{font-size:1.6rem;color:var(--oro)}
+.pasaporte .sub{margin-top:6px;color:var(--gris);font-size:.875rem}
+.pasaporte dl{margin:26px 0 0}
+.pasaporte dl div{display:grid;grid-template-columns:9.5em minmax(0,1fr);gap:16px;padding:12px 0;border-top:1px dashed rgba(217,180,95,.22)}
+.pasaporte dt{color:var(--gris);font-size:.875rem}
+.pasaporte dd{margin:0;font-size:.9375rem}
+.riesgo{display:flex;gap:6px}
+.riesgo span{flex:1;text-align:center;padding:4px 0;border:1px solid rgba(217,180,95,.3);font-size:.75rem;color:var(--gris)}
+.riesgo span.es{background:var(--oro-hondo);color:var(--negro);border-color:var(--oro-hondo)}
+.sello{position:absolute!important;right:22px;bottom:22px;width:112px;height:112px;border-radius:50%;border:1.5px solid var(--ambar);color:var(--ambar);
+  display:grid;place-items:center;text-align:center;font:600 .6875rem/1.3 var(--f-texto);letter-spacing:.06em;transform:rotate(-12deg);opacity:.9}
+.anima .pasaporte dl div{opacity:0;transform:translateX(-10px);transition:opacity .5s,transform .7s var(--entra)}
+.anima .pasaporte.visto dl div{opacity:1;transform:none}
+.anima .pasaporte .sello{opacity:0;transform:rotate(-12deg) scale(1.8);transition:opacity .3s,transform .45s cubic-bezier(.3,1.6,.5,1)}
+.anima .pasaporte.visto .sello{opacity:.9;transform:rotate(-12deg) scale(1);transition-delay:1.5s}
+.principios{list-style:none;margin:0;padding:0}
+.principios li{padding:22px 0;border-top:1px solid var(--linea)}
+.principios li:first-child{border-top:0;padding-top:0}
+.principios b{display:block;font:400 1.45rem/1.25 var(--f-disp);font-variation-settings:'opsz' 48;color:var(--crema);margin-bottom:6px}
+.principios span{color:rgba(244,239,228,.8)}
+.pilares{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(24px,4vw,64px);margin-top:clamp(80px,10vw,130px)}
+.pilares h3{font-size:clamp(1.8rem,2.8vw,2.6rem);color:var(--oro)}
+.pilares p{margin-top:12px;color:rgba(244,239,228,.8)}
+.llaves{margin-top:56px;font:italic 300 clamp(1.4rem,2.4vw,2rem)/1.3 var(--f-disp);max-width:26em;color:var(--crema)}
+
+/* ── Lo que estamos encendiendo ────────────────────────────────────────────── */
+.encendiendo{list-style:none;margin:56px 0 0;padding:0}
+.encendiendo li{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px 64px;padding:36px 0;border-top:1px solid var(--linea);align-items:baseline}
+.encendiendo li:last-child{border-bottom:1px solid var(--linea)}
+.encendiendo h3{font-size:clamp(1.8rem,3.4vw,3.2rem);line-height:1.02}
+.encendiendo p{color:rgba(244,239,228,.82)}
+
+/* ── Comprobalo ────────────────────────────────────────────────────────────── */
+.pruebas{margin-top:48px;border-top:1px solid var(--linea)}
+.prueba-fila{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.7fr) minmax(0,1fr);gap:16px 32px;align-items:center;padding:24px 0;border-bottom:1px solid var(--linea)}
+.prueba-fila .que b{display:block;font-weight:500}
+.prueba-fila .que span{color:var(--gris);font-size:.9375rem}
+.codigo{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--linea);background:var(--negro-2);font-size:.875rem;color:var(--oro)}
+.copiar{background:none;border:0;color:var(--oro-hondo);font:500 .875rem/1 var(--f-texto);cursor:pointer;padding:8px 4px}
+.copiar:hover{color:var(--oro)}
+.nota-lei{margin-top:22px;max-width:44em;color:var(--gris);font-size:.9375rem}
+
+/* ── El cierre: la invitación ocupa el ancho ───────────────────────────────── */
+.invitacion{display:block;text-decoration:none;font:250 clamp(3.6rem,12.5vw,14rem)/.9 var(--f-disp);font-variation-settings:'opsz' 144;
+  letter-spacing:-.045em;color:var(--crema);transition:color .4s}
+.invitacion span{display:inline-block;color:var(--oro-hondo);transition:transform .5s var(--entra)}
+.invitacion:hover{color:var(--oro)}
+.invitacion:hover span{transform:translateX(.12em)}
+.cierre-pie{display:flex;flex-wrap:wrap;gap:12px 32px;margin-top:36px}
+.legal{margin-top:56px;max-width:52em;color:rgba(244,239,228,.66);font-size:.9375rem}
+.legal a{color:var(--crema)}
+
+/* ── Pie ───────────────────────────────────────────────────────────────────── */
+.pie{margin-top:clamp(110px,14vw,180px);padding-block:56px 40px;border-top:1px solid var(--linea)}
+.pie-a{display:grid;grid-template-columns:minmax(0,1.4fr) repeat(2,minmax(0,1fr));gap:40px}
+.pie img{height:22px;width:auto;margin-bottom:18px}
+.pie p{color:var(--gris);font-size:.9375rem}
+.pie h2{font:600 .875rem/1 var(--f-texto);letter-spacing:.02em;color:var(--crema);margin-bottom:16px}
+.pie ul{list-style:none;margin:0;padding:0}
+.pie li a{display:inline-block;padding:6px 0;color:var(--gris);text-decoration:none;font-size:.9375rem}
+.pie li a:hover{color:var(--crema)}
+.pie-b{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px 32px;margin-top:48px;color:var(--gris-2);font-size:.875rem}
+
+/* ── Teléfono ──────────────────────────────────────────────────────────────── */
+@media (max-width:900px){
+  .techo{flex-wrap:wrap;row-gap:4px;padding-block:14px 0}
+  .techo nav{display:contents}
+  .marca span{display:none}
+  .techo nav a.idioma{order:1;margin-left:auto;padding:12px 6px}
+  .techo nav a.boton{order:2}
+  .techo nav .secciones{order:3;flex-basis:100%;display:flex;gap:22px;overflow-x:auto;scrollbar-width:none;margin-top:6px}
+  .techo nav .secciones::-webkit-scrollbar{display:none}
+  .techo nav .secciones a{padding:12px 0;white-space:nowrap}
+  .portada{padding-top:150px}
+  .portada h1 .l2{padding-left:0}
+  .portada h1{font-size:clamp(3.4rem,17.5vw,8rem)}
+  .portada{grid-template-rows:auto 1fr;gap:28px}
+  .portada-pie{grid-template-columns:1fr}
+  .respuesta,.origen,.sfsp-cuerpo{grid-template-columns:1fr}
+  .anima .descenso .escena{grid-template-columns:minmax(0,1fr) 40px}
+  .anima .sonda span{display:none}
+  .monedas{grid-template-columns:1fr 1fr}
+  .monedas div{padding-bottom:24px}
+  .pilares{grid-template-columns:1fr}
+  .encendiendo li{grid-template-columns:1fr}
+  .prueba-fila{grid-template-columns:1fr;gap:10px}
+  .pie-a{grid-template-columns:1fr 1fr}
+  .pie-a > div:first-child{grid-column:1/-1}
+  .casa{min-height:0}
+  .pasaporte{padding:28px 22px 130px}
+  .pasaporte dl div{grid-template-columns:1fr;gap:4px}
+}
+
+
+/* ── ORIGEN en 3D: la explicación del tráiler ──────────────────────────────── */
+.origen3d{display:none}
+.con3d .origen3d{display:block;position:relative;height:540vh}
+.origen3d .escena{position:sticky;top:0;height:100svh;overflow:hidden;
+  background:radial-gradient(46% 42% at 50% 44%,rgba(217,180,95,.16),rgba(217,180,95,0) 70%)}
+.origen3d canvas{position:absolute;inset:0;width:100%;height:100%}
+.origen3d .frases{position:absolute;left:var(--margen);right:var(--margen);bottom:clamp(64px,12vh,120px);height:7.5em;text-align:center}
+.origen3d .frase{position:absolute;inset:auto 0 0;font:italic 300 clamp(1.8rem,3.6vw,3.3rem)/1.15 var(--f-disp);font-variation-settings:'opsz' 144;
+  letter-spacing:-.02em;color:var(--crema);text-shadow:0 2px 28px rgba(6,5,5,.9);opacity:0;transform:translateY(18px);transition:opacity .6s,transform .9s var(--entra)}
+.origen3d .frase.aqui{opacity:1;transform:none}
+.origen3d .frase .dato{display:block;margin-top:14px;font-style:normal;font-size:.875rem;letter-spacing:.02em;color:var(--gris)}
+.origen3d .frase .dato b{font-weight:400;color:var(--oro)}
+.origen3d .nota3d{position:absolute;left:0;right:0;bottom:22px;text-align:center;font-size:.8125rem;color:var(--gris-2)}
+.con3d #origen .disco{display:none}
+.con3d #origen .origen{grid-template-columns:minmax(0,1fr)}
+
+/* La cabecera espera a que el logo llegue volando. */
+.anima .techo{opacity:0}
+.anima.listo .techo{opacity:1;transition:opacity .6s .5s,transform .5s var(--entra),background .4s}
+/* En el teléfono las casas se deslizan con el dedo, sin escena fija. */
+.anima .casas.sin-pin{height:auto;padding-top:clamp(110px,16vw,220px)}
+.anima .casas.sin-pin .escena{position:static;height:auto;display:block;overflow:visible}
+.anima .casas.sin-pin .pista{transform:none;overflow-x:auto;scroll-snap-type:x mandatory}
+.anima .sonda span:empty{width:9px;height:1px;background:var(--gris-2);right:-4px}
+.anima .sonda span:empty.aqui{background:var(--oro)}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}

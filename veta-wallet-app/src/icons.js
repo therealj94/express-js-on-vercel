@@ -82,6 +82,16 @@ const PATHS = {
     'M3.5 3.5h6.5v6.5H3.5z', 'M14 3.5h6.5v6.5H14z', 'M3.5 14h6.5v6.5H3.5z',
     'M14 14h2.8v2.8H14z', 'M17.7 17.7h2.8v2.8h-2.8z', 'M14 20.5h1.4', 'M20.5 14h-1.4',
   ],
+  /* El símbolo de pago sin contacto: las cuatro ondas que están impresas en
+     todos los datáfonos del mundo. Se dibuja igual que allí —abriendo hacia la
+     derecha— porque lo que se busca es que la persona lo reconozca, no que sea
+     bonito. */
+  contactless: [
+    'M5.6 10.9a1.9 1.9 0 0 1 0 2.2',
+    'M9 8.4a6 6 0 0 1 0 7.2',
+    'M12.4 5.9a10.1 10.1 0 0 1 0 12.2',
+    'M15.8 3.4a14.2 14.2 0 0 1 0 17.2',
+  ],
   storefront: ['M3.5 9.5h17v10a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z', 'M3.5 9.5L5.4 4h13.2l1.9 5.5', 'M9.5 20.5V15h5v5.5'],
   globe: [circle(12, 12, 9), 'M3 12h18', 'M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18'],
   link: ['M10.2 13.8a4.6 4.6 0 0 0 6.8 0l2.6-2.6a4.6 4.6 0 0 0-6.5-6.5l-1 1', 'M13.8 10.2a4.6 4.6 0 0 0-6.8 0L4.4 12.8a4.6 4.6 0 0 0 6.5 6.5l1-1'],

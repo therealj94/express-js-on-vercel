@@ -1,8 +1,102 @@
 # El sitio de ordenglobal.org
 
-"El viaje del valor" es una sola pagina: `index.html`, sin dependencias ni
-compilacion. Todo lo demas son medios (216 fotogramas y 9 imagenes) que la
-pagina carga a mano.
+| Ruta | Archivo | Qué es |
+|---|---|---|
+| `/` | `index.html` | La portada (septiembre de 2026) |
+| `/en/` | `en/index.html` | La misma portada en inglés |
+| `/historia/` | `historia/index.html` | "El viaje del valor": un solo desplazamiento con sonido |
+| cualquier otra | `404.html` | La página que no existe (Amplify la sirve con estado 404) |
+
+## La portada
+
+**No se edita `index.html` a mano.** Sale de la plantilla y de los datos:
+
+```sh
+python3 construir-portada.py      # escribe index.html y en/index.html
+sh reconstruir.sh /tmp/ogsite     # arma la copia completa
+python3 desplegar.py /tmp/ogsite  # la sube a Amplify
+```
+
+- `portada.plantilla.html` y `portada.plantilla.en.html`: el texto de cada idioma.
+- `construir-portada.py`: las siete casas, las cinco pruebas y el disco de las
+  55 porciones, en los dos idiomas. Una casa nueva es una fila más ahí.
+- `assets/og27.css` y `assets/og27.js`: todo el estilo y todo el código de la
+  portada. El JS hace la apertura (el enredo cobrizo que se ordena en el OG a
+  pantalla completa y vuela a la cabecera, una vez por visita, sobre el
+  trazado de `assets/og-vector.js`), las escenas del scroll (el manifiesto
+  palabra por palabra, el descenso por las seis capas y la galería de las
+  casas), la cadena latiendo en vivo, copiar códigos y los videos. Con
+  movimiento reducido no hay escenas: la página se lee de corrido.
+  `og26.css` queda solo para la 404.
+- La escena 3D de ORIGEN: la fuente está en `escena3d/` (`escena.js` y el
+  símbolo trazado en `simbolo.js`) y **no se publica tal cual**. `sh
+  construir-3d.sh` la empaqueta con las partes de Three.js 0.170 que usa en
+  `assets/origen3d-escena.js` (unos 520 KB, 135 KB comprimido, con la licencia
+  MIT de Three.js al final). `assets/origen3d.js` es el cargador: solo pide la
+  escena si hay WebGL, no hay movimiento reducido y la sección se acerca, con
+  la misma versión `?v=` que él. El símbolo en plano es `assets/origen-simbolo.svg`.
+- `assets/medios/`: el tráiler de ORIGEN y el spot de Ordenex con sus pósteres.
+
+Tres reglas que conviene no romper:
+
+- **Un solo ornamento**: la regla de seis líneas, y una sola vez, justo donde
+  la página pasa del desorden al orden. Entre secciones hay aire, no adornos.
+- **Nada inventado se mueve.** Si el precio o la cadena no contestan, el dato
+  no aparece (arriba) o queda su guion (en la fórmula). Nunca un número de
+  relleno.
+- **Se vende lo que es, y lo que viene se dice como lo que viene.** La
+  portada es marketing: el sistema completo, capa por capa. Pero nada que
+  dependa de una licencia no otorgada se presenta como disponible (SFSP v0.3,
+  sección 6). Cada casa lleva su sello en `construir-portada.py`: sin sello si
+  está disponible, "Beta" o "Próximamente" si no. Lo que falta va en "Lo que
+  viene", nunca en presente. ORIGEN es referenciado, no respaldado; AUKA y
+  AGKA, respaldadas cuando haya metal: las dos cosas siempre por separado.
+
+Los planetas en WebGL de la portada anterior siguen en `assets/` y en el
+historial de git (`sistema.js`, `constelacion.js`, `portada.css`, `portada.js`),
+por si se quieren recuperar; la portada nueva no los carga.
+
+---
+
+## La portada anterior (hasta septiembre de 2026)
+
+## El ecosistema: siete mundos y una estrella
+
+`sistema.js` dibuja la constelación de la portada en WebGL2, sin ninguna
+dependencia: las superficies no se descargan, las calcula la tarjeta gráfica
+con ruido simplex. Cada casa es un tipo de mundo (roca con filones de oro,
+mundo vivo con océanos y luces de ciudad, hielo, cristal, gigante gaseoso con
+anillos, bronce craterizado) y las órbitas son keplerianas de verdad —
+elipses con su excentricidad e inclinación, y periodos sacados de la tercera
+ley, así que la casa de fuera tarda unas cuatro veces más que la de dentro.
+
+Tres cosas que conviene no deshacer:
+
+- **La decisión de qué motor dibuja vive en `portada.js`**, que es el archivo
+  pequeño que se carga siempre, y no dentro de `sistema.js`. Si viviera dentro
+  del motor de WebGL, un fallo al descargar ESE archivo dejaría la sección
+  vacía sin que nadie se enterara. `constelacion.js` se pide solo cuando hace
+  falta, así que sus ocho kilobytes los paga quien los usa.
+- **La página se mide a sí misma.** No hay lista de tarjetas gráficas buenas y
+  malas —esa lista envejece mal—: el motor cuenta cuántos cuadros tardan más de
+  lo que deberían y, si va justo, apaga el brillo, luego el relieve, y si aun
+  así no llega se retira y entra el dibujo plano. Al retirarse cambia el
+  `<canvas>` por uno nuevo: uno que ya dio contexto WebGL no devuelve nunca un
+  contexto 2D.
+- **Los rótulos son botones del documento**, no texto pintado en el lienzo; se
+  proyectan con la misma matriz que dibujó la escena. Un planeta que no se
+  puede tocar con el teclado ni leer con un lector de pantalla es una
+  decoración, no un menú.
+
+La cámara se calcula, no se pone a ojo: la elevación sale de la proporción del
+lienzo (casi rasante en un monitor ancho, casi cenital en un teléfono de pie) y
+la distancia por bisección, proyectando la órbita exterior hasta dar con la
+mínima en la que cabe entera. Cambiar el alto de `#constelacion` en el CSS
+reencuadra la escena sola.
+
+Los medios no están en el repositorio: 216 fotogramas WebP (`seq/`), 19 MP3
+(`audio/`) y las imágenes de `assets/`. Viven en producción y `reconstruir.sh`
+los baja de ahí.
 
 ## Donde vive
 
@@ -20,41 +114,52 @@ media otra.
 
 ## Reconstruir la copia de trabajo
 
-Los medios no estan en el repositorio: son 11 MB de JPEG que ya viven en
-produccion y se bajan de ahi.
-
 ```sh
-mkdir -p /tmp/ogsite/assets /tmp/ogsite/audio
-cd /tmp/ogsite
-cp <repo>/sitio-ordenglobal/index.html .
-for a in og veta veta-mark veta-icon origen origen-mark genesis-mark favicon-og; do
-  curl -so assets/$a.png https://www.ordenglobal.org/assets/$a.png
-done
-curl -so assets/genesis.ico https://www.ordenglobal.org/assets/genesis.ico
-for s in hero gold blockchain origen; do
-  mkdir -p seq/$s
-  for i in $(seq -w 0 53); do
-    curl -so seq/$s/$i.jpg https://www.ordenglobal.org/seq/$s/$i.jpg
-  done
-done
-python3 <repo>/sitio-ordenglobal/musica/componer.py   # capas/*.wav y mezcla.wav
-python3 <repo>/sitio-ordenglobal/musica/efectos.py    # efectos/*.wav
-# a MP3: capas a 72k, efectos a 64k, la mezcla plana a 96k (ver "La musica")
+sh reconstruir.sh /tmp/ogsite     # código de aquí + medios de producción
 ```
 
-Al terminar tienen que ser 237 archivos y ~16 MB.
+Al terminar tienen que ser 272 archivos y ~14 MB. Si hay que rehacer la
+música desde cero (ver "La musica"):
+
+```sh
+python3 musica/componer.py        # /tmp/musica/capas/*.wav y mezcla.wav
+python3 musica/efectos.py         # /tmp/musica/efectos/*.wav
+python3 musica/mp3.py /tmp/musica /tmp/ogsite/audio   # pip install lameenc
+```
+
+Los fotogramas se sirven en WebP (calidad 76, un tercio menos que los JPEG
+originales sin diferencia a la vista). Si aparecen fotogramas nuevos en JPEG:
+
+```python
+from PIL import Image; Image.open("00.jpg").save("00.webp", "WEBP", quality=76, method=6)
+```
+
+## Versiones y caché
+
+Amplify manda `Cache-Control` por patrón (`configurar-amplify.py`): los
+fotogramas, el audio, las fuentes y las imágenes son inmutables por un año;
+CSS y JS duran una semana en el navegador. Por eso el HTML los pide con
+`?v=AAAAMMDD`: **al tocar `portada.css` o cualquier `.js`, cambiá la fecha en
+las tres páginas y en `404.html`**, o media gente seguirá con la versión vieja
+hasta una semana. El HTML no se cachea en el navegador.
+
+`configurar-amplify.py` también fija la CSP y la regla del 404. Se corre una
+vez cuando cambia algo de eso, con las mismas credenciales que el despliegue.
 
 ## Publicar
 
 ```sh
 AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... python3 desplegar.py /tmp/ogsite
-node probar-bso.mjs                # comprueba la banda sonora en un navegador
+node probar-bso.mjs                # comprueba la banda sonora de /historia/ en un navegador
+SITIO=https://www.ordenglobal.org node probar-bso.mjs   # lo mismo, contra producción
 ```
 
 Amplify **reemplaza el manifiesto entero** en cada despliegue: lo que no va en
 la subida desaparece del sitio. Por eso el script recorre el arbol completo y
-sube los 237 archivos aunque solo haya cambiado uno. Nunca subir un archivo
-suelto.
+sube los 272 archivos aunque solo haya cambiado uno. Nunca subir un archivo
+suelto. (Así se perdieron una vez las cuatro capas y los trece efectos de la
+banda sonora: un despliegue hecho desde una copia sin `audio/` completo dejó
+/historia/ sonando con una sola capa durante semanas.)
 
 El espejo del servidor viejo ya **no recibe trafico**: `www` resuelve a
 CloudFront en todos los resolutores que se probaron, y el apex (`ordenglobal.org`
@@ -146,4 +251,4 @@ tiene costura audible — el ultimo instante y el primero coinciden en energia
 (0,180 contra 0,174) y todo lo que crece a lo largo de la pieza vuelve a su
 punto de partida antes de cerrar.
 
-El `.wav` que sale hay que convertirlo a MP3 y dejarlo en `audio/ambiente.mp3`.
+El `.wav` que sale se convierte con `musica/mp3.py` y queda en `audio/ambiente.mp3`.

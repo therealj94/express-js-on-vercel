@@ -196,6 +196,12 @@ async function rawReq(path, { method = 'GET', body, timeout = 20000 } = {}) {
       err.code = res.status === 401 || res.status === 403 ? 'auth'
         : res.status === 400 || res.status === 422 ? 'rechazado'
           : res.status >= 500 ? 'servidor' : 'http';
+      /* Y, aparte, el código que mandó el BACKEND. El de arriba clasifica el
+         transporte —si fue de red, de sesión o del servidor— y por eso lo usa
+         toda la app; pero a veces el servidor dice algo más fino que eso, como
+         que una función no está habilitada para nuestro programa y no tiene
+         sentido reintentar. Ese matiz se perdía al sobrescribirlo. */
+      if (data.code) err.codigoServidor = String(data.code);
       throw err;
     }
     return data;
@@ -426,6 +432,21 @@ export const cardApi = {
 
   notifications: () => req('/cards/notifications'),
   markNotificationsRead: () => req('/cards/notifications/read', { method: 'POST' }),
+
+  /* Añadir la tarjeta a Google Wallet.
+     Los dos identificadores los da el teléfono (ver src/googleWallet.js) y lo
+     que vuelve es una credencial de pago cifrada para Google: se le entrega al
+     SDK y se olvida. No se guarda, no se registra y no se reintenta con la
+     misma — es de un solo uso y dura poco.
+     501 con code PROVISIONING_NO_DISPONIBLE significa que el emisor todavía no
+     habilita esto para nuestro programa: no es un fallo pasajero y la pantalla
+     no debe invitar a reintentar. */
+  googleWalletProvisioning: ({ walletAccountId, deviceId }) =>
+    req('/cards/google-wallet/provisioning', {
+      method: 'POST',
+      body: { wallet_account_id: walletAccountId, device_id: deviceId },
+      timeout: 30000,
+    }),
 };
 
 // Login de alto nivel. El backend devuelve { token } con los datos del usuario

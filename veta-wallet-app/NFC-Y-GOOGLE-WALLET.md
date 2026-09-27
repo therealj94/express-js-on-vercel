@@ -1,114 +1,150 @@
-# Pagar con NFC: qué hace falta y qué no depende de nosotros
+# Pagar acercando el teléfono
 
-Son dos cosas distintas y conviene no mezclarlas.
-
-| | Qué es | Se puede |
-|---|---|---|
-| **Agregar a Google Wallet** | La tarjeta se copia a Google Wallet y se paga con NFC desde ahí | Sí, si CryptoMate lo soporta y Google nos aprueba |
-| **Pagar con NFC desde Veta Wallet** | La app emula la tarjeta con el chip NFC del teléfono | En la práctica, no |
+> **Corrección · 20-sep-2026.** La versión anterior de este documento concluía
+> que CryptoMate «hoy no da» la credencial que hace falta, y que por eso el
+> camino estaba cerrado. **Era falso, y frenó el proyecto semanas.** La
+> conclusión se sacó mirando qué endpoints usaba *nuestro* backend, no qué
+> ofrece CryptoMate — como deducir que una tienda no vende pan porque nosotros
+> nunca compramos pan ahí.
+>
+> CryptoMate documenta el endpoint con nombre y todo, y ya está integrado.
 
 ---
 
-## 1. Agregar a Google Wallet (push provisioning)
+## Lo que se consigue, y lo que no
 
-Es el camino real. El usuario toca un botón en Veta Wallet, la tarjeta queda
-en Google Wallet, y paga acercando el teléfono. Veta Wallet no maneja el NFC:
-lo maneja Google.
+| | Se paga acercando el teléfono | Qué falta |
+|---|---|---|
+| **Añadir a Google Wallet** | Sí. La tarjeta vive en Google Wallet y se paga con NFC desde ahí | Alta ante Google y el SDK. Ver abajo |
+| **Pagar desde dentro de Veta Wallet** | No, y no va a poder | Certificación EMVCo y alcance PCI |
 
-### Lo que verifiqué
+Conviene decirlo claro porque se pide a menudo: **el pago por NFC no ocurre
+dentro de Veta Wallet.** Ocurre en Google Wallet, con la tarjeta que Veta
+Wallet metió ahí. Para quien paga es idéntico —acerca el teléfono al datáfono y
+listo— pero la credencial vive en Google, no en nuestra app.
 
-**El SDK de Google no es público.** La documentación de push provisioning
-(`developers.google.com/pay/issuers/apis/push-provisioning/android`) contesta
-*"Only authorized Google Accounts can view this content"*. No es que esté mal
-documentado: está cerrado a socios aprobados.
+Que la app emule la tarjeta ella misma se llama Host Card Emulation. Android lo
+permite, pero para que un datáfono acepte el pago hay que presentar credenciales
+EMV reales, emitidas por un Token Service Provider a un emisor certificado, más
+la certificación EMVCo de la app como aplicación de pago y el alcance PCI que
+eso arrastra. Ninguna billetera de cripto lo hace. No es falta de ganas: el
+camino corto no existe.
 
-**El módulo de React Native que existe confirma lo mismo.**
-`@expensify/react-native-wallet` es el único mantenido que hace esto, y su
-README pide, antes de escribir una línea de código:
+---
 
-- Pedir acceso a la Google Push Provisioning API
-- Descargar el TapAndPay SDK (se entrega tras la aprobación)
-- Registrar el package name y el SHA-256 de la app en la lista blanca de Google
-- Esperar la verificación. Sin eso, las funciones devuelven `Not verified`
+## El endpoint que sí existe
 
-Para iOS, lo mismo por otro lado: hay que pedir el entitlement
-`com.apple.developer.payment-pass-provisioning` a Apple, y **solo califican
-Team IDs de producción** — un Team ID de prueba no sirve.
+```
+POST /cards/virtual-cards/{cardId}/google-pay/provisioning
+```
 
-### El eslabón que falta y que no depende de Google
+Devuelve la **OPC** (*opaque payment card*): el número de la tarjeta cifrado
+para Google y atado a un aparato concreto. Es lo que el SDK necesita para meter
+la tarjeta en la billetera sin que nadie teclee nada.
 
-Aunque Google nos apruebe, la tarjeta tiene que poder tokenizarse. Eso lo
-provee el emisor a través de Visa Token Service, y se materializa en un dato
-que la app le pasa al SDK (la OPC, *opaque payment card*).
+Dos cosas que deciden el diseño:
 
-**Ese dato tiene que darlo CryptoMate.** Hoy no lo da: de los 17 endpoints de
-tarjeta que usa el backend, ninguno tiene que ver con tokenización,
-provisioning ni wallets. Son emisión, saldo, PAN, PIN, 3DS, límites,
-movimientos, reemisión y congelado.
+- **Los dos datos que pide los genera el teléfono**, no el servidor:
+  `wallet_account_id` y `device_id` salen del SDK de Google. La documentación
+  de CryptoMate lo dice con todas las letras: *«your backend cannot obtain
+  them»*. Por eso el flujo es app → nuestro backend → CryptoMate y vuelta.
+- **La credencial es dinero.** De un solo uso, de vida corta, y no se guarda ni
+  se registra en ningún sitio.
 
-### Qué preguntarle a CryptoMate
+**Apple Wallet no.** La documentación técnica lo niega dos veces: *«Apple Pay
+is not available through this endpoint. Google is the only supported wallet
+today.»* El sitio comercial de CryptoMate sí lo anuncia en español, y se
+contradice con su propia documentación. Hay que preguntárselo, pero se planifica
+con Google solamente.
 
-Esto es lo que decide si el camino existe o no. Conviene preguntarlo tal cual:
+---
 
-1. ¿Soportan push provisioning a Google Wallet y Apple Wallet para las
-   tarjetas virtuales enterprise?
-2. Si sí, ¿exponen un endpoint que devuelva la **OPC (opaque payment card)**
-   para Android, y los datos equivalentes para Apple Pay In-App Provisioning?
-3. ¿La tokenización la habilita su BIN sponsor o hay que gestionarla con Visa
-   por separado?
-4. ¿Nos registran como socio ante Google/Apple, o el trámite lo hacemos
-   nosotros a nombre de Orden Global?
-5. ¿Hay costo por token emitido o por tarjeta tokenizada?
+## Lo que ya está construido
 
-Si la respuesta a la 1 es no, este camino está cerrado hasta que ellos lo
-construyan, y no hay nada que podamos hacer del lado de la app.
+| Dónde | Qué |
+|---|---|
+| Backend · `controller/cardController.js` | `googleWalletProvisioning` — cambia los identificadores del aparato por la credencial. No la registra, no la guarda, responde `no-store` |
+| Backend · `routes/cards.js` | `POST /cards/google-wallet/provisioning`, con sesión de usuario |
+| Backend · sonda | `GET /cards/admin/google-wallet/sonda`, protegida con `x-admin-key`: dice si el programa lo admite, sin devolver credencial |
+| App · `src/googleWallet.js` | El puente: pide los identificadores, llama al backend, se la entrega al SDK. Si no hay módulo nativo, contesta «no disponible» y nada revienta |
+| App · `src/api.js` | `cardApi.googleWalletProvisioning` |
+| App · `src/screens/Card.js` | El botón, que **solo aparece si de verdad se puede** |
 
-### Y además: rompe Expo Go
+El backend distingue tres finales que la app necesita separar: que el programa
+no lo admita (`PROVISIONING_NO_DISPONIBLE`, que no se arregla reintentando y
+retira el botón), que nuestra clave no tenga nivel (`CLAVE_SIN_NIVEL`), y un
+fallo pasajero. Con un 500 genérico la app diría «probá de nuevo» para siempre.
 
-Cualquiera de estos módulos es **código nativo**. Eso significa:
+---
 
-- No funciona en Expo Go, ni ahora ni nunca. Habría que pasar a un
-  development build para probarlo.
-- Con `runtimeVersion: sdkVersion` (ver `EXPO-GO.md`), agregar un módulo
-  nativo obliga a recompilar y repartir el APK **antes** de publicar el
-  update. Si no, el APK viejo se baja JavaScript que llama a algo que no
+## Lo que falta, y no es código
+
+### 1 · Saber si nuestro programa lo admite
+
+Es lo primero y lo decide todo. La sonda lo contesta:
+
+```sh
+curl -sS -H "x-admin-key: $ADMIN_SECRET" \
+  "https://vetawallet-1a2e38ac52b1.herokuapp.com/cards/admin/google-wallet/sonda"
+```
+
+Tres respuestas posibles:
+
+- `soportado: true` → el programa está habilitado. Seguir por el punto 2.
+- `PROVISIONING_NO_DISPONIBLE` → hay que pedírselo a CryptoMate. No es trabajo
+  de app y ninguna cantidad de código lo arregla.
+- `CLAVE_SIN_NIVEL` → el endpoint pide una clave de nivel 2 o superior. Pedir
+  el ascenso a CryptoMate.
+
+La documentación de CryptoMate además dice, literalmente, que hay que hablar
+con ellos antes de construir el lado del cliente. Así que preguntar por correo
+vale tanto como correr la sonda, y probablemente llegue antes.
+
+### 2 · El alta ante Google
+
+Cerrada a socios aprobados. La documentación de push provisioning contesta
+*«Only authorized Google Accounts can view this content»* a quien no esté
+dentro. Hay que:
+
+1. Pedir acceso a la **Google Pay Push Provisioning API**.
+2. Descargar el **SDK TapAndPay**, que se entrega tras la aprobación, y
+   meterlo en `android/libs`.
+3. Registrar el nombre del paquete y la huella **SHA-256** de la app en la
+   lista blanca de Google.
+4. Que CryptoMate registre el programa de tarjetas con la red.
+
+Sin esto, las funciones del SDK devuelven `Not verified`. Los trámites tardan y
+**no dependen de que el código esté listo**: conviene empezarlos ya.
+
+### 3 · Un APK nuevo, repartido a mano
+
+El módulo es **código nativo**. Eso significa:
+
+- No funciona en Expo Go, ni ahora ni nunca. Hace falta un *development build*.
+- Con `runtimeVersion: sdkVersion` (ver `EXPO-GO.md`), añadir un módulo nativo
+  obliga a **recompilar y repartir el APK antes** de publicar la actualización
+  por aire. Si no, el APK viejo se baja JavaScript que llama a algo que no
   tiene y se cierra al abrir.
 
-O sea que esto no llega por aire. Es una versión nueva instalada a mano.
+El código de hoy está escrito para que ese orden no importe: el puente detecta
+si el módulo está y, si no está, el botón no se pinta. **La app se puede
+repartir ya con todo esto dentro** sin esperar a nada.
+
+```sh
+npm i @expensify/react-native-wallet
+npx expo prebuild --platform android
+# meter el SDK TapAndPay en android/libs y referenciarlo en build.gradle
+npx expo run:android
+```
 
 ---
 
-## 2. Pagar con NFC desde la propia app (HCE)
+## El orden
 
-Que la app emule la tarjeta y se pague acercando el teléfono, sin Google
-Wallet en el medio.
-
-Android lo permite técnicamente — se llama Host Card Emulation — pero
-"permitir" es solo la mitad. Para que un datáfono acepte el pago, la app tiene
-que presentar credenciales EMV reales: un token de Visa y sus claves, emitidos
-por un Token Service Provider. Esas credenciales no se generan; se reciben, y
-solo las recibe un emisor certificado.
-
-Es decir: hace falta **todo lo del punto 1** (tokenización de CryptoMate,
-relación con Visa) **más** la certificación EMVCo de la app como aplicación de
-pago, más el alcance PCI que eso arrastra.
-
-Por eso ninguna wallet de cripto hace esto: todas empujan la tarjeta a Google
-Wallet o Apple Pay. No es falta de ganas, es que el camino corto no existe.
-
-**Recomendación: descartarlo.** El punto 1 le da al usuario exactamente lo
-mismo — pagar acercando el teléfono — con una fracción del trabajo y sin
-certificaciones.
-
----
-
-## Orden sugerido
-
-1. Preguntarle a CryptoMate las 5 preguntas de arriba. **Todo depende de eso.**
-2. Si dicen que sí: pedir acceso a Google Push Provisioning y el entitlement
-   de Apple en paralelo — los dos trámites tardan.
-3. Recién entonces: development build, integrar el módulo, y repartir APK
-   nuevo.
+1. Correr la sonda, o preguntarle a CryptoMate. **Todo depende de eso.**
+2. Si la respuesta es sí: pedir el acceso a Google en paralelo, porque tarda.
+3. Cuando llegue el SDK: instalar el módulo, compilar, repartir el APK.
+4. El botón aparece solo.
 
 Nada de esto es trabajo de app hasta el paso 3, y el paso 3 no empieza sin el
 paso 1.
