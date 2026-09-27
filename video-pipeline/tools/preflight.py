@@ -265,6 +265,48 @@ def disco(gb):
 
 
 # --------------------------------------------------------------------------
+def aws(cupo_spot: bool):
+    """Lo mismo que credenciales + saldo + instancias_vivas, pero para EC2.
+
+    En AWS no hay saldo que recargar ni puerto que publicar: lo que puede
+    fallar es la infraestructura (bucket, rol, grupo), el cupo, y que ya haya
+    una máquina de vídeo encendida cobrando.
+    """
+    titulo("AWS")
+    try:
+        sys.path.insert(0, str(Path(__file__).parent))
+        import aws_api as A
+        s = A.sesion(A.REGION)
+        ok(f"credenciales · cuenta {A.cuenta(s)} · región {A.REGION}")
+        b = A.bucket(s, A.REGION)
+        s.client("s3").head_bucket(Bucket=b)
+        ok(f"bucket {b}")
+        s.client("iam").get_instance_profile(InstanceProfileName=A.ROL)
+        ok(f"rol del pod {A.ROL}")
+        A.grupo_id(s.client("ec2"))
+        ok(f"grupo {A.GRUPO} sin reglas de entrada")
+        sq = s.client("service-quotas")
+        codigo = "L-3819A6DF" if cupo_spot else "L-DB2E81BA"
+        v = sq.get_service_quota(ServiceCode="ec2", QuotaCode=codigo)["Quota"]["Value"]
+        (ok if v >= 8 else mal)(f"cupo {'Spot' if cupo_spot else 'On-Demand'} G/VT: {v:.0f} vCPU (hacen falta 8)")
+        vivas = [i["InstanceId"] for i in A.instancias(s.client("ec2"))
+                 if i["State"]["Name"] in ("pending", "running")]
+        if vivas:
+            mal(f"ya hay una instancia de vídeo encendida: {vivas[0]}. Mándale "
+                "trabajo con encolar.py o destrúyela antes")
+        else:
+            ok("ninguna instancia de vídeo encendida")
+        try:
+            s.client("s3").head_object(Bucket=b, Key="cache/manifest.txt")
+            ok("caché sembrada: arranque en ~10 min")
+        except Exception:
+            avisa("sin caché en S3: esta sesión instala desde HF (~40 min) y la siembra")
+    except SystemExit as e:
+        mal(str(e))
+    except Exception as e:
+        mal(f"AWS: {type(e).__name__}: {str(e)[:160]}")
+
+
 def main():
     a = argparse.ArgumentParser()
     a.add_argument("--guion")
@@ -273,14 +315,20 @@ def main():
     a.add_argument("--disco", type=int, default=400)
     a.add_argument("--saldo-minimo", type=float, default=10.0)
     a.add_argument("--apaisado", action="store_true")
+    a.add_argument("--nube", choices=("vast", "aws"), default="vast")
+    a.add_argument("--spot", action="store_true", help="con --nube aws")
     a = a.parse_args()
 
-    print("COMPROBACIÓN PREVIA AL ENCENDIDO")
-    credito = credenciales()
-    saldo(credito, a.saldo_minimo)
-    hf()
-    instancias_vivas()
-    puertos(a.puerto)
+    print(f"COMPROBACIÓN PREVIA AL ENCENDIDO ({a.nube})")
+    if a.nube == "aws":
+        aws(a.spot)
+        hf()
+    else:
+        credito = credenciales()
+        saldo(credito, a.saldo_minimo)
+        hf()
+        instancias_vivas()
+        puertos(a.puerto)
     tamano_onstart()
     guion(a.guion)
     cola(a.cola, vertical=not a.apaisado)

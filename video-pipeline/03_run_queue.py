@@ -71,6 +71,31 @@ def set_input(wf: dict, nid: str | None, key: str, value) -> None:
         wf[owners[0]]["inputs"][key] = value
 
 
+def a_entrada(nombre: str) -> str:
+    """Deja la imagen donde LoadImage la busca y devuelve el nombre a inyectar.
+
+    LoadImage solo lee de ComfyUI/input, y un still de H3 no es una imagen: es
+    un .mp4 de 5 fotogramas (H3 no genera menos). Sin esto la cadena
+    still -> vídeo fallaba en el pod con "Invalid image file", después de
+    pagar la tanda de stills. Se busca en la carpeta de salida y se extrae el
+    primer fotograma a PNG.
+    """
+    entrada = Path(os.environ.get("COMFY_INPUT", "/workspace/ComfyUI/input"))
+    salida = Path(os.environ.get("COMFY_OUTPUT", "/workspace/outputs"))
+    origen = next((c for c in (Path(nombre), salida / nombre, entrada / nombre)
+                   if c.is_file()), None)
+    if origen is None:
+        return nombre  # ya está en input/ o ComfyUI lo resolverá
+    entrada.mkdir(parents=True, exist_ok=True)
+    destino = entrada / (origen.stem + ".png")
+    if origen.suffix.lower() in (".mp4", ".webm", ".mov"):
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(origen),
+                        "-frames:v", "1", str(destino)], check=True)
+    elif origen.resolve() != destino.resolve():
+        destino.write_bytes(origen.read_bytes())
+    return destino.name
+
+
 def build(workflow_path: Path, job: dict) -> dict:
     wf = copy.deepcopy(json.loads(workflow_path.read_text()))
     t = nodes_by_title(wf)
@@ -99,11 +124,11 @@ def build(workflow_path: Path, job: dict) -> dict:
                      ("length", frames), ("batch_size", 1)):
         set_input(wf, t.get("LATENT"), key, val)
     if job.get("image"):
-        set_input(wf, t.get("IMAGE"), "image", job["image"])
+        set_input(wf, t.get("IMAGE"), "image", a_entrada(job["image"]))
     # FL2VA: segundo extremo del plano. Anclar los dos extremos es lo que
     # impide que el color y la identidad deriven al encadenar segmentos.
     if job.get("image_last"):
-        set_input(wf, t.get("LAST_IMAGE"), "image", job["image_last"])
+        set_input(wf, t.get("LAST_IMAGE"), "image", a_entrada(job["image_last"]))
     set_input(wf, t.get("SAVE"), "filename_prefix", job["id"])
     return wf
 

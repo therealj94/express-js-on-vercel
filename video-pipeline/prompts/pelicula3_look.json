@@ -1,0 +1,427 @@
+{
+  "_nota": "Pelicula 3: «Un martes». Un dia de Lucia, clase media, ciudad, que usa todo el ecosistema sin pensarlo. Planos humanos con H3 (texto a video, el camino probado) y TODAS las pantallas de apps son capturas reales, nunca generadas. Plan completo en PELICULA3.md.",
+  "defaults": {
+    "still_workflow": "workflows/h3_calidad_api.json",
+    "video_workflow": "workflows/h3_i2v_api.json",
+    "duration_s": 5,
+    "fps": 24,
+    "width": 720,
+    "height": 1280,
+    "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts",
+    "look": "apple_human"
+  },
+  "_continuidad": "La ficha fisica de cada personaje va literal al principio de su prompt, identica en todos sus planos (leccion de Cincuenta). Lucia lleva la misma camisa oxido todo el dia: es lo que el ojo usa para reconocerla entre planos.",
+  "_pantallas": "Ninguna pantalla se genera. Los inserts A-H se capturan de las apps reales (mytokenpay-app/mobile y Veta Wallet) con cuentas demo, como el trailer de MyTokenPay, y se montan a pantalla completa. Coste cero, sin GPU.",
+  "shots": [
+    {
+      "id": "01_ciudad_amanece",
+      "escena": "1 · 6:40",
+      "still": "Wide establishing view of a hillside Central American city, dawn, a low haze over the valley, tangled power lines in the foreground, rows of four-storey apartment blocks with water tanks on the roofs, mango and almond trees between them, a green city bus with its lights on climbing a steep street, the first warm sun hitting only the tops of the buildings while the streets are still in blue shadow. No people close to camera. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "the sun line slides slowly down the buildings, the bus climbs and disappears behind a corner, birds cross the frame, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "tilt",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        101,
+        102,
+        103,
+        104
+      ],
+      "pick": null,
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "02_cocina_nota",
+      "escena": "1 · 6:40",
+      "still": "a 42 year old Central American woman with warm light-brown skin, faint freckles across the cheekbones, fine lines at the corners of her eyes, dark brown wavy hair pulled back in a low loose bun with loose strands at the temples, thick dark eyebrows, small silver hoop earrings, no makeup except a little lip balm, wearing a rust-orange linen shirt with sleeves rolled to the elbow over a plain white t-shirt, dark blue jeans, a thin black hair tie on her left wrist. She stands in the small kitchen of her middle-class apartment, terracotta floor tiles, a stovetop espresso pot on the gas flame, a potted basil plant on the window sill, a child's old drawing faded on the fridge door, morning sun through a window with iron bars. She holds her phone up near her ear, listening to a voice message, head tilted, the beginning of a smile. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "she listens with the phone near her ear, lets out a small laugh through her nose, and reaches over to turn off the flame under the espresso pot, subtle handheld float, small organic drift, no shake, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "handheld",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        201,
+        202,
+        203,
+        204
+      ],
+      "pick": null,
+      "_personaje": "lucia",
+      "audio_fuera": "Nota de voz de la hija: «Ma, buenos días… ya me cobraron la renta de este mes. Y ¿viste los vuelos de diciembre? Todavía están baratos.»",
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "03_manos_enviar",
+      "escena": "1 · 6:40",
+      "still": "Close-up of the hands of a 42 year old Central American woman with warm light-brown skin, faint freckles across the cheekbones, fine lines at the corners of her eyes, dark brown wavy hair pulled back in a low loose bun with loose strands at the temples, thick dark eyebrows, small silver hoop earrings, no makeup except a little lip balm, wearing a rust-orange linen shirt with sleeves rolled to the elbow over a plain white t-shirt, dark blue jeans, a thin black hair tie on her left wrist. holding her phone low over the kitchen counter next to a chipped white coffee cup with steam rising, a plate with a half-eaten pan dulce, her thumb resting on the screen. Warm side light from the window. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Close framing with shallow depth of field, natural light, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "her thumb taps twice on the screen, then she sets the phone face-down next to the cup and wraps both hands around the coffee, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "static",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        301,
+        302,
+        303,
+        304
+      ],
+      "pick": null,
+      "_personaje": "lucia",
+      "insert_despues": "A · Veta Wallet: enviar a la hija, a otro país → Confirmado (pantalla real)",
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "04_mesa_boleto",
+      "escena": "1 · 6:40",
+      "still": "a 42 year old Central American woman with warm light-brown skin, faint freckles across the cheekbones, fine lines at the corners of her eyes, dark brown wavy hair pulled back in a low loose bun with loose strands at the temples, thick dark eyebrows, small silver hoop earrings, no makeup except a little lip balm, wearing a rust-orange linen shirt with sleeves rolled to the elbow over a plain white t-shirt, dark blue jeans, a thin black hair tie on her left wrist. She sits at a small wooden dining table by the window with an open laptop, reading glasses on the tip of her nose, her phone lying next to the laptop, the coffee cup, a pile of fabric swatches held with a clip. The laptop light and the morning sun both on her face. Seen from the side, the laptop screen not visible. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "she looks from the phone to the laptop, types something short, pauses, then presses one key decisively and takes off her glasses with a quiet satisfied breath, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "very slow push",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        401,
+        402,
+        403,
+        404
+      ],
+      "pick": null,
+      "_personaje": "lucia",
+      "insert_despues": "B · Tarjeta Visa virtual: pago en línea del boleto de diciembre (pantalla real)",
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "05_calle_floristeria",
+      "escena": "2 · 10:15",
+      "still": "a 42 year old Central American woman with warm light-brown skin, faint freckles across the cheekbones, fine lines at the corners of her eyes, dark brown wavy hair pulled back in a low loose bun with loose strands at the temples, thick dark eyebrows, small silver hoop earrings, no makeup except a little lip balm, wearing a rust-orange linen shirt with sleeves rolled to the elbow over a plain white t-shirt, dark blue jeans, a thin black hair tie on her left wrist. She walks along a busy sidewalk of a hillside Central American city, late morning, a leather tote on her shoulder, towards a small neighborhood flower shop with galvanized buckets of sunflowers, roses and eucalyptus on the sidewalk, motorbikes parked along the curb, bright hard sun and deep shadows. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "she walks towards camera and turns into the flower shop, brushing the sunflowers with her hand as she passes, subtle handheld float, small organic drift, no shake, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "handheld",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        501,
+        502,
+        503,
+        504
+      ],
+      "pick": null,
+      "_personaje": "lucia",
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "06_florista_ramo",
+      "escena": "2 · 10:15",
+      "still": "a 64 year old Central American man with a grey mustache, thick forearms and a dark green canvas apron with no lettering, reading glasses pushed up on his forehead. He stands behind a worn wooden counter inside a small flower shop full of buckets, wrapping a big bouquet of sunflowers in brown kraft paper, a spool of twine and old scissors on the counter, dust in the sunlight coming through the open door. Close framing with shallow depth of field, natural light, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "he folds the kraft paper around the sunflowers, ties the twine with two quick turns and cuts it, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "static",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        601,
+        602,
+        603,
+        604
+      ],
+      "pick": null,
+      "_personaje": "florista",
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "07_qr_mostrador",
+      "escena": "2 · 10:15",
+      "still": "Close-up of a worn wooden flower shop counter: a small plain white acrylic stand holding a printed square code card, old scissors, twine, loose sunflower petals, and the hand of a 42 year old Central American woman with warm light-brown skin, faint freckles across the cheekbones, fine lines at the corners of her eyes, dark brown wavy hair pulled back in a low loose bun with loose strands at the temples, thick dark eyebrows, small silver hoop earrings, no makeup except a little lip balm, wearing a rust-orange linen shirt with sleeves rolled to the elbow over a plain white t-shirt, dark blue jeans, a thin black hair tie on her left wrist. holding her phone flat above the code card. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Close framing with shallow depth of field, natural light, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "her hand holds the phone steady over the code card for a second, then lifts it away, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "static",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        701,
+        702,
+        703,
+        704
+      ],
+      "pick": null,
+      "_personaje": "lucia",
+      "insert_despues": "C · MyTokenPay: pagar con QR en ORIGEN (pantalla real)",
+      "_nota": "El cartel del código va en blanco a propósito: el QR real se compone en post si hace falta.",
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "08_florista_cobra",
+      "escena": "2 · 10:15",
+      "still": "a 64 year old Central American man with a grey mustache, thick forearms and a dark green canvas apron with no lettering, reading glasses pushed up on his forehead. Behind his counter, his phone lying on the counter next to the cash drawer vibrates and lights up; he glances down at it over his glasses, then up, and gives a small satisfied nod to someone off-camera. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Close framing with shallow depth of field, natural light, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "the phone on the counter lights up, he looks down at it, then looks up and nods once with a small smile, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "very slow push",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        801,
+        802,
+        803,
+        804
+      ],
+      "pick": null,
+      "_personaje": "florista",
+      "insert_despues": "D · Panel del comercio: cobro recibido en ORIGEN (pantalla real)",
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "09_almuerzo_mesa",
+      "escena": "3 · 13:30",
+      "still": "a 42 year old Central American woman with warm light-brown skin, faint freckles across the cheekbones, fine lines at the corners of her eyes, dark brown wavy hair pulled back in a low loose bun with loose strands at the temples, thick dark eyebrows, small silver hoop earrings, no makeup except a little lip balm, wearing a rust-orange linen shirt with sleeves rolled to the elbow over a plain white t-shirt, dark blue jeans, a thin black hair tie on her left wrist. She sits at a lunch table in a busy, loud local restaurant with plastic tablecloths and ceiling fans, with three friends around 40: a heavyset woman with short curly black hair and big laugh lines in a mustard blouse, a tall thin man with a shaved head and a trimmed grey beard in a light blue guayabera, a woman with a straight black bob, tortoiseshell glasses and a black sleeveless top. The sunflowers in kraft paper lie across the table, plates with the remains of lunch, sweating glasses of horchata. Everyone is laughing at something the curly-haired woman just said. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "the group bursts out laughing, the curly-haired woman slaps the table, Lucia wipes a tear from the corner of her eye, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "track",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        901,
+        902,
+        903,
+        904
+      ],
+      "pick": null,
+      "_personaje": "lucia+amigos",
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "10_llega_cuenta",
+      "escena": "3 · 13:30",
+      "still": "Close view of a restaurant table with a plastic tablecloth, empty plates and glasses, a young waiter's hand setting down a small black bill folder in the middle; the hands of four friends around 40 react at once: one reaches for a wallet, one pulls out crumpled bills, one starts doing math with a pen on a paper napkin. Close framing with shallow depth of field, natural light, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "the bill folder lands on the table and four hands move towards it at the same time, then freeze, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "static",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        1001,
+        1002,
+        1003,
+        1004
+      ],
+      "pick": null,
+      "_personaje": "amigos",
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "11_un_qr_cada_uno",
+      "escena": "3 · 13:30",
+      "still": "three friends around 40: a heavyset woman with short curly black hair and big laugh lines in a mustard blouse, a tall thin man with a shaved head and a trimmed grey beard in a light blue guayabera, a woman with a straight black bob, tortoiseshell glasses and a black sleeveless top. and a 42 year old Central American woman with warm light-brown skin, faint freckles across the cheekbones, fine lines at the corners of her eyes, dark brown wavy hair pulled back in a low loose bun with loose strands at the temples, thick dark eyebrows, small silver hoop earrings, no makeup except a little lip balm, wearing a rust-orange linen shirt with sleeves rolled to the elbow over a plain white t-shirt, dark blue jeans, a thin black hair tie on her left wrist. Around the lunch table, one after another they each lift their own phone towards the waiter, who holds his phone out over the table, laughing at the ritual. Hands in the foreground, faces behind, noon light from the street. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "one by one the friends hold their phones up towards the waiter's phone, the last one does it with a theatrical flourish, subtle handheld float, small organic drift, no shake, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "handheld",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        1101,
+        1102,
+        1103,
+        1104
+      ],
+      "pick": null,
+      "_personaje": "lucia+amigos",
+      "insert_despues": "E · MyTokenPay: dividir cuenta entre 4, un QR por persona, 4/4 pagado (pantalla real)",
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "12_amiga_brinda",
+      "escena": "3 · 13:30",
+      "still": "A heavyset woman around 40 with short curly black hair and big laugh lines in a mustard blouse, at a lunch table in a loud local restaurant, raising her phone like a toast towards the friend across the table, laughing with her whole body. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Close framing with shallow depth of field, natural light, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "she raises her phone like a glass for a toast, laughing, then points at the friend across the table, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "very slow push",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        1201,
+        1202,
+        1203,
+        1204
+      ],
+      "pick": null,
+      "_personaje": "amiga",
+      "audio_fuera": "Amiga: «¡Ya no hay “te lo paso luego”!»",
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "13_dueno_restaurante",
+      "escena": "3 · 13:30",
+      "still": "A 50 year old restaurant owner with a round face, a white apron and a pencil behind his ear, standing behind a small counter with a cash register and a big jar of tamarind candy, his phone on the counter lighting up. He looks up across the noisy room towards a table and raises two fingers in a friendly salute. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Close framing with shallow depth of field, natural light, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "his phone lights up on the counter, he glances at it and raises two fingers in a relaxed salute towards the table, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "static",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        1301,
+        1302,
+        1303,
+        1304
+      ],
+      "pick": null,
+      "_personaje": "dueno",
+      "insert_despues": "F · Panel del comercio: la mesa completa, cobrado (pantalla real)",
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "14_taller",
+      "escena": "4 · 15:40",
+      "still": "a 42 year old Central American woman with warm light-brown skin, faint freckles across the cheekbones, fine lines at the corners of her eyes, dark brown wavy hair pulled back in a low loose bun with loose strands at the temples, thick dark eyebrows, small silver hoop earrings, no makeup except a little lip balm, wearing a rust-orange linen shirt with sleeves rolled to the elbow over a plain white t-shirt, dark blue jeans, a thin black hair tie on her left wrist. She works in her small upholstery and interior design workshop: tall rolls of fabric leaning on the walls, a half-upholstered mid-century armchair on a table, an industrial sewing machine, a young worker cutting fabric with long scissors in the background. Afternoon light through high dusty windows. She kneels measuring the armchair with a yellow tape measure, a pencil in her mouth. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "she pulls the tape measure along the arm of the armchair, takes the pencil from her mouth and marks the fabric, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "very slow push",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        1401,
+        1402,
+        1403,
+        1404
+      ],
+      "pick": null,
+      "_personaje": "lucia",
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "15_llamada",
+      "escena": "4 · 15:40",
+      "still": "a 42 year old Central American woman with warm light-brown skin, faint freckles across the cheekbones, fine lines at the corners of her eyes, dark brown wavy hair pulled back in a low loose bun with loose strands at the temples, thick dark eyebrows, small silver hoop earrings, no makeup except a little lip balm, wearing a rust-orange linen shirt with sleeves rolled to the elbow over a plain white t-shirt, dark blue jeans, a thin black hair tie on her left wrist. In her fabric workshop she stands near a high dusty window, seen from behind and slightly to the side, phone pressed to her ear, one hand on her hip, rolls of fabric behind her, her face mostly turned away from camera towards the window light. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "she answers the call, listens, her free hand slowly comes up to her forehead, then she straightens up, subtle handheld float, small organic drift, no shake, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "handheld",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        1501,
+        1502,
+        1503,
+        1504
+      ],
+      "pick": null,
+      "_personaje": "lucia",
+      "audio_fuera": "Proveedor: «Doña Lucía, buenas. El camión sale a las cuatro. Si me entra el pago hoy, la tela le llega el jueves; si no, hasta la otra semana.»",
+      "_nota": "De espaldas a propósito: habla ella y no queremos labial en español.",
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "16_bodega",
+      "escena": "4 · 15:40",
+      "still": "a 56 year old Central American man with a weathered brown face, a short salt-and-pepper mustache, deep sun lines, a faded plain navy baseball cap, a short-sleeved checked work shirt with a pen in the pocket. He stands at the loading dock of a textile warehouse in another Central American country, phone to his ear, big rolls of fabric wrapped in plastic on pallets behind him, a forklift waiting with its engine running, a truck with open rear doors, hot afternoon haze. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "he paces two steps with the phone at his ear, checks his wristwatch, looks at the truck, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "static",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        1601,
+        1602,
+        1603,
+        1604
+      ],
+      "pick": null,
+      "_personaje": "proveedor",
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "17_manos_pago",
+      "escena": "4 · 15:40",
+      "still": "Close-up on a big cutting table covered in fabric swatches, a yellow tape measure and chalk, the hands of a 42 year old Central American woman with warm light-brown skin, faint freckles across the cheekbones, fine lines at the corners of her eyes, dark brown wavy hair pulled back in a low loose bun with loose strands at the temples, thick dark eyebrows, small silver hoop earrings, no makeup except a little lip balm, wearing a rust-orange linen shirt with sleeves rolled to the elbow over a plain white t-shirt, dark blue jeans, a thin black hair tie on her left wrist. holding her phone, her thumb pressing firmly once, the other hand flat on the fabric. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Close framing with shallow depth of field, natural light, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "her thumb presses once, she exhales and her other hand relaxes on the fabric, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "static",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        1701,
+        1702,
+        1703,
+        1704
+      ],
+      "pick": null,
+      "_personaje": "lucia",
+      "insert_despues": "G · Veta Wallet: pago al proveedor en otro país; comprobante con hora y comisión (pantalla real)",
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "18_proveedor_ya",
+      "escena": "4 · 15:40",
+      "still": "a 56 year old Central American man with a weathered brown face, a short salt-and-pepper mustache, deep sun lines, a faded plain navy baseball cap, a short-sleeved checked work shirt with a pen in the pocket. At the warehouse loading dock he lowers the phone from his ear and looks at its screen, his eyebrows lift, then he turns and waves the forklift driver forward with a big arm gesture. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "he looks at the phone, eyebrows lift, then he turns and waves the forklift forward with his whole arm, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "tilt",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        1801,
+        1802,
+        1803,
+        1804
+      ],
+      "pick": null,
+      "_personaje": "proveedor",
+      "audio_fuera": "Proveedor: «…Ya. Ya me cayó. ¡Súbanla!»",
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "19_camion_sale",
+      "escena": "4 · 15:40",
+      "still": "A white box truck loaded with rolls of fabric pulls out through the open metal gate of a textile warehouse onto a dusty road lined with trees, late afternoon golden side light, a man in a navy cap closing the gate behind it. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "the truck pulls out through the gate and away down the road, the man swings the gate closed, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "track",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        1901,
+        1902,
+        1903,
+        1904
+      ],
+      "pick": null,
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "20_sofa_noche",
+      "escena": "5 · 21:10",
+      "still": "a 42 year old Central American woman with warm light-brown skin, faint freckles across the cheekbones, fine lines at the corners of her eyes, dark brown wavy hair pulled back in a low loose bun with loose strands at the temples, thick dark eyebrows, small silver hoop earrings, no makeup except a little lip balm, wearing a rust-orange linen shirt with sleeves rolled to the elbow over a plain white t-shirt, dark blue jeans, a thin black hair tie on her left wrist. At night in her apartment living room she is half-lying on a worn green sofa, shoes off, feet up, a single warm lamp on, a plant, a bookshelf, the city lights through the window behind her. Her phone rests face-down on her chest and she has her eyes closed. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "the phone on her chest buzzes, she opens her eyes and lifts it without sitting up, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "static",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        2001,
+        2002,
+        2003,
+        2004
+      ],
+      "pick": null,
+      "_personaje": "lucia",
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "21_hija_cuarto",
+      "escena": "5 · 21:10",
+      "still": "a 20 year old Central American university student with warm light-brown skin like her mother, the same thick dark eyebrows, long dark wavy hair loose and slightly messy, a small silver nose stud, wearing an oversized faded grey hoodie with no lettering. She stands in her small rented student room in another country at night, a desk lamp, piled textbooks, a mattress on the floor with a colorful blanket, a paper calendar on the wall with one date circled in red marker, recording a voice message holding the phone in front of her mouth and walking towards the window. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Wide-to-medium framing, natural practical light only, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "she walks to the window holding the phone in front of her mouth, glances at the circled date on the calendar, smiles, subtle handheld float, small organic drift, no shake, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "handheld",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        2101,
+        2102,
+        2103,
+        2104
+      ],
+      "pick": null,
+      "_personaje": "hija",
+      "audio_fuera": "Hija: «Ma, ya pagué la renta. Y ya vi el vuelo… ¡llego el dieciocho! ¿Cómo te fue hoy?»",
+      "_nota": "Habla mirando al teléfono, no a cámara, y de perfil: el labial se tapa con el propio teléfono.",
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    },
+    {
+      "id": "22_lucia_sonrie",
+      "escena": "5 · 21:10",
+      "still": "a 42 year old Central American woman with warm light-brown skin, faint freckles across the cheekbones, fine lines at the corners of her eyes, dark brown wavy hair pulled back in a low loose bun with loose strands at the temples, thick dark eyebrows, small silver hoop earrings, no makeup except a little lip balm, wearing a rust-orange linen shirt with sleeves rolled to the elbow over a plain white t-shirt, dark blue jeans, a thin black hair tie on her left wrist. Close-up of her face at night on the sofa, lit by the warm lamp and the faint light of the phone held above her, listening, her eyes glistening, the smile slowly breaking. The phone screen faces away from camera or is too soft to read; no readable text anywhere. Close framing with shallow depth of field, natural light, true skin texture with visible pores, real 35mm grain, vertical 9:16 composition, cinematic still frame, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "motion": "she listens, her eyes fill a little, a slow smile breaks and she presses her lips together, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Panavision Primo 85mm, T2.0, large north-facing window light, soft wrap, gentle negative fill, natural catchlights in the eyes, warm neutral skin tones, desaturated surroundings, soft teal shadows, natural skin texture with visible pores and fine hair, no plastic smoothing, no beauty retouch, filmic contrast, gentle highlight rolloff, 35mm-like",
+      "move": "very slow push",
+      "duration_s": 5,
+      "stills": 4,
+      "seeds": [
+        2201,
+        2202,
+        2203,
+        2204
+      ],
+      "pick": null,
+      "_personaje": "lucia",
+      "insert_despues": "H · Historial del día: cinco movimientos con hora + ella escribe «Bien, mija. Un martes.» (pantalla real)",
+      "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts"
+    }
+  ]
+}
