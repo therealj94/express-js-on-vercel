@@ -1,0 +1,44 @@
+{
+ "defaults": {
+  "still_workflow": "workflows/h3_calidad_api.json",
+  "video_workflow": "workflows/h3_calidad_api.json",
+  "duration_s": 4,
+  "fps": 24,
+  "width": 720,
+  "height": 1280,
+  "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts",
+  "look": "apple_product"
+ },
+ "shots": [
+  {
+   "id": "05_dedo_cristal",
+   "still": "Extreme macro of a single fingertip pressing onto the glass of a matte black smartphone with a flat brushed-aluminium frame. Olive brown skin with visible pores, dry skin texture and the fine ridges of the fingerprint catching the light, a short unpainted nail. The skin flattens and goes pale where it meets the glass. The glass is lit from beneath by the screen's soft warm glow with its content out of focus and illegible, and the fingertip is reflected in it. Pure black void around. Studio macro, razor-thin depth of field on the point of contact., cinematic still frame, shot on ARRI Alexa 35, Zeiss Supreme Prime 50mm, T1.8, single large soft source with deep falloff, controlled specular highlights, pure black background, subtle rim separation, monochrome with one accent colour, crushed blacks, clean neutral whites, immaculate surfaces, macro-level detail, high contrast, lifted nothing, HDR-ready",
+   "motion": "the fingertip presses down, the skin flattens and the reflection meets it, holds for a moment, then lifts away leaving a faint print on the glass, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Zeiss Supreme Prime 50mm, T1.8, single large soft source with deep falloff, controlled specular highlights, pure black background, subtle rim separation, monochrome with one accent colour, crushed blacks, clean neutral whites, immaculate surfaces, macro-level detail, high contrast, lifted nothing, HDR-ready",
+   "move": "static",
+   "stills": 4,
+   "seeds": [
+    3551,
+    3552,
+    3553,
+    3554
+   ],
+   "pick": null,
+   "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts, pink plastic skin, doll skin, waxy, gold bar, ingot, disc, bowl, curved slab"
+  },
+  {
+   "id": "10_dos_telefonos",
+   "still": "Overhead shot looking straight down from directly above at two identical matte black smartphones with flat brushed-aluminium frames, lying flat side by side on a slab of dark polished slate, a hand's width apart, both screens face up and lit with a soft warm gold-tinted glow, their content out of focus and illegible, the two glows meeting on the slate in the gap between them. A single hard light from the upper left draws one clean edge highlight along each aluminium frame. Faint haze in the air. Pure black beyond the edges of the slate. Studio product macro, shallow depth of field on the gap., cinematic still frame, shot on ARRI Alexa 35, Zeiss Supreme Prime 50mm, T1.8, single large soft source with deep falloff, controlled specular highlights, pure black background, subtle rim separation, monochrome with one accent colour, crushed blacks, clean neutral whites, immaculate surfaces, macro-level detail, high contrast, lifted nothing, HDR-ready",
+   "motion": "a thin thread of warm light travels across the gap from the left phone to the right phone, and the right screen brightens a little as it arrives, locked-off camera, no camera movement, only subject moves, shot on ARRI Alexa 35, Zeiss Supreme Prime 50mm, T1.8, single large soft source with deep falloff, controlled specular highlights, pure black background, subtle rim separation, monochrome with one accent colour, crushed blacks, clean neutral whites, immaculate surfaces, macro-level detail, high contrast, lifted nothing, HDR-ready",
+   "move": "push",
+   "stills": 4,
+   "seeds": [
+    4051,
+    4052,
+    4053,
+    4054
+   ],
+   "pick": null,
+   "negative": "plastic skin, waxy face, smoothed pores, extra fingers, deformed hands, warped face, dead eyes, text, watermark, logo, subtitles, oversaturated, HDR halo, blown highlights, banding, flicker, temporal jitter, morphing, ghosting, fisheye distortion, tilted horizon, low resolution, blurry, jpeg artifacts, pink plastic skin, doll skin, waxy, gold bar, ingot, disc, bowl, curved slab"
+  }
+ ]
+}
