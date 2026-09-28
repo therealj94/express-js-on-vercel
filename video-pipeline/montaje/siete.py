@@ -322,8 +322,9 @@ def armar(a, f: F) -> list[Seg]:
         a0, a1 = cortes[i], cortes[i + 1]
         capas = [(tag, 0, a1 - a0 + 1)]
         for (s0, s1, txt) in frases:
-            if s0 < a1 and s1 > a0:
-                capas.append((capa_sub(f, txt), max(0, s0 - a0), min(a1, s1) - a0 + (0.3 if s1 > a1 else 0)))
+            # Solo si la frase ocupa de verdad este plano (evita dos subtítulos a la vez).
+            if min(a1, s1) - max(a0, s0) > 0.3:
+                capas.append((capa_sub(f, txt), max(0, s0 - a0), min(a1, s1) - a0 + (0.3 if s1 > a1 + 0.3 else 0)))
         for (pal, t0) in (("INTEGRACIÓN ADUANERA", 6.06), ("COMUNIDAD DE NACIONES", 9.32)):
             if a0 <= t0 < a1:
                 capas.append((capa_centro(f, pal, f.monog, y=860, color=ORO), t0 - a0, a1 - a0 + 0.3))
@@ -368,7 +369,7 @@ def armar(a, f: F) -> list[Seg]:
     segs.append(Seg("o02", 5.06, v_clip(mejor_existente("o02"), 0.3),
                     [(capa_tarjeta(f, "1 ORIGEN", ["= el precio de 1/55 de gramo de oro", "Fórmula pública"], y0=1320, marca="ORIGEN"), 1.8, 6)]))
     segs.append(Seg("o03", 5.52, v_clip(mejor_existente("o03"), 0.3),
-                    [(capa_tarjeta(f, "Genesis ID", ["Una sola verificación", "Ya sos parte del ecosistema", "Beta"], y0=1260), 1.4, 6)]))
+                    [(capa_tarjeta(f, "Genesis ID", ["Una sola verificación", "Ya sos parte del ecosistema"], y0=1260), 1.4, 6)]))
     segs.append(Seg("o04", 5.72, v_reticula(vivos, 1.2),
                     [(capa_costuras(), 0, 6),
                      (capa_tarjeta(f, "Veta Wallet", ["Pagar · Cobrar", "Guardar · Comprobar", "Todo en una sola app"], y0=780), 0.8, 6)]))
@@ -391,14 +392,20 @@ def armar(a, f: F) -> list[Seg]:
             segs.append(Seg("p1n", 4.5, v_clip(mejor_existente("p1n"), 0.4),
                             [(capa_centro(f, "Comisión: US$ 0,01 · llegó en segundos", f.tarj, y=1500), 0.4, 5)]))
 
-    # Lo que hace la inversión.
-    k01 = mejor_existente("k01")
-    segs.append(Seg("k01", 7.1, v_clip(k01, 0.2, lento=1.0)))
+    # Lo que hace la inversión, en orden: llega la despulpadora en el camión,
+    # Aurelio la recibe contento y el pasaporte del activo aparece sobre la máquina.
+    k01 = toma_extra("k01", 1) if toma_extra("k01", 1).exists() else mejor_existente("k01")
+    otra_k01 = toma_extra("k01", 2) if toma_extra("k01", 2).exists() else k01
+    llega = capa_lugar(f, "DÍAS DESPUÉS", "La cooperativa, Huehuetenango")
+    segs.append(Seg("k01", 2.4, v_clip(k01, 6.9, lento=1.35), [(llega, 0.1, 2.6)]))
+    segs.append(Seg("k01b", 2.7, v_clip(k01, 1.1, lento=1.0)))
+    segs.append(Seg("k01c", 2.0, v_clip(otra_k01, 1.3, lento=1.0)))
     pasaporte = capa_tarjeta(f, "Pasaporte del activo", ["Emisor: cooperativa de café", "Qué hay detrás: una parte de ella",
                                                          "Riesgo: puede perder valor", "Quién la tiene: reglas de Guatemala",
                                                          "Ejemplo ilustrativo"], y0=980, marca="ORIGEN")
-    otra_k01 = next((toma_extra("k01", k) for k in (2, 1) if toma_extra("k01", k).exists() and toma_extra("k01", k) != k01), k01)
-    segs.append(Seg("k02", 4.58, v_clip(otra_k01, 0.8), [(pasaporte, 0.2, 5)]))
+    # El pasaporte, sobre Guatemala: las reglas son las de su país.
+    fondo_gt = toma_extra("ap_guatemala", 2) if toma_extra("ap_guatemala", 2).exists() else mejor_existente("ap_guatemala")
+    segs.append(Seg("k02", 4.58, v_clip(fondo_gt, 0.5, lento=1.2), [(pasaporte, 0.2, 5)]))
 
     # 5. El día entero y la pregunta.
     horas = [p[0] for p in pagos]
@@ -424,7 +431,7 @@ def armar(a, f: F) -> list[Seg]:
     # 7. Lo que ganan los países.
     crece = ["k01", "abre_rosa", "p1n", "abre_mercedes", "abre_chepe", "abre_andres", "o02"]
     for j, pid in enumerate(crece):
-        segs.append(Seg(f"k03_{j}", 8.15 / 7, v_clip(mejor_existente(pid) if pid != "k01" else otra_k01, 1.5 + 0.3 * j)))
+        segs.append(Seg(f"k03_{j}", 8.15 / 7, v_clip(mejor_existente(pid) if pid != "k01" else k01, (7.4 if pid == "k01" else 1.5 + 0.3 * j))))
     frases_k04 = ["El capital, del mundo.", "El trabajo, aquí.", "Las reglas, de casa."]
     capas = [(capa_costuras(), 0, 6)]
     for j, fr in enumerate(frases_k04):
@@ -491,7 +498,9 @@ def audio(a, segs: list[Seg], total: float, out: Path) -> None:
     for s in segs:
         if s.audio_clip:
             r, d0, g = s.audio_clip
-            x = cargar(r, d0, s.dur)
+            # Voz igualada del personaje (montaje/voces_sts_siete.py), con el mismo ritmo que la toma.
+            sts = a.tomas / "voz_sts" / (Path(r).stem + ".wav")
+            x = cargar(sts if sts.exists() else r, d0, s.dur)
             fade = int(0.04 * SR); x[:fade] *= np.linspace(0, 1, fade)[:, None]; x[-fade:] *= np.linspace(1, 0, fade)[:, None]
             poner(voz, x, s.t, 1.0)
     # Narración de Lucía: mismo desfase que en el plan respecto de su plano.
@@ -516,9 +525,7 @@ def audio(a, segs: list[Seg], total: float, out: Path) -> None:
     poner(fx, np.repeat((dron * np.clip(t / 1.5, 0, 1) + lat + cuerda)[:, None], 2, 1), 0.0)
     golpe = 0.3 * np.sin(2 * np.pi * 36 * np.arange(int(1.4 * SR)) / SR) * np.exp(-np.arange(int(1.4 * SR)) / SR * 3)
     poner(fx, np.repeat(golpe[:, None], 2, 1), idx["g00"].t)
-    cortina = cargar(a.cortina)
-    poner(fx, cortina, idx["g08"].t, 0.7)
-    poner(fx, cortina[::-1].copy(), idx["f00"].t, 0.5)
+    # Sin efecto de cortina metálica: en las puertas sonaba a máquina de coser.
     for s in segs:
         if s.nota == "pago":
             poner(fx, campana(), s.t + 0.2)
