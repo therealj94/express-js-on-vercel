@@ -244,6 +244,11 @@ def create(s, region: str, a) -> None:
     if vivas and not a.otra:
         sys.exit(f"Ya hay una instancia de vídeo viva: {vivas[0]['InstanceId']}. "
                  f"Usa encolar.py para mandarle trabajo, o --otra si de verdad quieres dos.")
+    # El modelo ref2va (cara y voz de referencia) solo se baja con REF2VA=1.
+    # Sin él cada toma falla en la validación de ComfyUI y la máquina se
+    # queda cobrando mientras descarta la cola entera (pasó el 28-sep).
+    if "ref2va" in Path(a.job).read_text() and "REF2VA=1" not in a.env:
+        sys.exit("La cola usa ref2va: añade --env REF2VA=1 o fallará cada toma.")
     faltan = [k for k in ("HF_TOKEN", "HF_REPO") if not any(e.startswith(k + "=") for e in a.env)]
     if faltan:
         sys.exit(f"Falta --env {' '.join(faltan)}: sin eso los clips mueren con la máquina.")

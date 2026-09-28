@@ -3,10 +3,9 @@
 
 Máquina B (arranca ya): todo lo de Lucía y don Chepe, que ya tienen foto, y los
 planos de apertura y cierre sin personas (texto a vídeo).
-Máquina A: primero el casting (q_p4_casting.json) y, con las caras elegidas,
-las tomas de Aurelio, Marcus, Mercedes, Andrés y Rosa. La cara elegida no viaja
-como adjunto: es el .mp4 del casting que ya está en la salida de esa misma
-máquina, y 03_run_queue.py saca su primer fotograma.
+Máquina A: primero el casting (q_p4_casting.json); con las caras elegidas,
+una máquina nueva hace las tomas de Aurelio, Marcus, Mercedes, Andrés y Rosa.
+La cara elegida viaja como adjunto (primer fotograma del casting, en PNG).
 
     python3 montaje/cola_siete.py B
     python3 montaje/cola_siete.py A --casting aurelio=02 marcus=01 mercedes=03 andres=04 rosa=02
@@ -55,10 +54,9 @@ def con_anatomia(prompt):
 
 
 def cara(quien, casting):
-    if quien in YA_TIENEN_FOTO:
-        return f"/workspace/refs/{ASCII[quien]}.png"
-    n = ASCII[quien]
-    return f"casting_{n}_{casting[n]}_00001_.mp4"
+    # Las caras elegidas del casting viajan como adjuntos con el nombre del
+    # personaje (refs_p4/aurelio.png…), igual que las de Lucía y don Chepe.
+    return f"/workspace/refs/{ASCII[quien]}.png"
 
 
 def tomas_de(quienes, casting, semilla):
