@@ -109,6 +109,22 @@ def capa_sub(f: F, txt: str) -> Image.Image:
     return img
 
 
+def subtitulos(f: F, txt: str, t0: float, t1: float) -> list:
+    """Un subtítulo largo se parte en páginas de dos líneas, repartidas según
+    cuánto texto lleva cada una (así no se pierde el principio de la frase)."""
+    d = ImageDraw.Draw(lienzo())
+    ls = envolver(d, txt, f.sub, 900)
+    paginas = [" ".join(ls[i:i + 2]) for i in range(0, len(ls), 2)]
+    total = sum(len(x) for x in paginas)
+    out, t = [], t0
+    for i, pg in enumerate(paginas):
+        dur = (t1 - t0) * len(pg) / total
+        fin = t + dur if i < len(paginas) - 1 else t1
+        out.append((capa_sub(f, pg), t, fin + (0.25 if i < len(paginas) - 1 else 0)))
+        t += dur
+    return out
+
+
 def capa_lugar(f: F, pais: str, ciudad: str, hora: str | None = None) -> Image.Image:
     img = lienzo(); degradado(img, 0, 420, 150, 0); d = ImageDraw.Draw(img)
     y = 150
@@ -124,7 +140,8 @@ def capa_ruta(f: F, hora: str, de: str, a: str, que: str) -> Image.Image:
     img = lienzo(); degradado(img, 0, 420, 150, 0); d = ImageDraw.Draw(img)
     d.text((72, 150), hora, font=f.mono, fill=(*ORO, 255))
     d.text((72, 200), f"{de}  →  {a}", font=f.tarj, fill=(*CREMA, 255))
-    d.text((72, 256), que, font=f.lugar, fill=(*CREMA, 200))
+    for i, l in enumerate(envolver(d, que, f.lugar, 930)[:2]):
+        d.text((72, 262 + 44 * i), l, font=f.lugar, fill=(*CREMA, 200))
     return img
 
 
@@ -193,6 +210,13 @@ def v_clip(ruta: Path, desde: float = 0.0, lento: float = 1.0, zoom: bool = Fals
     return ("clip", ruta, desde, lento, zoom)
 
 
+def v_panoramica(ruta: Path, desde: float = 0.0, lento: float = 1.0):
+    """H3 entrega girado 90° el aéreo del istmo (piensa el panorama en
+    horizontal). Se endereza y va como franja panorámica sobre su propio fondo
+    desenfocado: el momento «scope» de la película."""
+    return ("panoramica", ruta, desde, lento)
+
+
 def v_reticula(rutas: dict, desde: float = 0.0):
     return ("reticula", rutas, desde)
 
@@ -215,6 +239,13 @@ def render_video(s: Seg, out: Path, tmp: Path) -> None:
             vf += f",scale={int(W*1.08)}:{int(H*1.08)},zoompan=z='min(1+0.0009*on,1.06)':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={W}x{H}:fps={FPS}"
         entrada = ["-ss", f"{desde:.3f}", "-i", str(ruta)]
         filtro = f"[0:v]{vf},{GRADE},tpad=stop_mode=clone:stop_duration=5[v]"
+    elif k == "panoramica":
+        _, ruta, desde, lento = s.video
+        entrada = ["-ss", f"{desde:.3f}", "-i", str(ruta)]
+        filtro = (f"[0:v]transpose=2,setpts={lento}*PTS,fps={FPS},split[a][b];"
+                  f"[a]scale=-2:{H},crop={W}:{H},boxblur=40:3,eq=brightness=-0.18:saturation=0.8[fondo];"
+                  f"[b]scale={W}:-2:flags=lanczos[franja];[fondo][franja]overlay=0:(H-h)/2,{GRADE},"
+                  f"tpad=stop_mode=clone:stop_duration=5[v]")
     elif k == "reticula":
         _, rutas, desde = s.video
         entrada, partes = [], []
@@ -288,7 +319,9 @@ def armar(a, f: F) -> list[Seg]:
         for (pal, t0) in (("INTEGRACIÓN ADUANERA", 6.06), ("COMUNIDAD DE NACIONES", 9.32)):
             if a0 <= t0 < a1:
                 capas.append((capa_centro(f, pal, f.monog, y=860, color=ORO), t0 - a0, a1 - a0 + 0.3))
-        segs.append(Seg(ap, a1 - a0, v_clip(mejor_existente(ap), 0.6, lento=1.15), capas, nota="bukele"))
+        video = (v_panoramica(mejor_existente(ap), 0.4, lento=1.1) if ap == "ap_istmo"
+                 else v_clip(mejor_existente(ap), 0.6, lento=1.15))
+        segs.append(Seg(ap, a1 - a0, video, capas, nota="bukele"))
     segs.append(Seg("g00", 0.9, v_negro(), [(capa_centro(f, "05:59", f.monog, color=CREMA), 0.1, 1.0)]))
 
     def dialogo(pid, capas_extra=(), sub=None, lugar=None):
@@ -302,7 +335,7 @@ def armar(a, f: F) -> list[Seg]:
         # Retoma de Mercedes: en las tres primeras sonaba a pregunta y se cambió la frase.
         if pid == "p5a" and not re.search(r"_t[123]_", e["clip"]):
             txt = "Andrés, listo: ya te pagué el viaje."
-        capas = [(capa_sub(f, txt), ini - desde - 0.1, dur + 1)] + list(capas_extra)
+        capas = subtitulos(f, txt, ini - desde - 0.1, min(dur + 1, fin - desde + 0.4)) + list(capas_extra)
         if lugar:
             capas.append((lugar, 0.1, dur + 1))
         return Seg(pid, dur, v_clip(clip(pid), desde), capas, audio_clip=(clip(pid), desde, 1.0))
@@ -368,7 +401,9 @@ def armar(a, f: F) -> list[Seg]:
         d.text((150, y), hh, font=f.monog, fill=(*ORO, 255))
         d.text((380, y + 12), f"{PAIS[nombres[de]].title()} → {PAIS[nombres[a_]].title()}", font=f.tarj, fill=(*CREMA, 255))
         y += 110
-    segs.append(Seg("r01", 6.96, v_clip(mejor_existente("ap_istmo"), 0.2, lento=1.3),
+    otra_istmo = next((toma_extra("ap_istmo", k) for k in (3, 1, 4) if toma_extra("ap_istmo", k).exists()
+                       and toma_extra("ap_istmo", k) != mejor_existente("ap_istmo")), mejor_existente("ap_istmo"))
+    segs.append(Seg("r01", 6.96, v_panoramica(otra_istmo, 0.2, lento=1.3),
                     [(img, 0.3, 7.2), (capa_centro(f, "Un día · siete países", f.lugar, y=1360), 0.6, 7.2)]))
     segs.append(Seg("r02", 5.32, v_negro(),
                     [(capa_centro(f, "¿Cuánto tardaría en moverse tu dinero?", f.frase), 0.3, 5.6)]))
