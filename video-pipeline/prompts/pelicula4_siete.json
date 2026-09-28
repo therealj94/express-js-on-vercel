@@ -1,6 +1,6 @@
 {
  "titulo": "Siete",
- "dur_s": 156.04,
+ "dur_s": 165.07,
  "tomas": [
   {
    "id": "b01",
@@ -198,7 +198,7 @@
    "id": "o01",
    "secuencia": 3,
    "t": 38.57,
-   "dur": 6.91,
+   "dur": 6.52,
    "fuente": "COMPOSICIÓN",
    "imagen": "La retícula viva: los siete trabajando. Un hilo dorado cose solo las fronteras reales, sin borrarlas. En «ORIGEN» la palabra aparece sobre la retícula.",
    "texto": "ORIGEN",
@@ -213,7 +213,7 @@
   {
    "id": "o02",
    "secuencia": 3,
-   "t": 45.48,
+   "t": 45.09,
    "dur": 5.06,
    "fuente": "GENERADA",
    "imagen": "Lucía abre su taller al sol; la luz dorada sube y baja en su cara («sigue el precio del oro»). Abajo: «1 ORIGEN = el precio de 1/55 de gramo de oro».",
@@ -229,7 +229,7 @@
   {
    "id": "o03",
    "secuencia": 3,
-   "t": 50.54,
+   "t": 50.15,
    "dur": 5.52,
    "fuente": "GENERADA",
    "imagen": "Mercedes se verifica con la cámara frontal (prueba de vida) en la panadería; flota una tarjeta de Veta Wallet: «Genesis ID · verificada».",
@@ -245,7 +245,7 @@
   {
    "id": "o04",
    "secuencia": 3,
-   "t": 56.06,
+   "t": 55.67,
    "dur": 5.72,
    "fuente": "COMPOSICIÓN",
    "imagen": "Los siete teléfonos, uno en cada celda de la retícula; al centro flota la app real, Veta Wallet (captura con datos ficticios): pagar, cobrar, guardar y el comprobante, todo en la misma app.",
@@ -261,7 +261,7 @@
   {
    "id": "p1a",
    "secuencia": 4,
-   "t": 61.78,
+   "t": 61.39,
    "dur": 2.75,
    "fuente": "GENERADA",
    "imagen": "08:10 · GUATEMALA: Aurelio le paga a Marcus (Belice): el flete en lancha de las muestras de café. Lo dice a cámara, con su voz.",
@@ -277,7 +277,7 @@
   {
    "id": "p1b",
    "secuencia": 4,
-   "t": 64.53,
+   "t": 64.14,
    "dur": 3.06,
    "fuente": "GENERADA",
    "imagen": "Marcus recibe en Dangriga y responde a cámara, con su voz. Al entrar la toma, una chispa marfil cruza la frontera Guatemala–Belice (costura dorada, arriba) y flota la tarjeta de Veta: «Recibido · comisión US$ 0,01 · en segundos».",
@@ -293,7 +293,7 @@
   {
    "id": "p1n",
    "secuencia": 4,
-   "t": 67.59,
+   "t": 67.2,
    "dur": 4.5,
    "fuente": "GENERADA",
    "imagen": "Marcus sube el saco de muestras a su lancha y zarpa; la cámara lo sigue sobre el agua turquesa.",
@@ -309,7 +309,7 @@
   {
    "id": "p2a",
    "secuencia": 4,
-   "t": 72.09,
+   "t": 71.7,
    "dur": 2.61,
    "fuente": "GENERADA",
    "imagen": "09:30 · BELICE: Marcus le paga a Chepe (Honduras): redes nuevas para la lancha. Lo dice a cámara, con su voz.",
@@ -325,7 +325,7 @@
   {
    "id": "p2b",
    "secuencia": 4,
-   "t": 74.7,
+   "t": 74.31,
    "dur": 3.37,
    "fuente": "GENERADA",
    "imagen": "Chepe recibe en San Pedro Sula y responde a cámara, con su voz. Al entrar la toma, una chispa marfil cruza la frontera Belice–Honduras (costura dorada, arriba) y flota la tarjeta de Veta: «Recibido · comisión US$ 0,01 · en segundos».",
@@ -341,7 +341,7 @@
   {
    "id": "p3a",
    "secuencia": 4,
-   "t": 78.07,
+   "t": 77.68,
    "dur": 2.69,
    "fuente": "GENERADA",
    "imagen": "10:45 · HONDURAS: Chepe le paga a Lucía (El Salvador): tapizar los sillones de su oficina. Lo dice a cámara, con su voz.",
@@ -357,7 +357,7 @@
   {
    "id": "p3b",
    "secuencia": 4,
-   "t": 80.76,
+   "t": 80.37,
    "dur": 3.97,
    "fuente": "GENERADA",
    "imagen": "Lucía recibe en San Salvador y responde a cámara, con su voz. Al entrar la toma, una chispa marfil cruza la frontera Honduras–El Salvador (costura dorada, arriba) y flota la tarjeta de Veta: «Recibido · comisión US$ 0,01 · en segundos».",
@@ -373,7 +373,7 @@
   {
    "id": "p4a",
    "secuencia": 4,
-   "t": 84.73,
+   "t": 84.34,
    "dur": 3.18,
    "fuente": "GENERADA",
    "imagen": "12:20 · EL SALVADOR: Lucía le paga a Mercedes (Nicaragua): dos cajas de rosquillas para el taller. Lo dice a cámara, con su voz.",
@@ -389,7 +389,7 @@
   {
    "id": "p4b",
    "secuencia": 4,
-   "t": 87.91,
+   "t": 87.52,
    "dur": 2.5,
    "fuente": "GENERADA",
    "imagen": "Mercedes recibe en Somoto y responde a cámara, con su voz. Al entrar la toma, una chispa marfil cruza la frontera El Salvador–Nicaragua (costura dorada, arriba) y flota la tarjeta de Veta: «Recibido · comisión US$ 0,01 · en segundos».",
@@ -405,7 +405,7 @@
   {
    "id": "p5a",
    "secuencia": 4,
-   "t": 90.41,
+   "t": 90.02,
    "dur": 2.13,
    "fuente": "GENERADA",
    "imagen": "14:05 · NICARAGUA: Mercedes le paga a Andrés (Costa Rica): el viaje de sus cajas a Costa Rica. Lo dice a cámara, con su voz.",
@@ -421,7 +421,7 @@
   {
    "id": "p5b",
    "secuencia": 4,
-   "t": 92.54,
+   "t": 92.15,
    "dur": 2.68,
    "fuente": "GENERADA",
    "imagen": "Andrés recibe en Liberia y responde a cámara, con su voz. Al entrar la toma, una chispa marfil cruza la frontera Nicaragua–Costa Rica (costura dorada, arriba) y flota la tarjeta de Veta: «Recibido · comisión US$ 0,01 · en segundos».",
@@ -437,7 +437,7 @@
   {
    "id": "p6a",
    "secuencia": 4,
-   "t": 95.22,
+   "t": 94.83,
    "dur": 2.42,
    "fuente": "GENERADA",
    "imagen": "16:30 · COSTA RICA: Andrés le paga a Rosa (Panamá): doce camisas de uniforme para sus choferes. Lo dice a cámara, con su voz.",
@@ -453,7 +453,7 @@
   {
    "id": "p6b",
    "secuencia": 4,
-   "t": 97.64,
+   "t": 97.25,
    "dur": 2.42,
    "fuente": "GENERADA",
    "imagen": "Rosa recibe en Ciudad de Panamá y responde a cámara, con su voz. Al entrar la toma, una chispa marfil cruza la frontera Costa Rica–Panamá (costura dorada, arriba) y flota la tarjeta de Veta: «Recibido · comisión US$ 0,01 · en segundos».",
@@ -469,15 +469,15 @@
   {
    "id": "p7a",
    "secuencia": 4,
-   "t": 100.06,
-   "dur": 2.58,
+   "t": 99.67,
+   "dur": 4.55,
    "fuente": "GENERADA",
-   "imagen": "18:10 · PANAMÁ: Rosa le paga a Aurelio (Guatemala): el café del taller. Lo dice a cámara, con su voz.",
+   "imagen": "18:10 · PANAMÁ: Rosa le paga a Aurelio (Guatemala): una parte de su cooperativa de café, tokenizada: invierte porque cree en ella. Lo dice a cámara, con su voz.",
    "texto": "18:10 · PANAMÁ → GUATEMALA",
    "sonido": "Ambiente de su lugar.",
    "quien": "ROSA",
    "linea": "T7a",
-   "prompt": "subject_definitions:\n<Subject 1> is the person in <Picture 1>.\n<Audio 1> is the voice timbre reference for <Subject 1>.\n\ndetailed_description:\n[Shot 1] Live-action, cinematic documentary realism, natural practical light, true skin texture with visible pores, real 35mm film grain, warm true colour, vertical 9:16 composition. in her busy uniform workshop in Calidonia, Panama City, rows of sewing machines and hanging shirts behind her. <Subject 1>, a 40 year old Afro-Panamanian workshop owner from Calidonia, short natural hair with a colourful headband, gold hoop earrings, a measuring tape around her neck, a coral blouse, records a voice message holding a coffee cup in her workshop. <Subject 1> (S1) says, <d>[Spanish] Don Aurelio, le pagué el café del taller.</d> Medium close-up, 50mm, handheld, mouth clearly visible, not looking into the lens.\n\noverall_soundscape: ambience of the place\n\nnon_diegetic_music: none.",
+   "prompt": "subject_definitions:\n<Subject 1> is the person in <Picture 1>.\n<Audio 1> is the voice timbre reference for <Subject 1>.\n\ndetailed_description:\n[Shot 1] Live-action, cinematic documentary realism, natural practical light, true skin texture with visible pores, real 35mm film grain, warm true colour, vertical 9:16 composition. in her busy uniform workshop in Calidonia, Panama City, rows of sewing machines and hanging shirts behind her. <Subject 1>, a 40 year old Afro-Panamanian workshop owner from Calidonia, short natural hair with a colourful headband, gold hoop earrings, a measuring tape around her neck, a coral blouse, sits in her workshop after closing, holding a cup of coffee, and records a voice message on her phone with a confident smile. <Subject 1> (S1) says, <d>[Spanish] Don Aurelio, compré una parte de su cooperativa. Creo que va a ser una buena inversión.</d> Medium close-up, 50mm, handheld, mouth clearly visible, not looking into the lens.\n\noverall_soundscape: ambience of the place\n\nnon_diegetic_music: none.",
    "ref": "rosa.png",
    "voz_ref": "voz_rosa.wav",
    "tomas_a_generar": 3
@@ -485,24 +485,56 @@
   {
    "id": "p7b",
    "secuencia": 4,
-   "t": 102.64,
-   "dur": 2.56,
+   "t": 104.22,
+   "dur": 3.83,
    "fuente": "GENERADA",
-   "imagen": "Aurelio recibe en Huehuetenango y responde a cámara, con su voz. Al entrar la toma, una chispa marfil cruza la frontera Panamá–Guatemala (costura dorada, arriba) y flota la tarjeta de Veta: «Recibido · comisión US$ 0,01 · en segundos».",
+   "imagen": "Aurelio recibe en Huehuetenango y responde a cámara, con su voz. Al entrar la toma, una chispa marfil cruza la frontera Panamá–Guatemala (costura dorada, arriba) y flota la tarjeta de Veta: «Compraste una parte · Cooperativa de café de Huehuetenango · ejemplo ilustrativo».",
    "texto": "GUATEMALA · Recibido · US$ 0,01",
    "sonido": "La campana de pago de Orden Global al entrar; luego su ambiente.",
    "quien": "AURELIO",
    "linea": "T7b",
-   "prompt": "subject_definitions:\n<Subject 1> is the person in <Picture 1>.\n<Audio 1> is the voice timbre reference for <Subject 1>.\n\ndetailed_description:\n[Shot 1] Live-action, cinematic documentary realism, natural practical light, true skin texture with visible pores, real 35mm film grain, warm true colour, vertical 9:16 composition. at the wooden gate of his coffee cooperative in the green mountains of Huehuetenango, sacks of coffee behind him, cool morning mist. <Subject 1>, a 58 year old Guatemalan coffee farmer from Huehuetenango, weathered brown face, short grey hair and grey stubble, a worn straw hat, a faded denim work shirt with rolled sleeves, reads his phone at the cooperative, smiles and closes a sack of coffee. <Subject 1> (S1) says, <d>[Spanish] Recibido, doña Rosa. Ya va para allá.</d> Medium close-up, 50mm, handheld, mouth clearly visible, not looking into the lens.\n\noverall_soundscape: ambience of the place\n\nnon_diegetic_music: none.",
+   "prompt": "subject_definitions:\n<Subject 1> is the person in <Picture 1>.\n<Audio 1> is the voice timbre reference for <Subject 1>.\n\ndetailed_description:\n[Shot 1] Live-action, cinematic documentary realism, natural practical light, true skin texture with visible pores, real 35mm film grain, warm true colour, vertical 9:16 composition. at the wooden gate of his coffee cooperative in the green mountains of Huehuetenango, sacks of coffee behind him, cool morning mist. <Subject 1>, a 58 year old Guatemalan coffee farmer from Huehuetenango, weathered brown face, short grey hair and grey stubble, a worn straw hat, a faded denim work shirt with rolled sleeves, reads his phone at the cooperative, moved, and puts his hand on the shoulder of a young cooperative member beside him. <Subject 1> (S1) says, <d>[Spanish] Gracias, doña Rosa. Con esto compramos la despulpadora nueva.</d> Medium close-up, 50mm, handheld, mouth clearly visible, not looking into the lens.\n\noverall_soundscape: ambience of the place\n\nnon_diegetic_music: none.",
    "ref": "aurelio.png",
    "voz_ref": "voz_aurelio.wav",
    "tomas_a_generar": 3
   },
   {
+   "id": "k01",
+   "secuencia": 4,
+   "t": 108.05,
+   "dur": 7.1,
+   "fuente": "GENERADA",
+   "imagen": "Días después: la despulpadora nueva llega a la cooperativa de Aurelio; los socios la bajan del camión.",
+   "texto": "—",
+   "sonido": "Camión, voces de trabajo, aplausos cortos.",
+   "quien": "AURELIO",
+   "linea": null,
+   "prompt": "subject_definitions:\n<Subject 1> is the person in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Live-action, cinematic documentary realism, natural practical light, true skin texture with visible pores, real 35mm film grain, warm true colour, vertical 9:16 composition. at the wooden gate of his coffee cooperative in the green mountains of Huehuetenango, sacks of coffee behind him, cool morning mist. <Subject 1>, a 58 year old Guatemalan coffee farmer from Huehuetenango, weathered brown face, short grey hair and grey stubble, a worn straw hat, a faded denim work shirt with rolled sleeves, watches with pride as cooperative members unload a new coffee pulping machine from a truck and cheer.\n\noverall_soundscape: truck, workers voices, short applause\n\nnon_diegetic_music: none.",
+   "ref": "aurelio.png",
+   "voz_ref": null,
+   "tomas_a_generar": 2
+  },
+  {
+   "id": "k02",
+   "secuencia": 4,
+   "t": 115.15,
+   "dur": 4.58,
+   "fuente": "COMPOSICIÓN",
+   "imagen": "Sobre la máquina nueva, la tarjeta del PASAPORTE DEL ACTIVO (ejemplo ilustrativo): emisor · qué hay detrás · riesgo · quién puede tenerla, según las reglas de Guatemala.",
+   "texto": "Pasaporte del activo · ejemplo ilustrativo",
+   "sonido": "Sello; madera.",
+   "quien": null,
+   "linea": null,
+   "prompt": null,
+   "ref": null,
+   "voz_ref": null,
+   "tomas_a_generar": 0
+  },
+  {
    "id": "r01",
    "secuencia": 5,
-   "t": 105.2,
-   "dur": 6.6,
+   "t": 119.73,
+   "dur": 6.96,
    "fuente": "GRÁFICO",
    "imagen": "Mapa marfil del istmo con fronteras: una línea dorada recorre el día, Guatemala → Belice → Honduras → El Salvador → Nicaragua → Costa Rica → Panamá → Guatemala, con las siete horas.",
    "texto": "08:10 · 09:30 · 10:45 · 12:20 · 14:05 · 16:30 · 18:10",
@@ -517,7 +549,7 @@
   {
    "id": "r02",
    "secuencia": 5,
-   "t": 111.8,
+   "t": 126.69,
    "dur": 5.32,
    "fuente": "GRÁFICO",
    "imagen": "Negro. La pregunta en tipografía grande; debajo, un contador de días que no para (sin cifras inventadas).",
@@ -533,7 +565,7 @@
   {
    "id": "m01",
    "secuencia": 6,
-   "t": 117.12,
+   "t": 132.01,
    "dur": 2.8,
    "fuente": "ARCHIVO",
    "imagen": "Óleo de Francisco Morazán (dominio público, con ficha).",
@@ -549,8 +581,8 @@
   {
    "id": "m02",
    "secuencia": 6,
-   "t": 119.92,
-   "dur": 5.02,
+   "t": 134.81,
+   "dur": 3.53,
    "fuente": "COMPOSICIÓN",
    "imagen": "Los siete rostros, uno por golpe, a pantalla completa (de sus propios clips).",
    "texto": "—",
@@ -563,30 +595,14 @@
    "tomas_a_generar": 0
   },
   {
-   "id": "k01",
+   "id": "k03",
    "secuencia": 7,
-   "t": 124.94,
-   "dur": 6.78,
-   "fuente": "GENERADA",
-   "imagen": "El taller de Rosa a mediodía: pedidos hasta el techo y un rincón marcado con cinta, un puesto que espera una máquina.",
-   "texto": "—",
-   "sonido": "Máquinas de coser.",
-   "quien": "ROSA",
-   "linea": null,
-   "prompt": "subject_definitions:\n<Subject 1> is the person in <Picture 1>.\n\ndetailed_description:\n[Shot 1] Live-action, cinematic documentary realism, natural practical light, true skin texture with visible pores, real 35mm film grain, warm true colour, vertical 9:16 composition. in her busy uniform workshop in Calidonia, Panama City, rows of sewing machines and hanging shirts behind her. <Subject 1>, a 40 year old Afro-Panamanian workshop owner from Calidonia, short natural hair with a colourful headband, gold hoop earrings, a measuring tape around her neck, a coral blouse, walks through her busy workshop full of orders and stops to look at an empty corner marked with blue tape on the floor, imagining a new machine there.\n\noverall_soundscape: sewing machines, busy workshop\n\nnon_diegetic_music: none.",
-   "ref": "rosa.png",
-   "voz_ref": null,
-   "tomas_a_generar": 2
-  },
-  {
-   "id": "k02",
-   "secuencia": 7,
-   "t": 131.72,
-   "dur": 5.74,
+   "t": 138.34,
+   "dur": 8.15,
    "fuente": "COMPOSICIÓN",
-   "imagen": "Sobre el rincón, la tarjeta del PASAPORTE DEL ACTIVO (ejemplo ilustrativo): emisor con Genesis ID · qué hay detrás · riesgo · quién puede tenerla según su país. Líneas marfil del mundo llegan y pasan por el portón de Panamá.",
-   "texto": "Pasaporte del activo · ejemplo ilustrativo",
-   "sonido": "Sello; madera.",
+   "imagen": "Los siete lugares, crecidos: la despulpadora trabajando, una costurera nueva en el taller de Rosa, un segundo camión de Andrés, la lancha de Marcus cargada, el horno de Mercedes con más bandejas, la bodega de Chepe llena, Lucía con un aprendiz. Una imagen por país, en la retícula.",
+   "texto": "—",
+   "sonido": "La música crece.",
    "quien": null,
    "linea": null,
    "prompt": null,
@@ -595,9 +611,9 @@
    "tomas_a_generar": 0
   },
   {
-   "id": "k03",
+   "id": "k04",
    "secuencia": 7,
-   "t": 137.46,
+   "t": 146.49,
    "dur": 5.52,
    "fuente": "COMPOSICIÓN",
    "imagen": "La retícula con un portón en cada país: entra el capital y pasa solo el que cumple las reglas de cada uno.",
@@ -613,7 +629,7 @@
   {
    "id": "f00",
    "secuencia": 8,
-   "t": 142.98,
+   "t": 152.01,
    "dur": 2.2,
    "fuente": "COMPOSICIÓN",
    "imagen": "Anochecer: la retícula se rearma con las mismas manos en las mismas puertas, ahora cerrándose.",
@@ -629,7 +645,7 @@
   {
    "id": "f01",
    "secuencia": 8,
-   "t": 145.18,
+   "t": 154.21,
    "dur": 3.68,
    "fuente": "GENERADA",
    "imagen": "Lucía, al bajar la cortina de su taller al anochecer, mira a cámara y lo dice ella misma.",
@@ -645,7 +661,7 @@
   {
    "id": "f02",
    "secuencia": 8,
-   "t": 148.86,
+   "t": 157.89,
    "dur": 3.68,
    "fuente": "GRÁFICO",
    "imagen": "El mapa se abre del istmo a toda Latinoamérica.",
@@ -661,7 +677,7 @@
   {
    "id": "f03",
    "secuencia": 8,
-   "t": 152.54,
+   "t": 161.57,
    "dur": 3.5,
    "fuente": "GRÁFICO",
    "imagen": "Logo quieto. ordenglobal.org · letra chica.",
@@ -744,14 +760,14 @@
    "id": "N1",
    "quien": "LUCÍA",
    "t": 38.87,
-   "dur": 6.31,
-   "escrito": "Siete países. Siete monedas. Y entre nosotros, una moneda digital en común: ORIGEN.",
+   "dur": 5.92,
+   "escrito": "Siete países, siete monedas. Y entre nosotros, una moneda digital en común: ORIGEN.",
    "a_camara": false
   },
   {
    "id": "N2",
    "quien": "LUCÍA",
-   "t": 45.68,
+   "t": 45.29,
    "dur": 4.46,
    "escrito": "No reemplaza la de nadie. Sigue el precio del oro, y su fórmula es pública.",
    "a_camara": false
@@ -759,7 +775,7 @@
   {
    "id": "N3",
    "quien": "LUCÍA",
-   "t": 50.74,
+   "t": 50.35,
    "dur": 4.92,
    "escrito": "Genesis ID: una sola verificación, y ya sos parte del ecosistema.",
    "a_camara": false
@@ -767,7 +783,7 @@
   {
    "id": "N3b",
    "quien": "LUCÍA",
-   "t": 56.26,
+   "t": 55.87,
    "dur": 5.12,
    "escrito": "Pagar, cobrar, guardar, comprobar: todo en un solo lugar. Una sola app.",
    "a_camara": false
@@ -775,7 +791,7 @@
   {
    "id": "T1a",
    "quien": "AURELIO",
-   "t": 61.98,
+   "t": 61.59,
    "dur": 2.3,
    "escrito": "Marcus, ya te pagué el flete de las muestras.",
    "a_camara": true
@@ -783,7 +799,7 @@
   {
    "id": "T1b",
    "quien": "MARCUS",
-   "t": 64.73,
+   "t": 64.34,
    "dur": 2.56,
    "escrito": "¡Ya me llegó! Ya las estoy cargando.",
    "a_camara": true
@@ -791,7 +807,7 @@
   {
    "id": "N4",
    "quien": "LUCÍA",
-   "t": 67.79,
+   "t": 67.4,
    "dur": 4.0,
    "escrito": "Un centavo de dólar de comisión. Y llegó en segundos.",
    "a_camara": false
@@ -799,7 +815,7 @@
   {
    "id": "T2a",
    "quien": "MARCUS",
-   "t": 72.29,
+   "t": 71.9,
    "dur": 2.16,
    "escrito": "Chepe, ya pagué las redes.",
    "a_camara": true
@@ -807,7 +823,7 @@
   {
    "id": "T2b",
    "quien": "CHEPE",
-   "t": 74.9,
+   "t": 74.51,
    "dur": 2.87,
    "escrito": "¡Ya me cayó! Van en el camión de las diez.",
    "a_camara": true
@@ -815,7 +831,7 @@
   {
    "id": "T3a",
    "quien": "CHEPE",
-   "t": 78.27,
+   "t": 77.88,
    "dur": 2.24,
    "escrito": "Doña Lucía, ya le pagué los sillones.",
    "a_camara": true
@@ -823,7 +839,7 @@
   {
    "id": "T3b",
    "quien": "LUCÍA",
-   "t": 80.96,
+   "t": 80.57,
    "dur": 3.47,
    "escrito": "Ya me llegó, don Chepe. El jueves se los devuelvo como nuevos.",
    "a_camara": true
@@ -831,7 +847,7 @@
   {
    "id": "T4a",
    "quien": "LUCÍA",
-   "t": 84.93,
+   "t": 84.54,
    "dur": 2.73,
    "escrito": "Mercedes, te pagué las dos cajas de rosquillas.",
    "a_camara": true
@@ -839,7 +855,7 @@
   {
    "id": "T4b",
    "quien": "MERCEDES",
-   "t": 88.11,
+   "t": 87.72,
    "dur": 2.0,
    "escrito": "¡Ya me cayó! Mañana te llegan.",
    "a_camara": true
@@ -847,7 +863,7 @@
   {
    "id": "T5a",
    "quien": "MERCEDES",
-   "t": 90.61,
+   "t": 90.22,
    "dur": 1.68,
    "escrito": "Andrés, ya te pagué el viaje.",
    "a_camara": true
@@ -855,7 +871,7 @@
   {
    "id": "T5b",
    "quien": "ANDRÉS",
-   "t": 92.74,
+   "t": 92.35,
    "dur": 2.18,
    "escrito": "Diay, ya me llegó. Salgo a las tres.",
    "a_camara": true
@@ -863,7 +879,7 @@
   {
    "id": "T6a",
    "quien": "ANDRÉS",
-   "t": 95.42,
+   "t": 95.03,
    "dur": 1.97,
    "escrito": "Rosa, pagué las doce camisas.",
    "a_camara": true
@@ -871,7 +887,7 @@
   {
    "id": "T6b",
    "quien": "ROSA",
-   "t": 97.84,
+   "t": 97.45,
    "dur": 1.92,
    "escrito": "¡Ya entró! El viernes te llegan.",
    "a_camara": true
@@ -879,31 +895,47 @@
   {
    "id": "T7a",
    "quien": "ROSA",
-   "t": 100.26,
-   "dur": 2.13,
-   "escrito": "Don Aurelio, le pagué el café del taller.",
+   "t": 99.87,
+   "dur": 4.1,
+   "escrito": "Don Aurelio, compré una parte de su cooperativa. Creo que va a ser una buena inversión.",
    "a_camara": true
   },
   {
    "id": "T7b",
    "quien": "AURELIO",
-   "t": 102.84,
-   "dur": 2.06,
-   "escrito": "Recibido, doña Rosa. Ya va para allá.",
+   "t": 104.42,
+   "dur": 3.33,
+   "escrito": "Gracias, doña Rosa. Con esto compramos la despulpadora nueva.",
    "a_camara": true
+  },
+  {
+   "id": "N8",
+   "quien": "LUCÍA",
+   "t": 108.35,
+   "dur": 6.7,
+   "escrito": "Eso es tokenizar: una empresa abre una parte, en digital, y el capital puede llegar de cualquier país.",
+   "a_camara": false
+  },
+  {
+   "id": "N9",
+   "quien": "LUCÍA",
+   "t": 115.35,
+   "dur": 4.08,
+   "escrito": "Cada parte con su pasaporte, y adentro las reglas de su país.",
+   "a_camara": false
   },
   {
    "id": "N5",
    "quien": "LUCÍA",
-   "t": 105.6,
-   "dur": 5.8,
-   "escrito": "En un solo día, ORIGEN pasó por siete países. Siete pagos, en segundos.",
+   "t": 120.13,
+   "dur": 6.16,
+   "escrito": "En un solo día, ORIGEN pasó por siete países. Seis pagos y una inversión, en segundos.",
    "a_camara": false
   },
   {
    "id": "N6",
    "quien": "LUCÍA",
-   "t": 112.1,
+   "t": 126.99,
    "dur": 4.12,
    "escrito": "Si fuera de otra manera... ¿cuánto tardaría en moverse tu dinero?",
    "a_camara": false
@@ -911,31 +943,23 @@
   {
    "id": "N7",
    "quien": "LUCÍA",
-   "t": 117.42,
-   "dur": 6.92,
-   "escrito": "Morazán luchó por unirnos. Hoy nos unimos sin dejar de ser siete: cada país, con sus leyes y su moneda.",
+   "t": 132.31,
+   "dur": 5.43,
+   "escrito": "Morazán soñó con unirnos. Hoy, sin dejar de ser siete: cada país con sus leyes.",
    "a_camara": false
   },
   {
-   "id": "N8",
+   "id": "N11",
    "quien": "LUCÍA",
-   "t": 125.24,
-   "dur": 6.28,
-   "escrito": "Y pensá en grande: nuestras empresas podrían abrir una parte, en digital, al capital del mundo.",
-   "a_camara": false
-  },
-  {
-   "id": "N9",
-   "quien": "LUCÍA",
-   "t": 131.92,
-   "dur": 5.24,
-   "escrito": "Eso es tokenizar: cada parte con su pasaporte, y adentro las reglas de cada país.",
+   "t": 138.64,
+   "dur": 7.65,
+   "escrito": "Cuando una empresa recibe capital, compra, contrata y crece. Y cuando crecen nuestras empresas, crecen nuestros países.",
    "a_camara": false
   },
   {
    "id": "N10",
    "quien": "LUCÍA",
-   "t": 137.76,
+   "t": 146.79,
    "dur": 4.62,
    "escrito": "El capital, del mundo. El trabajo, aquí. Las reglas, de casa.",
    "a_camara": false
@@ -943,7 +967,7 @@
   {
    "id": "F1",
    "quien": "LUCÍA",
-   "t": 145.48,
+   "t": 154.51,
    "dur": 2.78,
    "escrito": "Esto lo hicimos por vos. Para unir Centroamérica.",
    "a_camara": true
@@ -951,7 +975,7 @@
   {
    "id": "F2",
    "quien": "LUCÍA",
-   "t": 149.36,
+   "t": 158.39,
    "dur": 2.08,
    "escrito": "¿Y mañana... Latinoamérica?",
    "a_camara": false
@@ -1010,7 +1034,7 @@
    "18:10",
    "ROSA",
    "AURELIO",
-   "el café del taller",
+   "una parte de su cooperativa de café, tokenizada: invierte porque cree en ella",
    "T7a",
    "T7b"
   ]

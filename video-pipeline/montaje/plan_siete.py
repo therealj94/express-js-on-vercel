@@ -44,7 +44,7 @@ PAGOS = [  # hora, paga, cobra, qué, línea del que paga, línea del que cobra
     ("12:20", "LUCÍA", "MERCEDES", "dos cajas de rosquillas para el taller", "T4a", "T4b"),
     ("14:05", "MERCEDES", "ANDRÉS", "el viaje de sus cajas a Costa Rica", "T5a", "T5b"),
     ("16:30", "ANDRÉS", "ROSA", "doce camisas de uniforme para sus choferes", "T6a", "T6b"),
-    ("18:10", "ROSA", "AURELIO", "el café del taller", "T7a", "T7b"),
+    ("18:10", "ROSA", "AURELIO", "una parte de su cooperativa de café, tokenizada: invierte porque cree en ella", "T7a", "T7b"),
 ]
 HABLA_EN = {  # qué hace mientras habla en cada pago
     "T1a": "looks up from his phone with a satisfied nod and says it toward the phone as a voice message",
@@ -59,8 +59,8 @@ HABLA_EN = {  # qué hace mientras habla en cada pago
     "T5b": "reads his phone beside his truck, nods, and taps the side of the truck",
     "T6a": "records a voice message in the cab of his truck",
     "T6b": "reads her phone, raises her hand in celebration to her seamstresses",
-    "T7a": "records a voice message holding a coffee cup in her workshop",
-    "T7b": "reads his phone at the cooperative, smiles and closes a sack of coffee",
+    "T7a": "sits in her workshop after closing, holding a cup of coffee, and records a voice message on her phone with a confident smile",
+    "T7b": "reads his phone at the cooperative, moved, and puts his hand on the shoulder of a young cooperative member beside him",
 }
 
 
@@ -141,7 +141,7 @@ def main():
              f"{hora} · {GENTE[paga][0].upper()} → {GENTE[cobra][0].upper()}", "Ambiente de su lugar.", paga, la,
              gen(paga, HABLA_EN[la], "ambience of the place", la, lineas), 3)
         d = habla(lb, 0.2)
-        toma(f"p{n}b", 4, d + 0.5, "GENERADA", f"{cobra.title()} recibe en {GENTE[cobra][1]} y responde a cámara, con su voz. Al entrar la toma, una chispa marfil cruza la frontera {GENTE[paga][0]}–{GENTE[cobra][0]} (costura dorada, arriba) y flota la tarjeta de Veta: «Recibido · comisión US$ 0,01 · en segundos».",
+        toma(f"p{n}b", 4, d + 0.5, "GENERADA", f"{cobra.title()} recibe en {GENTE[cobra][1]} y responde a cámara, con su voz. Al entrar la toma, una chispa marfil cruza la frontera {GENTE[paga][0]}–{GENTE[cobra][0]} (costura dorada, arriba) y flota la tarjeta de Veta: " + ("«Compraste una parte · Cooperativa de café de Huehuetenango · ejemplo ilustrativo»." if n == 7 else "«Recibido · comisión US$ 0,01 · en segundos»."),
              f"{GENTE[cobra][0].upper()} · Recibido · US$ 0,01", "La campana de pago de Orden Global al entrar; luego su ambiente.", cobra, lb,
              gen(cobra, HABLA_EN[lb], "ambience of the place", lb, lineas), 3)
         if n == 1:
@@ -149,6 +149,14 @@ def main():
             toma("p1n", 4, d + 0.5, "GENERADA", "Marcus sube el saco de muestras a su lancha y zarpa; la cámara lo sigue sobre el agua turquesa.",
                  "Comisión: US$ 0,01 · llegó en segundos", "Motor de lancha, gaviotas.", "MARCUS", None,
                  gen("MARCUS", "loads a sack of coffee samples onto his boat, starts the outboard motor and heads out over the turquoise water", "outboard motor, seagulls, waves"), 2)
+    # tokenizar, dentro de la historia: la inversión de Rosa llega a la cooperativa
+    d = habla("N8", 0.3)
+    toma("k01", 4, d + 0.4, "GENERADA", "Días después: la despulpadora nueva llega a la cooperativa de Aurelio; los socios la bajan del camión.",
+         "—", "Camión, voces de trabajo, aplausos cortos.", "AURELIO", None,
+         gen("AURELIO", "watches with pride as cooperative members unload a new coffee pulping machine from a truck and cheer", "truck, workers voices, short applause"), 2)
+    d = habla("N9", 0.2)
+    toma("k02", 4, d + 0.5, "COMPOSICIÓN", "Sobre la máquina nueva, la tarjeta del PASAPORTE DEL ACTIVO (ejemplo ilustrativo): emisor · qué hay detrás · riesgo · quién puede tenerla, según las reglas de Guatemala.",
+         "Pasaporte del activo · ejemplo ilustrativo", "Sello; madera.")
     # 5 · La vuelta
     d = habla("N5", 0.4)
     toma("r01", 5, d + 0.8, "GRÁFICO", "Mapa marfil del istmo con fronteras: una línea dorada recorre el día, Guatemala → Belice → Honduras → El Salvador → Nicaragua → Costa Rica → Panamá → Guatemala, con las siete horas.",
@@ -160,16 +168,12 @@ def main():
     d = habla("N7", 0.3)
     toma("m01", 6, 2.8, "ARCHIVO", "Óleo de Francisco Morazán (dominio público, con ficha).", "Francisco Morazán (1792–1842)", "Chelo solo.")
     toma("m02", 6, d + 0.9 - 2.8, "COMPOSICIÓN", "Los siete rostros, uno por golpe, a pantalla completa (de sus propios clips).", "—", "Una nota por rostro.")
-    # 7 · Tokenizar
-    d = habla("N8", 0.3)
-    toma("k01", 7, d + 0.5, "GENERADA", "El taller de Rosa a mediodía: pedidos hasta el techo y un rincón marcado con cinta, un puesto que espera una máquina.",
-         "—", "Máquinas de coser.", "ROSA", None,
-         gen("ROSA", "walks through her busy workshop full of orders and stops to look at an empty corner marked with blue tape on the floor, imagining a new machine there", "sewing machines, busy workshop"), 2)
-    d = habla("N9", 0.2)
-    toma("k02", 7, d + 0.5, "COMPOSICIÓN", "Sobre el rincón, la tarjeta del PASAPORTE DEL ACTIVO (ejemplo ilustrativo): emisor con Genesis ID · qué hay detrás · riesgo · quién puede tenerla según su país. Líneas marfil del mundo llegan y pasan por el portón de Panamá.",
-         "Pasaporte del activo · ejemplo ilustrativo", "Sello; madera.")
+    # 7 · Lo que gana cada país
+    d = habla("N11", 0.3)
+    toma("k03", 7, d + 0.5, "COMPOSICIÓN", "Los siete lugares, crecidos: la despulpadora trabajando, una costurera nueva en el taller de Rosa, un segundo camión de Andrés, la lancha de Marcus cargada, el horno de Mercedes con más bandejas, la bodega de Chepe llena, Lucía con un aprendiz. Una imagen por país, en la retícula.",
+         "—", "La música crece.")
     d = habla("N10", 0.3)
-    toma("k03", 7, d + 0.9, "COMPOSICIÓN", "La retícula con un portón en cada país: entra el capital y pasa solo el que cumple las reglas de cada uno.",
+    toma("k04", 7, d + 0.9, "COMPOSICIÓN", "La retícula con un portón en cada país: entra el capital y pasa solo el que cumple las reglas de cada uno.",
          "El capital, del mundo. El trabajo, aquí. Las reglas, de casa.", "Pico de la música.")
     # 8 · Por vos
     toma("f00", 8, 2.2, "COMPOSICIÓN", "Anochecer: la retícula se rearma con las mismas manos en las mismas puertas, ahora cerrándose.", "—", "Las siete notas bajan; grillos.")
