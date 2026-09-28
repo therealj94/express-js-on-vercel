@@ -87,8 +87,16 @@ def envolver(d, txt, f, ancho):
 
 # --- capas (PNG a pantalla completa con transparencia) ---
 
+def degradado(img: Image.Image, y0: int, y1: int, a0: int, a1: int) -> None:
+    """Sombra suave para leer texto sobre cualquier fondo (cielo, pared blanca)."""
+    d = ImageDraw.Draw(img)
+    for y in range(y0, y1):
+        a = int(a0 + (a1 - a0) * (y - y0) / max(1, y1 - y0))
+        d.line([(0, y), (W, y)], fill=(0, 0, 0, a))
+
+
 def capa_sub(f: F, txt: str) -> Image.Image:
-    img = lienzo(); d = ImageDraw.Draw(img)
+    img = lienzo(); degradado(img, 1300, H, 0, 150); d = ImageDraw.Draw(img)
     ls = envolver(d, txt, f.sub, 900)[-2:]
     y = 1500
     for l in ls:
@@ -102,7 +110,7 @@ def capa_sub(f: F, txt: str) -> Image.Image:
 
 
 def capa_lugar(f: F, pais: str, ciudad: str, hora: str | None = None) -> Image.Image:
-    img = lienzo(); d = ImageDraw.Draw(img)
+    img = lienzo(); degradado(img, 0, 420, 150, 0); d = ImageDraw.Draw(img)
     y = 150
     if hora:
         d.text((72, y), hora, font=f.mono, fill=(*ORO, 255)); y += 52
@@ -113,7 +121,7 @@ def capa_lugar(f: F, pais: str, ciudad: str, hora: str | None = None) -> Image.I
 
 
 def capa_ruta(f: F, hora: str, de: str, a: str, que: str) -> Image.Image:
-    img = lienzo(); d = ImageDraw.Draw(img)
+    img = lienzo(); degradado(img, 0, 420, 150, 0); d = ImageDraw.Draw(img)
     d.text((72, 150), hora, font=f.mono, fill=(*ORO, 255))
     d.text((72, 200), f"{de}  →  {a}", font=f.tarj, fill=(*CREMA, 255))
     d.text((72, 256), que, font=f.lugar, fill=(*CREMA, 200))
@@ -138,7 +146,7 @@ def capa_tarjeta(f: F, titulo: str, lineas: list[str], y0=420, marca="Veta Walle
 
 def capa_centro(f: F, txt: str, fuente, y=None, color=CREMA, sombra_=True, banda=False) -> Image.Image:
     img = lienzo(); d = ImageDraw.Draw(img)
-    ls = envolver(d, txt, fuente, 900)
+    ls = envolver(d, txt, fuente, 980)
     alto = fuente.size * 1.25
     y = (H - alto * len(ls)) / 2 if y is None else y
     if banda:
