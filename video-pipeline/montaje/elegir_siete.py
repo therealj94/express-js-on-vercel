@@ -69,6 +69,7 @@ def hoja(tomas: list[Path], out: Path, notas: list[str], tramos=None) -> None:
         dur = duracion(c)
         # Con diálogo se mira dentro del tramo que se usa (la voz), no la toma entera.
         t0, t1 = (tramos or {}).get(c.name, (0.0, dur))
+        t1 = min(t1, dur - 0.1)
         cuadros = []
         for frac in (0.1, 0.5, 0.9):
             png = out.parent / f"_{c.stem}_{frac}.png"
