@@ -17,7 +17,7 @@ filtro concat, forzando los fotogramas exactos de cada segmento.
 """
 from __future__ import annotations
 
-import argparse, json, re, subprocess, tempfile
+import argparse, hashlib, json, re, subprocess, tempfile
 from pathlib import Path
 
 import numpy as np
@@ -242,7 +242,7 @@ def render_video(s: Seg, out: Path, tmp: Path) -> None:
         filtro += (f";[{base + j}:v]format=rgba,fade=t=in:st={fi:.2f}:d=0.25:alpha=1,"
                    f"fade=t=out:st={fo:.2f}:d=0.25:alpha=1[l{j}];{ult}[l{j}]overlay=0:0:format=auto[o{j}]")
         ult = f"[o{j}]"
-    filtro += f";{ult}trim=end_frame={n},setpts=PTS-STARTPTS,format=yuv420p[fin]"
+    filtro += f";{ult}trim=end_frame={n},setpts=PTS-STARTPTS,scale={W}:{H},setsar=1,format=yuv420p[fin]"
     ff(*entrada, "-filter_complex", filtro, "-map", "[fin]", "-frames:v", str(n), "-an",
        "-c:v", "libx264", "-preset", "medium", "-crf", "16", "-r", str(FPS), str(out))
 
@@ -260,6 +260,10 @@ def armar(a, f: F) -> list[Seg]:
         for k in (1, 2, 3):
             if toma_extra(pid, k).exists():
                 return toma_extra(pid, k)
+        # Borrador: mientras falta una puerta, va la presentación de esa persona.
+        m = re.match(r"(abre|cierra)_(\w+)", pid)
+        if a.borrador and m and PRESENTA.get(m.group(2)) in el:
+            return clip(PRESENTA[m.group(2)])
         raise SystemExit(f"falta toma para {pid}")
 
     segs: list[Seg] = []
@@ -499,6 +503,8 @@ def main() -> None:
     a.add_argument("--logo", type=Path, required=True)
     a.add_argument("--morazan", type=Path, required=True)
     a.add_argument("--solo-tiempos", action="store_true")
+    a.add_argument("--cache", type=Path, help="carpeta para reutilizar segmentos ya hechos")
+    a.add_argument("--borrador", action="store_true", help="suplir tomas que aún no salen")
     a.add_argument("-o", type=Path, required=True)
     a = a.parse_args()
     f = F(a.fuentes)
@@ -512,9 +518,17 @@ def main() -> None:
     with tempfile.TemporaryDirectory() as td:
         tmp = Path(td)
         partes = []
+        cache = a.cache or tmp
+        cache.mkdir(parents=True, exist_ok=True)
         for s in segs:
-            o = tmp / f"{len(partes):03d}_{s.id}.mp4"
-            render_video(s, o, tmp)
+            # La caché se llama por el contenido del segmento: si cambia la toma,
+            # el corte o una capa, cambia el nombre y se vuelve a hacer.
+            h = hashlib.sha1(repr((s.video, round(s.t * FPS), round((s.t + s.dur) * FPS))).encode())
+            for img, x0, x1 in s.capas:
+                h.update(img.tobytes()); h.update(f"{x0:.3f}{x1:.3f}".encode())
+            o = cache / f"{s.id}_{h.hexdigest()[:12]}.mp4"
+            if not o.exists():
+                render_video(s, o, tmp)
             partes.append(o)
             print(f"  {s.id:14} {s.t:6.2f}  {s.dur:5.2f}", flush=True)
         entrada = sum((["-i", str(p)] for p in partes), [])
