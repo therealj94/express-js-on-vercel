@@ -59,7 +59,7 @@ class F:
         t = lambda n, s: ImageFont.truetype(str(d / n), s)
         self.sub, self.lugar, self.mono = t("ManropeMedium.ttf", 46), t("Manrope.ttf", 34), t("JetBrainsMono.ttf", 34)
         self.monog, self.titulo, self.frase = t("JetBrainsMono.ttf", 64), t("FrauncesItalic.ttf", 150), t("Fraunces.ttf", 78)
-        self.tarj, self.tarjc, self.chico = t("Manrope.ttf", 44), t("ManropeMedium.ttf", 32), t("Manrope.ttf", 26)
+        self.tarj, self.tarjc, self.chico = t("Manrope.ttf", 54), t("ManropeMedium.ttf", 40), t("Manrope.ttf", 28)
         self.cita = t("FrauncesItalic.ttf", 64)
 
 
@@ -130,17 +130,17 @@ def capa_ruta(f: F, hora: str, de: str, a: str, que: str) -> Image.Image:
 
 def capa_tarjeta(f: F, titulo: str, lineas: list[str], y0=420, marca="Veta Wallet") -> Image.Image:
     img = lienzo()
-    x0, x1 = 120, W - 120
-    alto = 150 + 52 * len(lineas)
+    x0, x1 = 80, W - 80
+    alto = 170 + 60 * len(lineas)
     img = sombra(img, (x0, y0, x1, y0 + alto))
     d = ImageDraw.Draw(img)
     d.rounded_rectangle([x0, y0, x1, y0 + alto], 30, fill=(*TINTA, 238), outline=(*ORO, 150), width=2)
-    d.ellipse([x0 + 36, y0 + 36, x0 + 84, y0 + 84], outline=(*ORO, 255), width=3)
-    d.line([x0 + 48, y0 + 61, x0 + 57, y0 + 70, x0 + 73, y0 + 50], fill=(*ORO, 255), width=4)
-    d.text((x0 + 108, y0 + 30), titulo, font=f.tarj, fill=(*CREMA, 255))
-    d.text((x1 - 36 - d.textlength(marca, font=f.chico), y0 + 44), marca, font=f.chico, fill=(*ORO, 220))
+    d.ellipse([x0 + 36, y0 + 40, x0 + 92, y0 + 96], outline=(*ORO, 255), width=4)
+    d.line([x0 + 50, y0 + 68, x0 + 61, y0 + 79, x0 + 80, y0 + 56], fill=(*ORO, 255), width=5)
+    d.text((x0 + 118, y0 + 34), titulo, font=f.tarj, fill=(*CREMA, 255))
+    d.text((x1 - 36 - d.textlength(marca, font=f.chico), y0 + 52), marca, font=f.chico, fill=(*ORO, 220))
     for i, l in enumerate(lineas):
-        d.text((x0 + 108, y0 + 100 + 52 * i), l, font=f.tarjc, fill=(*CREMA, 215))
+        d.text((x0 + 118, y0 + 116 + 60 * i), l, font=f.tarjc, fill=(*CREMA, 225))
     return img
 
 
@@ -354,7 +354,7 @@ def armar(a, f: F) -> list[Seg]:
     k01 = mejor_existente("k01")
     segs.append(Seg("k01", 7.1, v_clip(k01, 0.2, lento=1.0)))
     pasaporte = capa_tarjeta(f, "Pasaporte del activo", ["Emisor: cooperativa de café", "Qué hay detrás: una parte de ella",
-                                                         "Riesgo: puede perder valor", "Quién puede tenerla: reglas de Guatemala",
+                                                         "Riesgo: puede perder valor", "Quién la tiene: reglas de Guatemala",
                                                          "Ejemplo ilustrativo"], y0=560, marca="ORIGEN")
     otra_k01 = next((toma_extra("k01", k) for k in (2, 1) if toma_extra("k01", k).exists() and toma_extra("k01", k) != k01), k01)
     segs.append(Seg("k02", 4.58, v_clip(otra_k01, 0.8), [(pasaporte, 0.2, 5)]))
