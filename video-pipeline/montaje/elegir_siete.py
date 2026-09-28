@@ -62,15 +62,17 @@ def stt(clip: Path, cache: Path, idioma: str) -> dict:
     return r
 
 
-def hoja(tomas: list[Path], out: Path, notas: list[str]) -> None:
+def hoja(tomas: list[Path], out: Path, notas: list[str], tramos=None) -> None:
     f = ImageFont.load_default()
     filas = []
     for c in tomas:
         dur = duracion(c)
+        # Con diálogo se mira dentro del tramo que se usa (la voz), no la toma entera.
+        t0, t1 = (tramos or {}).get(c.name, (0.0, dur))
         cuadros = []
-        for frac in (0.15, 0.5, 0.85):
+        for frac in (0.1, 0.5, 0.9):
             png = out.parent / f"_{c.stem}_{frac}.png"
-            subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{frac * dur:.2f}", "-i", str(c),
+            subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{t0 + frac * (t1 - t0):.2f}", "-i", str(c),
                             "-frames:v", "1", "-vf", "scale=300:-1", str(png)], check=True)
             cuadros.append(Image.open(png).convert("RGB"))
             png.unlink()
@@ -118,18 +120,22 @@ def main() -> None:
                 pedido = re.search(r"<d>\[\w+\] (.*?)</d>", next(t["prompt"] for t in P["tomas"] if t["id"] == plano)).group(1)
                 sim = difflib.SequenceMatcher(None, norm(pedido), norm(texto)).ratio()
                 ini, fin = (ws[0]["start"], ws[-1]["end"]) if ws else (0.0, 0.0)
-                cand.append({"clip": c.name, "sim": round(sim, 3), "voz": [ini, fin], "texto": texto})
+                # Si la voz acaba pegada al último fotograma, la última sílaba puede quedar cortada.
+                margen = duracion(c) - fin
+                cand.append({"clip": c.name, "sim": round(sim, 3), "voz": [ini, fin], "texto": texto,
+                             "margen": round(margen, 2), "nota": round(sim - (0.08 if margen < 0.2 else 0), 3)})
                 notas.append(f"{sim:.2f} {ini:.1f}-{fin:.1f}s {texto}")
             else:
                 cand.append({"clip": c.name})
                 notas.append("")
-        hoja(tomas, hojas / f"{plano}.jpg", notas)
+        tramos = {x["clip"]: (max(0, x["voz"][0] - 0.3), x["voz"][1] + 0.3) for x in cand if x.get("voz")}
+        hoja(tomas, hojas / f"{plano}.jpg", notas, tramos)
         if plano in fijo:
             mejor = cand[int(fijo[plano]) - 1]
         elif plano in elegidas and elegidas[plano].get("a_ojo"):
             continue
         else:
-            mejor = max(cand, key=lambda x: x.get("sim", 0))
+            mejor = max(cand, key=lambda x: x.get("nota", 0))
         elegidas[plano] = dict(mejor, a_ojo=plano in fijo, tomas=cand)
         print(f"{plano:14} -> {mejor['clip']}  {mejor.get('sim', '')}  {mejor.get('texto', '')[:70]}")
     salida.write_text(json.dumps(elegidas, ensure_ascii=False, indent=1))
