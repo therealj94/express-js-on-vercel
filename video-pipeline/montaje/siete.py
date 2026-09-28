@@ -41,6 +41,8 @@ PAIS = {"aurelio": "GUATEMALA", "marcus": "BELICE", "lucia": "EL SALVADOR", "che
         "mercedes": "NICARAGUA", "andres": "COSTA RICA", "rosa": "PANAMÁ"}
 PRESENTA = {"aurelio": "g01", "marcus": "g02", "lucia": "g03", "chepe": "g04",
             "mercedes": "g05", "andres": "g06", "rosa": "g07"}
+AMB = {"AURELIO": "aurelio", "MARCUS": "marcus", "LUCÍA": "lucia", "CHEPE": "chepe",
+       "MERCEDES": "mercedes", "ANDRÉS": "andres", "ROSA": "rosa"}
 SUB_EN = {"P2": "Soy Marcus, pescador de Dangriga, Belice."}
 
 
@@ -208,9 +210,11 @@ def capa_paises(f: F) -> Image.Image:
 # --- segmentos ---
 
 class Seg:
-    def __init__(self, id_, dur, video, capas=(), audio_clip=None, nota=""):
+    def __init__(self, id_, dur, video, capas=(), audio_clip=None, nota="", entra=0.0, sale=0.0, amb=None):
         self.id, self.dur, self.video, self.capas = id_, dur, video, list(capas)
         self.audio_clip, self.nota = audio_clip, nota  # audio_clip: (ruta, desde, gan)
+        # entra / sale: fundido desde / hacia negro (s). amb: cama de ambiente del lugar.
+        self.entra, self.sale, self.amb = entra, sale, amb
         self.t = 0.0
 
 
@@ -285,7 +289,12 @@ def render_video(s: Seg, out: Path, tmp: Path) -> None:
         filtro += (f";[{base + j}:v]" + ",".join(["format=rgba"] + fades) +
                    f"[l{j}];{ult}[l{j}]overlay=0:0:format=auto[o{j}]")
         ult = f"[o{j}]"
-    filtro += f";{ult}trim=end_frame={n},setpts=PTS-STARTPTS,scale={W}:{H},setsar=1,format=yuv420p[fin]"
+    fund = ""
+    if s.entra:
+        fund += f",fade=t=in:st=0:d={s.entra:.2f}"
+    if s.sale:
+        fund += f",fade=t=out:st={s.dur - s.sale:.2f}:d={s.sale:.2f}"
+    filtro += f";{ult}trim=end_frame={n},setpts=PTS-STARTPTS{fund},scale={W}:{H},setsar=1,format=yuv420p[fin]"
     ff(*entrada, "-filter_complex", filtro, "-map", "[fin]", "-frames:v", str(n), "-an",
        "-c:v", "libx264", "-preset", "medium", "-crf", "16", "-r", str(FPS), str(out))
 
@@ -320,7 +329,8 @@ def armar(a, f: F) -> list[Seg]:
               (10.2, 12.2, "«…así como la Unión Europea.»")]
     aereos = ["ap_guatemala", "ap_belice", "ap_elsalvador", "ap_honduras", "ap_nicaragua",
               "ap_costarica", "ap_panama", "ap_istmo"]
-    cortes = [0.0, 1.5, 3.0, 4.5, 5.9, 7.3, 8.7, 10.1, 12.6]
+    # El istmo se queda hasta que la frase respira y se funde a negro.
+    cortes = [0.0, 1.5, 3.0, 4.5, 5.9, 7.3, 8.7, 10.1, 13.9]
     tag = capa_centro(f, "ARCHIVO · VOZ DE NAYIB BUKELE · FORO REGIONAL ESQUIPULAS · 2018", f.chico, y=1800)
     for i, ap in enumerate(aereos):
         a0, a1 = cortes[i], cortes[i + 1]
@@ -334,8 +344,16 @@ def armar(a, f: F) -> list[Seg]:
                 capas.append((capa_centro(f, pal, f.monog, y=860, color=ORO), t0 - a0, a1 - a0 + 0.3))
         video = (v_panoramica(mejor_existente(ap), 0.4, lento=1.1) if ap == "ap_istmo"
                  else v_clip(mejor_existente(ap), 0.6, lento=1.15))
-        segs.append(Seg(ap, a1 - a0, video, capas, nota="bukele"))
-    segs.append(Seg("g00", 0.9, v_negro(), [(capa_centro(f, "05:59", f.monog, color=CREMA), 0.1, 1.0)]))
+        segs.append(Seg(ap, a1 - a0, video, capas, nota="bukele", entra=0.8 if i == 0 else 0.0,
+                        sale=1.3 if ap == "ap_istmo" else 0.0, amb="aire"))
+    # Título de la película: un golpe grave y silencio. Luego amanece.
+    titulo = lienzo(); dt = ImageDraw.Draw(titulo)
+    for y, txt, fu, col in ((820, "SIETE", f.titulo, ORO), (1030, "Una historia de Centroamérica", f.lugar, CREMA)):
+        w = dt.textlength(txt, font=fu); dt.text(((W - w) / 2, y), txt, font=fu, fill=(*col, 255))
+    segs.append(Seg("titulo", 3.6, v_negro(), [(titulo, 0.5, 3.2)]))
+    amanece = toma_extra("ap_elsalvador", 2) if toma_extra("ap_elsalvador", 2).exists() else mejor_existente("ap_elsalvador")
+    segs.append(Seg("g00", 3.0, v_clip(amanece, 0.3, lento=1.3),
+                    [(capa_centro(f, "05:59", f.monog, color=CREMA, y=900, banda=True), 0.8, 3.2)], entra=1.0, amb="aire"))
 
     def dialogo(pid, capas_extra=(), sub=None, lugar=None):
         e = el[pid]
@@ -351,7 +369,8 @@ def armar(a, f: F) -> list[Seg]:
         capas = subtitulos(f, txt, ini - desde - 0.1, min(dur + 1, fin - desde + 0.4)) + list(capas_extra)
         if lugar:
             capas.append((lugar, 0.1, dur + 1))
-        return Seg(pid, dur, v_clip(clip(pid), desde), capas, audio_clip=(clip(pid), desde, 1.0))
+        return Seg(pid, dur, v_clip(clip(pid), desde), capas, audio_clip=(clip(pid), desde, 1.0),
+                   amb=AMB.get(TOMA[pid]["quien"]))
 
     # 2. Las presentaciones.
     for n in ("aurelio", "marcus", "lucia", "chepe", "mercedes", "andres", "rosa"):
@@ -400,10 +419,14 @@ def armar(a, f: F) -> list[Seg]:
     # Aurelio la recibe contento y el pasaporte del activo aparece sobre la máquina.
     k01 = toma_extra("k01", 1) if toma_extra("k01", 1).exists() else mejor_existente("k01")
     otra_k01 = toma_extra("k01", 2) if toma_extra("k01", 2).exists() else k01
-    llega = capa_lugar(f, "DÍAS DESPUÉS", "La cooperativa, Huehuetenango")
-    segs.append(Seg("k01", 2.4, v_clip(k01, 6.9, lento=1.35), [(llega, 0.1, 2.6)]))
-    segs.append(Seg("k01b", 2.7, v_clip(k01, 1.1, lento=1.0)))
-    segs.append(Seg("k01c", 2.0, v_clip(otra_k01, 1.3, lento=1.0)))
+    # Un respiro en negro marca el paso del tiempo; el camión entra ya estable
+    # (antes de 7,05 s la toma se transforma de la espalda de Aurelio al camión).
+    segs[-1].sale = 0.5
+    segs.append(Seg("dias", 1.6, v_negro(), [(capa_centro(f, "Días después", f.cita, color=CREMA), 0.25, 1.45)]))
+    segs.append(Seg("k01", 2.6, v_clip(k01, 7.1, lento=1.6), [(capa_lugar(f, "HUEHUETENANGO", "La cooperativa de Aurelio"), 0.3, 2.8)],
+                    entra=0.5, amb="aurelio"))
+    segs.append(Seg("k01b", 2.5, v_clip(k01, 1.2, lento=1.0), amb="aurelio"))
+    segs.append(Seg("k01c", 2.0, v_clip(otra_k01, 1.3, lento=1.0), amb="aurelio"))
     pasaporte = capa_tarjeta(f, "Pasaporte del activo", ["Emisor: cooperativa de café", "Qué hay detrás: una parte de ella",
                                                          "Riesgo: puede perder valor", "Quién la tiene: reglas de Guatemala",
                                                          "Ejemplo ilustrativo"], y0=980, marca="ORIGEN")
@@ -430,7 +453,7 @@ def armar(a, f: F) -> list[Seg]:
     # 6. Morazán y los siete.
     segs.append(Seg("m01", 2.8, v_imagen(a.morazan), [(capa_centro(f, "Francisco Morazán (1792–1842)", f.lugar, y=1640), 0.2, 3.1)]))
     for j, (n, *_) in enumerate(CELDAS):
-        segs.append(Seg(f"m02_{n}", 0.5, v_clip(clip(PRESENTA[n]), 0.5)))
+        segs.append(Seg(f"m02_{n}", 0.5, v_clip(clip(PRESENTA[n]), el[PRESENTA[n]]["voz"][0] + 0.4)))
 
     # 7. Lo que ganan los países.
     crece = ["k01", "abre_rosa", "p1n", "abre_mercedes", "abre_chepe", "abre_andres", "o02"]
@@ -459,6 +482,14 @@ def armar(a, f: F) -> list[Seg]:
         w = d.textlength(txt, font=fu); d.text(((W - w) / 2, y), txt, font=fu, fill=(*CREMA, al))
     segs.append(Seg("f03", 4.0, v_negro(), [(logo, 0.2, 4.5)]))
 
+    # Respiros entre capítulos (fundidos a negro) y el ambiente de cada lugar.
+    AJUSTES = {"o02": dict(amb="lucia"), "o03": dict(amb="mercedes"), "p1n": dict(amb="marcus"),
+               "k02": dict(amb="aire"), "r01": dict(entra=0.6, amb="aire"), "r02": dict(entra=0.5, sale=0.5),
+               "m01": dict(entra=0.5), "f00a": dict(entra=0.7, amb="aire"), "f02": dict(sale=0.8, amb="aire"),
+               "f03": dict(entra=0.8)}
+    for x in segs:
+        for k, v in AJUSTES.get(x.id, {}).items():
+            setattr(x, k, v)
     t = 0.0
     for s in segs:
         s.t = t; t += s.dur
@@ -528,14 +559,30 @@ def audio(a, segs: list[Seg], total: float, out: Path) -> None:
     cuerda = 0.035 * np.clip(t / 12, 0, 1) ** 2 * (np.sin(2 * np.pi * 220 * t) + 0.5 * np.sin(2 * np.pi * 329.6 * t))
     poner(fx, np.repeat((dron * np.clip(t / 1.5, 0, 1) + lat + cuerda)[:, None], 2, 1), 0.0)
     golpe = 0.3 * np.sin(2 * np.pi * 36 * np.arange(int(1.4 * SR)) / SR) * np.exp(-np.arange(int(1.4 * SR)) / SR * 3)
-    poner(fx, np.repeat(golpe[:, None], 2, 1), idx["g00"].t)
+    poner(fx, np.repeat(golpe[:, None], 2, 1), idx["titulo"].t + 0.45)
+    # Ambiente de cada lugar, bajo, con fundidos cortos en cada corte.
+    if a.ambientes:
+        cache_amb = {}
+        for s in segs:
+            if not s.amb:
+                continue
+            if s.amb not in cache_amb:
+                x = cargar(a.ambientes / f"{s.amb}.wav")
+                x = x / (np.sqrt((x ** 2).mean()) + 1e-9) * 0.018   # nivel fijo, muy por debajo de la voz
+                cache_amb[s.amb] = x
+            x = cache_amb[s.amb]
+            n = int(s.dur * SR); i0 = int((s.t * 7.3 % 5) * SR)          # cada plano toma otro tramo del ambiente
+            tramo = np.resize(np.roll(x, -i0, axis=0), (n, 2)).copy()
+            k = min(int(0.12 * SR), n // 3)
+            tramo[:k] *= np.linspace(0, 1, k)[:, None]; tramo[-k:] *= np.linspace(1, 0, k)[:, None]
+            poner(fx, tramo, s.t, 1.0)
     # Sin efecto de cortina metálica: en las puertas sonaba a máquina de coser.
     for s in segs:
         if s.nota == "pago":
             poner(fx, campana(), s.t + 0.2)
     sf.write(out.with_suffix(".voz.wav"), voz, SR)
     sf.write(out.with_suffix(".fx.wav"), fx, SR)
-    ini_mus = idx["g00"].t + 0.3
+    ini_mus = idx["titulo"].t + 0.45
     ff("-i", str(out.with_suffix(".voz.wav")), "-i", str(out.with_suffix(".fx.wav")), "-i", str(a.musica),
        "-filter_complex",
        f"[2:a]aresample={SR},afade=t=in:d=1.5,adelay={int(ini_mus * 1000)}:all=1,volume={a.vol_musica},apad,atrim=0:{total}[m];"
@@ -557,6 +604,7 @@ def main() -> None:
     a.add_argument("--logo", type=Path, required=True)
     a.add_argument("--morazan", type=Path, required=True)
     a.add_argument("--solo-tiempos", action="store_true")
+    a.add_argument("--ambientes", type=Path, help="carpeta de montaje/ambientes_siete.py")
     a.add_argument("--cache", type=Path, help="carpeta para reutilizar segmentos ya hechos")
     a.add_argument("--borrador", action="store_true", help="suplir tomas que aún no salen")
     a.add_argument("-o", type=Path, required=True)
@@ -564,7 +612,9 @@ def main() -> None:
     f = F(a.fuentes)
     segs = armar(a, f)
     total = segs[-1].t + segs[-1].dur
-    tiempos = [{"id": s.id, "t": round(s.t, 2), "dur": round(s.dur, 2)} for s in segs]
+    tiempos = [{"id": s.id, "t": round(s.t, 2), "dur": round(s.dur, 2),
+                "fuente": (str(s.video[1].name), round(s.video[2], 2), round(s.video[3], 2))
+                if s.video[0] in ("clip", "panoramica") else None} for s in segs]
     a.o.with_suffix(".tiempos.json").write_text(json.dumps(tiempos, indent=0))
     print(f"{len(segs)} segmentos · {total:.1f} s")
     if a.solo_tiempos:
@@ -577,7 +627,7 @@ def main() -> None:
         for s in segs:
             # La caché se llama por el contenido del segmento: si cambia la toma,
             # el corte o una capa, cambia el nombre y se vuelve a hacer.
-            h = hashlib.sha1(repr((s.video, round(s.t * FPS), round((s.t + s.dur) * FPS))).encode())
+            h = hashlib.sha1(repr((s.video, round(s.t * FPS), round((s.t + s.dur) * FPS), s.entra, s.sale)).encode())
             for img, x0, x1 in s.capas:
                 h.update(img.tobytes()); h.update(f"{x0:.3f}{x1:.3f}".encode())
             o = cache / f"{s.id}_{h.hexdigest()[:12]}.mp4"

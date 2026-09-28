@@ -7,7 +7,7 @@ VOCES = {  # personaje: (voice_id, idioma, de dónde es la voz)
     "AURELIO": ("F1SMDtOTbvqlHI6wVNVa", "es", "biblioteca: acento guatemalteco"),
     "MARCUS": ("ONY5RJCJGRTE1U4WehQJ", "en", "diseñada: beliceño garífuna, inglés con acento kriol caribeño"),
     "LUCÍA": ("kpkIWF2LeM9oDdqQfXRX", "es", "diseñada: salvadoreña, 42"),
-    "CHEPE": ("QNPx1i744KpcLkKTDeZg", "es", "biblioteca: hondureño"),
+    "CHEPE": ("byIpfzTQDbyRYv0Tqx4f", "es", "diseñada: hondureño de 56, grave y algo rasposa (la de biblioteca no iba con su cara)"),
     "MERCEDES": ("O5rgeXK2ZQX7aAmbzc35", "es", "diseñada: nicaragüense de Somoto, 27"),
     "ANDRÉS": ("DU6CgMQyKnGKapn9a2St", "es", "biblioteca: costarricense"),
     "ROSA": ("Mg6QeayOabivXP4ppWjV", "es", "diseñada: panameña, 40"),
