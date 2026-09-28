@@ -592,8 +592,8 @@ def audio(a, segs: list[Seg], total: float, out: Path) -> None:
     ini_mus = idx["titulo"].t + 0.45
     ff("-i", str(out.with_suffix(".voz.wav")), "-i", str(out.with_suffix(".fx.wav")), "-i", str(a.musica),
        "-filter_complex",
-       f"[2:a]aresample={SR},afade=t=in:d=1.5,adelay={int(ini_mus * 1000)}:all=1,volume={a.vol_musica},apad,atrim=0:{total}[m];"
-       f"[0:a]asplit[v][sc];[m][sc]sidechaincompress=threshold=0.025:ratio=5:attack=30:release=500[md];"
+       f"[2:a]aresample={SR},afade=t=in:d=0.4,adelay={int(ini_mus * 1000)}:all=1,volume={a.vol_musica},apad,atrim=0:{total}[m];"
+       f"[0:a]asplit[v][sc];[m][sc]sidechaincompress=threshold=0.03:ratio=3:attack=40:release=600[md];"
        f"[md][v][1:a]amix=inputs=3:normalize=0,afade=t=out:st={total - 1.5}:d=1.5,atrim=0:{total},"
        f"loudnorm=I=-15:TP=-1.5:LRA=9[o]", "-map", "[o]", "-ar", str(SR), str(out))
 

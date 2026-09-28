@@ -20,11 +20,12 @@ plan = {
                                "92 bpm", "D major", "instrumental", "leaves space for spoken voice"],
     "negative_global_styles": ["vocals", "singing", "choir", "EDM", "trap", "reggaeton", "electric guitar",
                                "corporate ukulele", "heavy drums"],
-    "sections": ([S("Titulo y amanecer", ["one deep cinematic low boom", "a long held low string note", "near silence",
-                                         "a soft marimba motif slowly emerging at dawn"], ["drums", "percussion loop"], B["titulo"])]
+    "sections": ([S("Titulo", ["one deep cinematic low boom", "a long held low string note ringing under it",
+                               "continuous sound, never silent"], ["silence", "drums", "percussion loop"], B["titulo"])]
                  if "titulo" in B else []) + [
-        S("Amanecer, siete presentaciones", ["solo marimba, soft and sparse", "gentle morning", "light shaker",
-                                             "one warm note per introduction"], ["drums", "loud"], B["presentaciones"]),
+        S("Amanecer, siete presentaciones", ["starts immediately on the first beat, warm and present",
+                                             "soft marimba motif over a warm string pad", "gentle cinematic morning",
+                                             "light shaker", "continuous, never silent"], ["silence", "drums", "loud"], B["presentaciones"]),
         S("Se abren las puertas", ["bright lift", "strings swell", "cymbal swell into downbeat"], ["aggressive"], B["puertas"]),
         S("ORIGEN", ["wonder", "marimba ostinato", "warm strings pad rising", "piano motif", "building slowly"], ["drums"], B["origen"]),
         S("Un dia de pagos", ["steady joyful momentum", "marimba and nylon guitar groove", "soft Garifuna hand drums",
