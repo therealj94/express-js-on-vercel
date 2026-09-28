@@ -20,8 +20,8 @@ export const VIDEO = 'https://youtu.be/pccKeU8rqm8';
 export const MINIATURA = 'https://img.youtube.com/vi/pccKeU8rqm8/hqdefault.jpg';
 
 export const PRESENTACION = {
-  es: process.env.PRESENTACION_ES || 'https://ordenglobal.org/sfsp/SFSP-Centroamerica-ES.pdf',
-  en: process.env.PRESENTACION_EN || 'https://ordenglobal.org/sfsp/SFSP-Centroamerica-EN.pdf',
+  es: process.env.PRESENTACION_ES || 'https://www.ordenglobal.org/sfsp/SFSP-Centroamerica-ES.pdf',
+  en: process.env.PRESENTACION_EN || 'https://www.ordenglobal.org/sfsp/SFSP-Centroamerica-EN.pdf',
 };
 
 // Por qué le escribimos a cada quien, según su sector.
