@@ -171,6 +171,15 @@ def capa_tarjeta(f: F, titulo: str, lineas: list[str], y0=420, marca="Veta Walle
     return img
 
 
+def espaciado(d, _xy, txt, fuente, fill, sep=10, centro_y=0):
+    """Texto centrado con tracking amplio (nombre de marca)."""
+    anchos = [d.textlength(c, font=fuente) for c in txt]
+    total = sum(anchos) + sep * (len(txt) - 1)
+    x = (W - total) / 2
+    for c, w in zip(txt, anchos):
+        d.text((x, centro_y), c, font=fuente, fill=fill); x += w + sep
+
+
 def capa_centro(f: F, txt: str, fuente, y=None, color=CREMA, sombra_=True, banda=False) -> Image.Image:
     img = lienzo(); d = ImageDraw.Draw(img)
     ls = envolver(d, txt, fuente, 980)
@@ -237,6 +246,11 @@ def v_imagen(ruta: Path):
     return ("imagen", ruta)
 
 
+def v_fondo(ruta: Path, desde: float = 0.0, lento: float = 2.0):
+    """La toma desenfocada y oscurecida, con un acercamiento lento: fondo de marca."""
+    return ("fondo", ruta, desde, lento)
+
+
 def v_negro():
     return ("negro",)
 
@@ -251,6 +265,13 @@ def render_video(s: Seg, out: Path, tmp: Path) -> None:
             vf += f",scale={int(W*1.08)}:{int(H*1.08)},zoompan=z='min(1+0.0009*on,1.06)':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={W}x{H}:fps={FPS}"
         entrada = ["-ss", f"{desde:.3f}", "-i", str(ruta)]
         filtro = f"[0:v]{vf},{GRADE},tpad=stop_mode=clone:stop_duration=5[v]"
+    elif k == "fondo":
+        _, ruta, desde, lento = s.video
+        entrada = ["-ss", f"{desde:.3f}", "-i", str(ruta)]
+        filtro = (f"[0:v]setpts={lento}*PTS,fps={FPS},scale=-2:{int(H * 1.1)},crop={W}:{H},"
+                  f"boxblur=26:2,eq=brightness=-0.30:saturation=0.75,"
+                  f"zoompan=z='1+0.0007*on':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={W}x{H}:fps={FPS},"
+                  f"tpad=stop_mode=clone:stop_duration=5[v]")
     elif k == "panoramica":
         _, ruta, desde, lento = s.video
         entrada = ["-ss", f"{desde:.3f}", "-i", str(ruta)]
@@ -479,15 +500,20 @@ def armar(a, f: F) -> list[Seg]:
     segs.append(dialogo("f01"))
     segs.append(Seg("f02", 3.9, v_clip(mejor_existente("ci_luces"), 0.5, lento=1.2),
                     [(capa_centro(f, "¿Y mañana… Latinoamérica?", f.frase), 0.4, 4.2)]))
-    logo = lienzo()
-    lg = Image.open(a.logo).convert("RGBA"); lg.thumbnail((620, 620))
-    logo.alpha_composite(lg, ((W - lg.width) // 2, 640))
-    d = ImageDraw.Draw(logo)
-    for y, txt, fu, al in ((1380, "ordenglobal.org", f.mono, 255),
-                           (1700, "Material informativo; no constituye oferta de valores ni de inversión.", f.chico, 170),
-                           (1740, "Imágenes y voces ilustrativas generadas con IA. Genesis ID en beta.", f.chico, 170)):
-        w = d.textlength(txt, font=fu); d.text(((W - w) / 2, y), txt, font=fu, fill=(*CREMA, al))
-    segs.append(Seg("f03", 4.0, v_negro(), [(logo, 0.2, 4.5)]))
+    # Cierre de marca, sin letra chica en pantalla (la etiqueta de IA se marca
+    # al publicar, en la propia red): símbolo, nombre y dirección, en tres tiempos.
+    marca = lienzo()
+    lg = Image.open(a.logo).convert("RGBA"); lg.thumbnail((440, 440))
+    brillo = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ImageDraw.Draw(brillo).ellipse([W / 2 - 330, 560, W / 2 + 330, 1220], fill=(*ORO, 46))
+    marca = Image.alpha_composite(marca, brillo.filter(ImageFilter.GaussianBlur(120)))
+    marca.alpha_composite(lg, ((W - lg.width) // 2, 900 - lg.height // 2))
+    nombre = lienzo(); dn = ImageDraw.Draw(nombre)
+    espaciado(dn, None, "ORDEN GLOBAL", f.tarj, (*CREMA, 255), sep=14, centro_y=1250)
+    web = capa_centro(f, "ordenglobal.org", f.mono, y=1340, color=ORO, sombra_=False)
+    fondo = mejor_existente("ci_luces")
+    segs.append(Seg("f03", 5.0, v_fondo(fondo, 2.5, lento=2.2),
+                    [(marca, 0.3, 5.5), (nombre, 1.1, 5.5), (web, 1.8, 5.5)], entra=0.6, sale=0.8))
 
     # Respiros entre capítulos (fundidos a negro) y el ambiente de cada lugar.
     AJUSTES = {"o02": dict(amb="lucia"), "o03": dict(amb="mercedes"), "p1n": dict(amb="marcus"),
