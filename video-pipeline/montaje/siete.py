@@ -593,7 +593,7 @@ def audio(a, segs: list[Seg], total: float, out: Path) -> None:
     ff("-i", str(out.with_suffix(".voz.wav")), "-i", str(out.with_suffix(".fx.wav")), "-i", str(a.musica),
        "-filter_complex",
        f"[2:a]aresample={SR},afade=t=in:d=0.4,adelay={int(ini_mus * 1000)}:all=1,volume={a.vol_musica},apad,atrim=0:{total}[m];"
-       f"[0:a]asplit[v][sc];[m][sc]sidechaincompress=threshold=0.03:ratio=3:attack=40:release=600[md];"
+       f"[0:a]asplit[v][sc];[m][sc]sidechaincompress=threshold=0.12:ratio=1.5:attack=40:release=600[md];"
        f"[md][v][1:a]amix=inputs=3:normalize=0,afade=t=out:st={total - 1.5}:d=1.5,atrim=0:{total},"
        f"loudnorm=I=-15:TP=-1.5:LRA=9[o]", "-map", "[o]", "-ar", str(SR), str(out))
 
@@ -606,7 +606,9 @@ def main() -> None:
     a.add_argument("--buk-stt", type=Path, required=True)
     a.add_argument("--cortina", type=Path, required=True)
     a.add_argument("--musica", type=Path, required=True)
-    a.add_argument("--vol-musica", default="0.55")
+    # Música pareja de fondo: ~6 dB bajo la voz y nunca más de ~11 (con 0.55 y un
+    # ducking fuerte llegaba a 23 dB bajo la voz y «desaparecía» desde Mercedes).
+    a.add_argument("--vol-musica", default="0.32")
     a.add_argument("--fuentes", type=Path, required=True)
     a.add_argument("--logo", type=Path, required=True)
     a.add_argument("--morazan", type=Path, required=True)
