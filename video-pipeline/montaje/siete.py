@@ -295,6 +295,9 @@ def armar(a, f: F) -> list[Seg]:
         dur = min(dur, duracion(clip(pid)) - desde)
         linea = TOMA[pid]["linea"]
         txt = sub or SUB_EN.get(linea) or VOZ[linea]["escrito"]
+        # Retoma de Mercedes: en las tres primeras sonaba a pregunta y se cambió la frase.
+        if pid == "p5a" and not re.search(r"_t[123]_", e["clip"]):
+            txt = "Andrés, listo: ya te pagué el viaje."
         capas = [(capa_sub(f, txt), ini - desde - 0.1, dur + 1)] + list(capas_extra)
         if lugar:
             capas.append((lugar, 0.1, dur + 1))
@@ -361,7 +364,7 @@ def armar(a, f: F) -> list[Seg]:
         d.text((150, y), hh, font=f.monog, fill=(*ORO, 255))
         d.text((380, y + 12), f"{PAIS[nombres[de]].title()} → {PAIS[nombres[a_]].title()}", font=f.tarj, fill=(*CREMA, 255))
         y += 110
-    segs.append(Seg("r01", 6.96, v_clip(mejor_existente("ap_istmo") if not toma_extra("ap_istmo", 2).exists() else toma_extra("ap_istmo", 2), 0.5, lento=1.3),
+    segs.append(Seg("r01", 6.96, v_clip(mejor_existente("ap_istmo"), 0.2, lento=1.3),
                     [(img, 0.3, 7.2), (capa_centro(f, "Un día · siete países", f.lugar, y=1360), 0.6, 7.2)]))
     segs.append(Seg("r02", 5.32, v_negro(),
                     [(capa_centro(f, "¿Cuánto tardaría en moverse tu dinero?", f.frase), 0.3, 5.6)]))

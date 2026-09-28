@@ -1,0 +1,83 @@
+{
+ "version": 1,
+ "defaults": {},
+ "_nota": "Siete, retomas: istmo sin girar y Mercedes afirmando.",
+ "jobs": [
+  {
+   "id": "s7_ap_istmo_t3",
+   "seed": 39001,
+   "negative": "cartoon, illustration, 3d render, cgi, plastic skin, waxy skin, airbrushed, beauty filter, smooth poreless face, dead eyes, mannequin, uncanny, oversaturated, gold tint, gold bars, coins, stock photo smile, posed, model looks, deformed teeth, extra fingers, missing fingers, fused fingers, mutated hands, deformed hands, floating hands, extra arms, extra limbs, three hands, third arm, duplicate person, twin, merged bodies, disfigured, bad anatomy, cross-eyed, warped face, studio backdrop, watermark, text overlay, readable text, logo, brand names, subtitles, ui elements, phone screen content, glowing screen graphics, holograms, crypto imagery, charts, motion blur smear, morphing, flicker, blurry, low detail, horizontal composition, black bars, music, background music",
+   "width": 768,
+   "height": 1344,
+   "duration_s": 6.0,
+   "fps": 24,
+   "steps": 20,
+   "cfg": 3.5,
+   "retries": 1,
+   "workflow": "workflows/h3_calidad_api.json",
+   "prompt": "[Shot 1] Live-action, cinematic, shot on 35mm anamorphic film, natural practical light, true skin texture with visible pores, real film grain, rich but true colour, vertical 9:16 composition. A breathtaking aerial at golden sunrise flying forward over a green volcanic coastline in Central America, the calm sea on the left and a second sea far on the right, a chain of volcanoes along the narrow land, clouds below the drone. Camera looking straight ahead at the horizon; the horizon stays perfectly level and horizontal across the frame, the sky at the top and the land at the bottom. Slow majestic forward flight. No people in close view, no text, no signs, no flags.\n\noverall_soundscape: wind at altitude, a deep swelling drone.\n\nnon_diegetic_music: none."
+  },
+  {
+   "id": "s7_ap_istmo_t4",
+   "seed": 39002,
+   "negative": "cartoon, illustration, 3d render, cgi, plastic skin, waxy skin, airbrushed, beauty filter, smooth poreless face, dead eyes, mannequin, uncanny, oversaturated, gold tint, gold bars, coins, stock photo smile, posed, model looks, deformed teeth, extra fingers, missing fingers, fused fingers, mutated hands, deformed hands, floating hands, extra arms, extra limbs, three hands, third arm, duplicate person, twin, merged bodies, disfigured, bad anatomy, cross-eyed, warped face, studio backdrop, watermark, text overlay, readable text, logo, brand names, subtitles, ui elements, phone screen content, glowing screen graphics, holograms, crypto imagery, charts, motion blur smear, morphing, flicker, blurry, low detail, horizontal composition, black bars, music, background music",
+   "width": 768,
+   "height": 1344,
+   "duration_s": 6.0,
+   "fps": 24,
+   "steps": 20,
+   "cfg": 3.5,
+   "retries": 1,
+   "workflow": "workflows/h3_calidad_api.json",
+   "prompt": "[Shot 1] Live-action, cinematic, shot on 35mm anamorphic film, natural practical light, true skin texture with visible pores, real film grain, rich but true colour, vertical 9:16 composition. A breathtaking aerial at golden sunrise flying forward over a green volcanic coastline in Central America, the calm sea on the left and a second sea far on the right, a chain of volcanoes along the narrow land, clouds below the drone. Camera looking straight ahead at the horizon; the horizon stays perfectly level and horizontal across the frame, the sky at the top and the land at the bottom. Slow majestic forward flight. No people in close view, no text, no signs, no flags.\n\noverall_soundscape: wind at altitude, a deep swelling drone.\n\nnon_diegetic_music: none."
+  },
+  {
+   "id": "s7_p5a_t4",
+   "seed": 39011,
+   "negative": "cartoon, illustration, 3d render, cgi, plastic skin, waxy skin, airbrushed, beauty filter, smooth poreless face, dead eyes, mannequin, uncanny, oversaturated, gold tint, gold bars, coins, stock photo smile, posed, model looks, deformed teeth, extra fingers, missing fingers, fused fingers, mutated hands, deformed hands, floating hands, extra arms, extra limbs, three hands, third arm, duplicate person, twin, merged bodies, disfigured, bad anatomy, cross-eyed, warped face, studio backdrop, watermark, text overlay, readable text, logo, brand names, subtitles, ui elements, phone screen content, glowing screen graphics, holograms, crypto imagery, charts, motion blur smear, morphing, flicker, blurry, low detail, horizontal composition, black bars, music, background music",
+   "width": 768,
+   "height": 1344,
+   "duration_s": 5.2,
+   "fps": 24,
+   "steps": 20,
+   "cfg": 1.0,
+   "retries": 1,
+   "workflow": "workflows/h3_ref2va_voz_api.json",
+   "prompt": "subject_definitions:\n<Subject 1> is the person in <Picture 1>.\n<Audio 1> is the voice timbre reference for <Subject 1>.\n\ndetailed_description:\n[Shot 1] Live-action, cinematic documentary realism, natural practical light, true skin texture with visible pores, real 35mm film grain, warm true colour, vertical 9:16 composition. in her family bakery in Somoto next to a clay wood-fired oven, trays of golden rosquillas on the table. <Subject 1>, a 27 year old Nicaraguan baker from Somoto, light-brown skin, long black hair in a ponytail with a red scrunchie, a round cheerful face, flour on her forearms, a white apron over a yellow t-shirt, records a voice message while closing a box of rosquillas. <Subject 1> (S1) says firmly and cheerfully, as a statement, not a question, <d>[Spanish] Andrés, listo: ya te pagué el viaje.</d> She nods once as she finishes. Medium close-up, 50mm, handheld, mouth clearly visible, not looking into the lens. Natural human anatomy: one person with two arms and two hands, five fingers on each hand, hands relaxed and fully formed.\n\noverall_soundscape: ambience of the place\n\nnon_diegetic_music: none.",
+   "image": "/workspace/refs/mercedes.png",
+   "audio": "/workspace/refs/voz_mercedes.wav"
+  },
+  {
+   "id": "s7_p5a_t5",
+   "seed": 39012,
+   "negative": "cartoon, illustration, 3d render, cgi, plastic skin, waxy skin, airbrushed, beauty filter, smooth poreless face, dead eyes, mannequin, uncanny, oversaturated, gold tint, gold bars, coins, stock photo smile, posed, model looks, deformed teeth, extra fingers, missing fingers, fused fingers, mutated hands, deformed hands, floating hands, extra arms, extra limbs, three hands, third arm, duplicate person, twin, merged bodies, disfigured, bad anatomy, cross-eyed, warped face, studio backdrop, watermark, text overlay, readable text, logo, brand names, subtitles, ui elements, phone screen content, glowing screen graphics, holograms, crypto imagery, charts, motion blur smear, morphing, flicker, blurry, low detail, horizontal composition, black bars, music, background music",
+   "width": 768,
+   "height": 1344,
+   "duration_s": 5.2,
+   "fps": 24,
+   "steps": 20,
+   "cfg": 1.0,
+   "retries": 1,
+   "workflow": "workflows/h3_ref2va_voz_api.json",
+   "prompt": "subject_definitions:\n<Subject 1> is the person in <Picture 1>.\n<Audio 1> is the voice timbre reference for <Subject 1>.\n\ndetailed_description:\n[Shot 1] Live-action, cinematic documentary realism, natural practical light, true skin texture with visible pores, real 35mm film grain, warm true colour, vertical 9:16 composition. in her family bakery in Somoto next to a clay wood-fired oven, trays of golden rosquillas on the table. <Subject 1>, a 27 year old Nicaraguan baker from Somoto, light-brown skin, long black hair in a ponytail with a red scrunchie, a round cheerful face, flour on her forearms, a white apron over a yellow t-shirt, records a voice message while closing a box of rosquillas. <Subject 1> (S1) says firmly and cheerfully, as a statement, not a question, <d>[Spanish] Andrés, listo: ya te pagué el viaje.</d> She nods once as she finishes. Medium close-up, 50mm, handheld, mouth clearly visible, not looking into the lens. Natural human anatomy: one person with two arms and two hands, five fingers on each hand, hands relaxed and fully formed.\n\noverall_soundscape: ambience of the place\n\nnon_diegetic_music: none.",
+   "image": "/workspace/refs/mercedes.png",
+   "audio": "/workspace/refs/voz_mercedes.wav"
+  },
+  {
+   "id": "s7_p5a_t6",
+   "seed": 39013,
+   "negative": "cartoon, illustration, 3d render, cgi, plastic skin, waxy skin, airbrushed, beauty filter, smooth poreless face, dead eyes, mannequin, uncanny, oversaturated, gold tint, gold bars, coins, stock photo smile, posed, model looks, deformed teeth, extra fingers, missing fingers, fused fingers, mutated hands, deformed hands, floating hands, extra arms, extra limbs, three hands, third arm, duplicate person, twin, merged bodies, disfigured, bad anatomy, cross-eyed, warped face, studio backdrop, watermark, text overlay, readable text, logo, brand names, subtitles, ui elements, phone screen content, glowing screen graphics, holograms, crypto imagery, charts, motion blur smear, morphing, flicker, blurry, low detail, horizontal composition, black bars, music, background music",
+   "width": 768,
+   "height": 1344,
+   "duration_s": 5.2,
+   "fps": 24,
+   "steps": 20,
+   "cfg": 1.0,
+   "retries": 1,
+   "workflow": "workflows/h3_ref2va_voz_api.json",
+   "prompt": "subject_definitions:\n<Subject 1> is the person in <Picture 1>.\n<Audio 1> is the voice timbre reference for <Subject 1>.\n\ndetailed_description:\n[Shot 1] Live-action, cinematic documentary realism, natural practical light, true skin texture with visible pores, real 35mm film grain, warm true colour, vertical 9:16 composition. in her family bakery in Somoto next to a clay wood-fired oven, trays of golden rosquillas on the table. <Subject 1>, a 27 year old Nicaraguan baker from Somoto, light-brown skin, long black hair in a ponytail with a red scrunchie, a round cheerful face, flour on her forearms, a white apron over a yellow t-shirt, records a voice message while closing a box of rosquillas. <Subject 1> (S1) says firmly and cheerfully, as a statement, not a question, <d>[Spanish] Andrés, listo: ya te pagué el viaje.</d> She nods once as she finishes. Medium close-up, 50mm, handheld, mouth clearly visible, not looking into the lens. Natural human anatomy: one person with two arms and two hands, five fingers on each hand, hands relaxed and fully formed.\n\noverall_soundscape: ambience of the place\n\nnon_diegetic_music: none.",
+   "image": "/workspace/refs/mercedes.png",
+   "audio": "/workspace/refs/voz_mercedes.wav"
+  }
+ ]
+}
