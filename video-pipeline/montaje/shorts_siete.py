@@ -122,7 +122,7 @@ def main():
                                (1720, "Material informativo; no constituye oferta de valores ni de inversión.", f.chico, 160),
                                (1760, "Imágenes y voces ilustrativas generadas con IA.", f.chico, 160)):
             w = d.textlength(txt, font=fu); d.text(((S.W - w) / 2, y), txt, font=fu, fill=(*S.CREMA, al))
-        return S.Seg("cierre", max(3.2, nv["C1"]["dur"] + 0.9), S.v_negro(), [(img, 0.1, 5)])
+        return S.Seg("cierre", max(2.8, nv["C1"]["dur"] + 0.45), S.v_negro(), [(img, 0.1, 5)])
 
     def tarjeta_pago():
         return S.capa_tarjeta(f, "Recibido", ["Comisión: US$ 0,01", "Llegó en segundos"], y0=1130)
@@ -174,8 +174,6 @@ def main():
         s.add(dialogo(pid, [(S.capa_lugar(f, pais, ciudad), 0.05, 9)], recorte=0.2, cola=0.3))
     s.add(narrado("N1", S.v_reticula(vivos, 1.5), capas=[(S.capa_costuras(), 0, 9),
           (S.capa_centro(f, "ORIGEN", f.titulo, color=S.ORO), 4.9, 9)]), narr=wav("N1"))
-    s.add(narrado("N2", S.v_clip(clip("o02"), 0.3), capas=[(S.capa_tarjeta(f, "1 ORIGEN", ["= el precio de 1/55 de gramo de oro", "Fórmula pública"], y0=1130, marca="ORIGEN"), 1.5, 9)]),
-          narr=wav("N2"))
     s.add(cierre(), narr=nv["C1"]["wav"], off=0.3)
     shorts[s.nombre] = s
 
@@ -191,7 +189,14 @@ def main():
                                                            "Riesgo: puede perder valor", "Quién la tiene: reglas de Guatemala",
                                                            "Ejemplo ilustrativo"], y0=900, marca="ORIGEN")
     s.add(narrado("N9", S.v_clip(extra("ap_guatemala", 2), 0.5, lento=1.2), capas=[(pasaporte, 0.2, 9)]), narr=wav("N9"))
-    s.add(narrado("N11", S.v_clip(extra("k01", 2), 1.3), dur=V["N11"]["dur"] + 0.6), narr=wav("N11"))
+    # Lo que crece cuando llega capital: un plano por negocio, cortes cortos bajo la voz.
+    crece = [(extra("k01", 1), 7.4), (clip("abre_rosa"), 1.8), (clip("p1n"), 1.6), (clip("abre_mercedes"), 2.0),
+             (clip("abre_chepe"), 1.8), (clip("abre_andres"), 2.0), (clip("o02"), 2.2)]
+    dn = (V["N11"]["dur"] + 0.6) / len(crece)
+    sub = S.subtitulos(f, V["N11"]["escrito"], 0.2, V["N11"]["dur"] + 0.4)
+    for j, (c, d0) in enumerate(crece):
+        capas = [(img, x0 - j * dn, x1 - j * dn) for img, x0, x1 in sub if x1 > j * dn and x0 < (j + 1) * dn]
+        s.add(S.Seg(f"crece_{j}", dn, S.v_clip(c, d0), capas), narr=(wav("N11") if j == 0 else None), off=0.2)
     s.add(cierre(), narr=nv["C1"]["wav"], off=0.3)
     shorts[s.nombre] = s
 

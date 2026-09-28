@@ -278,8 +278,12 @@ def render_video(s: Seg, out: Path, tmp: Path) -> None:
         png = tmp / f"{s.id}_{j}.png"; img.save(png)
         entrada += ["-loop", "1", "-t", f"{s.dur + 0.5:.3f}", "-i", str(png)]
         fi = max(0.0, a); fo = max(fi + 0.3, b - 0.25)
-        filtro += (f";[{base + j}:v]format=rgba,fade=t=in:st={fi:.2f}:d=0.25:alpha=1,"
-                   f"fade=t=out:st={fo:.2f}:d=0.25:alpha=1[l{j}];{ult}[l{j}]overlay=0:0:format=auto[o{j}]")
+        # Una capa que viene del plano anterior (a < 0) o sigue en el siguiente
+        # (b > dur) no se funde en el corte: si no, parpadea en cada cambio de plano.
+        fades = ([f"fade=t=in:st={fi:.2f}:d=0.25:alpha=1"] if a > 0.01 else []) + \
+                ([f"fade=t=out:st={fo:.2f}:d=0.25:alpha=1"] if b < s.dur - 0.05 else [])
+        filtro += (f";[{base + j}:v]" + ",".join(["format=rgba"] + fades) +
+                   f"[l{j}];{ult}[l{j}]overlay=0:0:format=auto[o{j}]")
         ult = f"[o{j}]"
     filtro += f";{ult}trim=end_frame={n},setpts=PTS-STARTPTS,scale={W}:{H},setsar=1,format=yuv420p[fin]"
     ff(*entrada, "-filter_complex", filtro, "-map", "[fin]", "-frames:v", str(n), "-an",
