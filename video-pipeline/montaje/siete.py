@@ -342,7 +342,9 @@ def armar(a, f: F) -> list[Seg]:
         for (pal, t0) in (("INTEGRACIÓN ADUANERA", 6.06), ("COMUNIDAD DE NACIONES", 9.32)):
             if a0 <= t0 < a1:
                 capas.append((capa_centro(f, pal, f.monog, y=860, color=ORO), t0 - a0, a1 - a0 + 0.3))
-        video = (v_panoramica(mejor_existente(ap), 0.4, lento=1.1) if ap == "ap_istmo"
+        # Cierre de la apertura en vertical: el Arenal sobre las nubes (la otra toma).
+        cierre_ap = toma_extra("ap_costarica", 1) if toma_extra("ap_costarica", 1).exists() else mejor_existente("ap_costarica")
+        video = (v_clip(cierre_ap, 0.3, lento=1.35) if ap == "ap_istmo"
                  else v_clip(mejor_existente(ap), 0.6, lento=1.15))
         segs.append(Seg(ap, a1 - a0, video, capas, nota="bukele", entra=0.8 if i == 0 else 0.0,
                         sale=1.3 if ap == "ap_istmo" else 0.0, amb="aire"))
@@ -412,8 +414,11 @@ def armar(a, f: F) -> list[Seg]:
         s.nota = "pago"
         segs.append(s)
         if i == 1:
-            segs.append(Seg("p1n", 4.5, v_clip(mejor_existente("p1n"), 0.4),
-                            [(capa_centro(f, "Comisión: US$ 0,01 · llegó en segundos", f.tarj, y=1500), 0.4, 5)]))
+            lancha = mejor_existente("p1n")
+            segs.append(Seg("p1n", 2.2, v_clip(lancha, 0.3),
+                            [(capa_centro(f, "Comisión: US$ 0,01 · llegó en segundos", f.tarj, y=1500), 0.4, 2.7)]))
+            segs.append(Seg("p1n_b", 2.3, v_clip(lancha, 4.5, lento=1.6),
+                            [(capa_centro(f, "Comisión: US$ 0,01 · llegó en segundos", f.tarj, y=1500), -0.5, 2.25)], amb="marcus"))
 
     # Lo que hace la inversión, en orden: llega la despulpadora en el camión,
     # Aurelio la recibe contento y el pasaporte del activo aparece sobre la máquina.
@@ -423,9 +428,10 @@ def armar(a, f: F) -> list[Seg]:
     # (antes de 7,05 s la toma se transforma de la espalda de Aurelio al camión).
     segs[-1].sale = 0.5
     segs.append(Seg("dias", 1.6, v_negro(), [(capa_centro(f, "Días después", f.cita, color=CREMA), 0.25, 1.45)]))
-    segs.append(Seg("k01", 2.6, v_clip(k01, 7.1, lento=1.6), [(capa_lugar(f, "HUEHUETENANGO", "La cooperativa de Aurelio"), 0.3, 2.8)],
+    fijo = a.tomas / "fijo_despulpadora.png"
+    segs.append(Seg("k01", 2.6, v_imagen(fijo) if fijo.exists() else v_clip(k01, 7.1, lento=1.6), [(capa_lugar(f, "HUEHUETENANGO", "La cooperativa de Aurelio"), 0.3, 2.8)],
                     entra=0.5, amb="aurelio"))
-    segs.append(Seg("k01b", 2.5, v_clip(k01, 1.2, lento=1.0), amb="aurelio"))
+    segs.append(Seg("k01b", 2.5, v_clip(k01, 1.7, lento=1.0), amb="aurelio"))
     segs.append(Seg("k01c", 2.0, v_clip(otra_k01, 1.3, lento=1.0), amb="aurelio"))
     pasaporte = capa_tarjeta(f, "Pasaporte del activo", ["Emisor: cooperativa de café", "Qué hay detrás: una parte de ella",
                                                          "Riesgo: puede perder valor", "Quién la tiene: reglas de Guatemala",
@@ -445,7 +451,7 @@ def armar(a, f: F) -> list[Seg]:
         y += 110
     otra_istmo = next((toma_extra("ap_istmo", k) for k in (3, 1, 4) if toma_extra("ap_istmo", k).exists()
                        and toma_extra("ap_istmo", k) != mejor_existente("ap_istmo")), mejor_existente("ap_istmo"))
-    segs.append(Seg("r01", 6.96, v_panoramica(otra_istmo, 0.2, lento=1.3),
+    segs.append(Seg("r01", 6.96, v_clip(mejor_existente("ap_guatemala"), 1.8, lento=1.5),
                     [(img, 0.3, 7.2), (capa_centro(f, "Un día · siete países", f.lugar, y=1360), 0.6, 7.2)]))
     segs.append(Seg("r02", 5.32, v_negro(),
                     [(capa_centro(f, "¿Cuánto tardaría en moverse tu dinero?", f.frase), 0.3, 5.6)]))
@@ -456,9 +462,10 @@ def armar(a, f: F) -> list[Seg]:
         segs.append(Seg(f"m02_{n}", 0.5, v_clip(clip(PRESENTA[n]), el[PRESENTA[n]]["voz"][0] + 0.4)))
 
     # 7. Lo que ganan los países.
-    crece = ["k01", "abre_rosa", "p1n", "abre_mercedes", "abre_chepe", "abre_andres", "o02"]
+    crece = ["k01", "abre_rosa", "abre_marcus", "abre_mercedes", "abre_chepe", "abre_andres", "o02"]
     for j, pid in enumerate(crece):
-        segs.append(Seg(f"k03_{j}", 8.15 / 7, v_clip(mejor_existente(pid) if pid != "k01" else k01, (7.4 if pid == "k01" else 1.5 + 0.3 * j))))
+        segs.append(Seg(f"k03_{j}", 8.15 / 7, (v_imagen(fijo) if pid == "k01" and fijo.exists() else
+                        v_clip(mejor_existente(pid), 3.4 if pid == "abre_marcus" else 1.5 + 0.3 * j))))
     frases_k04 = ["El capital, del mundo.", "El trabajo, aquí.", "Las reglas, de casa."]
     capas = [(capa_costuras(), 0, 6)]
     for j, fr in enumerate(frases_k04):
