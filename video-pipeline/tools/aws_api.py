@@ -290,6 +290,10 @@ def create(s, region: str, a) -> None:
             {"ResourceType": "volume", "Tags": [ETIQUETA]}],
         DryRun=a.seco,
     )
+    # Sin zona, EC2 puede probar una que no tiene g7e (ap-south-1c) y responder
+    # «sin capacidad»; con --az se prueba la que se pide.
+    if getattr(a, "az", None):
+        kw["Placement"] = {"AvailabilityZone": a.az}
     if a.spot:
         kw["InstanceMarketOptions"] = {"MarketType": "spot", "SpotOptions": {
             "SpotInstanceType": "one-time",
@@ -416,6 +420,7 @@ def main() -> int:
     c.add_argument("--spot", action="store_true")
     c.add_argument("--otra", action="store_true")
     c.add_argument("--seco", action="store_true", help="DryRun: valida sin crear")
+    c.add_argument("--az", help="zona de disponibilidad, p. ej. ap-south-1a")
     c.add_argument("--adjuntos", help="carpeta de imágenes que viajan a /workspace/refs/")
     sub.add_parser("status")
     lg = sub.add_parser("logs"); lg.add_argument("id")

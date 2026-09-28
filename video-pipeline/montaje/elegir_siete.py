@@ -114,8 +114,9 @@ def main() -> None:
                 r = stt(c, cache, idioma)
                 ws = [w for w in r.get("words", []) if w.get("type") == "word"]
                 texto = r.get("text", "")
-                sim = difflib.SequenceMatcher(None, norm(VOZ[linea]["dicho"] if "dicho" in VOZ[linea]
-                                                         else VOZ[linea]["escrito"]), norm(texto)).ratio()
+                # La frase contra la que se compara es la que se le pidió decir al modelo.
+                pedido = re.search(r"<d>\[\w+\] (.*?)</d>", next(t["prompt"] for t in P["tomas"] if t["id"] == plano)).group(1)
+                sim = difflib.SequenceMatcher(None, norm(pedido), norm(texto)).ratio()
                 ini, fin = (ws[0]["start"], ws[-1]["end"]) if ws else (0.0, 0.0)
                 cand.append({"clip": c.name, "sim": round(sim, 3), "voz": [ini, fin], "texto": texto})
                 notas.append(f"{sim:.2f} {ini:.1f}-{fin:.1f}s {texto}")
