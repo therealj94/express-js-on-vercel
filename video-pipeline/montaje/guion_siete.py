@@ -5,7 +5,7 @@ from pathlib import Path
 
 VOCES = {  # personaje: (voice_id, idioma, de dónde es la voz)
     "AURELIO": ("F1SMDtOTbvqlHI6wVNVa", "es", "biblioteca: acento guatemalteco"),
-    "MARCUS": ("1sl7XMHkUEezwYy9NbJU", "en", "biblioteca: caribeño (inglés, como en Belice)"),
+    "MARCUS": ("ONY5RJCJGRTE1U4WehQJ", "en", "diseñada: beliceño garífuna, inglés con acento kriol caribeño"),
     "LUCÍA": ("kpkIWF2LeM9oDdqQfXRX", "es", "diseñada: salvadoreña, 42"),
     "CHEPE": ("QNPx1i744KpcLkKTDeZg", "es", "biblioteca: hondureño"),
     "MERCEDES": ("O5rgeXK2ZQX7aAmbzc35", "es", "diseñada: nicaragüense de Somoto, 27"),
@@ -23,7 +23,8 @@ L = [
     ("P7", "ROSA", "Soy Rosa. Uniformes, Ciudad de Panamá.", None, True),
     ("N1", "LUCÍA", "Siete países. Siete monedas. Y entre nosotros, una moneda digital en común: Origen.", "Siete países. Siete monedas. Y entre nosotros, una moneda digital en común: ORIGEN.", False),
     ("N2", "LUCÍA", "No reemplaza la de nadie. Sigue el precio del oro, y su fórmula es pública.", None, False),
-    ("N3", "LUCÍA", "Para entrar, Génesis ai-dí: tu identidad digital. Te verificás una vez, y te aprueba una persona.", "Para entrar, Genesis ID: tu identidad digital. Te verificás una vez, y te aprueba una persona.", False),
+    ("N3", "LUCÍA", "Genesis ai-dí: una sola verificación, y ya sos parte del ecosistema.", "Genesis ID: una sola verificación, y ya sos parte del ecosistema.", False),
+    ("N3b", "LUCÍA", "Pagar, cobrar, guardar, comprobar: todo en un solo lugar. Una sola app.", None, False),
     ("T1a", "AURELIO", "Marcus, ya te pagué el flete de las muestras.", None, True),
     ("T1b", "MARCUS", "Got it! Loading them now.", "¡Ya me llegó! Ya las estoy cargando.", True),
     ("N4", "LUCÍA", "Un centavo de dólar de comisión. Y llegó en segundos.", None, False),

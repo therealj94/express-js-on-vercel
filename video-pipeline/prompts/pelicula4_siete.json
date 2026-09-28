@@ -1,6 +1,6 @@
 {
  "titulo": "Siete",
- "dur_s": 152.8,
+ "dur_s": 156.04,
  "tomas": [
   {
    "id": "b01",
@@ -86,7 +86,7 @@
    "id": "g02",
    "secuencia": 2,
    "t": 16.88,
-   "dur": 4.18,
+   "dur": 3.5,
    "fuente": "GENERADA",
    "imagen": "BELICE: Marcus se presenta a cámara en su lugar de trabajo, con la primera luz. Al terminar, su imagen se encoge a su celda de la retícula.",
    "texto": "«BELICE · DANGRIGA»",
@@ -101,7 +101,7 @@
   {
    "id": "g03",
    "secuencia": 2,
-   "t": 21.06,
+   "t": 20.38,
    "dur": 3.23,
    "fuente": "GENERADA",
    "imagen": "EL SALVADOR: Lucía se presenta a cámara en su lugar de trabajo, con la primera luz. Al terminar, su imagen se encoge a su celda de la retícula.",
@@ -117,7 +117,7 @@
   {
    "id": "g04",
    "secuencia": 2,
-   "t": 24.29,
+   "t": 23.61,
    "dur": 3.21,
    "fuente": "GENERADA",
    "imagen": "HONDURAS: Chepe se presenta a cámara en su lugar de trabajo, con la primera luz. Al terminar, su imagen se encoge a su celda de la retícula.",
@@ -133,7 +133,7 @@
   {
    "id": "g05",
    "secuencia": 2,
-   "t": 27.5,
+   "t": 26.82,
    "dur": 3.01,
    "fuente": "GENERADA",
    "imagen": "NICARAGUA: Mercedes se presenta a cámara en su lugar de trabajo, con la primera luz. Al terminar, su imagen se encoge a su celda de la retícula.",
@@ -149,7 +149,7 @@
   {
    "id": "g06",
    "secuencia": 2,
-   "t": 30.51,
+   "t": 29.83,
    "dur": 3.61,
    "fuente": "GENERADA",
    "imagen": "COSTA RICA: Andrés se presenta a cámara en su lugar de trabajo, con la primera luz. Al terminar, su imagen se encoge a su celda de la retícula.",
@@ -165,7 +165,7 @@
   {
    "id": "g07",
    "secuencia": 2,
-   "t": 34.12,
+   "t": 33.44,
    "dur": 2.73,
    "fuente": "GENERADA",
    "imagen": "PANAMÁ: Rosa se presenta a cámara en su lugar de trabajo, con la primera luz. Al terminar, su imagen se encoge a su celda de la retícula.",
@@ -181,7 +181,7 @@
   {
    "id": "g08",
    "secuencia": 2,
-   "t": 36.85,
+   "t": 36.17,
    "dur": 2.4,
    "fuente": "COMPOSICIÓN",
    "imagen": "06:00 (07:00 en Panamá): en la retícula de siete, las siete puertas se abren en el mismo fotograma: portón, lancha, cortina, bodega, horno, camión, taller.",
@@ -197,7 +197,7 @@
   {
    "id": "o01",
    "secuencia": 3,
-   "t": 39.25,
+   "t": 38.57,
    "dur": 6.91,
    "fuente": "COMPOSICIÓN",
    "imagen": "La retícula viva: los siete trabajando. Un hilo dorado cose solo las fronteras reales, sin borrarlas. En «ORIGEN» la palabra aparece sobre la retícula.",
@@ -213,7 +213,7 @@
   {
    "id": "o02",
    "secuencia": 3,
-   "t": 46.16,
+   "t": 45.48,
    "dur": 5.06,
    "fuente": "GENERADA",
    "imagen": "Lucía abre su taller al sol; la luz dorada sube y baja en su cara («sigue el precio del oro»). Abajo: «1 ORIGEN = el precio de 1/55 de gramo de oro».",
@@ -229,11 +229,11 @@
   {
    "id": "o03",
    "secuencia": 3,
-   "t": 51.22,
-   "dur": 7.26,
+   "t": 50.54,
+   "dur": 5.52,
    "fuente": "GENERADA",
-   "imagen": "Mercedes se verifica con la cámara frontal (prueba de vida) en la panadería; flota una tarjeta de Veta Wallet: «Genesis ID · verificada · aprobada por una persona».",
-   "texto": "Tarjeta: Genesis ID · verificada una vez · la aprueba una persona",
+   "imagen": "Mercedes se verifica con la cámara frontal (prueba de vida) en la panadería; flota una tarjeta de Veta Wallet: «Genesis ID · verificada».",
+   "texto": "Tarjeta: Genesis ID · una sola verificación · parte del ecosistema",
    "sonido": "Campana suave de la app.",
    "quien": "MERCEDES",
    "linea": null,
@@ -243,9 +243,25 @@
    "tomas_a_generar": 2
   },
   {
+   "id": "o04",
+   "secuencia": 3,
+   "t": 56.06,
+   "dur": 5.72,
+   "fuente": "COMPOSICIÓN",
+   "imagen": "Los siete teléfonos, uno en cada celda de la retícula; al centro flota la app real, Veta Wallet (captura con datos ficticios): pagar, cobrar, guardar y el comprobante, todo en la misma app.",
+   "texto": "Pagar · cobrar · guardar · comprobar — una sola app",
+   "sonido": "Un toque de la app por palabra.",
+   "quien": null,
+   "linea": null,
+   "prompt": null,
+   "ref": null,
+   "voz_ref": null,
+   "tomas_a_generar": 0
+  },
+  {
    "id": "p1a",
    "secuencia": 4,
-   "t": 58.48,
+   "t": 61.78,
    "dur": 2.75,
    "fuente": "GENERADA",
    "imagen": "08:10 · GUATEMALA: Aurelio le paga a Marcus (Belice): el flete en lancha de las muestras de café. Lo dice a cámara, con su voz.",
@@ -261,8 +277,8 @@
   {
    "id": "p1b",
    "secuencia": 4,
-   "t": 61.23,
-   "dur": 2.82,
+   "t": 64.53,
+   "dur": 3.06,
    "fuente": "GENERADA",
    "imagen": "Marcus recibe en Dangriga y responde a cámara, con su voz. Al entrar la toma, una chispa marfil cruza la frontera Guatemala–Belice (costura dorada, arriba) y flota la tarjeta de Veta: «Recibido · comisión US$ 0,01 · en segundos».",
    "texto": "BELICE · Recibido · US$ 0,01",
@@ -277,7 +293,7 @@
   {
    "id": "p1n",
    "secuencia": 4,
-   "t": 64.05,
+   "t": 67.59,
    "dur": 4.5,
    "fuente": "GENERADA",
    "imagen": "Marcus sube el saco de muestras a su lancha y zarpa; la cámara lo sigue sobre el agua turquesa.",
@@ -293,8 +309,8 @@
   {
    "id": "p2a",
    "secuencia": 4,
-   "t": 68.55,
-   "dur": 2.91,
+   "t": 72.09,
+   "dur": 2.61,
    "fuente": "GENERADA",
    "imagen": "09:30 · BELICE: Marcus le paga a Chepe (Honduras): redes nuevas para la lancha. Lo dice a cámara, con su voz.",
    "texto": "09:30 · BELICE → HONDURAS",
@@ -309,7 +325,7 @@
   {
    "id": "p2b",
    "secuencia": 4,
-   "t": 71.46,
+   "t": 74.7,
    "dur": 3.37,
    "fuente": "GENERADA",
    "imagen": "Chepe recibe en San Pedro Sula y responde a cámara, con su voz. Al entrar la toma, una chispa marfil cruza la frontera Belice–Honduras (costura dorada, arriba) y flota la tarjeta de Veta: «Recibido · comisión US$ 0,01 · en segundos».",
@@ -325,7 +341,7 @@
   {
    "id": "p3a",
    "secuencia": 4,
-   "t": 74.83,
+   "t": 78.07,
    "dur": 2.69,
    "fuente": "GENERADA",
    "imagen": "10:45 · HONDURAS: Chepe le paga a Lucía (El Salvador): tapizar los sillones de su oficina. Lo dice a cámara, con su voz.",
@@ -341,7 +357,7 @@
   {
    "id": "p3b",
    "secuencia": 4,
-   "t": 77.52,
+   "t": 80.76,
    "dur": 3.97,
    "fuente": "GENERADA",
    "imagen": "Lucía recibe en San Salvador y responde a cámara, con su voz. Al entrar la toma, una chispa marfil cruza la frontera Honduras–El Salvador (costura dorada, arriba) y flota la tarjeta de Veta: «Recibido · comisión US$ 0,01 · en segundos».",
@@ -357,7 +373,7 @@
   {
    "id": "p4a",
    "secuencia": 4,
-   "t": 81.49,
+   "t": 84.73,
    "dur": 3.18,
    "fuente": "GENERADA",
    "imagen": "12:20 · EL SALVADOR: Lucía le paga a Mercedes (Nicaragua): dos cajas de rosquillas para el taller. Lo dice a cámara, con su voz.",
@@ -373,7 +389,7 @@
   {
    "id": "p4b",
    "secuencia": 4,
-   "t": 84.67,
+   "t": 87.91,
    "dur": 2.5,
    "fuente": "GENERADA",
    "imagen": "Mercedes recibe en Somoto y responde a cámara, con su voz. Al entrar la toma, una chispa marfil cruza la frontera El Salvador–Nicaragua (costura dorada, arriba) y flota la tarjeta de Veta: «Recibido · comisión US$ 0,01 · en segundos».",
@@ -389,7 +405,7 @@
   {
    "id": "p5a",
    "secuencia": 4,
-   "t": 87.17,
+   "t": 90.41,
    "dur": 2.13,
    "fuente": "GENERADA",
    "imagen": "14:05 · NICARAGUA: Mercedes le paga a Andrés (Costa Rica): el viaje de sus cajas a Costa Rica. Lo dice a cámara, con su voz.",
@@ -405,7 +421,7 @@
   {
    "id": "p5b",
    "secuencia": 4,
-   "t": 89.3,
+   "t": 92.54,
    "dur": 2.68,
    "fuente": "GENERADA",
    "imagen": "Andrés recibe en Liberia y responde a cámara, con su voz. Al entrar la toma, una chispa marfil cruza la frontera Nicaragua–Costa Rica (costura dorada, arriba) y flota la tarjeta de Veta: «Recibido · comisión US$ 0,01 · en segundos».",
@@ -421,7 +437,7 @@
   {
    "id": "p6a",
    "secuencia": 4,
-   "t": 91.98,
+   "t": 95.22,
    "dur": 2.42,
    "fuente": "GENERADA",
    "imagen": "16:30 · COSTA RICA: Andrés le paga a Rosa (Panamá): doce camisas de uniforme para sus choferes. Lo dice a cámara, con su voz.",
@@ -437,7 +453,7 @@
   {
    "id": "p6b",
    "secuencia": 4,
-   "t": 94.4,
+   "t": 97.64,
    "dur": 2.42,
    "fuente": "GENERADA",
    "imagen": "Rosa recibe en Ciudad de Panamá y responde a cámara, con su voz. Al entrar la toma, una chispa marfil cruza la frontera Costa Rica–Panamá (costura dorada, arriba) y flota la tarjeta de Veta: «Recibido · comisión US$ 0,01 · en segundos».",
@@ -453,7 +469,7 @@
   {
    "id": "p7a",
    "secuencia": 4,
-   "t": 96.82,
+   "t": 100.06,
    "dur": 2.58,
    "fuente": "GENERADA",
    "imagen": "18:10 · PANAMÁ: Rosa le paga a Aurelio (Guatemala): el café del taller. Lo dice a cámara, con su voz.",
@@ -469,7 +485,7 @@
   {
    "id": "p7b",
    "secuencia": 4,
-   "t": 99.4,
+   "t": 102.64,
    "dur": 2.56,
    "fuente": "GENERADA",
    "imagen": "Aurelio recibe en Huehuetenango y responde a cámara, con su voz. Al entrar la toma, una chispa marfil cruza la frontera Panamá–Guatemala (costura dorada, arriba) y flota la tarjeta de Veta: «Recibido · comisión US$ 0,01 · en segundos».",
@@ -485,7 +501,7 @@
   {
    "id": "r01",
    "secuencia": 5,
-   "t": 101.96,
+   "t": 105.2,
    "dur": 6.6,
    "fuente": "GRÁFICO",
    "imagen": "Mapa marfil del istmo con fronteras: una línea dorada recorre el día, Guatemala → Belice → Honduras → El Salvador → Nicaragua → Costa Rica → Panamá → Guatemala, con las siete horas.",
@@ -501,7 +517,7 @@
   {
    "id": "r02",
    "secuencia": 5,
-   "t": 108.56,
+   "t": 111.8,
    "dur": 5.32,
    "fuente": "GRÁFICO",
    "imagen": "Negro. La pregunta en tipografía grande; debajo, un contador de días que no para (sin cifras inventadas).",
@@ -517,7 +533,7 @@
   {
    "id": "m01",
    "secuencia": 6,
-   "t": 113.88,
+   "t": 117.12,
    "dur": 2.8,
    "fuente": "ARCHIVO",
    "imagen": "Óleo de Francisco Morazán (dominio público, con ficha).",
@@ -533,7 +549,7 @@
   {
    "id": "m02",
    "secuencia": 6,
-   "t": 116.68,
+   "t": 119.92,
    "dur": 5.02,
    "fuente": "COMPOSICIÓN",
    "imagen": "Los siete rostros, uno por golpe, a pantalla completa (de sus propios clips).",
@@ -549,7 +565,7 @@
   {
    "id": "k01",
    "secuencia": 7,
-   "t": 121.7,
+   "t": 124.94,
    "dur": 6.78,
    "fuente": "GENERADA",
    "imagen": "El taller de Rosa a mediodía: pedidos hasta el techo y un rincón marcado con cinta, un puesto que espera una máquina.",
@@ -565,7 +581,7 @@
   {
    "id": "k02",
    "secuencia": 7,
-   "t": 128.48,
+   "t": 131.72,
    "dur": 5.74,
    "fuente": "COMPOSICIÓN",
    "imagen": "Sobre el rincón, la tarjeta del PASAPORTE DEL ACTIVO (ejemplo ilustrativo): emisor con Genesis ID · qué hay detrás · riesgo · quién puede tenerla según su país. Líneas marfil del mundo llegan y pasan por el portón de Panamá.",
@@ -581,7 +597,7 @@
   {
    "id": "k03",
    "secuencia": 7,
-   "t": 134.22,
+   "t": 137.46,
    "dur": 5.52,
    "fuente": "COMPOSICIÓN",
    "imagen": "La retícula con un portón en cada país: entra el capital y pasa solo el que cumple las reglas de cada uno.",
@@ -597,7 +613,7 @@
   {
    "id": "f00",
    "secuencia": 8,
-   "t": 139.74,
+   "t": 142.98,
    "dur": 2.2,
    "fuente": "COMPOSICIÓN",
    "imagen": "Anochecer: la retícula se rearma con las mismas manos en las mismas puertas, ahora cerrándose.",
@@ -613,7 +629,7 @@
   {
    "id": "f01",
    "secuencia": 8,
-   "t": 141.94,
+   "t": 145.18,
    "dur": 3.68,
    "fuente": "GENERADA",
    "imagen": "Lucía, al bajar la cortina de su taller al anochecer, mira a cámara y lo dice ella misma.",
@@ -629,7 +645,7 @@
   {
    "id": "f02",
    "secuencia": 8,
-   "t": 145.62,
+   "t": 148.86,
    "dur": 3.68,
    "fuente": "GRÁFICO",
    "imagen": "El mapa se abre del istmo a toda Latinoamérica.",
@@ -645,7 +661,7 @@
   {
    "id": "f03",
    "secuencia": 8,
-   "t": 149.3,
+   "t": 152.54,
    "dur": 3.5,
    "fuente": "GRÁFICO",
    "imagen": "Logo quieto. ordenglobal.org · letra chica.",
@@ -680,14 +696,14 @@
    "id": "P2",
    "quien": "MARCUS",
    "t": 17.08,
-   "dur": 3.88,
+   "dur": 3.2,
    "escrito": "Soy Marcus. Pescador, de Dangriga, Belice.",
    "a_camara": true
   },
   {
    "id": "P3",
    "quien": "LUCÍA",
-   "t": 21.26,
+   "t": 20.58,
    "dur": 2.93,
    "escrito": "Soy Lucía. Tapicera, de San Salvador.",
    "a_camara": true
@@ -695,7 +711,7 @@
   {
    "id": "P4",
    "quien": "CHEPE",
-   "t": 24.49,
+   "t": 23.81,
    "dur": 2.91,
    "escrito": "Me dicen Chepe. Telas y lonas, San Pedro Sula.",
    "a_camara": true
@@ -703,7 +719,7 @@
   {
    "id": "P5",
    "quien": "MERCEDES",
-   "t": 27.7,
+   "t": 27.02,
    "dur": 2.71,
    "escrito": "Soy Mercedes. Rosquillas de Somoto, Nicaragua.",
    "a_camara": true
@@ -711,7 +727,7 @@
   {
    "id": "P6",
    "quien": "ANDRÉS",
-   "t": 30.71,
+   "t": 30.03,
    "dur": 3.31,
    "escrito": "Soy Andrés. Transporte de carga, Liberia, Costa Rica.",
    "a_camara": true
@@ -719,7 +735,7 @@
   {
    "id": "P7",
    "quien": "ROSA",
-   "t": 34.32,
+   "t": 33.64,
    "dur": 2.43,
    "escrito": "Soy Rosa. Uniformes, Ciudad de Panamá.",
    "a_camara": true
@@ -727,7 +743,7 @@
   {
    "id": "N1",
    "quien": "LUCÍA",
-   "t": 39.55,
+   "t": 38.87,
    "dur": 6.31,
    "escrito": "Siete países. Siete monedas. Y entre nosotros, una moneda digital en común: ORIGEN.",
    "a_camara": false
@@ -735,7 +751,7 @@
   {
    "id": "N2",
    "quien": "LUCÍA",
-   "t": 46.36,
+   "t": 45.68,
    "dur": 4.46,
    "escrito": "No reemplaza la de nadie. Sigue el precio del oro, y su fórmula es pública.",
    "a_camara": false
@@ -743,15 +759,23 @@
   {
    "id": "N3",
    "quien": "LUCÍA",
-   "t": 51.42,
-   "dur": 6.66,
-   "escrito": "Para entrar, Genesis ID: tu identidad digital. Te verificás una vez, y te aprueba una persona.",
+   "t": 50.74,
+   "dur": 4.92,
+   "escrito": "Genesis ID: una sola verificación, y ya sos parte del ecosistema.",
+   "a_camara": false
+  },
+  {
+   "id": "N3b",
+   "quien": "LUCÍA",
+   "t": 56.26,
+   "dur": 5.12,
+   "escrito": "Pagar, cobrar, guardar, comprobar: todo en un solo lugar. Una sola app.",
    "a_camara": false
   },
   {
    "id": "T1a",
    "quien": "AURELIO",
-   "t": 58.68,
+   "t": 61.98,
    "dur": 2.3,
    "escrito": "Marcus, ya te pagué el flete de las muestras.",
    "a_camara": true
@@ -759,15 +783,15 @@
   {
    "id": "T1b",
    "quien": "MARCUS",
-   "t": 61.43,
-   "dur": 2.32,
+   "t": 64.73,
+   "dur": 2.56,
    "escrito": "¡Ya me llegó! Ya las estoy cargando.",
    "a_camara": true
   },
   {
    "id": "N4",
    "quien": "LUCÍA",
-   "t": 64.25,
+   "t": 67.79,
    "dur": 4.0,
    "escrito": "Un centavo de dólar de comisión. Y llegó en segundos.",
    "a_camara": false
@@ -775,15 +799,15 @@
   {
    "id": "T2a",
    "quien": "MARCUS",
-   "t": 68.75,
-   "dur": 2.46,
+   "t": 72.29,
+   "dur": 2.16,
    "escrito": "Chepe, ya pagué las redes.",
    "a_camara": true
   },
   {
    "id": "T2b",
    "quien": "CHEPE",
-   "t": 71.66,
+   "t": 74.9,
    "dur": 2.87,
    "escrito": "¡Ya me cayó! Van en el camión de las diez.",
    "a_camara": true
@@ -791,7 +815,7 @@
   {
    "id": "T3a",
    "quien": "CHEPE",
-   "t": 75.03,
+   "t": 78.27,
    "dur": 2.24,
    "escrito": "Doña Lucía, ya le pagué los sillones.",
    "a_camara": true
@@ -799,7 +823,7 @@
   {
    "id": "T3b",
    "quien": "LUCÍA",
-   "t": 77.72,
+   "t": 80.96,
    "dur": 3.47,
    "escrito": "Ya me llegó, don Chepe. El jueves se los devuelvo como nuevos.",
    "a_camara": true
@@ -807,7 +831,7 @@
   {
    "id": "T4a",
    "quien": "LUCÍA",
-   "t": 81.69,
+   "t": 84.93,
    "dur": 2.73,
    "escrito": "Mercedes, te pagué las dos cajas de rosquillas.",
    "a_camara": true
@@ -815,7 +839,7 @@
   {
    "id": "T4b",
    "quien": "MERCEDES",
-   "t": 84.87,
+   "t": 88.11,
    "dur": 2.0,
    "escrito": "¡Ya me cayó! Mañana te llegan.",
    "a_camara": true
@@ -823,7 +847,7 @@
   {
    "id": "T5a",
    "quien": "MERCEDES",
-   "t": 87.37,
+   "t": 90.61,
    "dur": 1.68,
    "escrito": "Andrés, ya te pagué el viaje.",
    "a_camara": true
@@ -831,7 +855,7 @@
   {
    "id": "T5b",
    "quien": "ANDRÉS",
-   "t": 89.5,
+   "t": 92.74,
    "dur": 2.18,
    "escrito": "Diay, ya me llegó. Salgo a las tres.",
    "a_camara": true
@@ -839,7 +863,7 @@
   {
    "id": "T6a",
    "quien": "ANDRÉS",
-   "t": 92.18,
+   "t": 95.42,
    "dur": 1.97,
    "escrito": "Rosa, pagué las doce camisas.",
    "a_camara": true
@@ -847,7 +871,7 @@
   {
    "id": "T6b",
    "quien": "ROSA",
-   "t": 94.6,
+   "t": 97.84,
    "dur": 1.92,
    "escrito": "¡Ya entró! El viernes te llegan.",
    "a_camara": true
@@ -855,7 +879,7 @@
   {
    "id": "T7a",
    "quien": "ROSA",
-   "t": 97.02,
+   "t": 100.26,
    "dur": 2.13,
    "escrito": "Don Aurelio, le pagué el café del taller.",
    "a_camara": true
@@ -863,7 +887,7 @@
   {
    "id": "T7b",
    "quien": "AURELIO",
-   "t": 99.6,
+   "t": 102.84,
    "dur": 2.06,
    "escrito": "Recibido, doña Rosa. Ya va para allá.",
    "a_camara": true
@@ -871,7 +895,7 @@
   {
    "id": "N5",
    "quien": "LUCÍA",
-   "t": 102.36,
+   "t": 105.6,
    "dur": 5.8,
    "escrito": "En un solo día, ORIGEN pasó por siete países. Siete pagos, en segundos.",
    "a_camara": false
@@ -879,7 +903,7 @@
   {
    "id": "N6",
    "quien": "LUCÍA",
-   "t": 108.86,
+   "t": 112.1,
    "dur": 4.12,
    "escrito": "Si fuera de otra manera... ¿cuánto tardaría en moverse tu dinero?",
    "a_camara": false
@@ -887,7 +911,7 @@
   {
    "id": "N7",
    "quien": "LUCÍA",
-   "t": 114.18,
+   "t": 117.42,
    "dur": 6.92,
    "escrito": "Morazán luchó por unirnos. Hoy nos unimos sin dejar de ser siete: cada país, con sus leyes y su moneda.",
    "a_camara": false
@@ -895,7 +919,7 @@
   {
    "id": "N8",
    "quien": "LUCÍA",
-   "t": 122.0,
+   "t": 125.24,
    "dur": 6.28,
    "escrito": "Y pensá en grande: nuestras empresas podrían abrir una parte, en digital, al capital del mundo.",
    "a_camara": false
@@ -903,7 +927,7 @@
   {
    "id": "N9",
    "quien": "LUCÍA",
-   "t": 128.68,
+   "t": 131.92,
    "dur": 5.24,
    "escrito": "Eso es tokenizar: cada parte con su pasaporte, y adentro las reglas de cada país.",
    "a_camara": false
@@ -911,7 +935,7 @@
   {
    "id": "N10",
    "quien": "LUCÍA",
-   "t": 134.52,
+   "t": 137.76,
    "dur": 4.62,
    "escrito": "El capital, del mundo. El trabajo, aquí. Las reglas, de casa.",
    "a_camara": false
@@ -919,7 +943,7 @@
   {
    "id": "F1",
    "quien": "LUCÍA",
-   "t": 142.24,
+   "t": 145.48,
    "dur": 2.78,
    "escrito": "Esto lo hicimos por vos. Para unir Centroamérica.",
    "a_camara": true
@@ -927,7 +951,7 @@
   {
    "id": "F2",
    "quien": "LUCÍA",
-   "t": 146.12,
+   "t": 149.36,
    "dur": 2.08,
    "escrito": "¿Y mañana... Latinoamérica?",
    "a_camara": false

@@ -128,9 +128,12 @@ def main():
          "1 ORIGEN = precio de 1/55 g de oro · fórmula pública", "Piano que sube y baja.", "LUCÍA", None,
          gen("LUCÍA", "rolls up the metal shutter of her workshop and steps into the morning sun, the golden light slowly brightening and dimming on her face", "street waking up, metal shutter"), 2)
     d = habla("N3", 0.2)
-    toma("o03", 3, d + 0.6, "GENERADA", "Mercedes se verifica con la cámara frontal (prueba de vida) en la panadería; flota una tarjeta de Veta Wallet: «Genesis ID · verificada · aprobada por una persona».",
-         "Tarjeta: Genesis ID · verificada una vez · la aprueba una persona", "Campana suave de la app.", "MERCEDES", None,
+    toma("o03", 3, d + 0.6, "GENERADA", "Mercedes se verifica con la cámara frontal (prueba de vida) en la panadería; flota una tarjeta de Veta Wallet: «Genesis ID · verificada».",
+         "Tarjeta: Genesis ID · una sola verificación · parte del ecosistema", "Campana suave de la app.", "MERCEDES", None,
          gen("MERCEDES", "holds her phone at arm's length and slowly turns her head for a face verification selfie, then smiles at the phone; the screen faces away from the camera", "bakery ambience, soft chime"), 2)
+    d = habla("N3b", 0.2)
+    toma("o04", 3, d + 0.6, "COMPOSICIÓN", "Los siete teléfonos, uno en cada celda de la retícula; al centro flota la app real, Veta Wallet (captura con datos ficticios): pagar, cobrar, guardar y el comprobante, todo en la misma app.",
+         "Pagar · cobrar · guardar · comprobar — una sola app", "Un toque de la app por palabra.")
     # 4 · Siete pagos en un mismo día
     for n, (hora, paga, cobra, que, la, lb) in enumerate(PAGOS, 1):
         d = habla(la, 0.2)
