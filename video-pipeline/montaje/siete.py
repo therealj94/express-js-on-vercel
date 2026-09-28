@@ -113,8 +113,16 @@ def subtitulos(f: F, txt: str, t0: float, t1: float) -> list:
     """Un subtítulo largo se parte en páginas de dos líneas, repartidas según
     cuánto texto lleva cada una (así no se pierde el principio de la frase)."""
     d = ImageDraw.Draw(lienzo())
-    ls = envolver(d, txt, f.sub, 900)
-    paginas = [" ".join(ls[i:i + 2]) for i in range(0, len(ls), 2)]
+    # Primero por frases (cada página cierra una idea); si una frase sola no
+    # cabe en dos líneas, se parte por líneas.
+    paginas = []
+    for frase in re.split(r"(?<=[.!?])\s+", txt):
+        cand = (paginas[-1] + " " + frase) if paginas else frase
+        if paginas and len(envolver(d, cand, f.sub, 900)) <= 2:
+            paginas[-1] = cand
+            continue
+        ls = envolver(d, frase, f.sub, 900)
+        paginas += [" ".join(ls[i:i + 2]) for i in range(0, len(ls), 2)]
     total = sum(len(x) for x in paginas)
     out, t = [], t0
     for i, pg in enumerate(paginas):
@@ -373,9 +381,9 @@ def armar(a, f: F) -> list[Seg]:
         pa, pb = f"p{i}a", f"p{i}b"
         segs.append(dialogo(pa, capas_extra=[(capa_ruta(f, hora, PAIS[nombres[de]], PAIS[nombres[a_]], que), 0.1, 9)]))
         if i < 7:
-            tarj = capa_tarjeta(f, "Recibido", ["Comisión: US$ 0,01", "Llegó en segundos"], y0=300)
+            tarj = capa_tarjeta(f, "Recibido", ["Comisión: US$ 0,01", "Llegó en segundos"], y0=1130)
         else:
-            tarj = capa_tarjeta(f, "Inversión recibida", ["Una parte de la cooperativa", "Cooperativa de café · Huehuetenango", "Ejemplo ilustrativo"], y0=300)
+            tarj = capa_tarjeta(f, "Inversión recibida", ["Una parte de la cooperativa", "Cooperativa de café · Huehuetenango", "Ejemplo ilustrativo"], y0=1070)
         s = dialogo(pb, capas_extra=[(tarj, 0.2, 9)])
         s.nota = "pago"
         segs.append(s)
@@ -388,7 +396,7 @@ def armar(a, f: F) -> list[Seg]:
     segs.append(Seg("k01", 7.1, v_clip(k01, 0.2, lento=1.0)))
     pasaporte = capa_tarjeta(f, "Pasaporte del activo", ["Emisor: cooperativa de café", "Qué hay detrás: una parte de ella",
                                                          "Riesgo: puede perder valor", "Quién la tiene: reglas de Guatemala",
-                                                         "Ejemplo ilustrativo"], y0=560, marca="ORIGEN")
+                                                         "Ejemplo ilustrativo"], y0=980, marca="ORIGEN")
     otra_k01 = next((toma_extra("k01", k) for k in (2, 1) if toma_extra("k01", k).exists() and toma_extra("k01", k) != k01), k01)
     segs.append(Seg("k02", 4.58, v_clip(otra_k01, 0.8), [(pasaporte, 0.2, 5)]))
 
