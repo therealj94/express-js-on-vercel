@@ -11,11 +11,11 @@
 //  · idioma: ES o EN (el portugués va en inglés, no hay versión PT).
 //  · saludo: por nombre si llega a la persona; «A la atención de» si es un
 //    buzón general; «equipo de» si no hay persona.
-//  · lote: 15 por día, prioridad A primero (regla del directorio).
+//  · lote: tandas de 30 (una hora de envío cada una), prioridad A primero.
 
 import fs from 'node:fs';
 
-const POR_DIA = 15;
+const TANDA = 30;
 const aqui = new URL('.', import.meta.url).pathname;
 
 // CSV mínimo con comillas.
@@ -149,10 +149,10 @@ export function depurar(contactos) {
 
   for (const r of filas) r.saludo = r.correo ? saludo(r) : '';
 
-  // Lotes de 15: A primero, luego B y C, en el orden del directorio.
+  // Tandas de 30: A primero, luego B y C, en el orden del directorio.
   const cola = filas.filter((r) => r.estado === 'enviar')
     .sort((a, b) => (RANGO_PRIOR[a.prior] - RANGO_PRIOR[b.prior]) || a.n.localeCompare(b.n));
-  cola.forEach((r, i) => { r.lote = String(Math.floor(i / POR_DIA) + 1); });
+  cola.forEach((r, i) => { r.lote = String(Math.floor(i / TANDA) + 1); });
   return filas;
 }
 
@@ -164,5 +164,5 @@ if (process.argv[1] && new URL(import.meta.url).pathname === fs.realpathSync(pro
   const cuenta = {};
   for (const r of filas) cuenta[r.estado] = (cuenta[r.estado] || 0) + 1;
   const lotes = new Set(filas.filter((r) => r.lote).map((r) => r.lote));
-  console.log(`${filas.length} contactos:`, cuenta, `· ${lotes.size} lotes de hasta ${POR_DIA}`);
+  console.log(`${filas.length} contactos:`, cuenta, `· ${lotes.size} tandas de hasta ${TANDA}`);
 }

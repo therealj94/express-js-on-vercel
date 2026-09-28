@@ -5,6 +5,7 @@
 | `/` | `index.html` | La portada (septiembre de 2026) |
 | `/en/` | `en/index.html` | La misma portada en inglés |
 | `/historia/` | `historia/index.html` | "El viaje del valor": un solo desplazamiento con sonido |
+| `/sfsp/SFSP-Centroamerica-ES.pdf` y `-EN.pdf` | `sfsp/` | La presentación de SFSP que enlaza el correo de la campaña (`campana-sfsp/`) |
 | cualquier otra | `404.html` | La página que no existe (Amplify la sirve con estado 404) |
 
 ## La portada
@@ -118,7 +119,7 @@ media otra.
 sh reconstruir.sh /tmp/ogsite     # código de aquí + medios de producción
 ```
 
-Al terminar tienen que ser 272 archivos y ~14 MB. Si hay que rehacer la
+Al terminar tienen que ser 285 archivos y ~27 MB. Si hay que rehacer la
 música desde cero (ver "La musica"):
 
 ```sh
@@ -156,7 +157,7 @@ SITIO=https://www.ordenglobal.org node probar-bso.mjs   # lo mismo, contra produ
 
 Amplify **reemplaza el manifiesto entero** en cada despliegue: lo que no va en
 la subida desaparece del sitio. Por eso el script recorre el arbol completo y
-sube los 272 archivos aunque solo haya cambiado uno. Nunca subir un archivo
+sube los 285 archivos aunque solo haya cambiado uno. Nunca subir un archivo
 suelto. (Así se perdieron una vez las cuatro capas y los trece efectos de la
 banda sonora: un despliegue hecho desde una copia sin `audio/` completo dejó
 /historia/ sonando con una sola capa durante semanas.)

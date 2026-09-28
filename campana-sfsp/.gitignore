@@ -4,3 +4,4 @@ envios.csv
 registro.jsonl
 bajas.txt
 vista/
+node_modules/
