@@ -1458,6 +1458,7 @@ const VETA = (() => {
         const volviendoACasa = semillaNueva ? null : ssoDestino;
         ssoDestino = null;
         if (volviendoACasa) volverConLlave(volviendoACasa);
+        if (auraPendiente && !semillaNueva) consentirAura(auraPendiente);
         // Y el cobro que esperaba en la puerta: DESPUES de la cartera, para que
         // la moneda exista cuando se intente elegir.
         if (cobroPendiente) {
@@ -6278,8 +6279,8 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = '7392dd72dc';
-  const VETA_FECHA = '2026-09-27';
+  const VETA_V = 'cdf086343d';
+  const VETA_FECHA = '2026-09-29';
 
   const AET_V = '11c0a0e475';
 
@@ -7055,6 +7056,82 @@ const VETA = (() => {
       else avisar(e.message);
     }
   });
+
+  /* ── AU-RA FP · la app de los avatares ─────────────────────────────────
+   *
+   * AU-RA no es una web con dirección fija como Ordenex o AuCorp: es una app
+   * del teléfono, y vuelve por su esquema (`ultronfp://sso`). Su puerta abre
+   * esta página con `#sso-aura?reto=…&estado=…`.
+   *
+   * Dos diferencias con las otras casas, y las dos importan:
+   *
+   *   · EL PASE LLEVA DESTINO Y RETO. Solo vale en AU-RA y en el chat, una vez
+   *     en cada uno, y solo lo canjea quien tiene el verificador del reto —
+   *     AU-RA—. Si otra app se quedara con el enlace de vuelta, no le serviría.
+   *   · SE PREGUNTA ANTES. Las otras casas vuelven solas porque vuelven a SU
+   *     dominio; aquí cualquier página puede abrir `#sso-aura`, así que el pase
+   *     no se acuña sin un «Permitir» de la persona. */
+  let auraPendiente = null;
+  const RETO_AURA = /^[A-Za-z0-9_-]{43}$/;
+  const ESTADO_AURA = /^[A-Za-z0-9_-]{8,64}$/;
+
+  function leerPedidoAura(hash) {
+    if (!/^#sso-aura(\?|$)/.test(hash || '')) return null;
+    const q = new URLSearchParams(hash.slice(hash.indexOf('?') + 1));
+    const reto = q.get('reto') || '';
+    const estado = q.get('estado') || '';
+    return RETO_AURA.test(reto) && ESTADO_AURA.test(estado) ? { reto, estado } : { malo: true };
+  }
+
+  function vueltaAura({ pase, error, estado }) {
+    const q = [];
+    if (pase) q.push('pase=' + encodeURIComponent(pase));
+    if (error) q.push('error=' + encodeURIComponent(error));
+    q.push('estado=' + encodeURIComponent(estado || ''));
+    location.href = 'ultronfp://sso?' + q.join('&');
+  }
+
+  function consentirAura(pedido) {
+    auraPendiente = null;
+    if (!pedido) return;
+    if (pedido.malo) { avisar('Ese pedido de AU-RA no es válido. Volvé a intentarlo desde AU-RA.'); return; }
+    const velo = document.createElement('div');
+    velo.setAttribute('role', 'dialog');
+    velo.setAttribute('aria-modal', 'true');
+    velo.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(5,8,12,.78);display:flex;align-items:center;justify-content:center;padding:16px';
+    velo.innerHTML = `
+      <div style="max-width:380px;width:100%;background:#12161d;color:#F3ECD9;border:1px solid rgba(214,181,108,.35);border-radius:20px;padding:22px;font:15px/1.45 system-ui,sans-serif">
+        <div style="font-weight:800;font-size:19px;margin-bottom:6px">AU-RA quiere usar tu Genesis ID</div>
+        <div style="opacity:.85;margin-bottom:14px">Vas a entrar a AU-RA FP con esta cuenta, sin crear otra ni repetir la verificación. Se comparte:</div>
+        <ul style="margin:0 0 14px 18px;padding:0;opacity:.9">
+          <li>Tu Genesis ID y tu nombre verificado</li>
+          <li>El correo de tu identidad</li>
+          <li>Tu chat PULSE2CHAT (contactos y conversaciones)</li>
+        </ul>
+        <div style="font-size:12.5px;opacity:.65;margin-bottom:16px">Tu contraseña, tu frase semilla y tus fondos no salen de aquí. El pase es de un solo uso y solo AU-RA lo puede canjear.</div>
+        <button data-si style="width:100%;padding:13px;border:0;border-radius:14px;background:#D6B56C;color:#1b1406;font-weight:800;font-size:15px;cursor:pointer">Permitir y volver a AU-RA</button>
+        <button data-no style="width:100%;padding:12px;margin-top:8px;border:1px solid rgba(243,236,217,.2);border-radius:14px;background:transparent;color:#F3ECD9;font-size:14px;cursor:pointer">No, volver sin entrar</button>
+      </div>`;
+    const cerrar = () => velo.remove();
+    velo.querySelector('[data-no]').onclick = () => { cerrar(); vueltaAura({ error: 'cancelado', estado: pedido.estado }); };
+    velo.querySelector('[data-si]').onclick = async (ev) => {
+      ev.target.disabled = true;
+      ev.target.textContent = 'Pidiendo tu pase…';
+      try {
+        const d = await pedir('/genesis/sso/token', {
+          metodo: 'POST', cuerpo: { aud: ['aura', 'pulse2chat'], reto: pedido.reto },
+        });
+        if (!d?.token) throw new Error(t('err.sesion'));
+        cerrar();
+        vueltaAura({ pase: d.token, estado: pedido.estado });
+      } catch (e) {
+        cerrar();
+        if (e.estado === 403) { avisar(t('nu.cerrado')); vista('verificar'); vueltaAura({ error: 'sin-gid', estado: pedido.estado }); }
+        else { avisar(e.message); vueltaAura({ error: 'fallo', estado: pedido.estado }); }
+      }
+    };
+    document.body.appendChild(velo);
+  }
 
   async function volverConLlave(destino) {
     ssoDestino = null;
@@ -16773,6 +16850,7 @@ const VETA = (() => {
        fuera, no una ruta — se consume aqui y no entra al historial. */
     const casaSso = CASAS_SSO[location.hash] ? CASAS_SSO[location.hash]() : null;
     ssoDestino = casaSso;
+    auraPendiente = leerPedidoAura(location.hash);
 
     /* Y si la direccion no es una intencion sino una RUTA —alguien guardo
        #billetera en favoritos, o recarga estando en el chat— se entra por
@@ -16811,7 +16889,8 @@ const VETA = (() => {
          de AU-RA no se estrena en un pasillo: queda para una visita de
          verdad. */
       if (casaSso) volverConLlave(casaSso);
-      if (!yaSePresento() && !casaSso) {
+      if (auraPendiente) consentirAura(auraPendiente);
+      if (!yaSePresento() && !casaSso && !auraPendiente) {
         marcarPresentada();
         setTimeout(() => auraBienvenidaGalaxia(false), 1400);
       }
