@@ -61,8 +61,13 @@ const PARA_USTED = {
 
 const TEXTO = {
   es: {
-    asunto: 'Una invitación: unir a Centroamérica',
-    quien: 'Soy José Ordoñez, cofundador de Orden Global, y le escribo con una pregunta:',
+    asunto: 'Invitación personal: unir a Centroamérica',
+    etiqueta: 'INVITACIÓN PERSONAL',
+    elegido: 'Este correo no le llegó por casualidad.',
+    seleccion: 'De toda la región, seleccionamos a un grupo reducido de líderes e instituciones para ser los primeros en conocer SFSP y formar parte de algo que puede cambiar la historia de Centroamérica.',
+    suLista: { persona: 'Su nombre está en esa lista.', org: 'Su organización está en esa lista.' },
+    quien: 'Soy José Ordoñez, cofundador de Orden Global.',
+    historia: 'En 1823, cinco de nuestros países fueron una sola república. Doscientos años después, podemos volver a unirnos.',
     gancho: '¿Y si le dijera que podemos unir a Centroamérica?',
     que: 'Hoy somos siete monedas, siete trámites y siete fronteras, y en cada una perdemos tiempo, dinero y oportunidades. SFSP, el Protocolo de Sistema Financiero Social, propone que la región funcione como una sola economía, sin que ningún país pierda su soberanía:',
     pilares: [
@@ -74,8 +79,8 @@ const TEXTO = {
     verVideo: '▶ Ver el video en YouTube · 2 min',
     verPdf: 'Ver la presentación (PDF)',
     videoNota: 'Canal oficial de Orden Global ·',
-    invitaTitulo: 'Si esto llegó a usted, es porque está entre los primeros.',
-    invita: 'Estamos reuniendo a los primeros países y aliados que van a construir esta Centroamérica, y me gustaría que usted fuera parte. ¿Conversamos 20 minutos esta semana o la próxima?',
+    invitaTitulo: 'La historia la escriben los primeros.',
+    invita: 'Estamos reuniendo a los países y aliados fundadores que van a construir esta Centroamérica, y queremos que usted sea parte. ¿Conversamos 20 minutos esta semana o la próxima?',
     boton: 'Quiero ser parte',
     oResponda: 'o simplemente responda a este correo.',
     waMensaje: 'Hola José, quiero ser parte de SFSP. Soy {quien}.',
@@ -84,8 +89,13 @@ const TEXTO = {
     baja: 'Si prefiere no recibir más correos, responda «no» y no volveremos a escribirle.',
   },
   en: {
-    asunto: 'An invitation: uniting Central America',
-    quien: "I'm José Ordoñez, co-founder of Orden Global, and I'm writing with a question:",
+    asunto: 'Personal invitation: uniting Central America',
+    etiqueta: 'PERSONAL INVITATION',
+    elegido: 'This email did not reach you by chance.',
+    seleccion: 'From across the region, we selected a small group of leaders and institutions to be the first to learn about SFSP and to be part of something that can change the history of Central America.',
+    suLista: { persona: 'Your name is on that list.', org: 'Your organization is on that list.' },
+    quien: "I'm José Ordoñez, co-founder of Orden Global.",
+    historia: 'In 1823, five of our countries were a single republic. Two hundred years later, we can unite again.',
     gancho: 'What if we could unite Central America?',
     que: 'Today we are seven currencies, seven sets of paperwork and seven borders, and at each one we lose time, money and opportunities. SFSP, the Social Financial System Protocol, proposes that the region work as a single economy, without any country giving up its sovereignty:',
     pilares: [
@@ -97,8 +107,8 @@ const TEXTO = {
     verVideo: '▶ Watch the film on YouTube · 2 min',
     verPdf: 'View the presentation (PDF)',
     videoNota: 'Official Orden Global channel, English subtitles ·',
-    invitaTitulo: 'If this reached you, you are among the first.',
-    invita: 'We are bringing together the first countries and partners who will build this Central America, and I would like you to be part of it. Could we talk for 20 minutes this week or next?',
+    invitaTitulo: 'History is written by those who go first.',
+    invita: 'We are bringing together the founding countries and partners who will build this Central America, and we want you to be one of them. Could we talk for 20 minutes this week or next?',
     boton: 'I want to be part of it',
     oResponda: 'or simply reply to this email.',
     waMensaje: 'Hi José, I want to be part of SFSP. This is {quien}.',
@@ -123,11 +133,16 @@ export function correo(c) {
   const quien = c.persona_real ? `${c.persona.replace(/\s*\([^)]*\)/g, '')} (${org})` : org;
   const wa = `https://wa.me/${JOSE.whatsapp}?text=${encodeURIComponent(rellenar(t.waMensaje, { quien }))}`;
   const pdf = PRESENTACION[idioma];
+  const suLista = c.persona_real ? t.suLista.persona : t.suLista.org;
 
   const texto = [
     c.saludo,
     '',
-    `${t.quien} ${t.gancho}`,
+    t.elegido,
+    `${t.seleccion} ${suLista}`,
+    '',
+    `${t.quien} ${t.historia}`,
+    t.gancho,
     '',
     t.que,
     ...t.pilares.map(([a, b]) => `· ${a}: ${b}`),
@@ -178,10 +193,13 @@ export function correo(c) {
 
 <tr><td style="background:${noche};padding:16px 28px;font:600 11px/1 'Courier New',monospace;letter-spacing:4px;color:${oro}">ORDEN GLOBAL · SFSP</td></tr>
 
-<tr><td style="padding:28px 28px 4px;font:16px/1.65 ${sans};color:${tinta}">
+<tr><td style="padding:30px 28px 4px;font:16px/1.65 ${sans};color:${tinta}">
+<p style="margin:0 0 18px;font:700 11px/1 ${sans};letter-spacing:3px;color:${oroTexto}">${esc(t.etiqueta)}</p>
 ${p(esc(c.saludo))}
-${p(esc(t.quien), 'margin-bottom:6px')}
-<p style="margin:0 0 22px;font:italic 26px/1.25 ${serif};color:${tinta}">${esc(t.gancho)}</p>
+<p style="margin:0 0 14px;font:30px/1.2 ${serif};color:${tinta}">${esc(t.elegido)}</p>
+${p(`${esc(t.seleccion)} <strong>${esc(suLista)}</strong>`, 'margin-bottom:22px')}
+${p(esc(t.quien), 'margin-bottom:12px')}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 22px"><tr><td style="border-left:3px solid ${oro};padding:4px 0 4px 16px;font:italic 20px/1.4 ${serif};color:${tinta}">${esc(t.historia)}<br><span style="color:${oroTexto}">${esc(t.gancho)}</span></td></tr></table>
 </td></tr>
 
 <tr><td style="padding:0 28px;font:16px/1.65 ${sans};color:${tinta}">
