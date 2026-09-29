@@ -1,9 +1,9 @@
 // Plantilla del primer correo de SFSP, en español e inglés.
 //
-// Una invitación, no un folleto. Arriba, la pregunta y la portada del video. Después, qué
-// es (los tres pilares), qué significa para quien lo lee (una frase por sector) y un bloque
-// oscuro que invita a ser de los primeros, con el botón de WhatsApp. Una sola imagen,
-// alojada en ordenglobal.org (el mismo dominio que envía), y nada de adjuntos.
+// Una invitación, no un folleto. Arriba, la pregunta. Después, qué es (los tres pilares),
+// qué significa para quien lo lee (una frase por sector) y un bloque oscuro que invita a ser
+// de los primeros: el video en YouTube, WhatsApp y la presentación. Sin imágenes (muchos
+// lectores de correo las bloquean y una imagen rota parece spam) y sin adjuntos.
 //
 // Nada de «regulado», «licenciado» ni rendimientos: el pie repite el aviso de la
 // presentación (protocolo en desarrollo, material informativo).
@@ -18,14 +18,8 @@ export const JOSE = {
   empresa: 'Orden Global Corp · British Columbia, Canadá · Roatán Próspera, Honduras',
 };
 
-export const VIDEO = 'https://youtu.be/pccKeU8rqm8';
-
-// La portada del video con el botón de reproducir, servida desde ordenglobal.org: la
-// miniatura de YouTube la bloquean muchos lectores de correo.
-export const PORTADA = {
-  es: 'https://www.ordenglobal.org/sfsp/video-es.jpg',
-  en: 'https://www.ordenglobal.org/sfsp/video-en.jpg',
-};
+// La dirección completa de YouTube, no el acortador youtu.be: se ve de dónde viene.
+export const VIDEO = 'https://www.youtube.com/watch?v=pccKeU8rqm8';
 
 export const PRESENTACION = {
   es: process.env.PRESENTACION_ES || 'https://www.ordenglobal.org/sfsp/SFSP-Centroamerica-ES.pdf',
@@ -77,8 +71,9 @@ const TEXTO = {
       ['Un comercio', 'Pagar y recibir al instante, con una sola comisión mínima.'],
     ],
     hecho: 'No es una idea en papel: el protocolo ya está construido y ha superado 553 pruebas.',
-    verVideo: 'Ver el video · 2 min',
-    verPdf: 'Ver la presentación',
+    verVideo: '▶ Ver el video en YouTube · 2 min',
+    verPdf: 'Ver la presentación (PDF)',
+    videoNota: 'Canal oficial de Orden Global ·',
     invitaTitulo: 'Si esto llegó a usted, es porque está entre los primeros.',
     invita: 'Estamos reuniendo a los primeros países y aliados que van a construir esta Centroamérica, y me gustaría que usted fuera parte. ¿Conversamos 20 minutos esta semana o la próxima?',
     boton: 'Quiero ser parte',
@@ -99,8 +94,9 @@ const TEXTO = {
       ['One market', 'Pay and get paid instantly, with a single minimal fee.'],
     ],
     hecho: 'This is not an idea on paper: the protocol is already built and has passed 553 tests.',
-    verVideo: 'Watch the film · 2 min, English subtitles',
-    verPdf: 'View the presentation',
+    verVideo: '▶ Watch the film on YouTube · 2 min',
+    verPdf: 'View the presentation (PDF)',
+    videoNota: 'Official Orden Global channel, English subtitles ·',
     invitaTitulo: 'If this reached you, you are among the first.',
     invita: 'We are bringing together the first countries and partners who will build this Central America, and I would like you to be part of it. Could we talk for 20 minutes this week or next?',
     boton: 'I want to be part of it',
@@ -133,8 +129,6 @@ export function correo(c) {
     '',
     `${t.quien} ${t.gancho}`,
     '',
-    `${t.verVideo}: ${VIDEO}`,
-    '',
     t.que,
     ...t.pilares.map(([a, b]) => `· ${a}: ${b}`),
     '',
@@ -144,6 +138,7 @@ export function correo(c) {
     t.invitaTitulo,
     t.invita,
     '',
+    `${t.verVideo.replace('▶ ', '')}: ${VIDEO}`,
     `${t.boton} (WhatsApp ${JOSE.whatsappVisible}): ${wa}`,
     `${t.verPdf}: ${pdf}`,
     '',
@@ -186,12 +181,7 @@ export function correo(c) {
 <tr><td style="padding:28px 28px 4px;font:16px/1.65 ${sans};color:${tinta}">
 ${p(esc(c.saludo))}
 ${p(esc(t.quien), 'margin-bottom:6px')}
-<p style="margin:0 0 20px;font:italic 26px/1.25 ${serif};color:${tinta}">${esc(t.gancho)}</p>
-</td></tr>
-
-<tr><td style="padding:0 28px">
-<a href="${esc(VIDEO)}" style="text-decoration:none;display:block"><img src="${esc(PORTADA[idioma])}" width="544" alt="▶ ${esc(t.verVideo)}" style="display:block;width:100%;max-width:544px;height:auto;border:0;border-radius:8px;font:600 16px ${sans};color:${oroTexto}"></a>
-<p style="margin:10px 0 24px;font:600 14px/1.4 ${sans}"><a href="${esc(VIDEO)}" style="color:${oroTexto};text-decoration:none">▶ ${esc(t.verVideo)}</a></p>
+<p style="margin:0 0 22px;font:italic 26px/1.25 ${serif};color:${tinta}">${esc(t.gancho)}</p>
 </td></tr>
 
 <tr><td style="padding:0 28px;font:16px/1.65 ${sans};color:${tinta}">
@@ -206,9 +196,11 @@ ${p(esc(t.hecho), 'margin-bottom:24px')}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${noche};border-radius:10px"><tr><td style="padding:26px 26px 24px">
 <p style="margin:0 0 10px;font:italic 22px/1.3 ${serif};color:#F4EEE3">${esc(t.invitaTitulo)}</p>
 <p style="margin:0 0 20px;font:15px/1.6 ${sans};color:#CFC6B6">${esc(t.invita)}</p>
-<a href="${esc(wa)}" style="display:inline-block;background:${oro};color:${noche};text-decoration:none;font:700 15px/1 ${sans};padding:14px 22px;border-radius:6px;margin:0 10px 10px 0">${esc(t.boton)} · WhatsApp</a>
-<a href="${esc(pdf)}" style="display:inline-block;color:#F4EEE3;text-decoration:none;font:600 15px/1 ${sans};padding:13px 20px;border:1px solid #5C5446;border-radius:6px;margin:0 0 10px">${esc(t.verPdf)}</a>
-<p style="margin:6px 0 0;font:13px/1.5 ${sans};color:#9E9584">${esc(t.oResponda)}</p>
+<a href="${esc(VIDEO)}" style="display:block;background:#E62117;color:#FFFFFF;text-decoration:none;font:700 16px/1 ${sans};padding:16px 20px;border-radius:6px;text-align:center">${esc(t.verVideo)}</a>
+<p style="margin:8px 0 18px;font:12px/1.5 ${sans};color:#9E9584;text-align:center">${esc(t.videoNota)} youtube.com</p>
+<a href="${esc(wa)}" style="display:block;background:${oro};color:${noche};text-decoration:none;font:700 16px/1 ${sans};padding:16px 20px;border-radius:6px;text-align:center">${esc(t.boton)} · WhatsApp</a>
+<p style="margin:16px 0 0;font:14px/1.5 ${sans};text-align:center"><a href="${esc(pdf)}" style="color:#F4EEE3">${esc(t.verPdf)}</a></p>
+<p style="margin:6px 0 0;font:13px/1.5 ${sans};color:#9E9584;text-align:center">${esc(t.oResponda)}</p>
 </td></tr></table>
 </td></tr>
 
