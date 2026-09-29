@@ -66,7 +66,7 @@ export function tipoBuzon(correo) {
 }
 
 // «Contacto institucional», «Equipo de inversión», «Loomis International»… no son personas.
-const NO_PERSONA = /^(contacto|institucional|equipo|redacci|prensa|press|media|organizaci|asociaci|associa|c[aá]mara|conferencia|direcci|relaci|alianzas|pitch|membership|corporate|programa|empresa|banco|secci|fundaci|comisi|federaci|red |mesa|editor|voice|bid |ifc|w3c|world|oficina|consejo|comunidad)/i;
+const NO_PERSONA = /^(customer|client|servicio|services|atenci|contacto|institucional|equipo|redacci|prensa|press|media|organizaci|asociaci|associa|c[aá]mara|conferencia|direcci|relaci|alianzas|pitch|membership|corporate|programa|empresa|banco|secci|fundaci|comisi|federaci|red |mesa|editor|voice|bid |ifc|w3c|world|oficina|consejo|comunidad)/i;
 
 export function esPersona(persona, org) {
   const p = persona.replace(/\s*\([^)]*\)\s*/g, ' ').trim();

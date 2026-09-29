@@ -90,6 +90,28 @@ async function mandarSes({ para, asunto, texto, html }) {
 
 const POR_SES = String(process.env.TRANSPORTE || '').toLowerCase() === 'ses';
 
+// El estado de la cuenta de SES. Si deja de estar HEALTHY (rebotes o quejas), se para: la
+// misma cuenta manda los correos de Veta y Genesis.
+async function saludSes() {
+  const region = String(process.env.AWS_REGION || 'us-east-1').trim().toLowerCase().replace(/\s+/g, '-');
+  const host = `email.${region}.amazonaws.com`;
+  const ruta = '/v2/email/account';
+  const sha = (d) => crypto.createHash('sha256').update(d).digest('hex');
+  const hmac = (k, d) => crypto.createHmac('sha256', k).update(d).digest();
+  const amz = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
+  const fecha = amz.slice(0, 8);
+  const h = { host, 'x-amz-date': amz };
+  if (process.env.AWS_SESSION_TOKEN) h['x-amz-security-token'] = process.env.AWS_SESSION_TOKEN;
+  const firmadas = Object.keys(h).sort();
+  const canonica = ['GET', ruta, '', firmadas.map((k) => `${k}:${h[k]}\n`).join(''), firmadas.join(';'), sha('')].join('\n');
+  const alcance = `${fecha}/${region}/ses/aws4_request`;
+  const kFirma = hmac(hmac(hmac(hmac(`AWS4${process.env.AWS_SECRET_ACCESS_KEY}`, fecha), region), 'ses'), 'aws4_request');
+  const firma = crypto.createHmac('sha256', kFirma).update(`AWS4-HMAC-SHA256\n${amz}\n${alcance}\n${sha(canonica)}`).digest('hex');
+  h.authorization = `AWS4-HMAC-SHA256 Credential=${process.env.AWS_ACCESS_KEY_ID}/${alcance}, SignedHeaders=${firmadas.join(';')}, Signature=${firma}`;
+  const j = await (await fetch(`https://${host}${ruta}`, { headers: h, signal: AbortSignal.timeout(15000) })).json();
+  return { estado: j.EnforcementStatus, envio: j.SendingEnabled };
+}
+
 async function mandar(m) {
   if (POR_SES) return mandarSes(m);
   const { para, asunto, texto, html } = m;
@@ -158,6 +180,12 @@ if (modo === 'vista') {
     await enlacesVivos();
     if (!POR_SES) await smtp().verify();
     for (const [i, c] of cola.entries()) {
+      // Freno de mano: crear el archivo PARAR en esta carpeta detiene el envío.
+      if (fs.existsSync(aqui + 'PARAR')) { console.log('PARAR encontrado: se detiene el envío.'); break; }
+      if (POR_SES && i % 10 === 0) {
+        const s = await saludSes().catch((e) => ({ estado: 'desconocido: ' + e.message }));
+        if (s.estado !== 'HEALTHY' || s.envio === false) throw new Error(`SES no está sano (${s.estado}): se detiene el envío.`);
+      }
       const m = correo(c);
       const r = await mandar({ para: c.correo, asunto: m.asunto, texto: m.texto, html: m.html });
       fs.appendFileSync(REGISTRO, JSON.stringify({ en: new Date().toISOString(), n: c.n, correo: c.correo, ...r }) + '\n');
