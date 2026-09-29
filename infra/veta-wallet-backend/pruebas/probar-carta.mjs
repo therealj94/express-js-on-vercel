@@ -13,7 +13,18 @@ let fallos = 0
 const ok = (que, cond) => { console.log(`${cond ? '  ok  ' : ' FALLA'}  ${que}`); if (!cond) fallos++ }
 const plano = (s) => s.replace(/\s+/g, ' ')
 
-const c = cartaNovedades({ nombre: 'José Enamorado', correo: 'jose@ordenglobal.org' })
+/* EL SORTEO TIENE FECHA, Y LA PRUEBA TAMBIÉN. La carta quita sola el bloque del
+   sorteo cuando cierra (`sorteoVivo`, 10-sep). Esta prueba lo miraba con el reloj
+   de verdad y desde ese día fallaba por «le falta el +18» —justo lo que la carta
+   debe hacer: no invitar a un sorteo cerrado—. Así que se miran los DOS estados,
+   con el reloj puesto a mano: durante el sorteo, la invitación completa; después,
+   ni una palabra de él. */
+const relojReal = Date.now
+const conReloj = (ms, fn) => { Date.now = () => ms; try { return fn() } finally { Date.now = relojReal } }
+const DURANTE = Date.UTC(2026, 8, 1, 12)
+const DESPUES = Date.UTC(2026, 8, 11, 12)
+
+const c = conReloj(DURANTE, () => cartaNovedades({ nombre: 'José Enamorado', correo: 'jose@ordenglobal.org' }))
 const todo = plano(c.html + ' ' + c.texto)
 
 console.log('\nLa regla de cobre (Decisión 4 de la Junta)\n')
@@ -27,6 +38,12 @@ ok('lleva el +18', /18 años/.test(todo))
 ok('lleva el enlace a las bases', /sorteo-orden-global/.test(todo))
 ok('dice cuándo cierra', /9 de septiembre/.test(todo))
 ok('dice que no hay que comprar nada', /no hay que comprar nada/i.test(todo))
+
+console.log('\nCon el sorteo cerrado, la carta no lo invita\n')
+const cerrada = conReloj(DESPUES, () => cartaNovedades({ nombre: 'José Enamorado', correo: 'jose@ordenglobal.org' }))
+const todoCerrada = plano(cerrada.html + ' ' + cerrada.texto)
+ok('no invita a un sorteo que ya cerró', !/sorteamos|sorteo-orden-global/i.test(todoCerrada))
+ok('y la regla de cobre sigue: nunca «respaldado» ni «es una onza»', !/respaldad|es una onza/i.test(todoCerrada))
 
 console.log('\nNo se vende lo que no está abierto\n')
 ok('avisa de que comprar y cambiar siguen en obra', /todavía no están abiertos/.test(todo))
