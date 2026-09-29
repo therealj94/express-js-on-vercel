@@ -301,8 +301,17 @@ const TEXTOS: Record<string, Texto> = {
       + '**Modelo de confianza:** su aplicación ya autenticó a la persona y responde por '
       + 'ello con su clave de API. Genesis ID comprueba que esa cuenta esté atada a ese '
       + 'GID, pero no vuelve a autenticar a nadie. Es un modelo de cliente de confianza, '
-      + 'válido entre aplicaciones del mismo ecosistema; no lo sería para terceros.',
-    cuerpo: { gid: s('string'), cuenta: s('string') },
+      + 'válido entre aplicaciones del mismo ecosistema; no lo sería para terceros.\n\n'
+      + '**Pase con destino (`aud`).** Si se indica, el pase solo vale en esas aplicaciones '
+      + 'y cada una lo puede canjear **una sola vez**. Con `reto` (el SHA-256 en base64url '
+      + 'de un verificador al azar que guarda la app que pidió el pase), el canje exige ese '
+      + 'verificador: un pase interceptado en el enlace de vuelta no le sirve a quien lo '
+      + 'intercepte. Sin `aud`, el pase se comporta como siempre.',
+    cuerpo: {
+      gid: s('string'), cuenta: s('string'),
+      aud: s('string', 'Una aplicación o lista de hasta cuatro (claves del ecosistema)'),
+      reto: s('string', 'SHA-256 del verificador, base64url sin relleno (43 caracteres)'),
+    },
     obligatorios: ['gid', 'cuenta'],
     devuelve: '`{ token, expiraEn }`',
     errores: {
@@ -312,10 +321,14 @@ const TEXTOS: Record<string, Texto> = {
   },
   'POST /api/v1/sso/verificar': {
     resumen: 'Canjear un token de inicio de sesión único',
-    cuerpo: { token: s('string') },
+    cuerpo: { token: s('string'), verificador: s('string', 'Obligatorio si el pase lleva reto') },
     obligatorios: ['token'],
-    devuelve: '`{ gid, cuenta, app }` y, con `gid.perfil`, el perfil público.',
-    errores: { '401': 'Token inválido o vencido' },
+    devuelve: '`{ gid, emitidoPor, expira }`; con `gid.perfil`, el perfil público; con '
+      + '`gid.correo`, el correo de esa identidad; y `aud` si el pase tenía destino.',
+    errores: {
+      '401': 'Token inválido o vencido; `codigo`: OTRA_APP (el pase es para otra aplicación), '
+        + 'RETO (falta el verificador o no coincide) o USADO (esta aplicación ya lo canjeó)',
+    },
   },
   'POST /api/v1/credenciales': {
     resumen: 'Emitir la credencial que se lleva la persona',

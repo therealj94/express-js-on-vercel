@@ -68,6 +68,7 @@ import { activarInmersivo, vigilarInmersivo } from './src/og/Inmersivo';
 import { cargarNombre } from './src/og/asistente';
 import Remesas from './src/screens/Remesas';
 import DeleteAccount from './src/screens/DeleteAccount';
+import PaseAura from './src/screens/PaseAura';
 import ChangePassword from './src/screens/ChangePassword';
 import ErrorBoundary from './src/ErrorBoundary';
 import { arrancarTelemetria, fallo, identificar, olvidar, confirmarEnPadron, idDelToken } from './src/telemetria';
@@ -76,7 +77,7 @@ const SCREENS = {
   splash: Splash, auth: Auth, kyc: Kyc, seedview: SeedView, genesisOffer: GenesisOffer,
   home: Home, token: TokenDetail, send: Send, receive: Receive, buy: Buy, swap: Swap,
   card: CardScreen, cardSettings: CardSettings, fundCard: FundCard, deposit: Deposit, activity: Activity, notifs: Notifications, settings: Settings,
-  profile: Profile, mytokenpay: MyTokenPay, passport: Passport, blocked: Blocked, privatekey: PrivateKey,
+  profile: Profile, mytokenpay: MyTokenPay, 'pase-aura': PaseAura, passport: Passport, blocked: Blocked, privatekey: PrivateKey,
   scan: Scan, contacts: Contacts, about: About,
   onboarding: Onboarding, watchOnly: WatchOnly, sessions: Sessions, help: Help,
   remesas: Remesas, deleteAccount: DeleteAccount, changePassword: ChangePassword,
@@ -351,7 +352,17 @@ function Root() {
       if (/vetawallet:\/\/sso(\?|$)/i.test(url)) {
         if (!accountRef.current) return; // sin sesión no hay pase que pedir
         const p = parsePayLink(url);
-        if ((p.destino || '').toLowerCase() !== 'mytokenpay') return;
+        const destino = (p.destino || '').toLowerCase();
+        /* AU-RA FP pide entrar con el Genesis ID de esta cuenta. NO se
+           dispara solo, a diferencia de MyTokenPay: se abre una pantalla que
+           dice qué se comparte y espera el «Permitir». Un enlace lo puede abrir
+           cualquier app; el consentimiento solo lo da la persona. */
+        if (destino === 'aura') {
+          setDir(1);
+          setStack([{ r: 'home' }, { r: 'pase-aura', params: { reto: p.reto || '', estado: p.estado || '' } }]);
+          return;
+        }
+        if (destino !== 'mytokenpay') return;
         setDir(1);
         setStack([{ r: 'home' }, { r: 'mytokenpay', params: { auto: 1 } }]);
         return;
