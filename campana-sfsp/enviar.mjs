@@ -16,6 +16,8 @@
 //  · POR_HORA (30): cuántos por hora. Entre uno y otro hay 3600/POR_HORA segundos, con ±20 % al azar
 //    para que no parezca una máquina.
 //  · COPIA_A: si se pone, cada correo va con copia oculta a esa dirección.
+//  · RITMO=variable: en vez de POR_HORA fijo, una cantidad distinta cada hora según la hora de
+//    Honduras (ver rangoDeLaHora) y pausas irregulares.
 //
 // Nunca repite: cada envío queda en registro.jsonl y se salta. Quien pida no recibir más va a
 // bajas.txt (un correo por línea) y no se le vuelve a escribir.
@@ -144,6 +146,35 @@ async function enlacesVivos() {
 const esperar = (ms) => new Promise((ok) => setTimeout(ok, ms));
 const pausa = () => (3600_000 / POR_HORA) * (0.8 + Math.random() * 0.4);
 
+// RITMO=variable: cada hora sale una cantidad distinta, al azar dentro de un rango que
+// depende de la hora de Honduras (UTC−6), y con pausas irregulares entre correo y correo.
+// De madrugada salen pocos; en horario de oficina, más: así la mayoría llega cuando la gente
+// abre el correo, y el envío no tiene la cadencia fija de una máquina.
+export function rangoDeLaHora(horaHonduras) {
+  if (horaHonduras >= 7 && horaHonduras < 18) return [22, 34];
+  if (horaHonduras >= 18 && horaHonduras < 22) return [12, 20];
+  return [8, 14];
+}
+const azar = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const RITMO_VARIABLE = String(process.env.RITMO || '').toLowerCase() === 'variable';
+const cupo = { hora: -1, meta: 0, hechos: 0 };
+
+/** Cuánto esperar antes del siguiente correo con el ritmo variable. */
+function pausaVariable(ahora = new Date()) {
+  const hora = Math.floor(ahora.getTime() / 3600_000);
+  if (hora !== cupo.hora) {
+    const [a, b] = rangoDeLaHora((ahora.getUTCHours() + 18) % 24);
+    Object.assign(cupo, { hora, meta: azar(a, b), hechos: 0 });
+    console.log(`${ahora.toISOString().slice(11, 16)} · esta hora salen ${cupo.meta}`);
+  }
+  const finDeHora = (hora + 1) * 3600_000;
+  const faltanMs = finDeHora - ahora.getTime();
+  const faltan = cupo.meta - cupo.hechos;
+  // Cupo cumplido: se espera a la hora siguiente, más unos minutos al azar.
+  if (faltan <= 0) return faltanMs + azar(1, 6) * 60_000;
+  return Math.max(20_000, (faltanMs / faltan) * (0.4 + Math.random() * 1.1));
+}
+
 const contactos = () => leerCsv(aqui + 'envios.csv');
 const args = process.argv.slice(2);
 const modo = args[0];
@@ -179,6 +210,7 @@ if (modo === 'vista') {
   } else {
     await enlacesVivos();
     if (!POR_SES) await smtp().verify();
+    if (RITMO_VARIABLE) pausaVariable();
     for (const [i, c] of cola.entries()) {
       // Freno de mano: crear el archivo PARAR en esta carpeta detiene el envío.
       if (fs.existsSync(aqui + 'PARAR')) { console.log('PARAR encontrado: se detiene el envío.'); break; }
@@ -193,7 +225,8 @@ if (modo === 'vista') {
       // Tres rechazos seguidos: algo anda mal con el buzón, no con los contactos.
       const ultimos = leerLineas(REGISTRO).slice(-3).map((l) => JSON.parse(l));
       if (ultimos.length === 3 && ultimos.every((x) => !x.ok && !x.prueba)) throw new Error('Tres fallos seguidos: se detiene el envío.');
-      if (i < cola.length - 1) await esperar(pausa());
+      if (RITMO_VARIABLE) cupo.hechos++;
+      if (i < cola.length - 1) await esperar(RITMO_VARIABLE ? pausaVariable() : pausa());
     }
   }
 } else {
