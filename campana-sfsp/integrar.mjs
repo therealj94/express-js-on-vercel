@@ -5,6 +5,7 @@
 // En <carpeta>:
 //  · resultado-sin-correo-*.csv (n, correo, a_quien, fuente, nota): el correo oficial de
 //    contactos del directorio que no lo tenían;
+//  · rechazados.txt (opcional): números del directorio cuyo correo encontrado no se usa;
 //  · nuevos-*.csv (persona, cargo, org, pais, sector, correo, idioma, prior, a_quien, fuente):
 //    contactos nuevos, que entran con número desde el 286.
 //
@@ -28,14 +29,17 @@ const filas = leerCsv(original).map((r) => ({ ...r, fuente: r.fuente || 'Directo
 const vistos = new Set(filas.map((r) => r.correo.trim().toLowerCase()).filter(Boolean));
 const archivos = fs.readdirSync(carpeta).filter((f) => f.endsWith('.csv'));
 const cuenta = { completados: 0, nuevos: 0, descartados: [] };
+// rechazados.txt: números del directorio cuyo correo encontrado no llega a quien debe (la
+// dirección es de otra persona, de inversionistas o de otra oficina). Uno por línea.
+const rechazados = new Set(fs.existsSync(`${carpeta}/rechazados.txt`) ? fs.readFileSync(`${carpeta}/rechazados.txt`, 'utf8').split(/\s+/).filter(Boolean).map((x) => x.padStart(3, '0')) : []);
 
 for (const f of archivos.filter((f) => f.startsWith('resultado-sin-correo'))) {
   for (const r of leerCsv(`${carpeta}/${f}`)) {
     const e = r.correo.trim().toLowerCase();
-    if (!e) continue;
+    if (!e || rechazados.has(r.n.padStart(3, '0'))) continue;
     const fila = filas.find((x) => x.n === r.n.padStart(3, '0'));
     if (!fila || fila.correo) continue;
-    if (!valido(e) || vistos.has(e)) { cuenta.descartados.push(`#${r.n} ${e}`); continue; }
+    if (!valido(e) || vistos.has(e)) { cuenta.descartados.push(`#${r.n} ${e} (repetido o inválido)`); continue; }
     fila.correo = e;
     fila.fuente = r.fuente;
     vistos.add(e);
