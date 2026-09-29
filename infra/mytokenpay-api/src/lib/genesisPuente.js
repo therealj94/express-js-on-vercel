@@ -672,8 +672,30 @@ export function routerGenesis({ exigirSesion, exigirGidDeSesion = false, vinculo
   /**
    * Token de sesión única para entrar en otra app del ecosistema sin repetir
    * el KYC.
+   *
+   * `aud` y `reto` son opcionales y viajan tal cual a Genesis, que es quien los
+   * hace cumplir. Los usa AU-RA: un pase CON destino solo vale en esas apps,
+   * se gasta al usarse, y con el reto solo lo puede canjear la app que lo pidió
+   * (ver genesis-id/src/pruebas/pase-con-destino.test.ts). Aquí solo se les da
+   * forma: nada que no sea una lista corta de claves o una huella de 43
+   * caracteres llega a Genesis. Se validan ANTES que el correo y el GID: un
+   * pedido mal formado no le cuesta una consulta a Genesis.
    */
   router.post('/sso/token', async (req, res) => {
+    const extra = {}
+    if (req.body?.aud !== undefined) {
+      const aud = (Array.isArray(req.body.aud) ? req.body.aud : [req.body.aud]).map(String)
+      if (!aud.length || aud.length > 4 || aud.some((a) => !/^[a-z0-9-]{2,32}$/.test(a))) {
+        return res.status(400).json({ error: 'Destino del pase inválido' })
+      }
+      extra.aud = aud
+    }
+    if (req.body?.reto !== undefined) {
+      if (typeof req.body.reto !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(req.body.reto)) {
+        return res.status(400).json({ error: 'Reto del pase inválido' })
+      }
+      extra.reto = req.body.reto
+    }
     // Un pase de SSO abre sesión en las otras apps del ecosistema con este GID:
     // sin correo comprobado (y sin `exigirGidDeSesion`, que tiene su propia
     // prueba) no se pide, ni siquiera se pregunta por el GID.
@@ -687,7 +709,7 @@ export function routerGenesis({ exigirSesion, exigirGidDeSesion = false, vinculo
     if (codigo) return negar(res, codigo)
     responder(res)(await llamar('/api/v1/sso/token', {
       method: 'POST',
-      body: JSON.stringify({ gid, cuenta: req.usuario.id || req.usuario.email }),
+      body: JSON.stringify({ gid, cuenta: req.usuario.id || req.usuario.email, ...extra }),
     }))
   })
 

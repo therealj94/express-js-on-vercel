@@ -22,6 +22,7 @@ export const ALCANCES = {
   'identidad.documento': 'Subir documento y biometría',
   'gid.verificar': 'Comprobar si un GID está verificado (solo sí/no y nivel)',
   'gid.perfil': 'Leer el perfil básico asociado a un GID',
+  'gid.correo': 'Leer el correo de la identidad cuyo pase le presentan (solo el de ese pase)',
   'vinculo.crear': 'Atar una cuenta de la app a un GID',
   'negocio.crear': 'Registrar un negocio para KYB',
   'movimiento.enviar': 'Enviar movimientos para monitoreo AML',
@@ -121,6 +122,29 @@ export const APPS_ECOSISTEMA: { clave: string; nombre: string; alcances: Alcance
     // retiros), ni directorio.enviar (seis personas no son un censo). Una clave
     // filtrada de ULTRON no abre nada más que la pregunta de si un pase vale.
     alcances: ['gid.verificar', 'gid.perfil'],
+  },
+  {
+    clave: 'aura',
+    nombre: 'AU-RA FP',
+    // La app de los avatares (repo ULTRON-APP, aura-fp.onrender.com). A
+    // diferencia de ULTRON, AU-RA SÍ es para cualquier persona con Genesis ID:
+    // su cuenta ES su GID. Solo necesita saber si el pase que le traen vale y
+    // de quién es (gid.verificar), el nombre para saludar y si sigue
+    // verificada (gid.perfil), y el correo de ESA identidad para mostrarle con
+    // qué cuenta entró (gid.correo). No hace KYC, no mueve dinero, no ata
+    // cuentas: una clave filtrada de AU-RA solo abre la pregunta «¿este pase
+    // hecho PARA AU-RA vale?».
+    alcances: ['gid.verificar', 'gid.perfil', 'gid.correo'],
+  },
+  {
+    clave: 'pulse2chat',
+    nombre: 'PULSE2CHAT',
+    // El relevo de mensajes (infra/mensajes). Sus cuentas se llaman por el
+    // correo de la wallet, así que para dejar entrar al chat a quien llega con
+    // un pase —sin la sesión de la wallet, que nunca sale de la wallet— tiene
+    // que saber de qué correo es ese GID (gid.correo). Nada más: el chat no
+    // enseña perfiles de Genesis ni hace nada con la identidad.
+    alcances: ['gid.verificar', 'gid.correo'],
   },
 ]
 

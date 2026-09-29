@@ -48,7 +48,16 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 # tenia (ver TURN_CONSERVADO mas abajo). Trayendolas, mandan las nuevas.
 def lineas_turno():
     fuera = []
-    for nombre in ('TURN_LLAVE_ID', 'TURN_LLAVE_TOKEN', 'TURN_VIDA'):
+    # Tambien la clave de Genesis del relevo (app `pulse2chat`: canjea los
+    # pases con los que AU-RA abre el chat) y el interruptor de las altas con
+    # prueba. Mismas reglas: del entorno de quien despliega, nunca del repo.
+    #
+    #   MENSAJES_GENESIS_CLAVE=gid_live_…            la clave de la app pulse2chat
+    #   MENSAJES_ALTA_CON_PRUEBA=1                   cuentas nuevas solo probando el correo
+    #   MENSAJES_ALTA_LIBRE=bot@…,otro@…             los bots que se dan de alta solos
+    for nombre in ('TURN_LLAVE_ID', 'TURN_LLAVE_TOKEN', 'TURN_VIDA',
+                   'MENSAJES_GENESIS_URL', 'MENSAJES_GENESIS_CLAVE',
+                   'MENSAJES_ALTA_CON_PRUEBA', 'MENSAJES_ALTA_LIBRE'):
         v = os.environ.get(nombre, '').strip()
         if v:
             fuera.append(f'Environment={nombre}={v}')
@@ -144,15 +153,18 @@ def main():
         # maquina ya tenia y se pegan en la unidad nueva. Trayendolas, mandan
         # las nuevas: cambiar una credencial tiene que poder hacerse.
         "curl -fsS '%s' -o /tmp/mensajes.service.nuevo" % url2,
-        'if ! grep -q "^Environment=TURN_" /tmp/mensajes.service.nuevo; then '
-        '  VIEJAS=$(grep "^Environment=TURN_" /etc/systemd/system/mensajes.service 2>/dev/null || true); '
+        # Lo mismo, familia por familia, para la clave de Genesis y el
+        # interruptor de las altas: traer una no borra las otras.
+        'for P in TURN_ MENSAJES_GENESIS_ MENSAJES_ALTA_; do '
+        'if ! grep -q "^Environment=$P" /tmp/mensajes.service.nuevo; then '
+        '  VIEJAS=$(grep "^Environment=$P" /etc/systemd/system/mensajes.service 2>/dev/null || true); '
         '  if [ -n "$VIEJAS" ]; then '
         '    awk -v v="$VIEJAS" \'{print} /^Environment=MENSAJES_VAPID_PEM=/{print v}\' '
         '      /tmp/mensajes.service.nuevo > /tmp/mensajes.service.con-turn && '
         '    mv /tmp/mensajes.service.con-turn /tmp/mensajes.service.nuevo; '
-        '    echo TURN_CONSERVADO; '
-        '  else echo TURN_NO_HABIA; fi; '
-        'else echo TURN_NUEVO; fi',
+        '    echo ${P}CONSERVADO; '
+        '  else echo ${P}NO_HABIA; fi; '
+        'else echo ${P}NUEVO; fi; done',
         'mv /tmp/mensajes.service.nuevo /etc/systemd/system/mensajes.service',
         # restart, no enable --now: con el servicio ya activo, enable --now es
         # un no-op y el proceso VIEJO sigue sirviendo el codigo viejo.

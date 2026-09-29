@@ -10,12 +10,17 @@ El modelo de identidad, dicho sin adornos:
   · la llave firma cada petición siguiente de ese correo;
   · el PRIMER alta de un correo se lo queda — quien llegue después con el
     mismo correo y otra llave, no entra.
-Eso protege el buzón de un correo ya dado de alta, pero NO impide darse de
-alta con el correo de otro ANTES que él. Cerrarlo de verdad exige verificar
-la sesión de la wallet (PASS_TOKEN), y ese secreto está en la lista de la
-Junta para rotarse (tarea 27): cuando se rote, aquí se añade la
-comprobación. Escrito en el LEEME y dicho en la entrega — no es E2E y no se
-promete E2E.
+Eso protege el buzón de un correo ya dado de alta. El correo se PRUEBA de
+dos maneras: con la sesión de la wallet (`sesion`, se le pregunta al backend)
+o con un pase de Genesis ID sacado para el chat (`pase` + `verificador`, se
+le pregunta a Genesis; es como entra AU-RA, que no tiene ni debe tener la
+sesión de la wallet). Con MENSAJES_ALTA_CON_PRUEBA=1 una cuenta NUEVA solo se
+crea probando el correo; apagado, sigue abierto el hueco de siempre: darse de
+alta con el correo de otro ANTES que él.
+
+Una cuenta puede escuchar desde varios aparatos (la web, la app Orden Global,
+AU-RA): cada uno dice su `aparato` y recibe TODAS las señales una vez, sin
+robárselas a los demás. Ver «UN BUZÓN POR CUENTA, UNA LECTURA POR APARATO».
 
 Los grupos ('g:'+16hex) son la segunda mitad de AURO CHAT. Dos permisos y
 nada más: ser MIEMBRO (leer y escribir en el hilo) y ser ADMIN (renombrar,
@@ -58,6 +63,7 @@ TOPE_GRUPOS = 200          # ningún usuario en más de 200 grupos
 # El JSON entero se reescribe en cada mensaje: un grupo de miles de miembros
 # haría lento cada guardado de todo el relevo. 500 sobra para lo que esto es.
 TOPE_MIEMBROS = 500
+TOPE_PUSH = 6              # suscripciones push por cuenta (web, Orden Global, AU-RA…)
 # Las rutas de dos niveles (/grupo/crear, /amistad/pedir, …). Todo lo que no
 # esté aquí se lee solo por su último tramo.
 FAMILIAS = ('grupo', 'llaves', 'amistad', 'estado')
@@ -588,6 +594,64 @@ def quien_es_la_sesion(token):
     return correo, gid
 
 
+# ── EL PASE DE GENESIS: ENTRAR AL CHAT DESDE OTRA APP ───────────────────────
+#
+# La sesión de la wallet no sale nunca de la wallet: ni la app AU-RA ni ninguna
+# otra la tiene, ni debe tenerla (abre la billetera entera). Lo que sí puede
+# traer otra app es un PASE de Genesis ID sacado para ella y para el chat
+# (aud = pulse2chat), de un solo uso y con reto: solo lo canjea la app que lo
+# pidió, porque solo ella tiene el verificador (ver genesis-id,
+# pase-con-destino.test.ts). Genesis dice de quién es —GID y el correo de esa
+# identidad— y eso vale aquí lo mismo que una sesión: prueba el correo.
+#
+# Se exige que el pase lleve destino. Un pase sin destino es el de siempre, que
+# vale en cualquier casa y las veces que sea; aceptarlo aquí dejaría a
+# cualquiera de esas casas entrar al chat de sus usuarios.
+GENESIS_URL = os.environ.get('MENSAJES_GENESIS_URL', 'https://genesis-id.onrender.com').rstrip('/')
+GENESIS_CLAVE = os.environ.get('MENSAJES_GENESIS_CLAVE', '').strip()
+
+
+def quien_es_el_pase(pase, verificador):
+    """`(correo, gid)` del pase, preguntándole a Genesis; `(None, None)` si no vale."""
+    if not GENESIS_CLAVE or not isinstance(pase, str) or not pase or len(pase) > 4096:
+        return None, None
+    if not isinstance(verificador, str) or not (20 <= len(verificador) <= 200):
+        return None, None
+    import urllib.request
+    try:
+        pet = urllib.request.Request(
+            GENESIS_URL + '/api/v1/sso/verificar', method='POST',
+            data=json.dumps({'token': pase, 'verificador': verificador}).encode(),
+            headers={'Content-Type': 'application/json', 'X-API-Key': GENESIS_CLAVE})
+        with urllib.request.urlopen(pet, timeout=8) as r:
+            v = json.loads(r.read() or b'{}')
+    except Exception:
+        return None, None
+    if not isinstance(v, dict) or v.get('valido') is not True:
+        return None, None
+    if 'pulse2chat' not in (v.get('aud') or []):
+        return None, None
+    correo = str(v.get('correo') or '').strip().lower()
+    gid = str(v.get('gid') or '').strip().upper()
+    if not correo_valido(correo) or not re.fullmatch(r'GEN-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]', gid):
+        return None, None
+    return correo, gid
+
+
+# ── LAS ALTAS NUEVAS, CON PRUEBA ────────────────────────────────────────────
+#
+# El hueco de la cabecera: el alta SIN sesión se queda con cualquier correo que
+# nadie haya reclamado. Con MENSAJES_ALTA_CON_PRUEBA=1, una cuenta NUEVA del
+# chat solo se crea si quien la pide prueba ese correo —con la sesión de la
+# wallet o con un pase de Genesis—. Los bots que se dan de alta solos (AU-RA en
+# el nodo) van en MENSAJES_ALTA_LIBRE, separados por comas.
+#
+# Apagado por defecto para no cambiar nada al desplegar esto: se enciende
+# cuando se haya comprobado que la web y la app mandan la sesión en el alta.
+ALTA_CON_PRUEBA = os.environ.get('MENSAJES_ALTA_CON_PRUEBA', '') == '1'
+ALTA_LIBRE = {c.strip().lower() for c in os.environ.get('MENSAJES_ALTA_LIBRE', '').split(',') if c.strip()}
+
+
 ORIGENES = {
     'https://www.vetawallet.com',
     'https://vetawallet.com',
@@ -1022,8 +1086,32 @@ VIDA_SENAL = 60            # lo que vive una señal sin que nadie la recoja
 TOPE_SENALES = 60          # por buzón: una llamada normal usa unas veinte
 TOPE_SENAL_DATOS = 12_000  # una oferta SDP ronda los 4KB; ICE, unos cientos
 
-senales = {}                          # correo -> [ {de, tipo, datos, en} ]
+senales = {}                          # correo -> [ {n, de, tipo, datos, en, desde} ]
 aviso_senal = threading.Condition()   # su propio candado, NO el global
+
+# ── UN BUZÓN POR CUENTA, UNA LECTURA POR APARATO ─────────────────────────────
+#
+# Antes `recoger_senales` hacía `senales.pop(correo)`: el primero que
+# preguntaba se lo llevaba todo. Con un solo aparato por cuenta daba igual.
+# Con dos —la app Orden Global y AU-RA escuchando con la MISMA cuenta— se
+# roban entre ellos: el timbre suena en uno, la respuesta SDP la recoge el
+# otro, y la llamada no conecta nunca sin que nadie entienda por qué.
+#
+# Ahora el buzón de cada cuenta es un registro que NO se vacía al leer (se
+# vacía solo, por edad, como siempre), y cada aparato lleva su propio cursor:
+# «lo último que ya vi». Todos los aparatos reciben todas las señales, cada
+# uno una vez. Un cliente viejo que no dice qué aparato es escucha con el
+# cursor '' y se porta exactamente como antes.
+_serie_senal = [0]
+cursores = {}                         # (correo, aparato) -> [ultimo n visto, cuándo]
+VIDA_CURSOR = 600                     # un aparato que no pregunta en diez minutos se olvida
+APARATO = re.compile(r'[A-Za-z0-9_-]{1,32}')
+
+
+def aparato_de(b):
+    """El aparato que dice ser quien pide, o '' si no dice (cliente viejo)."""
+    a = str(b.get('aparato', '') or '')
+    return a if APARATO.fullmatch(a) else ''
 
 
 def _purgar_senales(ahora):
@@ -1032,36 +1120,52 @@ def _purgar_senales(ahora):
         senales[quien] = [x for x in senales[quien] if ahora - x['en'] < VIDA_SENAL]
         if not senales[quien]:
             del senales[quien]
+    for k in [k for k, v in cursores.items() if ahora - v[1] > VIDA_CURSOR]:
+        del cursores[k]
 
 
-def dejar_senal(para, de, tipo, datos):
-    """Deja una señal para alguien y despierta a quien esté esperando."""
+def dejar_senal(para, de, tipo, datos, desde=''):
+    """Deja una señal para alguien y despierta a quien esté esperando.
+
+    `desde` es el aparato de quien la manda, cuando la cuenta se manda algo a
+    sí misma (ver «atendida»): así el aparato que la originó puede ignorarla.
+    """
     ahora = time.time()
     with aviso_senal:
         _purgar_senales(ahora)
         buzon = senales.setdefault(para, [])
         if len(buzon) >= TOPE_SENALES:
             return False
-        buzon.append({'de': de, 'tipo': tipo, 'datos': datos, 'en': ahora})
+        _serie_senal[0] += 1
+        buzon.append({'n': _serie_senal[0], 'de': de, 'tipo': tipo, 'datos': datos,
+                      'en': ahora, 'desde': desde})
         aviso_senal.notify_all()
     return True
 
 
-def recoger_senales(quien, espera=ESPERA_SENAL):
-    """Lo que haya para mí, esperando hasta `espera` segundos si no hay nada.
+def recoger_senales(quien, aparato='', espera=ESPERA_SENAL):
+    """Lo que haya para mí que este aparato no haya visto, esperando hasta
+    `espera` segundos si no hay nada.
 
     Devolver la lista VACÍA tras la espera no es un fallo: es la forma de que
     el navegador vuelva a preguntar sin que la petición se quede colgada para
     siempre ni el móvil gaste batería sondeando cada segundo.
     """
     hasta = time.time() + espera
+    clave = (quien, aparato)
     with aviso_senal:
         while True:
-            _purgar_senales(time.time())
-            mias = senales.pop(quien, [])
+            ahora = time.time()
+            _purgar_senales(ahora)
+            cur = cursores.setdefault(clave, [0, ahora])
+            cur[1] = ahora
+            mias = [x for x in senales.get(quien, []) if x['n'] > cur[0]]
             if mias:
-                return [{'de': x['de'], 'tipo': x['tipo'], 'datos': x['datos']} for x in mias]
-            queda = hasta - time.time()
+                cur[0] = mias[-1]['n']
+                return [dict({'de': x['de'], 'tipo': x['tipo'], 'datos': x['datos']},
+                             **({'desde': x['desde']} if x['desde'] else {}))
+                        for x in mias]
+            queda = hasta - ahora
             if queda <= 0:
                 return []
             aviso_senal.wait(timeout=queda)
@@ -1293,6 +1397,8 @@ class Relevo(BaseHTTPRequestHandler):
         correo_probado, gid_probado = None, None
         if ruta == '/alta' and b.get('sesion'):
             correo_probado, gid_probado = quien_es_la_sesion(b.get('sesion'))
+        elif ruta == '/alta' and b.get('pase'):
+            correo_probado, gid_probado = quien_es_el_pase(b.get('pase'), b.get('verificador'))
 
         # El comprobante de pago se comprueba contra la cadena AQUI, fuera del
         # candado: puede sondear hasta PAGO_ESPERA segundos y el candado es de
@@ -1330,9 +1436,25 @@ class Relevo(BaseHTTPRequestHandler):
 
             if ruta == '/alta':
                 correo = str(b.get('correo', '')).lower()
+                # Con un pase, el correo lo dice Genesis: la app que lo trae
+                # puede no saberlo (la persona entró por la wallet, no con un
+                # formulario). Si lo manda, tiene que coincidir.
+                if b.get('pase'):
+                    if not correo_probado:
+                        return self._json(409, {'error': 'el pase no vale', 'motivo': 'pase-no-vale'})
+                    if not correo:
+                        correo = correo_probado
+                    elif correo != correo_probado:
+                        return self._json(409, {'error': 'ese correo ya tiene llave',
+                                                'motivo': 'otra-cuenta',
+                                                'correoReal': correo_probado})
                 if not correo_valido(correo):
                     return self._json(400, {'error': 'correo inválido'})
                 f = fichas.get(correo)
+                if f is None and ALTA_CON_PRUEBA and correo_probado != correo and correo not in ALTA_LIBRE:
+                    motivo = 'sesion-no-vale' if b.get('sesion') else 'sin-sesion'
+                    return self._json(409, {'error': 'para abrir el chat hace falta entrar con tu cuenta',
+                                            'motivo': motivo})
                 if f is None:
                     # El gid (Genesis ID) NO lo declara la persona: lo dice
                     # Genesis, a traves de la sesion. Sin sesion no hay gid.
@@ -1347,7 +1469,7 @@ class Relevo(BaseHTTPRequestHandler):
                          'desde': int(time.time())}
                     fichas[correo] = f
                     guardar(d)
-                    return self._json(200, {'llave': f['llave']})
+                    return self._json(200, {'llave': f['llave'], 'correo': correo})
                 # el correo ya existe: su dueño refresca datos y recibe su
                 # llave. Dueño es quien LA TIENE — o quien lo PRUEBA con su
                 # sesión de la wallet, que es lo que salva al segundo
@@ -1365,7 +1487,7 @@ class Relevo(BaseHTTPRequestHandler):
                         f['gid'] = gid_probado
                     f['foto'] = foto_valida(d, b.get('foto', f.get('foto', '')))
                     guardar(d)
-                    return self._json(200, {'llave': f['llave']})
+                    return self._json(200, {'llave': f['llave'], 'correo': correo})
                 # ── Y SE DICE POR QUE ──────────────────────────────────────
                 # Este 409 tenia dos causas muy distintas y contaba la misma
                 # historia: «tu chat esta en otro lado». Una es de verdad otro
@@ -1447,6 +1569,14 @@ class Relevo(BaseHTTPRequestHandler):
                     # El buzón lleno casi siempre es alguien reintentando en
                     # bucle, no tráfico legítimo. Se dice y no se acumula.
                     return self._json(429, {'error': 'demasiadas señales'})
+                # ATENDIDA EN OTRO APARATO. Si esta cuenta tiene la llamada
+                # sonando en dos aparatos y uno contesta (o la rechaza), el otro
+                # tiene que dejar de sonar. Se le deja a la PROPIA cuenta una
+                # señal «atendida» con el aparato que contestó: ese la ignora,
+                # los demás cuelgan su timbre. Los clientes viejos no conocen
+                # el tipo y la dejan pasar sin más.
+                if tipo in ('respuesta', 'rechazo', 'ocupado'):
+                    dejar_senal(correo, para, 'atendida', {'como': tipo}, aparato_de(b))
                 # El timbre. Solo el «llamo» inicial empuja —las demas señales
                 # son una llamada YA en curso, con las dos pantallas abiertas—
                 # y va con urgencia alta: un mensaje espera, una llamada no.
@@ -1471,7 +1601,7 @@ class Relevo(BaseHTTPRequestHandler):
                 # la seña de presencia buena, porque quien escucha el buzón
                 # puede recibir una llamada.
                 OIDO[correo] = time.time()
-                esperar_para = correo
+                esperar_para = (correo, aparato_de(b))
 
             if False:  # el hueco que deja el salto de /senales
                 pass
@@ -1624,9 +1754,18 @@ class Relevo(BaseHTTPRequestHandler):
                 if expo:
                     if not RE_EXPO.match(expo):
                         return self._json(400, {'error': 'testigo inválido'})
-                    lista = [x for x in f.setdefault('push', []) if x.get('expo') != expo]
-                    lista.append({'expo': expo, 'desde': int(time.time() * 1000)})
-                    f['push'] = lista[-3:]
+                    # Un aparato, un testigo: si el aparato dice quién es, su
+                    # testigo anterior se reemplaza aunque haya cambiado (Expo
+                    # lo renueva al reinstalar). Sin esto, la app Orden Global
+                    # y AU-RA en el mismo teléfono se iban desplazando.
+                    ap = aparato_de(b)
+                    lista = [x for x in f.setdefault('push', [])
+                             if x.get('expo') != expo and not (ap and x.get('aparato') == ap)]
+                    nuevo = {'expo': expo, 'desde': int(time.time() * 1000)}
+                    if ap:
+                        nuevo['aparato'] = ap
+                    lista.append(nuevo)
+                    f['push'] = lista[-TOPE_PUSH:]
                     guardar(d)
                     return self._json(200, {'ok': True, 'dispositivos': len(f['push'])})
                 sus = b.get('suscripcion')
@@ -1639,9 +1778,11 @@ class Relevo(BaseHTTPRequestHandler):
                 lista.append({'endpoint': sus['endpoint'],
                               'keys': sus.get('keys', {}),
                               'desde': int(time.time() * 1000)})
-                # Tres dispositivos por cuenta: mas que eso casi siempre son
-                # suscripciones muertas que nadie limpio.
-                f['push'] = lista[-3:]
+                # Un tope por cuenta: mas que eso casi siempre son suscripciones
+                # muertas que nadie limpio. Eran tres; con la web, la app Orden
+                # Global y AU-RA ya son tres aparatos de una misma persona, y
+                # con el cuarto se perdia el aviso del primero.
+                f['push'] = lista[-TOPE_PUSH:]
                 guardar(d)
                 return self._json(200, {'ok': True, 'dispositivos': len(f['push'])})
 
@@ -2604,7 +2745,7 @@ class Relevo(BaseHTTPRequestHandler):
         # global ya soltado: dentro, veinticinco segundos de espera serian
         # veinticinco segundos de chat congelado para todos los demas.
         if esperar_para:
-            return self._json(200, {'senales': recoger_senales(esperar_para)})
+            return self._json(200, {'senales': recoger_senales(*esperar_para)})
 
         return self._json(404, {'error': 'no existe'})
 

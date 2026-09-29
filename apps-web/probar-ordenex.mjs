@@ -363,54 +363,35 @@ console.log('\n── la portada ───────────────�
   decir(/contraseñas/.test(nota), 'y al lado dice la verdad: Ordenex no guarda contraseñas');
 }
 
-// ── 2 · a los mercados sin sesión: todo lo público se ve ───────────────────
-console.log('\n── mercados, sin sesión ──────────────────────────────────────');
+// ── 2 · una sola salida: la tabla de la portada ES la lista pública ────────
+/* El 6-sep se quitó «ver los mercados» y su lista aparte: los precios se ven
+   sin cuenta en la tabla de la portada, y tocar una fila abre su sala. Esta
+   sección comprueba ese contrato: no queda un segundo botón, cada fila es de
+   un par PUBLICADO (CADENA.PARES, no un número escrito aquí) y cada fila abre
+   su mercado. */
+console.log('\n── una sola salida, sin sesión ───────────────────────────────');
 {
-  await p.click('button[data-t="pt.ver"]');
-  await p.waitForTimeout(900);
-  const dentro = await p.evaluate(() => ({
-    app: !document.querySelector('#app').classList.contains('oculto'),
-    portada: document.querySelector('#portada').classList.contains('oculto'),
+  const botones = await p.evaluate(() => ({
+    ver: !!document.querySelector('button[data-t="pt.ver"]'),
+    entrar: document.querySelectorAll('button[data-t="pt.entrar"]').length,
   }));
-  decir(dentro.app && dentro.portada, '«ver los mercados» entra sin pedir cuenta');
+  decir(!botones.ver && botones.entrar >= 1, 'no queda «ver los mercados»: la salida es entrar con la wallet', JSON.stringify(botones));
 
-  /* Contra CADENA.PARES y no contra un numero escrito aqui: esta prueba
-     esperaba catorce, la tabla pinta cinco, y el numero a mano llevaba tanto
-     tiempo mal que ya no delataba nada. La lista es el contrato; la prueba
-     comprueba que la pantalla lo cumple, no que coincida con un recuerdo. */
-  const filas = await p.evaluate(() => document.querySelectorAll('#ms-cuerpo .ms-fila').length);
-  const pares = await p.evaluate(() => CADENA.PARES.length);
-  decir(filas === pares && filas > 0,
-    'todos los mercados publicados están SIEMPRE en pantalla, con guion donde no hay dato',
-    `filas: ${filas} de ${pares} pares`);
-  const auka = await p.evaluate(() => document.querySelector('#ms-cuerpo .ms-fila')?.textContent || '');
-  decir(/AUKA/.test(auka) && /\b111\b/.test(auka) && /222 AUKA/.test(auka), 'la fila de AUKA trae último 111 y volumen 222', auka);
+  const filas = await p.evaluate(() => [...document.querySelectorAll('#mv-cuerpo tr')].map((tr) => {
+    const m = /abrirPar\((['"])(.*?)\1\)/.exec(tr.getAttribute('onclick') || '');
+    return m ? m[2] : null;
+  }));
+  const fuera = await p.evaluate((l) => l.filter((m) => !CADENA.PARES.includes(m)), filas);
+  decir(filas.length > 0 && fuera.length === 0, 'cada fila de la tabla es un par publicado y abre su mercado', `filas: ${filas.join(', ')}${fuera.length ? ' · fuera: ' + fuera.join(', ') : ''}`);
 
-  /* LAS DOS PUNTAS EN LA LISTA, y los TRES estados distintos.
-
-     El 4-sep la casa tenia UNA sola orden viva —una venta de AUKA— y en la
-     lista ese mercado se veia igual que los cuatro vacios: guion en ultimo y
-     cero de volumen. El guion era correcto (nadie habia pagado nada) y la
-     pantalla mentia por omision: para enterarse de que habia con quien operar
-     habia que entrar par por par. Esta prueba existe para que no vuelva a
-     pasar, y exige que los tres estados se distingan — porque «vacio» donde
-     en realidad es «no lo se» es la misma mentira con otra letra. */
-  const puntas = await p.evaluate(() => {
-    // La columna del libro es .ms-libro dentro de cada fila de la rejilla.
-    const fila = (i) => document.querySelectorAll('#ms-cuerpo .ms-fila')[i];
-    const celda = (i) => fila(i)?.querySelector('.ms-libro')?.innerText.replace(/\s+/g, ' ').trim() ?? null;
-    return { auka: celda(0), agka: celda(1), otro: celda(2) };
-  });
-  decir(/venta/i.test(puntas.auka) && /112/.test(puntas.auka) && /compra/i.test(puntas.auka) && /110/.test(puntas.auka),
-    'con libro, la lista dice las dos puntas: venta 112 y compra 110', puntas.auka);
-  decir(/vac[ií]o/i.test(puntas.agka), 'con las puntas en null, dice «vacío»: es un hecho, no una falla', puntas.agka);
-  decir(puntas.otro === '—', 'y cuando el API no manda las puntas dice «—», no «vacío»', puntas.otro);
+  const auka = await p.evaluate(() => document.querySelector('#mv-cuerpo tr')?.textContent || '');
+  decir(/AUKA/.test(auka) && /\b111\b/.test(auka), 'la fila de AUKA trae su último 111', auka.replace(/\s+/g, ' ').trim());
 }
 
 // ── 3 · un mercado abierto: velas pintadas, libro con filas, invitación ────
 console.log('\n── AUKA-ORIGEN abierto, sin sesión ───────────────────────────');
 {
-  await p.click('#ms-cuerpo .ms-fila');
+  await p.click('#mv-cuerpo tr');
   await p.waitForTimeout(1200);
   decir(await p.evaluate(() => location.hash) === '#mercado/AUKA-ORIGEN', 'la barra de direcciones nombra el mercado');
   decir(/\b111\b/.test(await p.evaluate(() => document.querySelector('#vm-ultimo')?.textContent || '')), 'la cabecera dice el último: 111');
@@ -724,14 +705,15 @@ console.log('\n── cambiar a inglés ─────────────�
 {
   await p.evaluate(() => ONX.idioma('en'));
   await p.waitForTimeout(500);
-  for (const v of ['mercados', 'mercado', 'portafolio', 'fiat', 'actividad']) {
+  for (const v of ['mercado', 'portafolio', 'fiat', 'actividad']) {
     await p.evaluate(cual => ONX.vista(cual), v);
     await p.waitForTimeout(600);
     const sueltas = await clavesSueltas();
     decir(sueltas.length === 0, `en «${v}» no queda ninguna clave sin traducir`, sueltas.join(' · '));
   }
-  const mercadosEn = await p.evaluate(() => { ONX.vista('mercados'); return document.querySelector('#lienzo')?.innerText || ''; });
-  decir(/Markets|Market/.test(mercadosEn), 'y la vista de mercados habla inglés de verdad');
+  // «mercados» ya no es una vista (6-sep): la sala de un mercado es la que se lee.
+  const mercadoEn = await p.evaluate(async () => { ONX.vista('mercado'); await new Promise((r) => setTimeout(r, 600)); return document.querySelector('#lienzo')?.innerText || ''; });
+  decir(/\b(Buy|Sell|Order book|Trades)\b/.test(mercadoEn) && !/\b(Comprar|Vender|Libro de órdenes)\b/.test(mercadoEn), 'y la sala del mercado habla inglés de verdad', mercadoEn.replace(/\s+/g, ' ').slice(0, 120));
 
   await p.evaluate(() => ONX.salir());
   await p.waitForTimeout(600);
@@ -1056,18 +1038,20 @@ console.log('\n── EL BACKEND CAIDO: LOS MERCADOS SIGUEN EN PANTALLA ──�
     window.ONX_API = 'http://127.0.0.1:1';
     window.ONX_WALLET = origen;
   }, ORIGEN_LOCAL);
-  await pg.goto(BASE + '#mercados', { waitUntil: 'domcontentloaded' });
+  await pg.goto(BASE, { waitUntil: 'domcontentloaded' });
   await pg.waitForTimeout(3000);
 
+  /* Desde el 6-sep la lista pública es la tabla de la portada. Sin feed y sin
+     nada pintado antes, no se inventan filas: se dice la verdad en la nota, y
+     la portada sigue en pie con su única salida. */
   const est = await pg.evaluate(() => ({
-    filas: document.querySelectorAll('#ms-cuerpo .ms-fila').length,
-    pares: CADENA.PARES.length,
-    guiones: (document.querySelector('#ms-cuerpo')?.innerText.match(/—/g) || []).length,
-    nota: document.querySelector('#ms-nota')?.textContent || '',
+    portada: !document.querySelector('#portada')?.classList.contains('oculto'),
+    filas: document.querySelectorAll('#mv-cuerpo tr').length,
+    nota: document.querySelector('#mv-nota')?.textContent || '',
+    entrar: !!document.querySelector('button[data-t="pt.entrar"]'),
   }));
-  decir(est.filas === est.pares && est.filas > 0,
-    'sin backend, la tabla sigue trayendo todos los mercados', `${est.filas} de ${est.pares}`);
-  decir(est.guiones >= est.pares, 'con guiones donde el dato no llego', `${est.guiones} guiones`);
+  decir(est.portada && est.entrar, 'sin backend, la portada sigue en pie con su salida', JSON.stringify({ portada: est.portada, entrar: est.entrar }));
+  decir(est.filas === 0, 'no se inventan precios: ninguna fila sin dato', `${est.filas} filas`);
   decir(/conexi[oó]n|no pudimos/i.test(est.nota),
     'y se dice que los precios no llegaron, en vez de fingir que no hay mercados', est.nota.slice(0, 80));
   await pg.close();

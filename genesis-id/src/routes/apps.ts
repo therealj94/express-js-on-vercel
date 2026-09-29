@@ -12,7 +12,9 @@ import { bloqueada, RESPUESTA as BLOQUEADA } from '../motor/bloqueo.js'
 import * as biz from '../motor/negocios.js'
 import { registrarMovimientos } from '../aml/casos.js'
 import { tamizarDireccion } from '../aml/tamiz.js'
+import { createHash, randomBytes } from 'crypto'
 import { firmarToken, verificarToken } from '../lib/cripto.js'
+import { store } from '../store.js'
 import { gidValido, normalizarGid } from '../lib/uid.js'
 import { normalizarDireccion, CODIGOS_VINCULO } from '../lib/direccion.js'
 import { registrar } from '../audit/bitacora.js'
@@ -603,6 +605,13 @@ appsRouter.post('/sso/token', limite(60), exigeApp('gid.verificar'), async (req,
     return res.status(403).json({ error: 'Esa cuenta no está atada a este GID en esta aplicación' })
   }
 
+  const destino = leerAudiencia(req.body?.aud)
+  if (destino.error) return res.status(400).json({ error: destino.error })
+  const reto = req.body?.reto
+  if (reto !== undefined && (typeof reto !== 'string' || !RETO_VALIDO.test(reto))) {
+    return res.status(400).json({ error: 'El reto tiene que ser el SHA-256 del verificador en base64url (43 caracteres)' })
+  }
+
   const emitido = Math.floor(Date.now() / 1000)
   const token = firmarToken({
     sub: g,
@@ -610,6 +619,11 @@ appsRouter.post('/sso/token', limite(60), exigeApp('gid.verificar'), async (req,
     alcances: ['perfil'],
     iat: emitido,
     exp: emitido + MINUTOS_TOKEN * 60,
+    // Solo los pases CON destino llevan jti: son los que se gastan al usarse.
+    // Los de siempre (sin aud) quedan exactamente como estaban, para no romper
+    // a Ordenex, AuCorp ni ULTRON, que los verifican sin saber de esto.
+    ...(destino.aud ? { aud: destino.aud, jti: randomBytes(16).toString('base64url') } : {}),
+    ...(reto ? { reto } : {}),
   }, SECRETO_SSO)
 
   registrar(`app:${req.app_ecosistema!.clave}`, 'sso.token', g, { cuenta })
@@ -621,6 +635,26 @@ appsRouter.post('/sso/verificar', limite(300), exigeApp('gid.verificar'), async 
   if (!SECRETO_SSO) return res.status(503).json({ error: 'El inicio de sesión único no está configurado' })
   const reclamos = verificarToken(String(req.body?.token || ''), SECRETO_SSO)
   if (!reclamos) return res.status(401).json({ valido: false, error: 'Token inválido o vencido' })
+  const quien = req.app_ecosistema!.clave
+  const aud = Array.isArray(reclamos.aud) ? (reclamos.aud as unknown[]).map(String) : null
+  /* UN PASE CON DESTINO SOLO VALE EN SU DESTINO. Sin esto, cualquier app que
+     recibiera un pase —o cualquiera que lo interceptara por el camino— podría
+     presentarlo en otra casa y entrar allí con la identidad de otro. */
+  if (aud && !aud.includes(quien)) {
+    return res.status(401).json({ valido: false, error: 'Este pase es para otra aplicación', codigo: 'OTRA_APP' })
+  }
+  /* EL RETO. La app que pidió el pase guardó un verificador al azar y mandó
+     solo su huella (SHA-256). Quien intercepte el pase en el enlace de vuelta
+     —otra app que registre el mismo esquema, por ejemplo— no tiene el
+     verificador, así que el pase no le sirve de nada. Un fallo aquí NO gasta
+     el pase: si lo gastara, un intruso podría quemárselo a su dueño. */
+  if (typeof reclamos.reto === 'string') {
+    const verificador = String(req.body?.verificador || '')
+    const huella = createHash('sha256').update(verificador).digest('base64url')
+    if (!verificador || huella !== reclamos.reto) {
+      return res.status(401).json({ valido: false, error: 'El pase no corresponde a este inicio de sesión', codigo: 'RETO' })
+    }
+  }
 
   const identidad = ids.porGid(reclamos.sub)
   if (!identidad || identidad.estado !== 'verificada') {
@@ -634,14 +668,66 @@ appsRouter.post('/sso/verificar', limite(300), exigeApp('gid.verificar'), async 
   if (bloqueada(identidad)) {
     return res.status(403).json({ valido: false, ...BLOQUEADA })
   }
+  /* Se gasta al final, cuando ya está todo bien: un pase con destino se usa
+     UNA vez en cada destino. Dos apps del mismo pase (AU-RA y el chat) lo
+     gastan cada una por su lado. */
+  if (aud && !gastar(String(reclamos.jti || ''), quien, reclamos.exp)) {
+    return res.status(401).json({ valido: false, error: 'Este pase ya se usó', codigo: 'USADO' })
+  }
+  const alcances = req.app_ecosistema!.alcances
   res.json({
     valido: true,
     gid: reclamos.sub,
     emitidoPor: reclamos.app,
     expira: new Date(reclamos.exp * 1000).toISOString(),
-    perfil: req.app_ecosistema!.alcances.includes('gid.perfil') ? ids.perfilPublico(identidad) : undefined,
+    perfil: alcances.includes('gid.perfil') ? ids.perfilPublico(identidad) : undefined,
+    // El correo de ESTA identidad, el que la persona usó para su trámite —no
+    // uno que traiga la petición—. Solo a quien tiene el alcance.
+    correo: alcances.includes('gid.correo') ? identidad.email : undefined,
+    ...(aud ? { aud } : {}),
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Pases con destino
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** El SHA-256 del verificador, en base64url sin relleno: 43 caracteres. */
+const RETO_VALIDO = /^[A-Za-z0-9_-]{43}$/
+
+/**
+ * Para qué apps es el pase. Tienen que existir y estar activas: un destino
+ * inventado sería un pase que nadie puede gastar, o peor, uno que gasta una app
+ * que se dé de alta mañana con ese nombre.
+ */
+function leerAudiencia(v: unknown): { aud?: string[]; error?: string } {
+  if (v === undefined || v === null || v === '') return {}
+  const lista = (Array.isArray(v) ? v : [v]).map((x) => String(x).trim()).filter(Boolean)
+  if (!lista.length || lista.length > 4) return { error: 'El destino del pase tiene que ser de una a cuatro aplicaciones' }
+  const activas = new Set(store.todo().aplicaciones.filter((a) => a.activa).map((a) => a.clave))
+  const desconocida = lista.find((c) => !activas.has(c))
+  if (desconocida) return { error: `No hay ninguna aplicación activa llamada «${desconocida}»` }
+  return { aud: [...new Set(lista)] }
+}
+
+/**
+ * Pases de un solo uso ya gastados: `jti|app` → vencimiento (segundos).
+ *
+ * En memoria a propósito: un pase vive quince minutos, y lo único que puede
+ * pasar si el servicio se reinicia en ese rato es que un pase ya usado vuelva a
+ * valer hasta que venza —y para usarlo haría falta además el verificador del
+ * reto, que solo tiene la app que lo pidió.
+ */
+const GASTADOS = new Map<string, number>()
+function gastar(jti: string, app: string, exp: number): boolean {
+  if (!jti) return false
+  const ahora = Math.floor(Date.now() / 1000)
+  for (const [k, vence] of GASTADOS) if (vence <= ahora) GASTADOS.delete(k)
+  const k = `${jti}|${app}`
+  if (GASTADOS.has(k)) return false
+  GASTADOS.set(k, exp)
+  return true
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // La credencial que se lleva la persona

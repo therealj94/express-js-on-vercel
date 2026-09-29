@@ -371,6 +371,20 @@ export const genesis = {
     return { token: r.datos?.token || null, expiraEnSegundos: r.datos?.expiraEnSegundos || 900 };
   },
 
+  /**
+   * Pase CON DESTINO para otra app del ecosistema (hoy, AU-RA FP).
+   *
+   * A diferencia del de MyTokenPay, este solo vale en las apps que dice `aud`,
+   * cada una lo gasta una vez, y lleva el `reto` que mandó la app que lo pide:
+   * solo ella tiene el verificador, así que si otra app se quedara con el
+   * enlace de vuelta, el pase no le serviría de nada.
+   */
+  async paseConDestino({ aud, reto }) {
+    const r = await puente('/sso/token', { aud, reto });
+    if (!r.ok) return { error: r.error, code: r.code };
+    return { token: r.datos?.token || null };
+  },
+
   /** Token para entrar en otra app del ecosistema sin repetir el KYC. */
   async tokenEcosistema() {
     const r = await puente('/sso/token', {});
