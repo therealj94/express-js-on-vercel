@@ -20,6 +20,7 @@
 // Nunca repite: cada envío queda en registro.jsonl y se salta. Quien pida no recibir más va a
 // bajas.txt (un correo por línea) y no se le vuelve a escribir.
 
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import nodemailer from 'nodemailer';
 import { leerCsv } from './depurar.mjs';
@@ -46,7 +47,52 @@ function smtp() {
   return transporte;
 }
 
-async function mandar({ para, asunto, texto, html }) {
+// TRANSPORTE=ses: por Amazon SES v2, firmado a mano (sin SDK), desde el mismo remitente.
+// Decisión de José (28-sep): ir por SES a ritmo por hora, sabiendo que la cuenta se aprobó
+// para correos de servicio. Si SES empieza a rebotar o quejarse, se para y se pasa a SMTP.
+async function mandarSes({ para, asunto, texto, html }) {
+  const region = String(process.env.AWS_REGION || 'us-east-1').trim().toLowerCase().replace(/\s+/g, '-');
+  const host = `email.${region}.amazonaws.com`;
+  const ruta = '/v2/email/outbound-emails';
+  const cuerpo = JSON.stringify({
+    FromEmailAddress: `${JOSE.nombre} <${JOSE.correo}>`,
+    Destination: { ToAddresses: [para], ...(process.env.COPIA_A ? { BccAddresses: [process.env.COPIA_A] } : {}) },
+    ReplyToAddresses: [JOSE.correo],
+    Content: {
+      Simple: {
+        Subject: { Data: asunto, Charset: 'UTF-8' },
+        Body: { Text: { Data: texto, Charset: 'UTF-8' }, Html: { Data: html, Charset: 'UTF-8' } },
+        Headers: [{ Name: 'List-Unsubscribe', Value: `<mailto:${JOSE.correo}?subject=no>` }],
+      },
+    },
+  });
+  const sha = (d) => crypto.createHash('sha256').update(d).digest('hex');
+  const hmac = (k, d) => crypto.createHmac('sha256', k).update(d).digest();
+  const amz = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
+  const fecha = amz.slice(0, 8);
+  const h = { 'content-type': 'application/json', host, 'x-amz-date': amz };
+  if (process.env.AWS_SESSION_TOKEN) h['x-amz-security-token'] = process.env.AWS_SESSION_TOKEN;
+  const firmadas = Object.keys(h).sort();
+  const canonica = ['POST', ruta, '', firmadas.map((k) => `${k}:${h[k]}\n`).join(''), firmadas.join(';'), sha(cuerpo)].join('\n');
+  const alcance = `${fecha}/${region}/ses/aws4_request`;
+  const kFirma = hmac(hmac(hmac(hmac(`AWS4${process.env.AWS_SECRET_ACCESS_KEY}`, fecha), region), 'ses'), 'aws4_request');
+  const firma = crypto.createHmac('sha256', kFirma).update(`AWS4-HMAC-SHA256\n${amz}\n${alcance}\n${sha(canonica)}`).digest('hex');
+  h.authorization = `AWS4-HMAC-SHA256 Credential=${process.env.AWS_ACCESS_KEY_ID}/${alcance}, SignedHeaders=${firmadas.join(';')}, Signature=${firma}`;
+  try {
+    const r = await fetch(`https://${host}${ruta}`, { method: 'POST', headers: h, body: cuerpo, signal: AbortSignal.timeout(15000) });
+    const t = await r.text();
+    if (!r.ok) return { ok: false, detalle: `SES ${r.status}: ${t.slice(0, 200)}` };
+    return { ok: true, id: JSON.parse(t || '{}').MessageId, via: 'ses' };
+  } catch (e) {
+    return { ok: false, detalle: String(e?.message || e).slice(0, 200) };
+  }
+}
+
+const POR_SES = String(process.env.TRANSPORTE || '').toLowerCase() === 'ses';
+
+async function mandar(m) {
+  if (POR_SES) return mandarSes(m);
+  const { para, asunto, texto, html } = m;
   try {
     const r = await smtp().sendMail({
       from: { name: JOSE.nombre, address: JOSE.correo },
@@ -110,7 +156,7 @@ if (modo === 'vista') {
     console.log(`\nNo se envió nada. Para enviar: node enviar.mjs cola --max ${max} --confirmo`);
   } else {
     await enlacesVivos();
-    await smtp().verify();
+    if (!POR_SES) await smtp().verify();
     for (const [i, c] of cola.entries()) {
       const m = correo(c);
       const r = await mandar({ para: c.correo, asunto: m.asunto, texto: m.texto, html: m.html });

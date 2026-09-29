@@ -13,6 +13,8 @@ export const JOSE = {
   whatsapp: '50432136457',
   whatsappVisible: '+504 3213-6457',
   web: 'https://ordenglobal.org',
+  // La dirección que publica el sitio; un correo comercial tiene que decir de dónde sale.
+  empresa: 'Orden Global Corp · British Columbia, Canadá · Roatán Próspera, Honduras',
 };
 
 export const VIDEO = 'https://youtu.be/pccKeU8rqm8';
@@ -145,6 +147,7 @@ export function correo(c) {
     '—',
     t.aviso,
     t.baja,
+    JOSE.empresa,
   ].join('\n');
 
   const oro = '#B8913A';
@@ -186,7 +189,7 @@ ${boton(wa, t.whatsapp, '#25D366', '#FFFFFF')}
 <a href="${JOSE.web}" style="color:${oro}">ordenglobal.org</a>
 </td></tr>
 <tr><td style="padding:14px 28px;border-top:1px solid #E6DDCC;font:12px/1.5 Helvetica,Arial,sans-serif;color:#8A8274">
-${esc(t.aviso)}<br>${esc(t.baja)}
+${esc(t.aviso)}<br>${esc(t.baja)}<br>${esc(JOSE.empresa)}
 </td></tr>
 </table>
 </td></tr></table>
