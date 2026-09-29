@@ -20,8 +20,8 @@ cp "$AQUI/assets/medios/"* assets/medios/
 # Las imágenes para compartir de la portada nueva, también del repositorio.
 cp "$AQUI/assets/"social-26*.png assets/
 cp "$AQUI/assets/fuentes/"*.woff2 assets/fuentes/
-# La presentación de SFSP en los dos idiomas: la enlaza el correo de la campaña.
-cp "$AQUI/sfsp/"*.pdf sfsp/
+# La presentación de SFSP y la portada del video, en los dos idiomas: las usa el correo de la campaña.
+cp "$AQUI/sfsp/"*.pdf "$AQUI/sfsp/"*.jpg sfsp/
 
 # Los medios, de producción.
 bajar() { curl -sSf -o "$1" "$B/$1" || { echo "no se pudo bajar $1"; exit 1; }; }

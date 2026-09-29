@@ -88,24 +88,13 @@ export function orgCorta(org) {
     .trim();
 }
 
-// «Presidente Junta Directiva 2026-2027» → «Presidente Junta Directiva»; «Presidente (desde 27-ene-2026)» → «Presidente».
-const cargoLimpio = (cargo) => cargo.replace(/\s*\([^)]*\)/g, '').replace(/\s*\d{4}\s*-\s*\d{4}/g, '').replace(/\s+/g, ' ').trim();
-
-// Sin persona no se inventa un destinatario: el saludo queda en «Buenos días:» y la
-// primera línea del correo ya nombra a la organización.
+// Por el nombre si hay persona, aunque el buzón sea general: quien lo abre sabe a quién
+// pasárselo, y un «A la atención de… Presidente…» suena a oficio. Sin persona no se inventa
+// un destinatario: la primera línea del correo ya dice quién escribe y por qué.
 function saludo(c) {
-  const org = c.org_corta;
   const nombre = c.persona.replace(/\s*\([^)]*\)\s*/g, ' ').trim();
-  const cargo = cargoLimpio(c.cargo);
-  const directo = ['personal', 'área', 'prensa'].includes(c.tipo_buzon);
-  if (c.idioma === 'ES') {
-    if (c.persona_real && directo) return `Buenos días, ${nombre}:`;
-    if (c.persona_real) return `Buenos días. A la atención de ${nombre}${cargo ? `, ${cargo}` : ''}, ${org}:`;
-    return 'Buenos días:';
-  }
-  if (c.persona_real && directo) return `Dear ${nombre},`;
-  if (c.persona_real) return `Hello. For the attention of ${nombre}, ${org}:`;
-  return 'Hello,';
+  if (c.idioma === 'ES') return c.persona_real ? `Buenos días, ${nombre}:` : 'Buenos días:';
+  return c.persona_real ? `Dear ${nombre},` : 'Hello,';
 }
 
 // Mismo dominio pero otra organización: se escriben aparte.

@@ -24,7 +24,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import nodemailer from 'nodemailer';
 import { leerCsv } from './depurar.mjs';
-import { correo, JOSE, PRESENTACION, VIDEO } from './plantilla.mjs';
+import { correo, JOSE, PORTADA, PRESENTACION, VIDEO } from './plantilla.mjs';
 
 const aqui = new URL('.', import.meta.url).pathname;
 const REGISTRO = aqui + 'registro.jsonl';
@@ -113,7 +113,7 @@ async function mandar(m) {
 // YouTube contesta 429 a las visitas automáticas; su oEmbed dice si el video es público.
 async function enlacesVivos() {
   const oembed = `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(VIDEO)}`;
-  for (const url of [oembed, PRESENTACION.es, PRESENTACION.en]) {
+  for (const url of [oembed, PRESENTACION.es, PRESENTACION.en, PORTADA.es, PORTADA.en]) {
     const r = await fetch(url, { method: 'GET', redirect: 'follow', signal: AbortSignal.timeout(15000) }).catch((e) => ({ ok: false, status: e.message }));
     if (!r.ok) throw new Error(`El enlace ${url} no responde (${r.status}). No se envía nada.`);
   }
