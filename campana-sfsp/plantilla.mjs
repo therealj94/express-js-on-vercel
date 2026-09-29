@@ -1,10 +1,9 @@
 // Plantilla del primer correo de SFSP, en español e inglés.
 //
-// Corto a propósito. Lo primero que se ve es la portada del video, y después cuatro
-// párrafos: quién escribe, qué es, qué significa para quien lo lee (una frase por sector)
-// y una pregunta concreta. Pocos enlaces, una sola imagen alojada en ordenglobal.org (el
-// mismo dominio que envía) y nada de adjuntos: así se lee como un correo de persona a
-// persona y no como publicidad.
+// Una invitación, no un folleto. Arriba, la pregunta y la portada del video. Después, qué
+// es (los tres pilares), qué significa para quien lo lee (una frase por sector) y un bloque
+// oscuro que invita a ser de los primeros, con el botón de WhatsApp. Una sola imagen,
+// alojada en ordenglobal.org (el mismo dominio que envía), y nada de adjuntos.
 //
 // Nada de «regulado», «licenciado» ni rendimientos: el pie repite el aviso de la
 // presentación (protocolo en desarrollo, material informativo).
@@ -68,31 +67,45 @@ const PARA_USTED = {
 
 const TEXTO = {
   es: {
-    asunto: 'Una idea para unir a Centroamérica',
-    quien: 'Soy José Ordoñez, cofundador de Orden Global. Le escribo con una pregunta:',
+    asunto: 'Una invitación: unir a Centroamérica',
+    quien: 'Soy José Ordoñez, cofundador de Orden Global, y le escribo con una pregunta:',
     gancho: '¿Y si le dijera que podemos unir a Centroamérica?',
-    que: 'Hoy somos siete monedas, siete trámites y siete fronteras. SFSP, el Protocolo de Sistema Financiero Social, las convierte en una: una identidad válida en los siete países, una moneda referenciada al oro y pagos al instante entre San Salvador, Tegucigalpa, Guatemala y Panamá. Cada país conserva su soberanía.',
+    que: 'Hoy somos siete monedas, siete trámites y siete fronteras, y en cada una perdemos tiempo, dinero y oportunidades. SFSP, el Protocolo de Sistema Financiero Social, propone que la región funcione como una sola economía, sin que ningún país pierda su soberanía:',
+    pilares: [
+      ['Una identidad', 'Verificada una vez, válida en los siete países.'],
+      ['Una moneda', 'Referenciada al oro, pensada para emitirse contra recursos reales.'],
+      ['Un comercio', 'Pagar y recibir al instante, con una sola comisión mínima.'],
+    ],
     hecho: 'No es una idea en papel: el protocolo ya está construido y ha superado 553 pruebas.',
     verVideo: 'Ver el video · 2 min',
-    verPdf: 'o la presentación en PDF',
-    cierre: 'Estamos eligiendo a los primeros países y aliados, y me gustaría que usted estuviera entre ellos. ¿Tiene 20 minutos para conversar esta semana o la próxima?',
-    whatsapp: 'Escríbame por WhatsApp',
-    waMensaje: 'Hola José, recibí su correo sobre SFSP. Soy {quien}.',
+    verPdf: 'Ver la presentación',
+    invitaTitulo: 'Si esto llegó a usted, es porque está entre los primeros.',
+    invita: 'Estamos reuniendo a los primeros países y aliados que van a construir esta Centroamérica, y me gustaría que usted fuera parte. ¿Conversamos 20 minutos esta semana o la próxima?',
+    boton: 'Quiero ser parte',
+    oResponda: 'o simplemente responda a este correo.',
+    waMensaje: 'Hola José, quiero ser parte de SFSP. Soy {quien}.',
     cargo: 'Cofundador, Orden Global',
     aviso: 'Protocolo en desarrollo. Material informativo; no constituye oferta de valores, inversión ni moneda.',
     baja: 'Si prefiere no recibir más correos, responda «no» y no volveremos a escribirle.',
   },
   en: {
-    asunto: 'An idea to unite Central America',
-    quien: "I'm José Ordoñez, co-founder of Orden Global. I'm writing with a question:",
+    asunto: 'An invitation: uniting Central America',
+    quien: "I'm José Ordoñez, co-founder of Orden Global, and I'm writing with a question:",
     gancho: 'What if we could unite Central America?',
-    que: 'Today we are seven currencies, seven sets of paperwork and seven borders. SFSP, the Social Financial System Protocol, turns them into one: one identity valid in all seven countries, one currency referenced to gold, and instant payments between San Salvador, Tegucigalpa, Guatemala City and Panama. Each country keeps its sovereignty.',
+    que: 'Today we are seven currencies, seven sets of paperwork and seven borders, and at each one we lose time, money and opportunities. SFSP, the Social Financial System Protocol, proposes that the region work as a single economy, without any country giving up its sovereignty:',
+    pilares: [
+      ['One identity', 'Verified once, valid in all seven countries.'],
+      ['One currency', 'Referenced to gold, designed to be issued against real resources.'],
+      ['One market', 'Pay and get paid instantly, with a single minimal fee.'],
+    ],
     hecho: 'This is not an idea on paper: the protocol is already built and has passed 553 tests.',
     verVideo: 'Watch the film · 2 min, English subtitles',
-    verPdf: 'or the presentation (PDF)',
-    cierre: 'We are choosing the first countries and partners, and I would like you to be among them. Could we talk for 20 minutes this week or next?',
-    whatsapp: 'Message me on WhatsApp',
-    waMensaje: 'Hi José, I received your email about SFSP. This is {quien}.',
+    verPdf: 'View the presentation',
+    invitaTitulo: 'If this reached you, you are among the first.',
+    invita: 'We are bringing together the first countries and partners who will build this Central America, and I would like you to be part of it. Could we talk for 20 minutes this week or next?',
+    boton: 'I want to be part of it',
+    oResponda: 'or simply reply to this email.',
+    waMensaje: 'Hi José, I want to be part of SFSP. This is {quien}.',
     cargo: 'Co-founder, Orden Global',
     aviso: 'Protocol under development. Informational material; not an offer of securities, investment or currency.',
     baja: 'If you would rather not hear from us again, reply "no" and we will not write again.',
@@ -120,16 +133,19 @@ export function correo(c) {
     '',
     `${t.quien} ${t.gancho}`,
     '',
+    `${t.verVideo}: ${VIDEO}`,
+    '',
     t.que,
+    ...t.pilares.map(([a, b]) => `· ${a}: ${b}`),
     '',
     paraUsted,
-    '',
     t.hecho,
-    `${t.verVideo}: ${VIDEO}`,
-    `${t.verPdf}: ${pdf}`,
     '',
-    t.cierre,
-    `WhatsApp: ${JOSE.whatsappVisible} · ${wa}`,
+    t.invitaTitulo,
+    t.invita,
+    '',
+    `${t.boton} (WhatsApp ${JOSE.whatsappVisible}): ${wa}`,
+    `${t.verPdf}: ${pdf}`,
     '',
     JOSE.nombre,
     t.cargo,
@@ -142,43 +158,68 @@ export function correo(c) {
     JOSE.empresa,
   ].join('\n');
 
-  const oro = '#9A7426';
+  // Los colores de la presentación: noche, marfil y oro. Una sola columna de 600 px, tablas
+  // y estilos en línea (lo único que respetan Gmail y Outlook), y una sola imagen.
+  const noche = '#0B0A08';
+  const marfil = '#F4EEE3';
+  const oro = '#B8913A';
+  const oroTexto = '#8C6A22';
   const tinta = '#1A1712';
   const suave = '#6B6457';
-  const letra = "-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
-  const p = (s) => `<p style="margin:0 0 16px">${s}</p>`;
+  const serif = "Georgia,'Times New Roman',serif";
+  const sans = "-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
+  const p = (s, extra = '') => `<p style="margin:0 0 16px;${extra}">${s}</p>`;
 
-  // Un correo que parece escrito, no un folleto: fondo blanco, una columna, la letra del
-  // sistema. Solo la portada del video y el botón de WhatsApp llevan color.
+  const pilares = t.pilares.map(([a, b], i) => `
+<tr><td valign="top" width="44" style="padding:12px 0 12px;font:italic 22px/1 ${serif};color:${oro}">0${i + 1}</td>
+<td style="padding:10px 0;border-bottom:${i < 2 ? `1px solid #E8DFCF` : '0'}"><div style="font:600 16px/1.3 ${serif};color:${tinta}">${esc(a)}</div><div style="font:14px/1.5 ${sans};color:${suave};margin-top:2px">${esc(b)}</div></td></tr>`).join('');
+
   const html = `<!doctype html>
 <html lang="${idioma}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(t.asunto)}</title></head>
-<body style="margin:0;padding:0;background:#FFFFFF">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:20px 14px">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%">
-<tr><td style="font:16px/1.6 ${letra};color:${tinta}">
+<body style="margin:0;padding:0;background:${marfil}">
+<div style="display:none;max-height:0;overflow:hidden">${esc(t.gancho)} ${esc(t.hecho)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${marfil}"><tr><td align="center" style="padding:24px 12px">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#FFFDF9;border-radius:12px;overflow:hidden">
+
+<tr><td style="background:${noche};padding:16px 28px;font:600 11px/1 'Courier New',monospace;letter-spacing:4px;color:${oro}">ORDEN GLOBAL · SFSP</td></tr>
+
+<tr><td style="padding:28px 28px 4px;font:16px/1.65 ${sans};color:${tinta}">
 ${p(esc(c.saludo))}
-${p(`${esc(t.quien)} <strong>${esc(t.gancho)}</strong>`)}
+${p(esc(t.quien), 'margin-bottom:6px')}
+<p style="margin:0 0 20px;font:italic 26px/1.25 ${serif};color:${tinta}">${esc(t.gancho)}</p>
 </td></tr>
-<tr><td style="padding:0 0 6px">
-<a href="${esc(VIDEO)}" style="text-decoration:none;display:block"><img src="${esc(PORTADA[idioma])}" width="600" alt="▶ ${esc(t.verVideo)}" style="display:block;width:100%;max-width:600px;height:auto;border:0;border-radius:8px;font:600 16px ${letra};color:${oro}"></a>
+
+<tr><td style="padding:0 28px">
+<a href="${esc(VIDEO)}" style="text-decoration:none;display:block"><img src="${esc(PORTADA[idioma])}" width="544" alt="▶ ${esc(t.verVideo)}" style="display:block;width:100%;max-width:544px;height:auto;border:0;border-radius:8px;font:600 16px ${sans};color:${oroTexto}"></a>
+<p style="margin:10px 0 24px;font:600 14px/1.4 ${sans}"><a href="${esc(VIDEO)}" style="color:${oroTexto};text-decoration:none">▶ ${esc(t.verVideo)}</a></p>
 </td></tr>
-<tr><td style="padding:0 0 18px;font:14px/1.5 ${letra}">
-<a href="${esc(VIDEO)}" style="color:${oro};font-weight:600;text-decoration:none">▶ ${esc(t.verVideo)}</a><span style="color:${suave}"> &nbsp;·&nbsp; </span><a href="${esc(pdf)}" style="color:${suave}">${esc(t.verPdf)}</a>
-</td></tr>
-<tr><td style="font:16px/1.6 ${letra};color:${tinta}">
-${p(esc(t.que))}
+
+<tr><td style="padding:0 28px;font:16px/1.65 ${sans};color:${tinta}">
+${p(esc(t.que), 'margin-bottom:6px')}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px">${pilares}
+</table>
 ${p(esc(paraUsted))}
-${p(esc(t.hecho))}
-${p(esc(t.cierre))}
-<a href="${esc(wa)}" style="display:inline-block;background:#1FAF55;color:#FFFFFF;text-decoration:none;font:600 15px/1 ${letra};padding:13px 20px;border-radius:6px">${esc(t.whatsapp)}</a>
-<p style="margin:24px 0 0;font-size:15px;line-height:1.5">
+${p(esc(t.hecho), 'margin-bottom:24px')}
+</td></tr>
+
+<tr><td style="padding:0 28px 8px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${noche};border-radius:10px"><tr><td style="padding:26px 26px 24px">
+<p style="margin:0 0 10px;font:italic 22px/1.3 ${serif};color:#F4EEE3">${esc(t.invitaTitulo)}</p>
+<p style="margin:0 0 20px;font:15px/1.6 ${sans};color:#CFC6B6">${esc(t.invita)}</p>
+<a href="${esc(wa)}" style="display:inline-block;background:${oro};color:${noche};text-decoration:none;font:700 15px/1 ${sans};padding:14px 22px;border-radius:6px;margin:0 10px 10px 0">${esc(t.boton)} · WhatsApp</a>
+<a href="${esc(pdf)}" style="display:inline-block;color:#F4EEE3;text-decoration:none;font:600 15px/1 ${sans};padding:13px 20px;border:1px solid #5C5446;border-radius:6px;margin:0 0 10px">${esc(t.verPdf)}</a>
+<p style="margin:6px 0 0;font:13px/1.5 ${sans};color:#9E9584">${esc(t.oResponda)}</p>
+</td></tr></table>
+</td></tr>
+
+<tr><td style="padding:22px 28px 26px;font:15px/1.5 ${sans};color:${tinta}">
 <strong>${esc(JOSE.nombre)}</strong><br>
 <span style="color:${suave}">${esc(t.cargo)}</span><br>
 <a href="mailto:${JOSE.correo}" style="color:${tinta}">${JOSE.correo}</a> · <a href="${esc(wa)}" style="color:${tinta}">${JOSE.whatsappVisible}</a><br>
-<a href="${JOSE.web}" style="color:${oro}">ordenglobal.org</a>
-</p>
+<a href="${JOSE.web}" style="color:${oroTexto}">ordenglobal.org</a>
 </td></tr>
-<tr><td style="padding:22px 0 0;font:12px/1.5 ${letra};color:#8A8274">
+
+<tr><td style="padding:16px 28px 20px;border-top:1px solid #E8DFCF;font:12px/1.5 ${sans};color:#8A8274">
 ${esc(t.aviso)}<br>${esc(t.baja)}<br>${esc(JOSE.empresa)}
 </td></tr>
 </table>
