@@ -19,7 +19,7 @@ Es lo que necesita AU-RA para ser un aparato más de la misma persona:
 
 Se levanta el relevo REAL y un Genesis DE MENTIRA. Solo biblioteca estándar.
 """
-import json, os, socket, subprocess, sys, tempfile, threading, time
+import base64, hashlib, json, os, socket, subprocess, sys, tempfile, threading, time
 import urllib.error, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -37,13 +37,36 @@ def puerto_libre():
 
 
 VERIF = 'v' * 43
-# El Genesis de mentira conoce tres pases. Comprueba la clave de API y el
+
+
+def huella(v):
+    return base64.urlsafe_b64encode(hashlib.sha256(v.encode()).digest()).decode().rstrip('=')
+
+
+def pase(nombre, reto=None):
+    """Un pase con la forma de los de Genesis (tres partes); la firma no importa
+    aquí: la comprueba el Genesis de mentira, que conoce cada pase por su nombre."""
+    rec = {'n': nombre, **({'reto': reto} if reto else {})}
+    b64 = lambda d: base64.urlsafe_b64encode(json.dumps(d).encode()).decode().rstrip('=')
+    return f"{b64({'alg': 'HS256'})}.{b64(rec)}.firma"
+
+
+P_ANA, P_ANA2 = pase('ana', huella(VERIF)), pase('ana-2', huella(VERIF))
+P_SOLO_AURA, P_SIN_DESTINO = pase('solo-aura', huella(VERIF)), pase('sin-destino', huella(VERIF))
+# Los dos que el Genesis de mentira da por buenos SIN mirar el verificador —como
+# hace el de verdad con un pase que no trae reto—: el relevo tiene que
+# pararlos él.
+P_SIN_RETO, P_RETO_AJENO = pase('sin-reto'), pase('reto-ajeno', huella('otro-verificador-' + 'z' * 30))
+ANA = {'gid': 'GEN-ANA1-ANA2-A', 'correo': 'ana@prueba.local'}
+# El Genesis de mentira conoce estos pases. Comprueba la clave de API y el
 # verificador igual que el de verdad; el destino lo devuelve tal cual.
 PASES = {
-    'pase-ana': {'gid': 'GEN-ANA1-ANA2-A', 'correo': 'ana@prueba.local', 'aud': ['aura', 'pulse2chat']},
-    'pase-ana-2': {'gid': 'GEN-ANA1-ANA2-A', 'correo': 'ana@prueba.local', 'aud': ['aura', 'pulse2chat']},
-    'pase-solo-aura': {'gid': 'GEN-ANA1-ANA2-A', 'correo': 'ana@prueba.local', 'aud': ['aura']},
-    'pase-sin-destino': {'gid': 'GEN-ANA1-ANA2-A', 'correo': 'ana@prueba.local'},
+    P_ANA: dict(ANA, aud=['aura', 'pulse2chat']),
+    P_ANA2: dict(ANA, aud=['aura', 'pulse2chat']),
+    P_SOLO_AURA: dict(ANA, aud=['aura']),
+    P_SIN_DESTINO: dict(ANA),
+    P_SIN_RETO: dict(ANA, aud=['aura', 'pulse2chat'], sinReto=True),
+    P_RETO_AJENO: dict(ANA, aud=['aura', 'pulse2chat'], sinReto=True),
 }
 pedidas = []
 
@@ -56,9 +79,10 @@ class GenesisFalso(BaseHTTPRequestHandler):
         n = int(self.headers.get('Content-Length', 0))
         b = json.loads(self.rfile.read(n) or b'{}')
         pedidas.append(b)
-        v = PASES.get(b.get('token'))
+        v = dict(PASES.get(b.get('token')) or {})
+        sin_reto = v.pop('sinReto', False)
         ok = (self.path == '/api/v1/sso/verificar' and self.headers.get('X-API-Key') == 'clave-chat'
-              and v and b.get('verificador') == VERIF)
+              and v and (sin_reto or b.get('verificador') == VERIF))
         cuerpo = json.dumps(dict(v, valido=True) if ok else {'valido': False}).encode()
         self.send_response(200 if ok else 401)
         self.send_header('Content-Type', 'application/json')
@@ -118,21 +142,32 @@ try:
             pass
 
     print('\n1. El pase de Genesis\n')
-    e, r = pedir('/alta', {'pase': 'pase-ana', 'verificador': VERIF, 'nombre': 'Ana'})
+    e, r = pedir('/alta', {'pase': P_ANA, 'verificador': VERIF, 'nombre': 'Ana'})
     ok('un pase válido abre (y crea) la cuenta de SU correo', e == 200 and r.get('correo') == 'ana@prueba.local', r)
     llave_ana = r.get('llave')
-    e, r = pedir('/alta', {'pase': 'pase-ana-2', 'verificador': VERIF})
+    e, r = pedir('/alta', {'pase': P_ANA2, 'verificador': VERIF})
     ok('otro pase de la misma persona devuelve la MISMA llave', e == 200 and r.get('llave') == llave_ana)
-    e, r = pedir('/alta', {'pase': 'pase-ana-2', 'verificador': VERIF, 'correo': 'otra@prueba.local'})
+    e, r = pedir('/alta', {'pase': P_ANA2, 'verificador': VERIF, 'correo': 'otra@prueba.local'})
     ok('si el correo pedido no es el del pase: otra-cuenta, y dice cuál es',
        e == 409 and r.get('motivo') == 'otra-cuenta' and r.get('correoReal') == 'ana@prueba.local', r)
-    for nombre, cuerpo in [('sin destino', {'pase': 'pase-sin-destino', 'verificador': VERIF}),
-                           ('para otra app', {'pase': 'pase-solo-aura', 'verificador': VERIF}),
-                           ('con otro verificador', {'pase': 'pase-ana', 'verificador': 'x' * 43}),
+    for nombre, cuerpo in [('sin destino', {'pase': P_SIN_DESTINO, 'verificador': VERIF}),
+                           ('para otra app', {'pase': P_SOLO_AURA, 'verificador': VERIF}),
+                           ('con otro verificador', {'pase': P_ANA, 'verificador': 'x' * 43}),
+                           ('sin verificador', {'pase': P_ANA}),
                            ('inventado', {'pase': 'nada', 'verificador': VERIF})]:
         e, r = pedir('/alta', cuerpo)
         ok(f'un pase {nombre} no abre nada', e == 409 and r.get('motivo') == 'pase-no-vale' and 'llave' not in r, r)
     ok('al relevo le llegó el verificador para comprobarlo', any(p.get('verificador') == VERIF for p in pedidas))
+
+    # Genesis solo compara el verificador si el pase trae reto. Aquí el Genesis
+    # de mentira da por buenos estos dos con CUALQUIER verificador: el relevo
+    # tiene que exigir por su cuenta que el reto exista y sea de este verificador.
+    antes = len(pedidas)
+    for nombre, cuerpo in [('sin reto (Genesis lo daría por bueno)', {'pase': P_SIN_RETO, 'verificador': VERIF}),
+                           ('cuyo reto es de otro verificador', {'pase': P_RETO_AJENO, 'verificador': VERIF})]:
+        e, r = pedir('/alta', cuerpo)
+        ok(f'un pase {nombre} no abre nada', e == 409 and r.get('motivo') == 'pase-no-vale' and 'llave' not in r, r)
+    ok('y ni siquiera se le pregunta a Genesis por ellos', len(pedidas) == antes, f'{len(pedidas) - antes} pedidos')
 
     print('\n2. Las altas nuevas, con prueba\n')
     e, r = pedir('/alta', {'correo': 'intruso@prueba.local'})

@@ -607,8 +607,41 @@ def quien_es_la_sesion(token):
 # Se exige que el pase lleve destino. Un pase sin destino es el de siempre, que
 # vale en cualquier casa y las veces que sea; aceptarlo aquí dejaría a
 # cualquiera de esas casas entrar al chat de sus usuarios.
+#
+# Y SE EXIGE QUE EL PASE LLEVE RETO, Y QUE ESTE VERIFICADOR SEA EL SUYO. Genesis
+# solo compara el verificador si el pase trae reto: con un pase sin reto (los
+# que se emitían antes de exigirlo, o si un día alguien lo afloja allá),
+# cualquier verificador de veinte letras pasaba, y el requisito de aquí no
+# probaba nada. Así que el relevo lo mira él mismo, en el cuerpo del pase: el
+# `reto` tiene que ser el SHA-256 (base64url) de ESTE verificador. Leer el
+# cuerpo sin la firma es seguro porque solo se usa si Genesis, después, dice
+# que la firma vale; y se mira ANTES de llamarle, para no gastar red en un pase
+# que ya se sabe que no sirve.
 GENESIS_URL = os.environ.get('MENSAJES_GENESIS_URL', 'https://genesis-id.onrender.com').rstrip('/')
 GENESIS_CLAVE = os.environ.get('MENSAJES_GENESIS_CLAVE', '').strip()
+
+
+def reto_del_pase(pase):
+    """El `reto` que viaja dentro del pase (sin comprobar la firma), o None."""
+    partes = pase.split('.')
+    if len(partes) != 3:
+        return None
+    try:
+        cuerpo = partes[1] + '=' * (-len(partes[1]) % 4)
+        reclamos = json.loads(base64.urlsafe_b64decode(cuerpo.encode()))
+    except Exception:
+        return None
+    reto = reclamos.get('reto') if isinstance(reclamos, dict) else None
+    return reto if isinstance(reto, str) and re.fullmatch(r'[A-Za-z0-9_-]{43}', reto) else None
+
+
+def verificador_cuadra(pase, verificador):
+    """¿El pase lleva reto y es la huella de ESTE verificador?"""
+    reto = reto_del_pase(pase)
+    if not reto:
+        return False
+    huella = base64.urlsafe_b64encode(hashlib.sha256(verificador.encode()).digest()).decode().rstrip('=')
+    return hmac.compare_digest(huella, reto)
 
 
 def quien_es_el_pase(pase, verificador):
@@ -616,6 +649,8 @@ def quien_es_el_pase(pase, verificador):
     if not GENESIS_CLAVE or not isinstance(pase, str) or not pase or len(pase) > 4096:
         return None, None
     if not isinstance(verificador, str) or not (20 <= len(verificador) <= 200):
+        return None, None
+    if not verificador_cuadra(pase, verificador):
         return None, None
     import urllib.request
     try:
