@@ -71,7 +71,9 @@ const guardado = new Map();
 globalThis.__llavero = guardado;
 const FALSOS = {
   'expo-secure-store': `
-    export async function getItemAsync(k){ return globalThis.__llavero.get(k) ?? null; }
+    export async function getItemAsync(k){
+      if (globalThis.__llaveroNoContesta?.has(k)) throw new Error('el llavero no contesta');
+      return globalThis.__llavero.get(k) ?? null; }
     export async function setItemAsync(k,v){ globalThis.__llavero.set(k,v); }`,
   'expo-crypto': `
     import { randomBytes } from 'node:crypto';
@@ -330,6 +332,88 @@ let APP;
     ok('el mismo número', enApp === enWeb, enApp);
     ok('y no depende del orden en que se pregunte',
       enApp === APP.codigoDeSeguridad(suyas, mias));
+  }
+
+  console.log('\n── un mensaje envenenado no rompe nada ─────────────────────');
+  {
+    /* Del relevo puede venir cualquier cosa. Antes, un `s` que no era lista o
+       un sobre con `k` numérico reventaba DENTRO de `abrir` y se llevaba por
+       delante el hilo entero. Ahora las dos dicen «esto no es un bulto» y
+       devuelven null, sin lanzar. */
+    const bueno = await APP.cerrar('bien', pubsWeb);
+    const venenos = {
+      'nada': null,
+      'un texto': 'hola',
+      '`s` que no es lista': { ...bueno, s: { a: llaveApp.id } },
+      '`s` con un null': { ...bueno, s: [null, ...bueno.s] },
+      'sobre con `k` numérico': { ...bueno, s: bueno.s.map((x) => ({ ...x, k: 7 })) },
+      'sobre sin `a`': { ...bueno, s: bueno.s.map(({ a, ...x }) => x) },
+      'sobre con `iv` lista': { ...bueno, s: bueno.s.map((x) => ({ ...x, iv: [1, 2] })) },
+      'sin `ct`': { ...bueno, ct: undefined },
+      '`de` que es un objeto': { ...bueno, de: {} },
+    };
+    for (const [q, b] of Object.entries(venenos)) {
+      let enApp, enWeb, lanzo = '';
+      try { enApp = await APP.abrir(b, pubsWeb); } catch (e) { lanzo += 'app:' + e.message; }
+      try { enWeb = await WEB.abrir(b, pubsApp); } catch (e) { lanzo += ' web:' + e.message; }
+      ok(`${q}: las dos devuelven null sin lanzar`, !lanzo && enApp === null && enWeb === null,
+        lanzo || `${enApp} · ${enWeb}`);
+    }
+    ok('y las dos juzgan igual la forma', Object.values(venenos).every((b) => APP.bultoValido(b) === WEB.bultoValido(b)));
+    ok('un bulto de verdad sigue valiendo en las dos', APP.bultoValido(bueno) && WEB.bultoValido(bueno));
+    ok('y se sigue abriendo', (await WEB.abrir(bueno, pubsApp))?.texto === 'bien');
+  }
+
+  console.log('\n── un aparato con el id de otro no se queda con su sobre ───');
+  {
+    /* El id decide qué sobre abre cada aparato. Un aparato publicado con el
+       id de OTRO (y una pública suya) se quedaba con ese sobre, o lo tapaba si
+       llegaba primero a la lista. Ahora el id se recalcula de la pública y el
+       que no cuadra se descarta; el propio va primero. */
+    const impostor = { id: llaveApp.id, pub: llaveWeb.pub };     // el id del teléfono, la pública de otro
+    const inventado = { id: 'A'.repeat(22), pub: llaveWeb.pub };  // un id que no sale de nada
+    const bulto = await APP.cerrar('para quien es', [impostor, inventado, ...pubsWeb]);
+    const ids = bulto.s.map((x) => x.a);
+    ok('el teléfono cierra un sobre por aparato de verdad, sin repetidos',
+      ids.length === 2 && new Set(ids).size === 2 && !ids.includes('A'.repeat(22)), ids.join(','));
+    ok('y su propio sobre sigue siendo suyo', (await APP.abrir(bulto, pubsApp))?.texto === 'para quien es');
+    ok('la web también abre el suyo', (await WEB.abrir(bulto, pubsApp))?.texto === 'para quien es');
+
+    const impostorW = { id: llaveWeb.id, pub: llaveApp.pub };
+    const bultoW = await WEB.cerrar('desde la web', [impostorW, inventado, ...pubsApp]);
+    const idsW = bultoW.s.map((x) => x.a);
+    ok('la web descarta igual', idsW.length === 2 && new Set(idsW).size === 2
+      && !idsW.includes('A'.repeat(22)), idsW.join(','));
+    ok('y relee lo suyo', (await WEB.abrir(bultoW, pubsWeb))?.texto === 'desde la web');
+    ok('el id se calcula igual en las dos',
+      APP.idDeAparato(llaveWeb.pub) === llaveWeb.id && (await WEB.idDeAparato(llaveApp.pub)) === llaveApp.id);
+  }
+
+  console.log('\n── el llavero que no contesta no se pisa ───────────────────');
+  {
+    /* Leer que FALLA no es leer que no hay nada. Antes un fallo pasajero del
+       llavero generaba una llave nueva y la ESCRIBÍA encima de la buena: el
+       teléfono perdía todo lo que le habían mandado. Se carga el módulo otra
+       vez (instancia nueva, sin la llave en memoria) con el llavero negándose. */
+    const foto = new Map(guardado);
+    const real = await APP.miLlave();
+
+    globalThis.__llaveroNoContesta = new Set(APP.CAJONES);
+    const otra = await import(`file://${path.join(__dirname, '..', 'src', 'og', 'candado.js')}?sinllavero=1`);
+    const vol = await otra.miLlave();
+    ok('sigue habiendo candado (en memoria), no se manda en claro', !!vol?.pub);
+    ok('marcado volátil: no se publica', vol?.volatil === true);
+    ok('el llavero quedó INTACTO', [...foto].every(([k, v]) => guardado.get(k) === v) && guardado.size === foto.size);
+
+    // Solo la de firma no contesta: se usa la de acuerdo buena, sin escribir.
+    globalThis.__llaveroNoContesta = new Set(['p2c.candado.firma']);
+    const media = await import(`file://${path.join(__dirname, '..', 'src', 'og', 'candado.js')}?sinfirma=1`);
+    const m2 = await media.miLlave();
+    ok('sin la de firma, usa la de acuerdo DE SIEMPRE (mismo id)', m2?.id === real.id, `${m2?.id} · ${real.id}`);
+    ok('volátil y sin firma inventada', m2?.volatil === true && !m2?.fir);
+    ok('lo que llegó antes se sigue abriendo', (await media.abrir(await WEB.cerrar('de antes', pubsApp), pubsWeb))?.texto === 'de antes');
+    ok('y el llavero sigue sin tocar', [...foto].every(([k, v]) => guardado.get(k) === v));
+    globalThis.__llaveroNoContesta = null;
   }
 
   console.log('\n── la llave sobrevive a cerrar la app ──────────────────────');

@@ -206,6 +206,66 @@ export const CODIGOS_CORREO = Object.freeze({
 // otras apps confían en él. Sin correo comprobado no se escribe sobre ellas.
 const YA_RESPONDIO = new Set(['verificada', 'vencida', 'suspendida'])
 
+/**
+ * Por qué no sale un pase de SSO (`/sso/token`). Antes todo era un 403 con una
+ * frase, y la web y la app lo leían entero como «Genesis no verificado»: a
+ * quien tenía el trámite en revisión, o la cuenta sin atar, se le mandaba a
+ * verificarse otra vez. Cada código dice QUÉ falta, nada más —ni el nombre, ni
+ * el GID, ni por qué se rechazó o suspendió a nadie—. La app que pidió el pase
+ * lo traduce a lo suyo (AU-RA: `sin-gid`, `gid-pendiente`, `no-vinculada`…).
+ * `CORREO_NO_VERIFICADO` sigue siendo el de `CODIGOS_CORREO`.
+ */
+export const CODIGOS_SSO = Object.freeze({
+  /** Ese correo no tiene identidad en Genesis ID, o solo la `iniciada` que se
+   *  crea al abrir la wallet (nada hecho): no empezó el trámite. */
+  SIN_IDENTIDAD: 'GID_SIN_IDENTIDAD',
+  /** Hay trámite, pero no está verificado (a medias, en revisión o vencido). */
+  PENDIENTE: 'GID_PENDIENTE',
+  /** La identidad no puede entrar en otras apps (rechazada, suspendida o
+   *  bloqueada). Cuál de las tres no se dice aquí: se lo dice su tarjeta. */
+  NO_DISPONIBLE: 'GID_NO_DISPONIBLE',
+  /** Verificada, pero esta cuenta no está atada a su GID (falta `/vincular`). */
+  NO_VINCULADA: 'CUENTA_NO_VINCULADA',
+  /** Demasiados pedidos (429 de Genesis ID). */
+  LIMITE: 'LIMITE',
+  /** Genesis ID no contestó, contestó con un 5xx, o falta su clave aquí. */
+  RED: 'GENESIS_RED',
+})
+
+// Los estados de un trámite que todavía puede terminar en `verificada` por el
+// camino normal. `vencida` también: se vuelve con un documento vigente.
+// `iniciada` NO: es «existe el correo, no hay nada más», y `/estado` la crea
+// con solo abrir la wallet. Quien está ahí no ha empezado nada y no tiene
+// Genesis ID; decirle a AU-RA que «está en revisión» sería falso.
+const TRAMITE_ABIERTO = new Set(['datos', 'documento', 'biometria', 'en-revision', 'vencida'])
+
+/**
+ * Lo que contestó Genesis ID al pedirle un pase, con el código del puente.
+ * Un 200 y los 400 (destino o reto mal formados, con su propio código) pasan
+ * tal cual; lo demás se traduce. Se leen el código de Genesis y, para un
+ * Genesis anterior que todavía no los manda, su frase.
+ */
+function respuestaDelPase(r) {
+  if (r.ok) return r
+  const cod = r.cuerpo?.codigo
+  const frase = String(r.cuerpo?.error || '')
+  const con = (estado, codigo, error) => ({ ok: false, estado, cuerpo: { error, codigo } })
+  if (r.estado === 429) return con(429, CODIGOS_SSO.LIMITE, 'Demasiados intentos. Espera un momento y vuelve a probar.')
+  if (r.estado >= 500) return con(r.estado, CODIGOS_SSO.RED, 'Genesis ID no contestó. Vuelve a intentarlo en un momento.')
+  if (r.estado === 403) {
+    if (cod === 'CUENTA_NO_VINCULADA' || /no está atada/i.test(frase)) {
+      return con(403, CODIGOS_SSO.NO_VINCULADA, 'Tu cuenta todavía no está atada a tu Genesis ID.')
+    }
+    if (cod === 'GID_NO_VERIFICADO' || /no corresponde a una identidad verificada/i.test(frase)) {
+      return con(403, CODIGOS_SSO.PENDIENTE, 'Tu Genesis ID todavía no está verificado.')
+    }
+    if (cod === 'IDENTIDAD_BLOQUEADA') {
+      return con(403, CODIGOS_SSO.NO_DISPONIBLE, 'Tu Genesis ID no puede usarse para entrar en otras aplicaciones.')
+    }
+  }
+  return r
+}
+
 // Keccak-256 (el de Ethereum, que NO es el SHA3-256 de `crypto`: cambia el
 // relleno). Va escrito aquí para que este archivo no dependa de ningún paquete
 // que un servicio tenga y otro no: tiene que ser idéntico en todos. Solo se usa
@@ -682,6 +742,7 @@ export function routerGenesis({ exigirSesion, exigirGidDeSesion = false, vinculo
    * pedido mal formado no le cuesta una consulta a Genesis.
    */
   router.post('/sso/token', async (req, res) => {
+    const negarSso = (estado, codigo, error) => res.status(estado).json({ error, codigo })
     const extra = {}
     if (req.body?.aud !== undefined) {
       const aud = (Array.isArray(req.body.aud) ? req.body.aud : [req.body.aud]).map(String)
@@ -700,17 +761,40 @@ export function routerGenesis({ exigirSesion, exigirGidDeSesion = false, vinculo
     // sin correo comprobado (y sin `exigirGidDeSesion`, que tiene su propia
     // prueba) no se pide, ni siquiera se pregunta por el GID.
     if (!exigirGidDeSesion && !(await correoDeFiar(req))) return negar(res, CODIGOS_CORREO.NO_VERIFICADO)
-    const identidad = await identidadDe(req.usuario.email)
-    const gid = identidad?.gid
-    if (!gid) return res.status(403).json({ error: 'Todavía no hay una identidad verificada' })
+    // La identidad se busca aquí y no con `identidadDe`: un Genesis caído no es
+    // «no tienes Genesis ID», y decírselo así a la app la mandaba a empezar un
+    // trámite que la persona ya tiene.
+    const busqueda = await llamar(`/api/v1/identidades/por-email/${encodeURIComponent(req.usuario.email)}`)
+    if (!busqueda.ok && busqueda.estado !== 404) return responder(res)(respuestaDelPase(busqueda))
+    const identidad = busqueda.ok && busqueda.cuerpo?.identidad?.id ? busqueda.cuerpo.identidad : null
+    const sinVerificar = 'Todavía no hay una identidad verificada'
+    if (!identidad) return negarSso(403, CODIGOS_SSO.SIN_IDENTIDAD, sinVerificar)
+    const gid = identidad.gid
     // El pase abre las demás apps COMO esa persona: solo lo pide una sesión con
     // autoridad sobre esa identidad (probó su GID, o su correo está comprobado).
-    const codigo = await sinAutoridad(req, identidad)
-    if (codigo) return negar(res, codigo)
-    responder(res)(await llamar('/api/v1/sso/token', {
+    // Va ANTES de decir en qué estado está: a quien no es su dueña no se le
+    // cuenta nada más de ella.
+    if (gid) {
+      const codigo = await sinAutoridad(req, identidad)
+      if (codigo) return negar(res, codigo)
+    } else if (exigirGidDeSesion) {
+      // Con `exigirGidDeSesion` la sesión no prueba el correo: una identidad sin
+      // GID se contesta como si no hubiera ninguna, igual que antes.
+      return negarSso(403, CODIGOS_SSO.SIN_IDENTIDAD, sinVerificar)
+    }
+    if (!gid || identidad.estado !== 'verificada') {
+      if (!gid && identidad.estado === 'iniciada') return negarSso(403, CODIGOS_SSO.SIN_IDENTIDAD, sinVerificar)
+      return TRAMITE_ABIERTO.has(identidad.estado) || (!gid && identidad.estado === 'verificada')
+        ? negarSso(403, CODIGOS_SSO.PENDIENTE, 'Tu Genesis ID todavía no está verificado.')
+        : negarSso(403, CODIGOS_SSO.NO_DISPONIBLE, 'Tu Genesis ID no puede usarse para entrar en otras aplicaciones.')
+    }
+    if (identidad.bloqueada === true) {
+      return negarSso(403, CODIGOS_SSO.NO_DISPONIBLE, 'Tu Genesis ID no puede usarse para entrar en otras aplicaciones.')
+    }
+    responder(res)(respuestaDelPase(await llamar('/api/v1/sso/token', {
       method: 'POST',
       body: JSON.stringify({ gid, cuenta: req.usuario.id || req.usuario.email, ...extra }),
-    }))
+    })))
   })
 
   /**

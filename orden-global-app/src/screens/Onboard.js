@@ -18,6 +18,8 @@ import { setPassport } from '../accounts';
 import { getSeed } from '../api';
 import PedirClave from '../PedirClave';
 import { useT } from '../i18n';
+import { AvisoAura, pedidoAuraPendiente, guardarPedidoAura, volverAAura } from './PaseAura';
+import { alTerminarAlta } from '../auraSso';
 
 // ---------------- GENESIS ID: verificación de identidad ----------------
 //
@@ -56,6 +58,9 @@ export function Kyc({ nav }) {
   const [estado, setEstado] = useState(null);
   const [fallo, setFallo] = useState(null);
   const [ocupado, setOcupado] = useState(false);
+  // Si la persona vino desde AU-RA a sacar su Genesis ID (PaseAura), el pedido
+  // espera aquí: al terminar se vuelve a AU-RA o se sigue al permiso.
+  const [pedidoAura, setPedidoAura] = useState(null);
 
   // Paso 1 — datos declarados
   //
@@ -207,6 +212,30 @@ export function Kyc({ nav }) {
   }
 
   useEffect(() => { refrescar(false); }, []);
+  useEffect(() => {
+    pedidoAuraPendiente().then((p) => setPedidoAura(p && p.fase === 'alta' ? p : null)).catch(() => {});
+  }, []);
+
+  /* EL FINAL DEL TRÁMITE, VISTO DESDE AU-RA. En revisión (lo normal: aprobar
+     es de una persona) se vuelve a AU-RA con `gid-pendiente` en vez de dejar a
+     la persona en la wallet; verificada, se sigue al permiso con el mismo
+     pedido. Con algo por hacer todavía, se queda aquí con el aviso puesto. */
+  useEffect(() => {
+    if (!pedidoAura) return;
+    const que = alTerminarAlta(paso);
+    if (!que) return;
+    const p = pedidoAura;
+    setPedidoAura(null);
+    if (que === 'volver') {
+      toast(t('aura.revision'));
+      volverAAura(p, { error: 'gid-pendiente' }).then((ok) => { if (!ok) toast(t('aura.sinApp')); });
+      return;
+    }
+    guardarPedidoAura({ ...p, fase: null }).finally(() => {
+      nav.go('pase-aura', { reto: p.reto, estado: p.estado, vuelta: p.vuelta });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paso, pedidoAura]);
 
   // ---- paso 1 ----
   async function enviarDatos() {
@@ -650,10 +679,11 @@ export function Kyc({ nav }) {
   }
 
   useEffect(() => {
-    if (paso !== 'listo') return;
+    // Con un pedido de AU-RA esperando, el camino sigue al permiso (arriba).
+    if (paso !== 'listo' || pedidoAura) return;
     const timer = setTimeout(() => nav.go('passport'), 2400);
     return () => clearTimeout(timer);
-  }, [paso]);
+  }, [paso, pedidoAura]);
 
   const forma = revisarFormaMrz(mrz);
   // ¿Lo leído y lo declarado son la misma firma? Se recalcula en cada render
@@ -677,6 +707,7 @@ export function Kyc({ nav }) {
     <PantallaConTeclado desplaza={false} style={{ flex: 1, paddingTop: 6 }}>
       <Header title={t('gen.title')} sub={t('gen.sub')} onBack={() => nav.go(account ? 'settings' : 'auth')} />
       <CuerpoDesplazable contentContainerStyle={{ padding: 22, paddingBottom: 40 }}>
+        <AvisoAura pedido={pedidoAura} gid={estado} alVolver={() => setPedidoAura(null)} />
 
         {paso !== 'cargando' && paso !== 'listo' && paso !== 'fallo' && (
           <Pasos actual={paso} />

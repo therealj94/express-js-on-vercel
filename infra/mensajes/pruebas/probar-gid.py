@@ -159,12 +159,14 @@ def main():
         st, r = post(base, '/ficha', dict(ana, de='ana@og.hn'))
         assert r.get('gid') == GID_ANA, '/perfil dejó cambiar el GID: %s' % r
 
-        # 4) repetir /alta sólo con la llave (sin sesión) no lo toca
+        # 4) repetir /alta sólo con la llave (sin sesión) no lo toca. Y el
+        #    nombre visible tampoco: la cuenta ya tiene uno, y un alta desde
+        #    otro aparato no es cambiarse el nombre (eso es /perfil).
         st, r = post(base, '/alta', dict(ana, nombre='Ana G.', gid=''))
         assert st == 200, '/alta con llave: %s %s' % (st, r)
         st, r = post(base, '/ficha', dict(ana, de='ana@og.hn'))
-        assert r.get('gid') == GID_ANA and r.get('nombre') == 'Ana G.', \
-            'sin sesión el GID no se toca (y el nombre sí): %s' % r
+        assert r.get('gid') == GID_ANA and r.get('nombre') == 'Ana', \
+            'sin sesión ni el GID ni el nombre se tocan: %s' % r
 
         # 5b) una cuenta sin GID sigue entera: buscar por nombre y ficha
         st, r = post(base, '/buscar', dict(ana, q='beto'))

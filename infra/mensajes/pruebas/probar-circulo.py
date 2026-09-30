@@ -14,7 +14,7 @@ un fallo de funcionamiento:
   · quien YA se escribía sigue pudiendo — o el despliegue cortaría de golpe
     todas las conversaciones abiertas.
 """
-import json, os, subprocess, sys, tempfile, time, urllib.error, urllib.request
+import base64, hashlib, json, os, subprocess, sys, tempfile, time, urllib.error, urllib.request
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 SERVIDOR = os.path.join(AQUI, '..', 'servidor.py')
@@ -38,6 +38,12 @@ def _puerto_libre():
     return p
 
 PUERTO = _puerto_libre()
+
+# El aparato de Beto: el id sale de su pública, como lo calculan los clientes
+# (el relevo rechaza un id que no corresponde a su llave).
+PUB_BETO = 'LLAVEPUBLICADEBETO'
+ID_BETO = base64.urlsafe_b64encode(hashlib.sha256(
+    base64.urlsafe_b64decode(PUB_BETO + '=' * (-len(PUB_BETO) % 4))).digest()).decode().rstrip('=')[:22]
 BASE = f'http://127.0.0.1:{PUERTO}'
 
 fallos = []
@@ -90,7 +96,7 @@ try:
     est, _ = pedir('/senal', {**ana, 'para': beto['correo'], 'tipo': 'llamo', 'datos': {}})
     ok('un desconocido NO puede hacer sonar el teléfono', est == 403, str(est))
 
-    _, r = pedir('/llaves/publicar', {**beto, 'id': 'apBeto1', 'pub': 'LLAVEPUBLICADEBETO'})
+    _, r = pedir('/llaves/publicar', {**beto, 'id': ID_BETO, 'pub': PUB_BETO})
     _, r = pedir('/llaves/de', {**ana, 'correos': [beto['correo']]})
     ok('un desconocido NO recibe las llaves públicas de otro', not r['llaves'], json.dumps(r))
 
@@ -129,7 +135,7 @@ try:
     ok('las de Caro no, que no es del círculo', caro['correo'] not in r['llaves'], json.dumps(r))
 
     bulto = {'v': 1, 'de': 'PUBDEANA', 'iv': 'aaaa', 'ct': 'BULTOCERRADO',
-             's': [{'a': 'apBeto1', 'iv': 'bbbb', 'k': 'SOBRE'}]}
+             's': [{'a': ID_BETO, 'iv': 'bbbb', 'k': 'SOBRE'}]}
     est, _ = pedir('/enviar', {**ana, 'para': beto['correo'], 'cif': bulto})
     ok('el relevo acepta un bulto cerrado sin texto', est == 200, str(est))
 

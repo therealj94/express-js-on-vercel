@@ -23,6 +23,7 @@ export const ALCANCES = {
   'gid.verificar': 'Comprobar si un GID está verificado (solo sí/no y nivel)',
   'gid.perfil': 'Leer el perfil básico asociado a un GID',
   'gid.correo': 'Leer el correo de la identidad cuyo pase le presentan (solo el de ese pase)',
+  'gid.cumple': 'Leer el cumpleaños (solo mes y día) de la identidad cuyo pase le presentan',
   'vinculo.crear': 'Atar una cuenta de la app a un GID',
   'negocio.crear': 'Registrar un negocio para KYB',
   'movimiento.enviar': 'Enviar movimientos para monitoreo AML',
@@ -131,10 +132,12 @@ export const APPS_ECOSISTEMA: { clave: string; nombre: string; alcances: Alcance
     // su cuenta ES su GID. Solo necesita saber si el pase que le traen vale y
     // de quién es (gid.verificar), el nombre para saludar y si sigue
     // verificada (gid.perfil), y el correo de ESA identidad para mostrarle con
-    // qué cuenta entró (gid.correo). No hace KYC, no mueve dinero, no ata
-    // cuentas: una clave filtrada de AU-RA solo abre la pregunta «¿este pase
-    // hecho PARA AU-RA vale?».
-    alcances: ['gid.verificar', 'gid.perfil', 'gid.correo'],
+    // qué cuenta entró (gid.correo). Y el cumpleaños —mes y día, NUNCA el
+    // año— para felicitar a la persona el día que toca (gid.cumple): la
+    // persona lo ve listado en la pantalla de permiso antes de entrar. No hace
+    // KYC, no mueve dinero, no ata cuentas: una clave filtrada de AU-RA solo
+    // abre la pregunta «¿este pase hecho PARA AU-RA vale?».
+    alcances: ['gid.verificar', 'gid.perfil', 'gid.correo', 'gid.cumple'],
   },
   {
     clave: 'pulse2chat',

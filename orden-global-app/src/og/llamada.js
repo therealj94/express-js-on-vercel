@@ -18,6 +18,13 @@
  *   ocupado    {}               «estoy en otra»
  *   cuelgo     {}               se terminó
  *
+ * Y una que no manda nadie de los dos, la pone el relevo: `atendida` { como },
+ * con `desde` = el aparato que contestó. La misma cuenta puede tener la
+ * llamada sonando en el teléfono, en la web y en AU-RA; cuando uno contesta o
+ * rechaza, el relevo se lo dice a la PROPIA cuenta, el aparato que contestó la
+ * ignora (es él) y los demás dejan de sonar: «Contestaste en otro aparato».
+ * Para eso cada aparato manda su id (`aparato`) al pedir y al dejar señales.
+ *
  * Cualquier cambio aquí hay que hacerlo también allá, o las llamadas entre
  * app y web dejan de montarse sin que ninguna prueba lo note.
  *
@@ -78,8 +85,26 @@ const HIELO = [
 ];
 
 /* Cuánto se espera a que la conexión se ponga en pie antes de rendirse. Sin
-   plazo, «no pasa nada» se ve igual que «va a conectar en un segundo». */
+   plazo, «no pasa nada» se ve igual que «va a conectar en un segundo».
+
+   OJO CON CUÁNDO SE ARMA. Se armaba al LLAMAR, así que contaba también el
+   rato en que al otro le suena el teléfono: toda llamada que tardara más de
+   veinte segundos en contestarse se cortaba como «sin camino» —una mentira: no
+   había ni empezado a buscarlo— y encima sin mandar `cuelgo`, así que al otro
+   le seguía sonando una llamada que ya no existía. Ahora se arma cuando hay
+   algo que conectar: al llegar la `respuesta` (quien llama) o al contestar
+   (quien recibe). */
 const PLAZO_CONEXION = 20000;
+
+/* Cuánto suena antes de rendirse. Es un plazo APARTE y de quien llama: al
+   cumplirse cuelga Y lo dice (`cuelgo`), para que al otro le deje de sonar. */
+const PLAZO_TIMBRE = 45000;
+
+/* Quien recibe no manda nada al rendirse: solo deja de sonar si nadie
+   contestó en ningún lado. Espera un poco más que quien llama, porque lo
+   normal es que el `cuelgo` de allá llegue antes; esto es para cuando se
+   perdió por el camino y el teléfono se quedaría sonando para nadie. */
+const PLAZO_TIMBRE_ENTRANTE = PLAZO_TIMBRE + 5000;
 
 let pc = null;
 let miFlujo = null;
@@ -90,6 +115,11 @@ let soyQuienLlama = false;
 let entrante = null;             // lo que llegó con `llamo`, mientras se pregunta
 let iceEnCola = [];
 let relojConexion = null;
+let relojTimbre = null;          // el de quien llama, y el de quien recibe
+/* ¿Se espera todavía una `respuesta`? Solo entre mandar una oferta y que
+   llegue la primera: una segunda (dos aparatos del otro lado contestando a
+   la vez, un reintento del relevo) no puede volver a tocar la conexión. */
+let esperandoRespuesta = false;
 let tiposVistos = new Set();
 /* Por dónde sale la voz. `auricular` es el de la oreja, `altavoz` es manos
    libres. El bluetooth no es un tercer estado: cuando hay unos audífonos
@@ -103,6 +133,7 @@ let flujoPantalla = null;
 let mandarSenal = () => {};
 let avisar = () => {};
 let pedirTurno = null;
+let miAparato = () => '';        // el id de este aparato, para reconocer su propia `atendida`
 
 /* Las credenciales del relevo duran una hora. Se guardan un rato porque
    pedirlas en cada llamada sería una ida y vuelta de red justo en el momento
@@ -152,6 +183,28 @@ function armarPlazo() {
   relojConexion = setTimeout(() => {
     if (estado !== 'hablando') colgar('sin-camino');
   }, PLAZO_CONEXION);
+}
+
+function soltarTimbre() {
+  clearTimeout(relojTimbre); relojTimbre = null;
+}
+
+/* Quien llama: cuarenta y cinco segundos sonando y se rinde, diciéndolo. */
+function armarTimbreSaliente() {
+  soltarTimbre();
+  relojTimbre = setTimeout(() => {
+    relojTimbre = null;
+    if (estado === 'llamando' && esperandoRespuesta) colgar('sin-respuesta');
+  }, PLAZO_TIMBRE);
+}
+
+/* Quien recibe: deja de sonar solo si en todo ese rato nadie contestó. */
+function armarTimbreEntrante() {
+  soltarTimbre();
+  relojTimbre = setTimeout(() => {
+    relojTimbre = null;
+    if (estado === 'entrando') colgar('perdida');
+  }, PLAZO_TIMBRE_ENTRANTE);
 }
 
 /* ── LA CONEXIÓN ─────────────────────────────────────────────────────────── */
@@ -256,7 +309,7 @@ function audioArranca(conVideo) {
 }
 
 function audioTermina() {
-  try { AudioSala.stopRingtone(); } catch {}
+  timbreCalla();
   try { AudioSala.stopRingback(); } catch {}
   try { AudioSala.setKeepScreenOn(false); } catch {}
   try { AudioSala.stop(); } catch {}
@@ -274,12 +327,34 @@ function audioTermina() {
  * Así que si el aviso no lo da el sistema, lo damos nosotros: timbre y
  * vibración mientras dure la pregunta.
  */
+/* LA CARRERA DEL TIMBRE. `startRingtone` vuelve enseguida pero el sonido
+   arranca DESPUÉS, en el lado nativo, cuando termina de preparar el
+   reproductor. Si la llamada y su `cuelgo` (o su `atendida`) llegan en la
+   misma tanda —pasa al abrir la app desde el aviso, con todo esperando en el
+   buzón—, el `stopRingtone` llega antes de que haya nada sonando, no para
+   nada, y el timbre arranca después y se queda sonando solo. Así que callar
+   se repite un par de veces más, y cada timbre lleva su número: el callar
+   tardío no apaga un timbre NUEVO que haya empezado entretanto. */
+let serieTimbre = 0;
+let sonandoTimbre = false;
+
 function timbreArranca() {
+  const mia = ++serieTimbre;
+  sonandoTimbre = true;
   try { AudioSala.startRingtone('_DEFAULT_', [0, 900, 600], null, 30); } catch {}
+  // Y si mientras tanto la llamada ya no está sonando, se calla lo que arrancó.
+  setTimeout(() => { if (mia === serieTimbre && estado !== 'entrando') timbreCalla(); }, 0);
 }
 
 function timbreCalla() {
+  const mia = ++serieTimbre;
+  sonandoTimbre = false;
   try { AudioSala.stopRingtone(); } catch {}
+  for (const ms of [500, 1500]) {
+    setTimeout(() => {
+      if (mia === serieTimbre && !sonandoTimbre) { try { AudioSala.stopRingtone(); } catch {} }
+    }, ms);
+  }
 }
 
 /* Y el tono de ida: los dos o tres tonos que dicen «está sonando del otro
@@ -333,12 +408,14 @@ export async function llamar(correo, conVideo) {
     audioArranca(conVideo);
     pc = nuevaConexion();
     miFlujo.getTracks().forEach((t) => pc.addTrack(t, miFlujo));
-    armarPlazo();
     const oferta = await pc.createOffer({});
     await pc.setLocalDescription(oferta);
     /* `llamo` va con la oferta dentro: una ida y vuelta menos, y quien recibe
        ya sabe si es video ANTES de decidir si contesta. */
+    esperandoRespuesta = true;
     mandarSenal(conQuien, 'llamo', { video: !!conVideo, sdp: pc.localDescription.toJSON() });
+    // Suena, con su propio plazo. El de conexión espera a la `respuesta`.
+    armarTimbreSaliente();
     tonoArranca();
     anunciar();
   } catch (e) {
@@ -350,8 +427,13 @@ export async function llamar(correo, conVideo) {
 /* ── CONTESTAR ───────────────────────────────────────────────────────────── */
 
 export async function contestar(conVideo) {
-  if (!entrante) return;
+  /* EL DOBLE TOQUE. Contestar tarda —permisos, micrófono, la conexión— y el
+     primer toque ya pasa a «conectando»; sin esta guardia, un segundo toque
+     en ese rato volvía a abrir micrófono y conexión encima de los primeros y
+     mandaba dos `respuesta`. Solo se contesta lo que está sonando. */
+  if (!entrante || estado !== 'entrando') return;
   const { de, sdp } = entrante;
+  soltarTimbre();
   timbreCalla();
   conQuien = de;
   soyQuienLlama = false;
@@ -379,7 +461,8 @@ export async function contestar(conVideo) {
 }
 
 export function rechazar() {
-  if (!entrante) return;
+  if (!entrante || estado !== 'entrando') return;
+  soltarTimbre();
   timbreCalla();
   audioTermina();
   mandarSenal(entrante.de, 'rechazo', {});
@@ -411,13 +494,23 @@ function soltarTodo() {
  */
 export function colgar(motivo = 'yo') {
   const otro = conQuien;
-  const avisarAlOtro = otro && ['yo', 'corte'].includes(motivo) && estado !== 'libre';
+  /* A quién se le dice. Se le dice al otro siempre que la llamada se cae de
+     este lado y él todavía cree que sigue —también por «sin camino» y por el
+     timbre que se rindió: sin `cuelgo`, al otro le seguía sonando—. Menos en
+     dos casos: cuando el corte VIENE del otro (ya lo sabe), y cuando la llamada
+     solo estaba sonando aquí (`entrando`): quien llama puede estar hablando ya
+     con otro aparato de esta cuenta, y un `cuelgo` le cortaría esa llamada.
+     Lo de «no contesto» se dice con `rechazar`, no desde aquí. */
+  const avisarAlOtro = otro && estado !== 'libre' && estado !== 'entrando'
+    && ['yo', 'corte', 'sin-camino', 'sin-respuesta', 'no-se-pudo'].includes(motivo);
   /* El diagnóstico se arma ANTES de soltar todo, que es cuando todavía se
      puede mirar. Sirve para decirle a la persona por qué no conectó, y a
      nosotros para saber si hace falta pagar el TURN o si es otra cosa. */
   const caminos = [...tiposVistos].join(',') || 'ninguno';
   const hizoFaltaRelevo = motivo === 'sin-camino' && !tiposVistos.has('relay');
   clearTimeout(relojConexion); relojConexion = null;
+  soltarTimbre();
+  esperandoRespuesta = false;
   tiposVistos = new Set();
   soltarTodo();
   estado = 'libre';
@@ -512,12 +605,33 @@ export async function recibir(s) {
       conQuien = de;
       estado = 'entrando';
       timbreArranca();
+      armarTimbreEntrante();
       anunciar();
+      return;
+    }
+    /* CONTESTÓ (O RECHAZÓ) OTRO APARATO DE ESTA MISMA CUENTA. La deja el
+       relevo con `de` = quien llama y `desde` = el aparato que contestó. Si
+       fui yo, se ignora; si no, aquí se deja de sonar, sin mandar nada: la
+       llamada sigue, en el otro aparato. */
+    if (s.tipo === 'atendida') {
+      const yoMismo = miAparato();
+      if (s.desde && yoMismo && s.desde === yoMismo) return;
+      if (estado === 'entrando' && de === conQuien) colgar('en-otro-aparato');
       return;
     }
     if (de !== conQuien) return;   // señal de otra llamada: se ignora
 
-    if (s.tipo === 'respuesta' && pc) {
+    if (s.tipo === 'respuesta') {
+      /* Solo la PRIMERA, y solo si se estaba esperando. Una segunda sobre una
+         conexión ya descrita revienta `setRemoteDescription` y el `catch` de
+         abajo colgaba una llamada que iba bien. */
+      if (!pc || !esperandoRespuesta || pc.signalingState !== 'have-local-offer') return;
+      esperandoRespuesta = false;
+      soltarTimbre();
+      try { AudioSala.stopRingback(); } catch {}
+      estado = 'conectando';
+      // AHORA sí hay algo que conectar: desde aquí cuentan los veinte segundos.
+      armarPlazo();
       await pc.setRemoteDescription(new RTCSessionDescription(d.sdp));
       await vaciarCola();
       anunciar();
@@ -534,18 +648,25 @@ export async function recibir(s) {
       return;
     }
     if (s.tipo === 'cuelgo') return colgar('el-otro');
-    if (s.tipo === 'rechazo') return colgar('rechazada');
-    if (s.tipo === 'ocupado') return colgar('ocupado');
+    /* «No contesto» y «estoy en otra» solo valen MIENTRAS SUENA. Con la cuenta
+       del otro abierta en dos aparatos, uno puede contestar y el otro decir
+       que no (o que está ocupado) un segundo después: ese tardío no puede
+       cortar la llamada que ya está en pie con el primero. */
+    if (s.tipo === 'rechazo' || s.tipo === 'ocupado') {
+      if (estado !== 'llamando' || !esperandoRespuesta) return;
+      return colgar(s.tipo === 'rechazo' ? 'rechazada' : 'ocupado');
+    }
   } catch {
     colgar('no-se-pudo');
   }
 }
 
 /** Lo enchufa la app: cómo mandar señales, a quién avisar y de dónde sale el relevo. */
-export function arrancar({ mandar, alCambiar, traerTurno }) {
+export function arrancar({ mandar, alCambiar, traerTurno, aparato }) {
   mandarSenal = mandar || (() => {});
   avisar = alCambiar || (() => {});
   pedirTurno = traerTurno || null;
+  miAparato = typeof aparato === 'function' ? aparato : () => '';
   // Se piden ya, sin esperar a la primera llamada: cuando alguien toque
   // «llamar», las credenciales ya van a estar puestas.
   refrescarTurno();

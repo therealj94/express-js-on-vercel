@@ -589,9 +589,15 @@ appsRouter.post('/sso/token', limite(60), exigeApp('gid.verificar'), async (req,
     return res.status(400).json({ error: 'Hacen falta un GID válido y la cuenta' })
   }
 
+  /* Cada negativa lleva su `codigo`, además del texto. El puente de la wallet
+     lo traduce a lo que la app que pidió el pase le enseña a la persona («tu
+     Genesis ID sigue en revisión» no es «tu cuenta no está atada»); sin él,
+     todo 403 salía como «Genesis no verificado» y mandaba a la gente a
+     verificarse otra vez sin necesidad. Los códigos dicen QUÉ falta, no nada
+     de la identidad: la app ya sabe de quién es el GID que manda. */
   const identidad = ids.porGid(g)
   if (!identidad || identidad.estado !== 'verificada') {
-    return res.status(403).json({ error: 'El GID no corresponde a una identidad verificada' })
+    return res.status(403).json({ error: 'El GID no corresponde a una identidad verificada', codigo: 'GID_NO_VERIFICADO' })
   }
   // El bloqueo se comprueba aparte del estado a propósito: son dos cosas
   // distintas y una app tiene derecho a saber cuál de las dos la paró.
@@ -602,7 +608,7 @@ appsRouter.post('/sso/token', limite(60), exigeApp('gid.verificar'), async (req,
   const atada = identidad.vinculos.some(
     (v) => v.app === req.app_ecosistema!.clave && v.cuenta === String(cuenta))
   if (!atada) {
-    return res.status(403).json({ error: 'Esa cuenta no está atada a este GID en esta aplicación' })
+    return res.status(403).json({ error: 'Esa cuenta no está atada a este GID en esta aplicación', codigo: 'CUENTA_NO_VINCULADA' })
   }
 
   const destino = leerAudiencia(req.body?.aud)
@@ -610,6 +616,18 @@ appsRouter.post('/sso/token', limite(60), exigeApp('gid.verificar'), async (req,
   const reto = req.body?.reto
   if (reto !== undefined && (typeof reto !== 'string' || !RETO_VALIDO.test(reto))) {
     return res.status(400).json({ error: 'El reto tiene que ser el SHA-256 del verificador en base64url (43 caracteres)' })
+  }
+  /* AU-RA Y EL CHAT, SOLO CON RETO. Su pase vuelve al teléfono por un enlace
+     (`ultronfp://…`, o la web de AU-RA) que otra app puede registrar o leer:
+     sin reto, quien se quedara con él entraría en AU-RA —y en el chat— como
+     esa persona durante quince minutos. Con reto, el pase solo lo canjea quien
+     tiene el verificador. Antes el reto era opcional para todos y un pase de
+     AU-RA sin él se emitía igual. Los demás destinos siguen como estaban. */
+  if (destino.aud?.some((a) => DESTINOS_CON_RETO.has(a)) && !reto) {
+    return res.status(400).json({
+      error: `Un pase para ${destino.aud.filter((a) => DESTINOS_CON_RETO.has(a)).join(' y ')} necesita el reto (SHA-256 del verificador)`,
+      codigo: 'RETO_OBLIGATORIO',
+    })
   }
 
   const emitido = Math.floor(Date.now() / 1000)
@@ -643,6 +661,12 @@ appsRouter.post('/sso/verificar', limite(300), exigeApp('gid.verificar'), async 
   if (aud && !aud.includes(quien)) {
     return res.status(401).json({ valido: false, error: 'Este pase es para otra aplicación', codigo: 'OTRA_APP' })
   }
+  /* Y un pase para AU-RA o el chat SIN reto no se canjea, aunque la firma
+     valga: son los que se emitían antes de exigirlo al pedirlos (arriba), y
+     esos no prueban que quien los trae sea la app que los pidió. */
+  if (aud && aud.some((a) => DESTINOS_CON_RETO.has(a)) && typeof reclamos.reto !== 'string') {
+    return res.status(401).json({ valido: false, error: 'Este pase no lleva reto y su destino lo exige', codigo: 'RETO' })
+  }
   /* EL RETO. La app que pidió el pase guardó un verificador al azar y mandó
      solo su huella (SHA-256). Quien intercepte el pase en el enlace de vuelta
      —otra app que registre el mismo esquema, por ejemplo— no tiene el
@@ -675,12 +699,19 @@ appsRouter.post('/sso/verificar', limite(300), exigeApp('gid.verificar'), async 
     return res.status(401).json({ valido: false, error: 'Este pase ya se usó', codigo: 'USADO' })
   }
   const alcances = req.app_ecosistema!.alcances
+  /* EL CUMPLEAÑOS VA DENTRO DEL PERFIL, y solo mes y día. El año es la edad, y
+     la edad no le hace falta a nadie para felicitar. Sin `gid.cumple` no sale;
+     sin `gid.perfil` tampoco, porque no hay perfil donde ponerlo. */
+  const cumple = alcances.includes('gid.cumple') ? cumpleDe(identidad) : null
+  const perfil = alcances.includes('gid.perfil')
+    ? { ...ids.perfilPublico(identidad), ...(cumple ? { cumple } : {}) }
+    : undefined
   res.json({
     valido: true,
     gid: reclamos.sub,
     emitidoPor: reclamos.app,
     expira: new Date(reclamos.exp * 1000).toISOString(),
-    perfil: alcances.includes('gid.perfil') ? ids.perfilPublico(identidad) : undefined,
+    perfil,
     // El correo de ESTA identidad, el que la persona usó para su trámite —no
     // uno que traiga la petición—. Solo a quien tiene el alcance.
     correo: alcances.includes('gid.correo') ? identidad.email : undefined,
@@ -688,12 +719,41 @@ appsRouter.post('/sso/verificar', limite(300), exigeApp('gid.verificar'), async 
   })
 })
 
+/**
+ * `MM-DD` de la fecha de nacimiento de una identidad verificada, o null.
+ *
+ * Manda la del documento (la que leyó el trámite); si el trámite no la dejó,
+ * la que declaró la persona. Una fecha que no es un día de verdad —mes 13, 31
+ * de abril— cuenta como que no hay: mejor no felicitar que felicitar el día
+ * equivocado. El año se lee solo para validar el 29 de febrero y no sale.
+ */
+function cumpleDe(identidad: { estado: string; fechaNacimiento?: string | null; fechaNacimientoDeclarada?: string | null }): string | null {
+  if (identidad.estado !== 'verificada') return null
+  for (const fecha of [identidad.fechaNacimiento, identidad.fechaNacimientoDeclarada]) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(String(fecha ?? '').trim())
+    if (!m) continue
+    const [anio, mes, dia] = [Number(m[1]), Number(m[2]), Number(m[3])]
+    if (mes < 1 || mes > 12 || dia < 1) continue
+    // El día 0 del mes siguiente es el último de este (en UTC, sin husos).
+    if (dia > new Date(Date.UTC(anio, mes, 0)).getUTCDate()) continue
+    return `${m[2]}-${m[3]}`
+  }
+  return null
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Pases con destino
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** El SHA-256 del verificador, en base64url sin relleno: 43 caracteres. */
 const RETO_VALIDO = /^[A-Za-z0-9_-]{43}$/
+
+/**
+ * Los destinos cuyo pase EXIGE reto. Son los que vuelven por un enlace que otra
+ * app puede interceptar (ver `/sso/token`). Una app nueva con ese mismo camino
+ * de vuelta se agrega aquí.
+ */
+const DESTINOS_CON_RETO = new Set(['aura', 'pulse2chat'])
 
 /**
  * Para qué apps es el pase. Tienen que existir y estar activas: un destino

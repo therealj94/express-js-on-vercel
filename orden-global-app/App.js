@@ -359,7 +359,9 @@ function Root() {
            cualquier app; el consentimiento solo lo da la persona. */
         if (destino === 'aura') {
           setDir(1);
-          setStack([{ r: 'home' }, { r: 'pase-aura', params: { reto: p.reto || '', estado: p.estado || '' } }]);
+          // `vuelta` pasa tal cual: la pantalla solo la usa si está en la lista
+          // cerrada de src/auraSso.js (si no, vuelve a ultronfp://sso).
+          setStack([{ r: 'home' }, { r: 'pase-aura', params: { reto: p.reto || '', estado: p.estado || '', vuelta: p.vuelta || '' } }]);
           return;
         }
         if (destino !== 'mytokenpay') return;

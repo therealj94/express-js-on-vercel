@@ -189,6 +189,22 @@ export async function rehacerAlta(cuenta) {
 }
 const firmado = (b) => ({ ...b, correo: yo?.correo, llave });
 
+/* EL ID DE ESTE APARATO, EN LAS SEÑALES. El relevo lleva la cuenta de qué
+   señales vio cada aparato por (correo, aparato): sin id, el teléfono y la web
+   de la misma persona compartían UN cursor y el primero que preguntaba se
+   llevaba la señal —una llamada entraba en uno solo, el que tuviera suerte—.
+   Y con el id, la `atendida` que el relevo deja al contestar dice QUÉ aparato
+   contestó, y este sabe si fue él. Es el mismo id del candado. */
+let aparato = '';
+async function asegurarAparato() {
+  if (aparato) return aparato;
+  const m = await CANDADO.miLlave().catch(() => null);
+  aparato = m?.id || '';
+  return aparato;
+}
+export const miAparato = () => aparato;
+const conAparato = (b) => (aparato ? { ...b, aparato } : b);
+
 /* ══ EL CANDADO, TAMBIÉN AQUÍ ══════════════════════════════════════════════
  *
  * La web cifra de punta a punta desde hace tiempo y esta pantalla no sabía, y
@@ -215,7 +231,11 @@ let publicadaPara = null;
 async function publicarMiLlave() {
   if (publicadaPara && publicadaPara === yo?.correo) return;
   const mia = await CANDADO.miLlave();
-  if (!mia) return;
+  /* Un par VOLÁTIL no se publica: vive en memoria porque el llavero no
+     contestó, y al reabrir la app volverá la llave de siempre. Publicarlo
+     haría que los demás le cerraran sobres a un aparato que mañana no existe
+     —y taparía, para ellos, al aparato de verdad—. */
+  if (!mia || mia.volatil) return;
   try {
     /* LA DE FIRMA VA TAMBIÉN. El relevo la guarda desde hace tiempo y la
        reparte con la de acuerdo, y es CONTRA ESA LISTA —no contra lo que
@@ -558,7 +578,7 @@ async function abrirReacciones(reacs, llaves) {
     if (typeof v === 'string') { salida[c] = v; continue; }
     if (!v || !v.cif) continue;
     const r = await CANDADO.abrir(v.cif, llaves[c] || []).catch(() => null);
-    salida[c] = r ? r.texto.slice(0, 8) : '🔒';
+    salida[c] = r && typeof r.texto === 'string' ? r.texto.slice(0, 8) : '🔒';
   }
   return salida;
 }
@@ -586,47 +606,55 @@ export async function bandeja(desde, antes) {
     try { llaves = (await llaveroDe(deQuienes)) || {}; } catch { llaves = {}; }
   }
 
-  const msgs = await Promise.all(crudos.map(async (m0) => {
-    const m = m0.reacciones ? { ...m0, reacciones: await abrirReacciones(m0.reacciones, llaves) } : m0;
-    /* LA MARCA VIVE EN EL MENSAJE, no en un aviso de tres segundos.
-       Antes, un mensaje en claro volvía del relevo sin ningún campo y la única
-       señal de que había viajado sin cifrar era un toast que salía UNA vez, a
-       quien lo mandaba, y desaparecía. Al recargar el hilo no quedaba rastro;
-       mañana tampoco; y QUIEN LO RECIBÍA no se enteraba nunca.
-       `!m.cif` se calcula igual en las dos puntas, así que marcarlo aquí hace
-       que los dos lados vean lo mismo y que siga siendo verdad mañana. */
-    /* UN MENSAJE BORRADO NO ES UN MENSAJE EN CLARO. El relevo lo deja sin
-       contenido —`borrado:true`, sólo id/de/para/cuando— y aquí caía en la
-       marca «viajó sin cifrar» y se pintaba como burbuja vacía con ese
-       sello. Se devuelve tal cual, marcado, para que la pantalla diga que se
-       borró. */
-    if (m.borrado) return { ...m, texto: '' };
-    if (!m.cif) return { ...m, e2e: false };
-    const r = await CANDADO.abrir(m.cif, llaves[m.de] || []);
-    if (r == null) return { ...m, texto: '', cerrado: true, e2e: true };
-    const claro = r.texto;
-    /* El texto puede traer pegada la llave de un adjunto: viaja DENTRO del
-       cifrado, nunca al lado, que es lo que hace que el relevo guarde un
-       archivo que no puede abrir. */
-    /* Y la CITA va por el mismo camino (`c`). Los mensajes viejos la traen
-       en claro (`m.cita`) y se siguen leyendo. */
-    let texto = claro;
-    let extra = null;
-    if (claro.startsWith('{')) {
-      try {
-        const j = JSON.parse(claro.slice(1));
-        texto = j.t || '';
-        extra = { ...(j.k ? { llaveArchivo: j.k, ivArchivo: j.iv } : {}),
-                  ...(j.c ? { cita: String(j.c).slice(0, 16) } : {}) };
-      } catch { /* si no parsea es texto normal que empieza raro */ }
-    }
-    /* `verificado` viaja hasta la burbuja. Un mensaje que no se pudo verificar
-       NO se esconde: se enseña con su marca, porque esconderlo sería perder
-       información y enseñarlo callado sería mentir. */
-    return { ...m, texto, e2e: true, verificado: r.verificado, motivoFirma: r.motivo,
-             ...(extra || {}) };
-  }));
+  /* UN MENSAJE MALO NO VACÍA EL HILO. Cada mensaje se abre en su propio
+     `try`: antes, uno con el bulto envenenado tumbaba el `Promise.all` entero,
+     `bandeja` lanzaba y la conversación se quedaba vacía. El malo queda como
+     candado cerrado y los demás se leen. */
+  const msgs = await Promise.all(crudos.map((m0) => abrirMensaje(m0, llaves).catch(() => ({
+    ...m0, texto: '', cerrado: true, e2e: !!m0.cif, ...(m0.reacciones ? { reacciones: {} } : {}),
+  }))));
   return { ...d, mensajes: msgs, hayMas: d.hayMas === true, leidoHasta: Number(d.leidoHasta) || 0 };
+}
+
+async function abrirMensaje(m0, llaves) {
+  const m = m0.reacciones ? { ...m0, reacciones: await abrirReacciones(m0.reacciones, llaves) } : m0;
+  /* LA MARCA VIVE EN EL MENSAJE, no en un aviso de tres segundos.
+     Antes, un mensaje en claro volvía del relevo sin ningún campo y la única
+     señal de que había viajado sin cifrar era un toast que salía UNA vez, a
+     quien lo mandaba, y desaparecía. Al recargar el hilo no quedaba rastro;
+     mañana tampoco; y QUIEN LO RECIBÍA no se enteraba nunca.
+     `!m.cif` se calcula igual en las dos puntas, así que marcarlo aquí hace
+     que los dos lados vean lo mismo y que siga siendo verdad mañana. */
+  /* UN MENSAJE BORRADO NO ES UN MENSAJE EN CLARO. El relevo lo deja sin
+     contenido —`borrado:true`, sólo id/de/para/cuando— y aquí caía en la
+     marca «viajó sin cifrar» y se pintaba como burbuja vacía con ese
+     sello. Se devuelve tal cual, marcado, para que la pantalla diga que se
+     borró. */
+  if (m.borrado) return { ...m, texto: '' };
+  if (!m.cif) return { ...m, e2e: false };
+  const r = await CANDADO.abrir(m.cif, llaves[m.de] || []);
+  if (r == null) return { ...m, texto: '', cerrado: true, e2e: true };
+  const claro = r.texto;
+  /* El texto puede traer pegada la llave de un adjunto: viaja DENTRO del
+     cifrado, nunca al lado, que es lo que hace que el relevo guarde un
+     archivo que no puede abrir. */
+  /* Y la CITA va por el mismo camino (`c`). Los mensajes viejos la traen
+     en claro (`m.cita`) y se siguen leyendo. */
+  let texto = claro;
+  let extra = null;
+  if (claro.startsWith('{')) {
+    try {
+      const j = JSON.parse(claro.slice(1));
+      texto = j.t || '';
+      extra = { ...(j.k ? { llaveArchivo: j.k, ivArchivo: j.iv } : {}),
+                ...(j.c ? { cita: String(j.c).slice(0, 16) } : {}) };
+    } catch { /* si no parsea es texto normal que empieza raro */ }
+  }
+  /* `verificado` viaja hasta la burbuja. Un mensaje que no se pudo verificar
+     NO se esconde: se enseña con su marca, porque esconderlo sería perder
+     información y enseñarlo callado sería mentir. */
+  return { ...m, texto, e2e: true, verificado: r.verificado, motivoFirma: r.motivo,
+           ...(extra || {}) };
 }
 
 /* ══ REACCIONAR, CERRADO ═══════════════════════════════════════════════════
@@ -699,9 +727,10 @@ export async function escuchar(alLlegar) {
   if (escuchando) return;
   escuchando = true;
   const mia = ++generacion;
+  await asegurarAparato();
   while (escuchando && mia === generacion) {
     try {
-      const d = await pedir('/senales', firmado({}), 40000);
+      const d = await pedir('/senales', conAparato(firmado({})), 40000);
       if (mia !== generacion) break;
       for (const s of (d.senales || [])) {
         try { alLlegar(s); } catch { /* una señal mal formada no tumba el bucle */ }
@@ -732,8 +761,10 @@ export function escribiendo(para) {
 }
 
 /** Deja una señal para el otro lado. Nunca lanza. */
-export const senalar = (para, tipo, datos) =>
-  pedir('/senal', firmado({ para, tipo, datos: datos || {} })).catch(() => null);
+export const senalar = async (para, tipo, datos) => {
+  await asegurarAparato();
+  return pedir('/senal', conAparato(firmado({ para, tipo, datos: datos || {} }))).catch(() => null);
+};
 
 /* Las credenciales del relevo de video (TURN).
  *

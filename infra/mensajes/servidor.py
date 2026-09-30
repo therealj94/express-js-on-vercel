@@ -41,7 +41,7 @@ entiende Range (206) —sin eso Safari no reproduce un video— y solo deja
 abrirse dentro del navegador a imágenes y videos: lo demás se descarga, para
 que nadie use nuestro dominio para servir su HTML.
 """
-import base64, json, os, re, secrets, subprocess, threading, time, urllib.request
+import base64, hashlib, hmac, json, os, re, secrets, subprocess, threading, time, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 RUTA = os.environ.get('MENSAJES_DATOS', '/srv/mensajes/datos.json')
@@ -607,8 +607,41 @@ def quien_es_la_sesion(token):
 # Se exige que el pase lleve destino. Un pase sin destino es el de siempre, que
 # vale en cualquier casa y las veces que sea; aceptarlo aquí dejaría a
 # cualquiera de esas casas entrar al chat de sus usuarios.
+#
+# Y SE EXIGE QUE EL PASE LLEVE RETO, Y QUE ESTE VERIFICADOR SEA EL SUYO. Genesis
+# solo compara el verificador si el pase trae reto: con un pase sin reto (los
+# que se emitían antes de exigirlo, o si un día alguien lo afloja allá),
+# cualquier verificador de veinte letras pasaba, y el requisito de aquí no
+# probaba nada. Así que el relevo lo mira él mismo, en el cuerpo del pase: el
+# `reto` tiene que ser el SHA-256 (base64url) de ESTE verificador. Leer el
+# cuerpo sin la firma es seguro porque solo se usa si Genesis, después, dice
+# que la firma vale; y se mira ANTES de llamarle, para no gastar red en un pase
+# que ya se sabe que no sirve.
 GENESIS_URL = os.environ.get('MENSAJES_GENESIS_URL', 'https://genesis-id.onrender.com').rstrip('/')
 GENESIS_CLAVE = os.environ.get('MENSAJES_GENESIS_CLAVE', '').strip()
+
+
+def reto_del_pase(pase):
+    """El `reto` que viaja dentro del pase (sin comprobar la firma), o None."""
+    partes = pase.split('.')
+    if len(partes) != 3:
+        return None
+    try:
+        cuerpo = partes[1] + '=' * (-len(partes[1]) % 4)
+        reclamos = json.loads(base64.urlsafe_b64decode(cuerpo.encode()))
+    except Exception:
+        return None
+    reto = reclamos.get('reto') if isinstance(reclamos, dict) else None
+    return reto if isinstance(reto, str) and re.fullmatch(r'[A-Za-z0-9_-]{43}', reto) else None
+
+
+def verificador_cuadra(pase, verificador):
+    """¿El pase lleva reto y es la huella de ESTE verificador?"""
+    reto = reto_del_pase(pase)
+    if not reto:
+        return False
+    huella = base64.urlsafe_b64encode(hashlib.sha256(verificador.encode()).digest()).decode().rstrip('=')
+    return hmac.compare_digest(huella, reto)
 
 
 def quien_es_el_pase(pase, verificador):
@@ -616,6 +649,8 @@ def quien_es_el_pase(pase, verificador):
     if not GENESIS_CLAVE or not isinstance(pase, str) or not pase or len(pase) > 4096:
         return None, None
     if not isinstance(verificador, str) or not (20 <= len(verificador) <= 200):
+        return None, None
+    if not verificador_cuadra(pase, verificador):
         return None, None
     import urllib.request
     try:
@@ -938,6 +973,36 @@ def apuntar_aparato(f, ident, pub, ahora, fir=''):
     # antes que una computadora que se usa una vez al mes
     aps.sort(key=lambda a: a.get('visto', 0), reverse=True)
     f['aparatos'] = aps[:TOPE_APARATOS]
+
+
+def id_de_aparato(pub):
+    """El id que le toca a un aparato: b64url(sha256(pub))[:22], sin relleno.
+
+    Es como lo calculan los tres clientes (web, app Orden Global y AU-RA): el
+    id ES el resumen de la llave pública de acuerdo. Devuelve '' si la pública
+    no es base64url válido.
+    """
+    try:
+        crudo = base64.urlsafe_b64decode(pub + '=' * (-len(pub) % 4))
+    except Exception:
+        return ''
+    if not crudo:
+        return ''
+    return base64.urlsafe_b64encode(hashlib.sha256(crudo).digest()).decode().rstrip('=')[:22]
+
+
+def llave_vale(dada, f):
+    """¿La llave que trae la petición es la de esa ficha?
+
+    Con `hmac.compare_digest`, no con `==`: la comparación normal se corta en
+    el primer carácter distinto, y midiendo cuánto tarda en contestar el 401
+    se puede ir adivinando la llave letra a letra. Esta tarda lo mismo acierte
+    o falle. Lo que no sea texto no vale, sin excepciones que se escapen.
+    """
+    if not f or not isinstance(dada, str) or not dada:
+        return False
+    return hmac.compare_digest(dada.encode('utf-8', 'surrogatepass'),
+                               str(f.get('llave', '')).encode('utf-8'))
 
 
 def aparatos_de(f, ahora):
@@ -1409,7 +1474,7 @@ class Relevo(BaseHTTPRequestHandler):
             with candado:
                 d0 = cargar()
                 f0 = d0['fichas'].get(str(b.get('correo', '')).lower())
-                if not f0 or b.get('llave') != f0['llave']:
+                if not llave_vale(b.get('llave'), f0):
                     return self._json(401, {'error': 'llave incorrecta'})
                 para0 = str(b.get('para', '')).lower()
                 addr_de0 = f0.get('addr', '')
@@ -1476,8 +1541,15 @@ class Relevo(BaseHTTPRequestHandler):
                 # dispositivo del 409 eterno. La llave devuelta es SIEMPRE la
                 # existente: acuñar otra mataría al primer dispositivo, que
                 # sigue firmando con la vieja.
-                if b.get('llave') == f['llave'] or correo_probado == correo:
-                    f['nombre'] = str(b.get('nombre', f['nombre']))[:80]
+                if llave_vale(b.get('llave'), f) or correo_probado == correo:
+                    # EL NOMBRE VISIBLE NO SE PISA. Si la cuenta ya tiene uno,
+                    # se queda: lo eligió su dueño (desde la wallet, o con
+                    # /perfil) y un alta desde OTRO aparato no es cambiarse el
+                    # nombre. Pasaba con AU-RA, que manda el nombre corto de
+                    # su padrón y convertía «Ana María López» en «Ana» para
+                    # todos sus contactos. Cambiarlo a propósito es /perfil.
+                    if not str(f.get('nombre', '')).strip():
+                        f['nombre'] = str(b.get('nombre', ''))[:80]
                     f['addr'] = str(b.get('addr', f['addr']))[:64]
                     # El gid solo se toca cuando hay sesion que lo pruebe: con
                     # sesion, es lo que diga Genesis (o nada); sin sesion —solo
@@ -1529,7 +1601,7 @@ class Relevo(BaseHTTPRequestHandler):
             # todo lo demás exige la llave del correo que firma
             correo = str(b.get('correo', '')).lower()
             f = fichas.get(correo)
-            if not f or b.get('llave') != f['llave']:
+            if not llave_vale(b.get('llave'), f):
                 return self._json(401, {'error': 'llave incorrecta'})
 
             if ruta == '/turno':
@@ -2138,6 +2210,15 @@ class Relevo(BaseHTTPRequestHandler):
                 fir = str(b.get('fir', ''))[:200]
                 if not ident or not pub:
                     return self._json(400, {'error': 'faltan datos'})
+                # EL ID TIENE QUE SALIR DE LA PÚBLICA. Es lo que decide qué
+                # sobre abre cada aparato; un aparato publicado con el id de
+                # otro y una pública suya se quedaría con los sobres del otro
+                # (o se los taparía, en los clientes que se quedan con el
+                # primero de cada id). El id se puede recalcular, así que no
+                # hay que creérselo a nadie.
+                if id_de_aparato(pub) != ident:
+                    return self._json(400, {'error': 'el id del aparato no corresponde a su llave',
+                                            'motivo': 'id-no-cuadra'})
                 apuntar_aparato(f, ident, pub, int(time.time() * 1000), fir)
                 guardar(d)
                 return self._json(200, {'ok': True})
