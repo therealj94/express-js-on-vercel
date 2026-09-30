@@ -55,13 +55,18 @@ async function llaveDe(correo) {
   return (await r.json()).llave
 }
 
-async function abrir(correo, nombre) {
-  const llave = await llaveDe(correo)
+/* `llaveDada`: la misma cuenta en un SEGUNDO aparato (otro contexto, otro
+   candado, otro id de aparato). Un segundo /alta sin llave daría 409. */
+async function abrir(correo, nombre, llaveDada) {
+  const llave = llaveDada || await llaveDe(correo)
   const ctx = await nav.newContext({ locale:'es-HN', viewport:{width:430,height:900},
     permissions:['microphone','camera'] })
   const pag = await ctx.newPage()
   const err = []
   pag.on('pageerror', e => err.push(String(e)))
+  /* Las señales que manda este navegador, por tipo: así se cuenta cuántas
+     `respuesta` salieron de un doble toque. */
+  const senales = []
   await pag.addInitScript(([r, c, k]) => {
     window.OG_MENSAJES_API = r + '/mensajes'
     try { localStorage.setItem('veta.chat.llave.' + c, k) } catch {}
@@ -79,6 +84,7 @@ async function abrir(correo, nombre) {
       try {
         const b = JSON.parse(cuerpo || '{}')
         if (b.sesion) { delete b.sesion; cuerpo = JSON.stringify(b) }
+        if (u.endsWith('/senal')) senales.push({ tipo: b.tipo, para: b.para, aparato: b.aparato || '' })
       } catch {}
       const r = await fetch(u.replace(ORIGEN + '/mensajes', REL), { method: route.request().method(),
         headers:{'content-type':'application/json'}, body: cuerpo })
@@ -101,7 +107,7 @@ async function abrir(correo, nombre) {
     return !!document.getElementById('p2c-portada')
   }, [correo, nombre])
   await pag.waitForTimeout(3000)   // alta contra el relevo + arranque del buzon
-  return { pag, err, correo, llave, portada }
+  return { pag, err, correo, llave, portada, senales }
 }
 
 
@@ -307,27 +313,130 @@ ok('a Ana se le cierra', !(await ana.pag.isVisible('#lla')))
 ok('y a Beto TAMBIEN se le cierra', !(await beto.pag.isVisible('#lla')))
 ok('Beto queda libre', (await estado(beto.pag)) === 'libre', await estado(beto.pag))
 
-console.log('\nUna llamada que no conecta se rinde y DICE por que\n')
+/* Cuánto tarda en pasar algo, preguntando cada 300 ms. */
+const hasta = async (p, fn, ms, arg) => {
+  const t0 = Date.now()
+  while (Date.now() - t0 < ms) {
+    if (await p.evaluate(fn, arg)) return Date.now() - t0
+    await p.waitForTimeout(300)
+  }
+  return -1
+}
+const post = (ruta, cuerpo) => fetch(REL + ruta, { method:'POST',
+  headers:{'content-type':'application/json'}, body: JSON.stringify(cuerpo) })
+
+console.log('\nContestar TARDE ya no corta la llamada\n')
 {
-  // Se llama a alguien que no existe: nadie contesta nunca.
-  await ana.pag.evaluate(()=>VETA._chatCon({ id:'fantasma@ordenglobal.link', nombre:'Fantasma', esGrupo:false }))
+  /* El fallo de la calle: el plazo de conexión (20 s) se armaba al LLAMAR, así
+     que toda llamada que tardara más de veinte segundos en contestarse se
+     cortaba como «sin camino». Ahora cuenta desde la respuesta. */
+  await ana.pag.evaluate(()=>VETA._chatCon({ id:'beto@ordenglobal.link', nombre:'Beto', esGrupo:false }))
   await ana.pag.waitForTimeout(300)
   await ana.pag.click('#cha-llamar-voz')
-  await ana.pag.waitForTimeout(2000)
-  ok('queda en «llamando», no en «hablando»',
-     (await ana.pag.evaluate(()=>LLAMADA.cuento().estado)) === 'llamando')
-  const motivo = await ana.pag.evaluate(() => new Promise((r) => {
-    const t0 = Date.now()
-    const i = setInterval(() => {
-      if (LLAMADA.cuento().estado === 'libre') { clearInterval(i); r('se rindio a los ' + Math.round((Date.now()-t0)/1000) + 's') }
-      if (Date.now() - t0 > 30000) { clearInterval(i); r('SIGUE COLGADA') }
-    }, 400)
-  }))
-  ok('se rinde sola en vez de quedarse en negro', !/SIGUE/.test(motivo), motivo)
+  ok('a Beto le entra', (await hasta(beto.pag, ()=>LLAMADA.cuento().estado === 'entrando', 8000)) >= 0)
+  await ana.pag.waitForTimeout(25000)
+  ok('a los 25 s Ana sigue llamando (antes: «sin camino» a los 20)',
+     (await estado(ana.pag)) === 'llamando', await estado(ana.pag))
+  ok('y a Beto le sigue sonando', (await estado(beto.pag)) === 'entrando', await estado(beto.pag))
+  await beto.pag.click('#lla-contestar')
+  ok('Beto contesta tarde y QUEDAN HABLANDO',
+     (await hasta(ana.pag, ()=>LLAMADA.cuento().estado === 'hablando', 12000)) >= 0
+     && (await hasta(beto.pag, ()=>LLAMADA.cuento().estado === 'hablando', 4000)) >= 0,
+     `${await estado(ana.pag)} / ${await estado(beto.pag)}`)
+  await ana.pag.click('#lla-colgar')
+  await hasta(beto.pag, ()=>LLAMADA.cuento().estado === 'libre', 6000)
+}
+
+console.log('\nLa misma cuenta en dos aparatos: contesta uno, el otro se calla\n')
+const beto2 = await abrir('beto@ordenglobal.link', 'Beto', beto.llave)
+{
+  const id1 = await beto.pag.evaluate(()=>CHAT.miAparato())
+  const id2 = await beto2.pag.evaluate(()=>CHAT.miAparato())
+  ok('cada aparato tiene su id (el de su candado)', /^[\w-]{22}$/.test(id1) && /^[\w-]{22}$/.test(id2) && id1 !== id2,
+     `${id1} · ${id2}`)
+  await ana.pag.click('#cha-llamar-voz')
+  const suena1 = await hasta(beto.pag, ()=>LLAMADA.cuento().estado === 'entrando', 8000)
+  const suena2 = await hasta(beto2.pag, ()=>LLAMADA.cuento().estado === 'entrando', 8000)
+  ok('suena en los DOS aparatos de Beto', suena1 >= 0 && suena2 >= 0)
+  /* El doble toque: tres «Contestar» seguidos, sin esperar. */
+  beto2.senales.length = 0
+  await beto2.pag.evaluate(()=>{ LLAMADA.contestar(false); LLAMADA.contestar(false); LLAMADA.contestar(false) })
+  ok('el primer aparato deja de sonar solo', (await hasta(beto.pag, ()=>LLAMADA.cuento().estado === 'libre', 10000)) >= 0,
+     await estado(beto.pag))
+  ok('y lo dice: «Contestaste en otro aparato»',
+     /otro aparato/.test(await beto.pag.evaluate(()=>document.getElementById('tostada')?.textContent || '')),
+     await beto.pag.evaluate(()=>document.getElementById('tostada')?.textContent || ''))
+  ok('su timbre está callado', !(await beto.pag.isVisible('#lla')))
+  ok('Ana y el segundo aparato quedan hablando',
+     (await hasta(ana.pag, ()=>LLAMADA.cuento().estado === 'hablando', 12000)) >= 0
+     && (await hasta(beto2.pag, ()=>LLAMADA.cuento().estado === 'hablando', 4000)) >= 0,
+     `${await estado(ana.pag)} / ${await estado(beto2.pag)}`)
+  ok('tres toques en «Contestar» mandaron UNA respuesta',
+     beto2.senales.filter(x => x.tipo === 'respuesta').length === 1,
+     beto2.senales.map(x => x.tipo).filter(t => t !== 'ice').join(','))
+  ok('y las señales llevan el id del aparato', beto2.senales.every(x => x.aparato === id2))
+
+  /* Lo tardío del otro aparato de Beto (o de un relevo que reintenta): un
+     rechazo, un ocupado y una segunda respuesta. Ninguno corta la llamada. */
+  await post('/senal', { correo: beto.correo, llave: beto.llave, para: ana.correo, tipo: 'rechazo', datos: {} })
+  await post('/senal', { correo: beto.correo, llave: beto.llave, para: ana.correo, tipo: 'ocupado', datos: {} })
+  await post('/senal', { correo: beto.correo, llave: beto.llave, para: ana.correo, tipo: 'respuesta',
+                         datos: { sdp: { type: 'answer', sdp: 'v=0' } } })
+  await ana.pag.waitForTimeout(3000)
+  ok('rechazo, ocupado y respuesta tardíos NO cortan la llamada en pie',
+     (await estado(ana.pag)) === 'hablando' && (await estado(beto2.pag)) === 'hablando',
+     `${await estado(ana.pag)} / ${await estado(beto2.pag)}`)
+  await ana.pag.click('#lla-colgar')
+  await hasta(beto2.pag, ()=>LLAMADA.cuento().estado === 'libre', 6000)
+}
+
+console.log('\nLa carrera del timbre: la llamada y su cuelgo juntos\n')
+{
+  /* Al abrir la pestaña con todo esperando en el buzón, la llamada y su
+     cuelgo llegan en la misma tanda. El timbre no puede quedarse sonando. */
+  const r = await beto.pag.evaluate(async () => {
+    const hechos = []
+    const sonar0 = TONO.sonar, parar0 = TONO.parar
+    TONO.sonar = (c) => { hechos.push('sonar:' + c); return sonar0(c) }
+    TONO.parar = () => { hechos.push('parar'); return parar0() }
+    const oferta = { type: 'offer', sdp: 'v=0' }
+    LLAMADA.recibir({ de: 'ana@ordenglobal.link', tipo: 'llamo', datos: { video: false, sdp: oferta } })
+    LLAMADA.recibir({ de: 'ana@ordenglobal.link', tipo: 'cuelgo', datos: {} })
+    await new Promise(r => setTimeout(r, 800))
+    LLAMADA.recibir({ de: 'ana@ordenglobal.link', tipo: 'llamo', datos: { video: false, sdp: oferta } })
+    LLAMADA.recibir({ de: 'ana@ordenglobal.link', tipo: 'atendida', datos: { como: 'respuesta' }, desde: 'OTRO-APARATO' })
+    await new Promise(r => setTimeout(r, 800))
+    TONO.sonar = sonar0; TONO.parar = parar0
+    return { hechos, estado: LLAMADA.cuento().estado, ultimo: hechos[hechos.length - 1] }
+  })
+  ok('llamada + cuelgo (y llamada + atendida) en la misma tanda: el timbre termina callado',
+     r.estado === 'libre' && r.ultimo === 'parar', JSON.stringify(r))
+  ok('y la pantalla de llamada no se queda puesta', !(await beto.pag.isVisible('#lla')))
+}
+
+console.log('\nNadie contesta: a los 45 s se rinde y al otro le deja de sonar\n')
+{
+  await ana.pag.click('#cha-llamar-voz')
+  ok('a Beto le suena', (await hasta(beto.pag, ()=>LLAMADA.cuento().estado === 'entrando', 8000)) >= 0)
+  // El segundo aparato de Beto también suena; se deja sonar igual.
+  const t0 = Date.now()
+  const rinde = await hasta(ana.pag, ()=>LLAMADA.cuento().estado === 'libre', 52000)
+  ok('Ana se rinde sola, cerca de los 45 s', rinde >= 38000 && rinde <= 50000, `${Math.round(rinde/1000)} s`)
+  ok('y lo dice («No contestaron…»)',
+     /contestaron/i.test(await ana.pag.evaluate(()=>document.getElementById('tostada')?.textContent || '')),
+     await ana.pag.evaluate(()=>document.getElementById('tostada')?.textContent || ''))
+  /* Con el `cuelgo` que ahora sí se manda, a Beto le deja de sonar ANTES de
+     su propio margen (50 s): es el cuelgo el que lo calla, no el reloj. */
+  const calla = await hasta(beto.pag, ()=>LLAMADA.cuento().estado === 'libre', 5000)
+  ok('a Beto le deja de sonar con el cuelgo, antes de su propio margen',
+     calla >= 0 && (Date.now() - t0) < 49000, `${Math.round((Date.now()-t0)/1000)} s`)
+  ok('y a su segundo aparato también', (await hasta(beto2.pag, ()=>LLAMADA.cuento().estado === 'libre', 3000)) >= 0)
 }
 
 ok('sin errores de javascript en Ana', ana.err.length===0)
 ok('sin errores de javascript en Beto', beto.err.length===0)
+ok('ni en su segundo aparato', beto2.err.length===0)
+if (beto2.err.length) console.log('  Beto2:', beto2.err.slice(0,2))
 if (ana.err.length) console.log('  Ana:', ana.err.slice(0,2))
 if (beto.err.length) console.log('  Beto:', beto.err.slice(0,2))
 await nav.close()
