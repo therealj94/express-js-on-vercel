@@ -78,6 +78,11 @@ async function puente(ruta, cuerpo) {
       return {
         ok: false,
         datos,
+        // El estado HTTP y el `codigo` del puente viajan aparte del `code` de
+        // abajo: un 403 puede ser «sin Genesis ID», «en revisión», «cuenta sin
+        // atar» o «correo sin confirmar», y cada uno se atiende distinto.
+        estado: res.status,
+        codigo: typeof datos?.codigo === 'string' ? datos.codigo : null,
         error: datos?.error || `Error ${res.status}`,
         // 404 en el puente casi siempre significa que el backend todavía no lo
         // tiene montado; conviene distinguirlo de un fallo de red.
@@ -381,7 +386,9 @@ export const genesis = {
    */
   async paseConDestino({ aud, reto }) {
     const r = await puente('/sso/token', { aud, reto });
-    if (!r.ok) return { error: r.error, code: r.code };
+    // Con el estado y el `codigo`, la pantalla de AU-RA sabe QUÉ contestarle
+    // (ver src/auraSso.js, codigoAura).
+    if (!r.ok) return { error: r.error, code: r.code, estado: r.estado ?? null, codigo: r.codigo ?? null };
     return { token: r.datos?.token || null };
   },
 
