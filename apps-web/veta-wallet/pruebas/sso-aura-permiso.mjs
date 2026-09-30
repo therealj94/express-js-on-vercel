@@ -86,7 +86,10 @@ console.log('\n── «Permitir» pide el pase para las dos, con el reto de AU-
 {
   const pag = await abrir()
   await pag.click('[role=dialog] [data-si]')
-  await pag.waitForTimeout(1200)
+  /* Se espera a que se cierre, no un tiempo fijo: con la galaxia arrancando
+     en un Chromium sin GPU, el hilo principal a veces tarda más de un segundo
+     en atender la respuesta. */
+  await pag.waitForSelector('[role=dialog] [data-comparte]', { state: 'detached', timeout: 15000 }).catch(() => {})
   const p = pag.pedidos[0] || {}
   ok('se pide UN pase', pag.pedidos.length === 1, String(pag.pedidos.length))
   ok('para AU-RA y el chat (aud)', JSON.stringify(p.aud) === JSON.stringify(['aura', 'pulse2chat']), JSON.stringify(p.aud))
