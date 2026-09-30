@@ -60,12 +60,12 @@ for (const f of archivos.filter((f) => f.startsWith('nuevos-')).sort()) {
       persona: r.persona, org: r.org, correo: e, canales: '',
       idioma: r.idioma === 'ES' ? 'ES' : 'EN',
       prior: ['A', 'B', 'C'].includes(r.prior) ? r.prior : 'B',
-      cargo: r.cargo, pais: r.pais, sector: r.sector, fuente: r.fuente,
+      cargo: r.cargo, pais: r.pais, sector: r.sector, fuente: r.fuente, perfil: r.perfil || '', tema: r.tema || '',
     });
     cuenta.nuevos++;
   }
 }
 
-escribirCsv(aqui + 'contactos.csv', filas, ['n', 'seccion', 'persona', 'org', 'correo', 'canales', 'idioma', 'prior', 'cargo', 'pais', 'sector', 'fuente']);
+escribirCsv(aqui + 'contactos.csv', filas, ['n', 'seccion', 'persona', 'org', 'correo', 'canales', 'idioma', 'prior', 'cargo', 'pais', 'sector', 'fuente', 'perfil', 'tema']);
 console.log(`${filas.length} contactos · ${cuenta.completados} correos completados · ${cuenta.nuevos} nuevos · ${cuenta.descartados.length} descartados`);
 for (const d of cuenta.descartados) console.log('  descartado:', d);

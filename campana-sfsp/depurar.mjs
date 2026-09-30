@@ -145,7 +145,7 @@ export function depurar(contactos) {
   return filas;
 }
 
-export const COLUMNAS = ['n', 'lote', 'estado', 'motivo', 'prior', 'idioma', 'correo', 'tipo_buzon', 'saludo', 'persona', 'persona_real', 'cargo', 'org', 'org_corta', 'pais', 'sector', 'seccion', 'canales', 'fuente'];
+export const COLUMNAS = ['n', 'lote', 'estado', 'motivo', 'prior', 'idioma', 'correo', 'tipo_buzon', 'saludo', 'persona', 'persona_real', 'cargo', 'org', 'org_corta', 'pais', 'sector', 'seccion', 'canales', 'fuente', 'perfil', 'tema'];
 
 if (process.argv[1] && new URL(import.meta.url).pathname === fs.realpathSync(process.argv[1])) {
   const filas = depurar(leerCsv(aqui + 'contactos.csv'));

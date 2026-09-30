@@ -118,6 +118,27 @@ const TEXTO = {
   },
 };
 
+// Creadores de contenido: la misma invitación, con otra razón y otro cierre. Se les invita a
+// conocer SFSP antes que nadie y a decidir si es para su comunidad. Nada pagado ni prometido.
+const CREADOR = {
+  es: {
+    asunto: 'Una invitación para su comunidad: unir a Centroamérica',
+    seleccion: 'Estamos eligiendo a un grupo pequeño de voces de la región para ser las primeras en conocer SFSP y contarlo a su comunidad.',
+    paraUsted: 'Para su comunidad, es una historia de la región contada desde la región: siete países que podrían funcionar como uno, y la oportunidad de contarla antes que nadie.',
+    invitaTitulo: 'La historia la cuentan los primeros.',
+    invita: 'Nos encantaría que fuera una de las primeras voces de SFSP en {pais}. Le proponemos una conversación de 20 minutos: le contamos todo, pregunta lo que quiera y usted decide si esto es para su comunidad. Sin compromiso.',
+    waMensaje: 'Hola José, soy {quien}. Vi su correo sobre SFSP y quiero saber más.',
+  },
+  en: {
+    asunto: 'An invitation for your community: uniting Central America',
+    seleccion: 'We are choosing a small group of voices from the region to be the first to learn about SFSP and share it with their communities.',
+    paraUsted: "For your community, it is the region's story told from the region: seven countries that could work as one, and the chance to tell it first.",
+    invitaTitulo: 'The story is told by those who go first.',
+    invita: 'We would love you to be one of the first voices of SFSP in {pais}. Let us have a 20-minute conversation: we tell you everything, you ask anything, and you decide whether this is for your community. No strings attached.',
+    waMensaje: 'Hi José, this is {quien}. I saw your email about SFSP and would like to know more.',
+  },
+};
+
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const rellenar = (s, v) => s.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? '');
 
@@ -127,9 +148,12 @@ const rellenar = (s, v) => s.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? '');
  */
 export function correo(c) {
   const idioma = c.idioma === 'ES' ? 'es' : 'en';
-  const t = TEXTO[idioma];
+  const creador = c.perfil === 'creador';
+  const t = creador
+    ? { ...TEXTO[idioma], ...CREADOR[idioma], invita: rellenar(CREADOR[idioma].invita, { pais: c.pais || (idioma === 'es' ? 'la región' : 'the region') }) }
+    : TEXTO[idioma];
   const org = c.org_corta || c.org;
-  const paraUsted = PARA_USTED[idioma][c.sector] || PARA_USTED[idioma].GREMIO;
+  const paraUsted = creador ? t.paraUsted : PARA_USTED[idioma][c.sector] || PARA_USTED[idioma].GREMIO;
   const quien = c.persona_real ? `${c.persona.replace(/\s*\([^)]*\)/g, '')} (${org})` : org;
   const wa = `https://wa.me/${JOSE.whatsapp}?text=${encodeURIComponent(rellenar(t.waMensaje, { quien }))}`;
   const pdf = PRESENTACION[idioma];
