@@ -218,8 +218,20 @@ export async function mias() {
       /* El llavero no contestó: NI SE GENERA NI SE ESCRIBE NADA. Se sigue con
          un par en memoria para no mandar en claro mientras tanto, y al reabrir
          la app se vuelve a leer —con suerte, la de siempre—. */
-      if (guardada === LEER_FALLO || guardadaF === LEER_FALLO) {
+      if (guardada === LEER_FALLO) {
         mio = parEnMemoria();
+        return mio;
+      }
+      /* Se leyó la de acuerdo pero NO la de firma. La de acuerdo es la buena
+         —con ella se abre todo lo que ya llegó—, así que se usa; lo que no se
+         hace es inventar otra de firma y escribirla encima de la que sigue en
+         el llavero. Sin firma y sin publicar (`volatil`): republicar sin `fir`
+         le quitaría a los demás la pública con la que comprueban a este
+         aparato. */
+      if (guardadaF === LEER_FALLO) {
+        mio = guardada && deB64(guardada).length === 32
+          ? { ...armar(deB64(guardada), null), volatil: true }
+          : parEnMemoria();
         return mio;
       }
       if (guardada && deB64(guardada).length === 32) {
