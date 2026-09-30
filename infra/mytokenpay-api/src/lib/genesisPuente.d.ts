@@ -33,6 +33,16 @@ export declare const CODIGOS_PUENTE: Readonly<{
   VINCULO_APAGADO: 'VINCULO_APAGADO'
 }>
 
+/** Por qué no sale un pase de SSO (`/sso/token`). */
+export declare const CODIGOS_SSO: Readonly<{
+  SIN_IDENTIDAD: 'GID_SIN_IDENTIDAD'
+  PENDIENTE: 'GID_PENDIENTE'
+  NO_DISPONIBLE: 'GID_NO_DISPONIBLE'
+  NO_VINCULADA: 'CUENTA_NO_VINCULADA'
+  LIMITE: 'LIMITE'
+  RED: 'GENESIS_RED'
+}>
+
 /** Apps cuyo vínculo trae una dirección custodiada por la app (no tecleada por el cliente). */
 export declare const APPS_CUSTODIAS: readonly string[]
 
