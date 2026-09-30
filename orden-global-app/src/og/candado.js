@@ -187,13 +187,41 @@ function armar(priv, privF) {
   return { id, priv, pub, pubB64, privF: privF || null, pubFB64: pubF ? aB64(pubF) : null };
 }
 
+/* LEER NO ES LO MISMO QUE NO ENCONTRAR.
+ *
+ * `getItemAsync` que devuelve null quiere decir «este teléfono nunca tuvo
+ * llave»: ahí se crea una. `getItemAsync` que LANZA quiere decir «el llavero no
+ * contestó» —recién desbloqueado, el servicio del sistema reiniciándose, un
+ * almacén que se niega un momento—, y la llave sigue ahí. Antes las dos cosas
+ * se confundían (`.catch(() => null)`) y un fallo pasajero de lectura generaba
+ * una llave nueva y la ESCRIBÍA encima de la buena: el teléfono perdía de golpe
+ * todo lo que le habían mandado cerrado y publicaba una llave que nadie
+ * esperaba. Ahora un fallo de lectura no toca el llavero. */
+const LEER_FALLO = Symbol('llavero-no-contesta');
+const leerCajon = (k) => SecureStore.getItemAsync(k).catch(() => LEER_FALLO);
+
+/* Un par que solo vive en memoria. `volatil` es la marca que impide publicarlo
+   (ver `publicarMiLlave` en mensajes.js): publicar una llave que desaparece al
+   cerrar la app haría que los demás le cerraran sobres a un aparato que
+   mañana no existe. */
+function parEnMemoria() {
+  return { ...armar(llavePrivada(), llavePrivada()), volatil: true };
+}
+
 export async function mias() {
   if (mio) return mio;
   if (arrancando) return arrancando;
   arrancando = (async () => {
     try {
-      const guardada = await SecureStore.getItemAsync(CAJON).catch(() => null);
-      let guardadaF = await SecureStore.getItemAsync(CAJON_FIRMA).catch(() => null);
+      const guardada = await leerCajon(CAJON);
+      let guardadaF = await leerCajon(CAJON_FIRMA);
+      /* El llavero no contestó: NI SE GENERA NI SE ESCRIBE NADA. Se sigue con
+         un par en memoria para no mandar en claro mientras tanto, y al reabrir
+         la app se vuelve a leer —con suerte, la de siempre—. */
+      if (guardada === LEER_FALLO || guardadaF === LEER_FALLO) {
+        mio = parEnMemoria();
+        return mio;
+      }
       if (guardada && deB64(guardada).length === 32) {
         /* Los aparatos de antes de la v2 no tienen par de firma. NO se les
            cambia el de acuerdo —eso les rompería todo lo que ya recibieron—:
@@ -208,18 +236,19 @@ export async function mias() {
       }
       const priv = llavePrivada();
       const privF = llavePrivada();
-      await SecureStore.setItemAsync(CAJON, aB64(priv)).catch(() => {});
-      await SecureStore.setItemAsync(CAJON_FIRMA, aB64(privF)).catch(() => {});
-      mio = armar(priv, privF);
+      /* Si no se pudo GUARDAR, el par es volátil de verdad aunque se haya
+         creado bien: al reabrir la app no estará, y publicarlo dejaría a los
+         demás cerrándole sobres a un aparato fantasma. */
+      let guardo = true;
+      await SecureStore.setItemAsync(CAJON, aB64(priv)).catch(() => { guardo = false; });
+      await SecureStore.setItemAsync(CAJON_FIRMA, aB64(privF)).catch(() => { guardo = false; });
+      mio = guardo ? armar(priv, privF) : { ...armar(priv, privF), volatil: true };
     } catch {
       /* El llavero puede negarse —un teléfono sin bloqueo de pantalla, un
          almacén lleno—. Se sigue con un par que solo vive en memoria: cifra
          igual mientras la app esté abierta, y al cerrarla se pierde. Es peor
          que guardarlo y muchísimo mejor que mandar el texto en claro. */
-      try {
-        mio = { ...armar(llavePrivada(), llavePrivada()),
-                volatil: true };
-      }
+      try { mio = parEnMemoria(); }
       catch { mio = null; }
     }
     return mio;
@@ -257,13 +286,38 @@ function secretoCon(pubAjenaB64, priv) {
   return k;
 }
 
+/* El id de un aparato ES el resumen de su pública (ver `armar`). */
+export const idDeAparato = (pubB64) => aB64(sha256(deB64(pubB64))).slice(0, 22);
+
+/* Sin repetidos, y solo aparatos cuyo id sale de su propia pública.
+ *
+ * El id es lo que decide qué sobre abre cada aparato (`x.a === m.id`). Un
+ * aparato publicado con el id de OTRO y una pública suya se quedaría con el
+ * sobre del otro —o se lo taparía, si llega primero a la lista—. Como el id se
+ * puede recalcular, no hay que creérselo a nadie: se recalcula y el que no
+ * cuadra se descarta. El propio va PRIMERO en la lista (lo pone `cerrar`), así
+ * que nunca lo desplaza una entrada ajena con el mismo id. */
 function dedup(lista) {
   const visto = new Set();
   return (lista || []).filter((x) => {
-    if (!x?.id || !x?.pub || visto.has(x.id)) return false;
+    if (!x || typeof x.id !== 'string' || typeof x.pub !== 'string' || visto.has(x.id)) return false;
+    try { if (idDeAparato(x.pub) !== x.id) return false; } catch { return false; }
     visto.add(x.id);
     return true;
   });
+}
+
+/* ¿Tiene el bulto la forma de un bulto? Viene del relevo, y del relevo puede
+   venir cualquier cosa: un `s` que no es una lista, un sobre sin `a`, un `k`
+   que es un número. Antes eso reventaba DENTRO de `abrir` —`.find` sobre un
+   objeto— y el fallo subía hasta la bandeja entera, que se quedaba vacía por
+   un solo mensaje malo. Un mensaje envenenado no puede dejar a nadie sin chat. */
+export function bultoValido(b) {
+  if (!b || typeof b !== 'object') return false;
+  if (typeof b.de !== 'string' || typeof b.iv !== 'string' || typeof b.ct !== 'string') return false;
+  if (!Array.isArray(b.s)) return false;
+  return b.s.every((x) => x && typeof x === 'object'
+    && typeof x.a === 'string' && typeof x.iv === 'string' && typeof x.k === 'string');
 }
 
 // ── cerrar y abrir ─────────────────────────────────────────────────────────
@@ -278,7 +332,7 @@ export async function cerrar(texto, aparatos) {
   if (!m) throw new Error('sin-llaves');
   /* El sobre para uno mismo no es un detalle: sin él, uno no puede releer lo
      que escribió, ni desde aquí ni desde ningún otro aparato suyo. */
-  const todos = dedup([...(aparatos || []), { id: m.id, pub: m.pubB64 }]);
+  const todos = dedup([{ id: m.id, pub: m.pubB64 }, ...(aparatos || [])]);
   if (!todos.length) throw new Error('sin-destino');
 
   const llaveMsg = azar(32);
@@ -359,9 +413,9 @@ function juzgarFirma(bulto, aparatos) {
  */
 export async function abrir(bulto, aparatosDelRemitente) {
   const m = await mias();
-  if (!m || !bulto) return null;
+  if (!m || !bultoValido(bulto)) return null;
   if (bulto.v !== VERSION && bulto.v !== VERSION_SIN_FIRMA) return null;
-  const sobre = (bulto.s || []).find((x) => x.a === m.id);
+  const sobre = bulto.s.find((x) => x.a === m.id);
   if (!sobre) return null;
   let texto;
   try {

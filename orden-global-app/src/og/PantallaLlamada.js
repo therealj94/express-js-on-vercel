@@ -43,6 +43,9 @@ const MOTIVOS = {
   rechazada: 'No contestaron.',
   ocupado: 'Está en otra llamada.',
   corte: 'Se cortó la conexión.',
+  'sin-respuesta': 'No contestó.',
+  'en-otro-aparato': 'Contestaste en otro aparato.',
+  perdida: null,     // sonó y nadie contestó: eso lo dice el aviso de perdida
   'el-otro': null,   // colgó el otro: no hace falta explicar nada
   yo: null,
 };

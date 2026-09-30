@@ -675,18 +675,47 @@ appsRouter.post('/sso/verificar', limite(300), exigeApp('gid.verificar'), async 
     return res.status(401).json({ valido: false, error: 'Este pase ya se usó', codigo: 'USADO' })
   }
   const alcances = req.app_ecosistema!.alcances
+  /* EL CUMPLEAÑOS VA DENTRO DEL PERFIL, y solo mes y día. El año es la edad, y
+     la edad no le hace falta a nadie para felicitar. Sin `gid.cumple` no sale;
+     sin `gid.perfil` tampoco, porque no hay perfil donde ponerlo. */
+  const cumple = alcances.includes('gid.cumple') ? cumpleDe(identidad) : null
+  const perfil = alcances.includes('gid.perfil')
+    ? { ...ids.perfilPublico(identidad), ...(cumple ? { cumple } : {}) }
+    : undefined
   res.json({
     valido: true,
     gid: reclamos.sub,
     emitidoPor: reclamos.app,
     expira: new Date(reclamos.exp * 1000).toISOString(),
-    perfil: alcances.includes('gid.perfil') ? ids.perfilPublico(identidad) : undefined,
+    perfil,
     // El correo de ESTA identidad, el que la persona usó para su trámite —no
     // uno que traiga la petición—. Solo a quien tiene el alcance.
     correo: alcances.includes('gid.correo') ? identidad.email : undefined,
     ...(aud ? { aud } : {}),
   })
 })
+
+/**
+ * `MM-DD` de la fecha de nacimiento de una identidad verificada, o null.
+ *
+ * Manda la del documento (la que leyó el trámite); si el trámite no la dejó,
+ * la que declaró la persona. Una fecha que no es un día de verdad —mes 13, 31
+ * de abril— cuenta como que no hay: mejor no felicitar que felicitar el día
+ * equivocado. El año se lee solo para validar el 29 de febrero y no sale.
+ */
+function cumpleDe(identidad: { estado: string; fechaNacimiento?: string | null; fechaNacimientoDeclarada?: string | null }): string | null {
+  if (identidad.estado !== 'verificada') return null
+  for (const fecha of [identidad.fechaNacimiento, identidad.fechaNacimientoDeclarada]) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(String(fecha ?? '').trim())
+    if (!m) continue
+    const [anio, mes, dia] = [Number(m[1]), Number(m[2]), Number(m[3])]
+    if (mes < 1 || mes > 12 || dia < 1) continue
+    // El día 0 del mes siguiente es el último de este (en UTC, sin husos).
+    if (dia > new Date(Date.UTC(anio, mes, 0)).getUTCDate()) continue
+    return `${m[2]}-${m[3]}`
+  }
+  return null
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pases con destino

@@ -34,6 +34,7 @@ delete process.env.GENESIS_MONGO_URL
 let servidor: Server
 let base: string
 let gid = ''
+let persona: any = null
 const claves: Record<string, string> = {}
 
 const { default: app, arrancar } = await import('../index.js')
@@ -81,6 +82,7 @@ before(async () => {
     vinculadaEn: new Date().toISOString(), ultimoAcceso: null,
   }]
   gid = identidad.gid
+  persona = identidad
   await store.guardarYa()
 })
 
@@ -93,8 +95,21 @@ describe('Las apps nuevas', () => {
   test('AU-RA y PULSE2CHAT se dan de alta con lo justo', () => {
     const aura = store.todo().aplicaciones.find((a) => a.clave === 'aura')!
     const chat = store.todo().aplicaciones.find((a) => a.clave === 'pulse2chat')!
-    assert.deepEqual([...aura.alcances].sort(), ['gid.correo', 'gid.perfil', 'gid.verificar'])
+    assert.deepEqual([...aura.alcances].sort(), ['gid.correo', 'gid.cumple', 'gid.perfil', 'gid.verificar'])
     assert.deepEqual([...chat.alcances].sort(), ['gid.correo', 'gid.verificar'])
+  })
+
+  test('la app AU-RA que ya existe en producción recibe gid.cumple al arrancar', async () => {
+    const { alinearAlcances } = await import('../auth/aplicaciones.js')
+    const aura = store.todo().aplicaciones.find((a) => a.clave === 'aura')!
+    // Como la dejó el despliegue anterior: sin el alcance nuevo.
+    aura.alcances = aura.alcances.filter((a) => a !== 'gid.cumple')
+    const tocadas = alinearAlcances()
+    assert.ok(tocadas.some((t) => t.startsWith('aura:') && t.includes('gid.cumple')), JSON.stringify(tocadas))
+    assert.ok(aura.alcances.includes('gid.cumple'))
+    // Y no se lo da a nadie más.
+    const chat = store.todo().aplicaciones.find((a) => a.clave === 'pulse2chat')!
+    assert.ok(!chat.alcances.includes('gid.cumple'))
   })
 })
 
@@ -167,5 +182,65 @@ describe('Los pases de siempre', () => {
       assert.equal(r.cuerpo.correo, undefined, 'Ordenex no tiene gid.correo')
       assert.equal(r.cuerpo.aud, undefined)
     }
+  })
+})
+
+describe('El cumpleaños (gid.cumple)', () => {
+  /** Un pase nuevo para AU-RA y su perfil tal como lo recibe. */
+  const perfilEn = async (app: string, fechas: { fechaNacimiento?: string | null; fechaNacimientoDeclarada?: string | null }) => {
+    persona.fechaNacimiento = fechas.fechaNacimiento ?? null
+    persona.fechaNacimientoDeclarada = fechas.fechaNacimientoDeclarada ?? null
+    const v = verificador()
+    const p = await pase({ aud: app, reto: huella(v) })
+    assert.equal(p.estado, 200, JSON.stringify(p.cuerpo))
+    const r = await verificar(app, { token: p.cuerpo.token, verificador: v })
+    assert.equal(r.estado, 200, JSON.stringify(r.cuerpo))
+    return r.cuerpo
+  }
+
+  test('AU-RA recibe mes y día del documento verificado, sin el año', async () => {
+    const c = await perfilEn('aura', { fechaNacimiento: '1990-07-04', fechaNacimientoDeclarada: '1990-07-05' })
+    assert.equal(c.perfil.cumple, '07-04')
+    assert.ok(!JSON.stringify(c).includes('1990'), 'el año no puede viajar en ninguna parte de la respuesta')
+    assert.equal(c.cumple, undefined, 'va dentro del perfil, no suelto')
+  })
+
+  test('si el trámite no dejó la del documento, sale la declarada', async () => {
+    const c = await perfilEn('aura', { fechaNacimiento: null, fechaNacimientoDeclarada: '1985-12-31' })
+    assert.equal(c.perfil.cumple, '12-31')
+  })
+
+  test('sin ninguna fecha, el campo no viene', async () => {
+    const c = await perfilEn('aura', {})
+    assert.equal(c.perfil.verificada, true)
+    assert.ok(!('cumple' in c.perfil))
+  })
+
+  test('una fecha que no es un día de verdad cuenta como que no hay', async () => {
+    const malas = await perfilEn('aura', { fechaNacimiento: '1990-04-31', fechaNacimientoDeclarada: '17/04/1991' })
+    assert.ok(!('cumple' in malas.perfil), JSON.stringify(malas.perfil))
+    // La del documento mala no tapa una declarada buena.
+    const cae = await perfilEn('aura', { fechaNacimiento: '1990-13-01', fechaNacimientoDeclarada: '1991-04-17' })
+    assert.equal(cae.perfil.cumple, '04-17')
+    // El 29 de febrero vale solo en año bisiesto.
+    assert.equal((await perfilEn('aura', { fechaNacimiento: '2000-02-29' })).perfil.cumple, '02-29')
+    assert.ok(!('cumple' in (await perfilEn('aura', { fechaNacimiento: '2001-02-29' })).perfil))
+  })
+
+  test('el formato es siempre MM-DD con ceros', async () => {
+    const c = await perfilEn('aura', { fechaNacimiento: '1979-01-09' })
+    assert.match(c.perfil.cumple, /^\d{2}-\d{2}$/)
+    assert.equal(c.perfil.cumple, '01-09')
+  })
+
+  test('una app sin el alcance no lo ve aunque tenga el perfil', async () => {
+    const c = await perfilEn('ordenex', { fechaNacimiento: '1990-07-04' })
+    assert.equal(c.perfil.verificada, true)
+    assert.ok(!('cumple' in c.perfil))
+    assert.ok(!JSON.stringify(c).includes('07-04'))
+    // Y el chat, que no tiene ni perfil, tampoco.
+    const chat = await perfilEn('pulse2chat', { fechaNacimiento: '1990-07-04' })
+    assert.equal(chat.perfil, undefined)
+    assert.ok(!JSON.stringify(chat).includes('07-04'))
   })
 })

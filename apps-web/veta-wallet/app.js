@@ -7108,7 +7108,12 @@ const VETA = (() => {
    *     AU-RA—. Si otra app se quedara con el enlace de vuelta, no le serviría.
    *   · SE PREGUNTA ANTES. Las otras casas vuelven solas porque vuelven a SU
    *     dominio; aquí cualquier página puede abrir `#sso-aura`, así que el pase
-   *     no se acuña sin un «Permitir» de la persona. */
+   *     no se acuña sin un «Permitir» de la persona.
+   *
+   * La lista del permiso es EXACTAMENTE lo que Genesis le da a AU-RA al
+   * canjear el pase: nombre (gid.perfil), cumpleaños sin año (gid.cumple),
+   * correo (gid.correo), y el chat, que canjea el mismo pase. Si un día cambian
+   * los alcances de AU-RA en Genesis, esta lista cambia con ellos. */
   let auraPendiente = null;
   const RETO_AURA = /^[A-Za-z0-9_-]{43}$/;
   const ESTADO_AURA = /^[A-Za-z0-9_-]{8,64}$/;
@@ -7140,11 +7145,12 @@ const VETA = (() => {
     velo.innerHTML = `
       <div style="max-width:380px;width:100%;background:#12161d;color:#F3ECD9;border:1px solid rgba(214,181,108,.35);border-radius:20px;padding:22px;font:15px/1.45 system-ui,sans-serif">
         <div style="font-weight:800;font-size:19px;margin-bottom:6px">AU-RA quiere usar tu Genesis ID</div>
-        <div style="opacity:.85;margin-bottom:14px">Vas a entrar a AU-RA FP con esta cuenta, sin crear otra ni repetir la verificación. Se comparte:</div>
-        <ul style="margin:0 0 14px 18px;padding:0;opacity:.9">
-          <li>Tu Genesis ID y tu nombre verificado</li>
-          <li>El correo de tu identidad</li>
-          <li>Tu chat PULSE2CHAT (contactos y conversaciones)</li>
+        <div style="opacity:.85;margin-bottom:14px">Vas a entrar a AU-RA FP con esta cuenta, sin crear otra ni repetir la verificación. AU-RA recibe:</div>
+        <ul data-comparte style="margin:0 0 14px 18px;padding:0;opacity:.9">
+          <li>Tu nombre</li>
+          <li>Tu cumpleaños (día y mes, nunca el año)</li>
+          <li>Tu correo</li>
+          <li>Y tu chat PULSE2CHAT se conecta (contactos y conversaciones)</li>
         </ul>
         <div style="font-size:12.5px;opacity:.65;margin-bottom:16px">Tu contraseña, tu frase semilla y tus fondos no salen de aquí. El pase es de un solo uso y solo AU-RA lo puede canjear.</div>
         <button data-si style="width:100%;padding:13px;border:0;border-radius:14px;background:#D6B56C;color:#1b1406;font-weight:800;font-size:15px;cursor:pointer">Permitir y volver a AU-RA</button>
@@ -9295,6 +9301,8 @@ const VETA = (() => {
   function llaHistDeCorte(c) {
     const con = String(c.conQuienEra || c.conQuien || '').toLowerCase();
     if (!con || !c.motivo) return;
+    // Contestada en otro aparato: la apunta ese, que es donde se habló.
+    if (c.motivo === 'en-otro-aparato') return;
     const arr = llaHistLeer();
     const last = arr[arr.length - 1];
     if (last && last.con === con && Date.now() - last.cuando < 2500) return;
@@ -9305,6 +9313,7 @@ const VETA = (() => {
     if (c.motivo === 'el-otro') resultado = dur ? 'ok' : (saliente ? 'sin-respuesta' : 'perdida');
     else if (c.motivo === 'yo') resultado = dur ? 'ok' : 'cancelada';
     else if (c.motivo === 'sin-respuesta') resultado = 'sin-respuesta';
+    else if (c.motivo === 'perdida') resultado = 'perdida';
     else if (c.motivo === 'rechazada') resultado = 'rechazada';
     else if (c.motivo === 'ocupado') resultado = 'ocupado';
     else if (c.motivo === 'sin-camino' || c.motivo === 'no-se-pudo' || c.motivo === 'corte')
@@ -9338,6 +9347,7 @@ const VETA = (() => {
       mandar: (para, tipo, datos) => CHAT.senalar(para, tipo, datos),
       alCambiar: (c) => pintarLlamada(c),
       traerTurno: () => CHAT.turno(),
+      aparato: () => CHAT.miAparato(),
     });
     // El buzón se escucha mientras haya sesión de chat: si solo se escuchara
     // dentro de la vista del chat, una llamada entrante no llegaría nunca a
@@ -9960,10 +9970,11 @@ const VETA = (() => {
          internet. */
       // Un golpe corto al terminar: distinto si salio bien que si no. Es la
       // diferencia entre «se colgo» y «algo fallo» sin leer nada.
-      TONO.golpe(c.motivo === 'yo' || c.motivo === 'el-otro');
+      TONO.golpe(['yo', 'el-otro', 'en-otro-aparato'].includes(c.motivo));
       const dicho = { 'sin-camino': 'lla.sinCamino', 'corte': 'lla.corte',
                       'rechazada': 'lla.rechazada', 'ocupado': 'lla.ocupado',
                       'sin-respuesta': 'lla.sinRespuesta',
+                      'en-otro-aparato': 'lla.enOtroAparato',
                       'no-se-pudo': 'lla.noSePudo' }[c.motivo];
       if (dicho) avisar(t(dicho));
       /* El diagnóstico va al registro, no a la cara de nadie: a quien llama no
@@ -10045,9 +10056,9 @@ const VETA = (() => {
       llaReloj = setInterval(() => {
         const seg = Math.floor((Date.now() - llaDesde) / 1000);
         if (est) est.textContent = `${t('lla.llamando')} ${seg}s`;
-        // Cuarenta y cinco segundos y se rinde sola: es lo que tarda alguien
-        // en darse cuenta de que del otro lado no hay nadie.
-        if (seg >= 45) LLAMADA.colgar('sin-respuesta');
+        // A los cuarenta y cinco segundos se rinde sola, pero eso lo hace
+        // llamada.js (su plazo de timbre), que además le manda `cuelgo` al
+        // otro para que le deje de sonar. Aquí solo se cuentan los segundos.
       }, 500);
       est.textContent = t('lla.llamando');
     } else if (c.estado === 'conectando') {

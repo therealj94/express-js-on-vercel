@@ -106,6 +106,21 @@ const CHAT = (() => {
 
   const firmado = extra => ({ correo: yo?.correo, llave, ...extra });
 
+  /* EL ID DE ESTE APARATO, EN LAS SEÑALES. El relevo lleva la cuenta de qué
+     señales vio cada aparato por (correo, aparato): sin id, esta pestaña y el
+     teléfono de la misma persona compartían UN cursor y el primero que
+     preguntaba se llevaba la señal. Y con el id, la `atendida` que el relevo
+     deja al contestar dice QUÉ aparato contestó. Es el id del candado. */
+  let aparato = '';
+  async function asegurarAparato() {
+    if (aparato || !CANDADO?.hay()) return aparato;
+    const m = await CANDADO.miLlave().catch(() => null);
+    aparato = m?.id || '';
+    return aparato;
+  }
+  const miAparato = () => aparato;
+  const conAparato = b => (aparato ? { ...b, aparato } : b);
+
   const listo = () => !!(yo?.correo && llave);
   const quienSoy = () => (yo ? { ...yo } : null);
 
@@ -228,8 +243,8 @@ const CHAT = (() => {
     for (const [c, v] of Object.entries(reacs || {})) {
       if (typeof v === 'string') { salida[c] = v; continue; }
       if (!v || !v.cif) continue;
-      const r = CANDADO?.hay() ? await CANDADO.abrir(v.cif, llaves[c] || []) : null;
-      salida[c] = r ? r.texto.slice(0, 8) : '🔒';
+      const r = CANDADO?.hay() ? await CANDADO.abrir(v.cif, llaves[c] || []).catch(() => null) : null;
+      salida[c] = r && typeof r.texto === 'string' ? r.texto.slice(0, 8) : '🔒';
     }
     return salida;
   }
@@ -271,40 +286,49 @@ const CHAT = (() => {
       try { llaves = (await llaveroDe(deQuienes)) || {}; } catch { llaves = {}; }
     }
 
-    return Promise.all(msgs.map(async m => {
-      const reacciones = m.reacciones ? { reacciones: await abrirReacciones(m.reacciones, llaves) } : {};
-      if (!m.cif) return { ...m, e2e: false, ...reacciones };
-      const r = await CANDADO.abrir(m.cif, llaves[m.de] || []);
-      if (r == null) return { ...m, texto: '', cerrado: true, e2e: true, ...reacciones };
-      /* Aquí había un byte de control invisible delante de la llave —se
-         comparaba con «\x01{»— y nadie lo manda: ni esta misma web (ver
-         `enviarAdjunto`) ni la app. Un adjunto cerrado se pintaba como el
-         JSON crudo con la llave del archivo a la vista, en vez de abrirse.
-         Se admite con y sin él. */
-      const claro = r.texto.charCodeAt(0) === 1 ? r.texto.slice(1) : r.texto;
-      /* El texto puede traer pegada la llave de un adjunto: viaja DENTRO del
-         cifrado, nunca al lado, que es lo que hace que el relevo guarde un
-         archivo que no puede abrir. Y la CITA —a qué mensaje responde— va por
-         el mismo camino (`c`): el relevo no la necesita para nada. Los
-         mensajes viejos la traen en claro (`m.cita`) y se siguen leyendo. */
-      let texto = claro, extra = null;
-      if (claro.startsWith('{')) {
-        try {
-          const j = JSON.parse(claro.slice(1));
-          texto = j.t || '';
-          extra = { ...(j.k ? { llaveArchivo: j.k, ivArchivo: j.iv } : {}),
-                    ...(j.c ? { cita: String(j.c).slice(0, 16) } : {}) };
-        } catch { /* si no parsea es texto normal que empieza raro */ }
-      }
-      /* `verificado` viaja hasta la burbuja. Un mensaje que no se pudo
-         verificar NO se esconde: se enseña con su marca, porque esconderlo
-         sería perder información y enseñarlo callado sería mentir. */
-      return {
-        ...m, texto, e2e: true,
-        verificado: r.verificado, motivoFirma: r.motivo,
-        ...(extra || {}), ...reacciones,
-      };
-    }));
+    /* UN MENSAJE MALO NO VACÍA EL HILO. Cada mensaje se abre en su propio
+       `try`: antes, uno con el bulto envenenado —o con reacciones rotas—
+       tumbaba el `Promise.all` entero y la conversación se pintaba vacía, que
+       es justo lo que un atacante querría. El malo queda como candado cerrado
+       y los demás se leen. */
+    return Promise.all(msgs.map(m => abrirUno(m, llaves).catch(() => ({
+      ...m, texto: '', cerrado: true, e2e: !!m.cif, ...(m.reacciones ? { reacciones: {} } : {}),
+    }))));
+  }
+
+  async function abrirUno(m, llaves) {
+    const reacciones = m.reacciones ? { reacciones: await abrirReacciones(m.reacciones, llaves) } : {};
+    if (!m.cif) return { ...m, e2e: false, ...reacciones };
+    const r = await CANDADO.abrir(m.cif, llaves[m.de] || []);
+    if (r == null) return { ...m, texto: '', cerrado: true, e2e: true, ...reacciones };
+    /* Aquí había un byte de control invisible delante de la llave —se
+       comparaba con «\x01{»— y nadie lo manda: ni esta misma web (ver
+       `enviarAdjunto`) ni la app. Un adjunto cerrado se pintaba como el
+       JSON crudo con la llave del archivo a la vista, en vez de abrirse.
+       Se admite con y sin él. */
+    const claro = r.texto.charCodeAt(0) === 1 ? r.texto.slice(1) : r.texto;
+    /* El texto puede traer pegada la llave de un adjunto: viaja DENTRO del
+       cifrado, nunca al lado, que es lo que hace que el relevo guarde un
+       archivo que no puede abrir. Y la CITA —a qué mensaje responde— va por
+       el mismo camino (`c`): el relevo no la necesita para nada. Los
+       mensajes viejos la traen en claro (`m.cita`) y se siguen leyendo. */
+    let texto = claro, extra = null;
+    if (claro.startsWith('{')) {
+      try {
+        const j = JSON.parse(claro.slice(1));
+        texto = j.t || '';
+        extra = { ...(j.k ? { llaveArchivo: j.k, ivArchivo: j.iv } : {}),
+                  ...(j.c ? { cita: String(j.c).slice(0, 16) } : {}) };
+      } catch { /* si no parsea es texto normal que empieza raro */ }
+    }
+    /* `verificado` viaja hasta la burbuja. Un mensaje que no se pudo
+       verificar NO se esconde: se enseña con su marca, porque esconderlo
+       sería perder información y enseñarlo callado sería mentir. */
+    return {
+      ...m, texto, e2e: true,
+      verificado: r.verificado, motivoFirma: r.motivo,
+      ...(extra || {}), ...reacciones,
+    };
   }
 
   /**
@@ -635,9 +659,10 @@ const CHAT = (() => {
   async function escuchar(alLlegar) {
     if (escuchando) return;
     escuchando = true;
+    await asegurarAparato();
     while (escuchando) {
       try {
-        const d = await pedir('/senales', firmado({}), 40000);
+        const d = await pedir('/senales', conAparato(firmado({})), 40000);
         for (const s of (d.senales || [])) {
           try { alLlegar(s); } catch {}
         }
@@ -781,8 +806,10 @@ const CHAT = (() => {
 
   /** Deja una señal para el otro lado. Nunca lanza: una llamada no se cae
       porque un candidato ICE de veinte no llegara. */
-  const senalar = (para, tipo, datos) =>
-    pedir('/senal', firmado({ para, tipo, datos: datos || {} })).catch(() => null);
+  const senalar = async (para, tipo, datos) => {
+    await asegurarAparato();
+    return pedir('/senal', conAparato(firmado({ para, tipo, datos: datos || {} }))).catch(() => null);
+  };
 
   /* El mensaje que acompaña a un adjunto va por el MISMO camino que cualquier
      otro: cerrado. Y si el archivo se cifró, su llave viaja DENTRO de ese
@@ -1043,7 +1070,7 @@ const CHAT = (() => {
            grupoCrear, grupoInfo, grupoEditar, grupoInvitar, grupoSalir, grupoUnirse,
            esGrupo, urlArchivo, vozEnVivo, oir,
            puedeGrabar, grabarInicio, grabarFin, subirVoz, segundosDeVoz,
-           escuchar, dejarDeEscuchar, senalar, turno,
+           escuchar, dejarDeEscuchar, senalar, turno, miAparato,
            reaccionar, escribiendo,
            puedeAvisar, iphoneSinInstalar, registrarObrero, pedirAvisos, llaveAvisos };
 })();

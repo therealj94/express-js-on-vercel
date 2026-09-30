@@ -23,7 +23,7 @@ y comprueba lo que AURO CHAT necesita que sea verdad:
 
 Sin dependencias fuera de la stdlib.
 """
-import json, os, socket, subprocess, sys, tempfile, time
+import base64, hashlib, json, os, socket, subprocess, sys, tempfile, time
 import urllib.error, urllib.request
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
@@ -367,9 +367,13 @@ def main():
             assert st == 200, 'alta de %s: %s %s' % (correo, st, r)
             firmas[correo] = {'correo': correo, 'llave': r['llave']}
         eva, fito = firmas['eva@og.hn'], firmas['fito@og.hn']
-        for quien, ident in ((eva, 'ap-eva'), (fito, 'ap-fito')):
+        for quien, nombre_ap in ((eva, 'ap-eva'), (fito, 'ap-fito')):
+            # El id tiene que salir de la pública, como lo calculan los clientes.
+            pub = 'B' + nombre_ap
+            crudo = base64.urlsafe_b64decode(pub + '=' * (-len(pub) % 4))
+            ident = base64.urlsafe_b64encode(hashlib.sha256(crudo).digest()).decode().rstrip('=')[:22]
             st, r = post(base, '/llaves/publicar',
-                         dict(quien, id=ident, pub='B' + ident, fir='F' + ident))
+                         dict(quien, id=ident, pub=pub, fir='F' + nombre_ap))
             assert st == 200, 'publicar de %s: %s %s' % (ident, st, r)
         # No son amigos y nunca se escribieron: sin grupo, no hay llaves.
         st, r = post(base, '/llaves/de', dict(eva, correos=['fito@og.hn']))

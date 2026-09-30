@@ -324,7 +324,11 @@ const TEXTOS: Record<string, Texto> = {
     cuerpo: { token: s('string'), verificador: s('string', 'Obligatorio si el pase lleva reto') },
     obligatorios: ['token'],
     devuelve: '`{ gid, emitidoPor, expira }`; con `gid.perfil`, el perfil público; con '
-      + '`gid.correo`, el correo de esa identidad; y `aud` si el pase tenía destino.',
+      + '`gid.correo`, el correo de esa identidad; y `aud` si el pase tenía destino.\n\n'
+      + 'Con `gid.cumple` (y `gid.perfil`), el perfil lleva además `cumple: \'MM-DD\'`: el mes '
+      + 'y el día de nacimiento, **nunca el año**. Sale de la fecha del documento verificado '
+      + 'y, si el trámite no la dejó, de la declarada; si no hay ninguna válida, el campo no '
+      + 'viene.',
     errores: {
       '401': 'Token inválido o vencido; `codigo`: OTRA_APP (el pase es para otra aplicación), '
         + 'RETO (falta el verificador o no coincide) o USADO (esta aplicación ya lo canjeó)',

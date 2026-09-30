@@ -53,7 +53,9 @@ import { notificarPerdida } from '../notify';
 /* Las señales de una llamada cara a cara. Las de grupo empiezan todas por «g»
    y se comprueban ANTES: `ice` y `gice` son distintas, y confundirlas metería
    un candidato de una llamada de grupo en una conexión de dos. */
-const SENALES_LLAMADA = ['llamo', 'respuesta', 'ice', 'cuelgo', 'rechazo', 'ocupado'];
+/* `atendida` la deja el relevo cuando otro aparato de esta cuenta contesta o
+   rechaza: sin repartirla aquí, este seguiría sonando para nada. */
+const SENALES_LLAMADA = ['llamo', 'respuesta', 'ice', 'cuelgo', 'rechazo', 'ocupado', 'atendida'];
 const ES_DE_GRUPO = (t) => typeof t === 'string' && t.startsWith('g');
 
 /* El «está escribiendo…» sigue siendo del chat, pero ya no es el chat quien
@@ -101,7 +103,11 @@ export default function Timbre({ correo, toast }) {
   const mirarPerdida = useCallback((c) => {
     const antes = fasePrevia.current;
     const ahora = c?.estado || 'libre';
-    if (antes.fase === 'entrando' && ahora === 'libre' && c?.motivo === 'el-otro' && antes.con) {
+    /* `perdida` es el timbre de aquí rindiéndose sin que nadie contestara
+       (el `cuelgo` de allá se perdió por el camino): también es perdida. Y
+       `en-otro-aparato` NO lo es: la contestaste, solo que en otro lado. */
+    if (antes.fase === 'entrando' && ahora === 'libre'
+        && (c?.motivo === 'el-otro' || c?.motivo === 'perdida') && antes.con) {
       notificarPerdida({
         quien: nombreDe(antes.con), con: antes.con, video: antes.video,
       }).catch(() => {});
@@ -121,11 +127,13 @@ export default function Timbre({ correo, toast }) {
     LLAMADA.arrancar({
       mandar: M.senalar,
       traerTurno: M.turno,
+      aparato: M.miAparato,
       alCambiar: (c) => {
         mirarPerdida(c);
         setLlam(c);
         const razon = c?.motivo ? razonDeCorte(c.motivo) : null;
-        if (razon) toast?.(razon, 'error');
+        // Contestar en otro aparato no es un fallo: se dice, sin el rojo.
+        if (razon) toast?.(razon, c.motivo === 'en-otro-aparato' ? 'info' : 'error');
       },
     });
 

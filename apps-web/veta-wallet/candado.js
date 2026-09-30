@@ -281,7 +281,7 @@ const CANDADO = (() => {
     /* El sobre para uno mismo no es un detalle: sin el, uno no puede releer lo
        que escribio desde este mismo aparato ni desde ningun otro suyo. Se
        incluyen TODOS los aparatos propios que se conozcan, no solo este. */
-    const todos = dedup([...aparatos, ...propios]);
+    const todos = await dedup([...propios, ...(aparatos || [])]);
     if (!todos.length) throw new Error('sin-destino');
 
     const llaveMsg = await sc.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
@@ -375,9 +375,9 @@ const CANDADO = (() => {
    */
   async function abrir(bulto, aparatosDelRemitente) {
     const m = await mias();
-    if (!m || !bulto) return null;
+    if (!m || !bultoValido(bulto)) return null;
     if (bulto.v !== VERSION && bulto.v !== VERSION_SIN_FIRMA) return null;
-    const sobre = (bulto.s || []).find(x => x.a === m.id);
+    const sobre = bulto.s.find(x => x.a === m.id);
     if (!sobre) return null;
 
     let texto;
@@ -438,13 +438,42 @@ const CANDADO = (() => {
     }
   }
 
-  function dedup(lista) {
+  /* El id de un aparato ES el resumen de su publica (ver `crear`). */
+  async function idDeAparato(pubB64) {
+    return aB64(await sc.digest('SHA-256', deB64(pubB64))).slice(0, 22);
+  }
+
+  /* Sin repetidos, y solo aparatos cuyo id sale de su propia publica.
+   *
+   * El id es lo que decide que sobre abre cada aparato (`x.a === m.id`). Un
+   * aparato publicado con el id de OTRO y una publica suya se quedaria con el
+   * sobre del otro —o se lo taparia, si llega primero a la lista—. Como el id
+   * se puede recalcular, no hay que creerselo a nadie: se recalcula y el que no
+   * cuadra se descarta. El propio va PRIMERO (lo pone `cerrar`), asi que nunca
+   * lo desplaza una entrada ajena con el mismo id. */
+  async function dedup(lista) {
     const visto = new Set();
-    return (lista || []).filter(x => {
-      if (!x?.id || !x?.pub || visto.has(x.id)) return false;
+    const salida = [];
+    for (const x of (lista || [])) {
+      if (!x || typeof x.id !== 'string' || typeof x.pub !== 'string' || visto.has(x.id)) continue;
+      try { if ((await idDeAparato(x.pub)) !== x.id) continue; } catch { continue; }
       visto.add(x.id);
-      return true;
-    });
+      salida.push(x);
+    }
+    return salida;
+  }
+
+  /* ¿Tiene el bulto la forma de un bulto? Viene del relevo, y del relevo puede
+     venir cualquier cosa: un `s` que no es una lista, un sobre sin `a`, un `k`
+     que es un numero. Antes eso reventaba DENTRO de `abrir` —`.find` sobre un
+     objeto— y el fallo subia hasta el hilo entero, que se quedaba vacio por un
+     solo mensaje malo. Un mensaje envenenado no puede dejar a nadie sin chat. */
+  function bultoValido(b) {
+    if (!b || typeof b !== 'object') return false;
+    if (typeof b.de !== 'string' || typeof b.iv !== 'string' || typeof b.ct !== 'string') return false;
+    if (!Array.isArray(b.s)) return false;
+    return b.s.every(x => x && typeof x === 'object'
+      && typeof x.a === 'string' && typeof x.iv === 'string' && typeof x.k === 'string');
   }
 
   /* ── el codigo de seguridad ─────────────────────────────────────────────
@@ -476,7 +505,7 @@ const CANDADO = (() => {
 
   return {
     hay, miLlave, mias, cerrar, abrir, juzgarFirma, cerrarBytes, abrirBytes,
-    codigoDeSeguridad, aB64, deB64,
+    codigoDeSeguridad, aB64, deB64, bultoValido, idDeAparato,
   };
 })();
 

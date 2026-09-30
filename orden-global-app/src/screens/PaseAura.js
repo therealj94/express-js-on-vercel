@@ -5,7 +5,10 @@
 // viaje, y por eso NO se dispara sola como la de MyTokenPay: un enlace lo puede
 // abrir cualquier app del teléfono, el consentimiento solo lo da la persona.
 //
-// Lo que se lleva AU-RA es un PASE de Genesis ID, no la sesión de esta app:
+// Lo que se lleva AU-RA es un PASE de Genesis ID, no la sesión de esta app.
+// Al canjearlo recibe tu nombre, tu cumpleaños (mes y día, nunca el año), tu
+// correo, y el chat PULSE2CHAT se conecta con el mismo pase; la pantalla lo
+// lista tal cual, ni más ni menos. Y el pase:
 //   · vale solo en AU-RA y en el chat (aud), una vez en cada uno;
 //   · lleva el `reto` que mandó AU-RA — solo AU-RA tiene el verificador, así
 //     que si otra app se quedara con el enlace de vuelta, no le serviría.
@@ -91,7 +94,11 @@ export default function PaseAura({ nav, params }) {
         {valido && (
           <>
             <Glass style={s.grupo}>
+              {/* Exactamente lo que recibe AU-RA al canjear el pase, en ese
+                  orden: nombre (perfil), cumpleaños sin año (gid.cumple),
+                  correo (gid.correo) y el chat, que canjea el mismo pase. */}
               <Fila icon="person" t={t('aura.f1')} s={t('aura.f1s')} first />
+              <Fila icon="gift" t={t('aura.fc')} s={t('aura.fcs')} />
               <Fila icon="mail" t={t('aura.f2')} s={t('aura.f2s')} />
               <Fila icon="chatbubbles" t={t('aura.f3')} s={t('aura.f3s')} />
             </Glass>
