@@ -123,6 +123,57 @@ describe('Pedir el pase', () => {
     const r = await pase({ aud: 'aura', reto: 'corto' })
     assert.equal(r.estado, 400)
   })
+
+  // Un pase de AU-RA o del chat vuelve por un enlace que otra app puede
+  // interceptar: sin reto, quien lo intercepte entra como la persona.
+  test('para AU-RA o el chat, SIN reto no se emite (400 RETO_OBLIGATORIO)', async () => {
+    for (const aud of ['aura', 'pulse2chat', ['aura', 'pulse2chat'], ['ordenex', 'aura']]) {
+      const r = await pase({ aud })
+      assert.equal(r.estado, 400, `${JSON.stringify(aud)} → ${JSON.stringify(r.cuerpo)}`)
+      assert.equal(r.cuerpo.codigo, 'RETO_OBLIGATORIO')
+      assert.match(r.cuerpo.error, /reto/)
+    }
+  })
+
+  test('otros destinos siguen pudiendo pedirlo sin reto (compatibilidad)', async () => {
+    const r = await pase({ aud: 'ordenex' })
+    assert.equal(r.estado, 200, JSON.stringify(r.cuerpo))
+    const v = await verificar('ordenex', { token: r.cuerpo.token })
+    assert.equal(v.estado, 200, JSON.stringify(v.cuerpo))
+    assert.deepEqual(v.cuerpo.aud, ['ordenex'])
+  })
+
+  test('las negativas dicen QUÉ falta con un código', async () => {
+    const sinVinculo = await pedir('/api/v1/sso/token', claves['veta-wallet'], { gid, cuenta: 'otra-cuenta' })
+    assert.equal(sinVinculo.estado, 403)
+    assert.equal(sinVinculo.cuerpo.codigo, 'CUENTA_NO_VINCULADA')
+
+    const antes = persona.estado
+    persona.estado = 'en-revision'
+    try {
+      const pendiente = await pase({})
+      assert.equal(pendiente.estado, 403)
+      assert.equal(pendiente.cuerpo.codigo, 'GID_NO_VERIFICADO')
+    } finally {
+      persona.estado = antes
+    }
+  })
+})
+
+describe('Un pase de AU-RA sin reto emitido antes de exigirlo', () => {
+  test('no se canjea aunque la firma valga', async () => {
+    const { firmarToken } = await import('../lib/cripto.js')
+    const ahora = Math.floor(Date.now() / 1000)
+    for (const app of ['aura', 'pulse2chat']) {
+      const viejo = firmarToken({
+        sub: gid, app: 'veta-wallet', alcances: ['perfil'], iat: ahora, exp: ahora + 600,
+        aud: ['aura', 'pulse2chat'], jti: randomBytes(16).toString('base64url'),
+      }, 'secreto-de-prueba')
+      const r = await verificar(app, { token: viejo, verificador: verificador() })
+      assert.equal(r.estado, 401, JSON.stringify(r.cuerpo))
+      assert.equal(r.cuerpo.codigo, 'RETO')
+    }
+  })
 })
 
 describe('Un pase para AU-RA y el chat', () => {

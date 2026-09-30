@@ -306,7 +306,10 @@ const TEXTOS: Record<string, Texto> = {
       + 'y cada una lo puede canjear **una sola vez**. Con `reto` (el SHA-256 en base64url '
       + 'de un verificador al azar que guarda la app que pidió el pase), el canje exige ese '
       + 'verificador: un pase interceptado en el enlace de vuelta no le sirve a quien lo '
-      + 'intercepte. Sin `aud`, el pase se comporta como siempre.',
+      + 'intercepte. Sin `aud`, el pase se comporta como siempre.\n\n'
+      + '**Para `aura` y `pulse2chat` el `reto` es obligatorio** (400 `RETO_OBLIGATORIO`): '
+      + 'su pase vuelve por un enlace que otra app podría interceptar. Los demás destinos '
+      + 'lo siguen teniendo opcional.',
     cuerpo: {
       gid: s('string'), cuenta: s('string'),
       aud: s('string', 'Una aplicación o lista de hasta cuatro (claves del ecosistema)'),
@@ -315,7 +318,12 @@ const TEXTOS: Record<string, Texto> = {
     obligatorios: ['gid', 'cuenta'],
     devuelve: '`{ token, expiraEn }`',
     errores: {
-      '403': 'El GID no está verificado, o esa cuenta no está atada a él en su aplicación',
+      '400': 'GID o cuenta que faltan, `aud` o `reto` mal formados, o `codigo` RETO_OBLIGATORIO '
+        + '(un pase para aura o pulse2chat sin reto)',
+      '403': 'Con `codigo`: GID_NO_VERIFICADO (la identidad no está verificada), '
+        + 'CUENTA_NO_VINCULADA (esa cuenta no está atada a ese GID en su aplicación) o '
+        + 'IDENTIDAD_BLOQUEADA',
+      '429': 'Demasiados pedidos: espere y vuelva a intentarlo',
       '503': 'El SSO no está configurado en este despliegue',
     },
   },
@@ -331,7 +339,8 @@ const TEXTOS: Record<string, Texto> = {
       + 'viene.',
     errores: {
       '401': 'Token inválido o vencido; `codigo`: OTRA_APP (el pase es para otra aplicación), '
-        + 'RETO (falta el verificador o no coincide) o USADO (esta aplicación ya lo canjeó)',
+        + 'RETO (falta el verificador o no coincide, o el pase es para aura o pulse2chat y no '
+        + 'lleva reto) o USADO (esta aplicación ya lo canjeó)',
     },
   },
   'POST /api/v1/credenciales': {
