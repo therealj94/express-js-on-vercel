@@ -107,7 +107,8 @@ export function depurar(contactos) {
   const filas = contactos.map((c) => {
     const correo = c.correo.trim().toLowerCase();
     const r = { ...c, correo, org_corta: orgCorta(c.org), idioma: c.idioma === 'ES' ? 'ES' : 'EN' };
-    r.persona_real = esPersona(c.persona, c.org) ? 'sí' : '';
+    // Los contactos que agrega José a mano llevan el nombre que él da, aunque sea solo el de pila.
+    r.persona_real = esPersona(c.persona, c.org) || (c.fuente === 'Agregado por José' && c.persona.trim()) ? 'sí' : '';
     r.tipo_buzon = correo ? tipoBuzon(correo) : '';
     r.estado = correo ? 'enviar' : 'sin_correo';
     r.motivo = correo ? '' : 'Sin correo publicado: LinkedIn, redes o formulario';
