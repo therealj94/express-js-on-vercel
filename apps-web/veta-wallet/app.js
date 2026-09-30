@@ -203,16 +203,22 @@ const VETA = (() => {
         if (datos?.motivo) e.motivo = datos.motivo;
         // Lo mismo con `code`, que es como lo nombran las rutas de la tarjeta.
         if (datos?.code) e.codigo = datos.code;
+        // Y `codigo`, como lo nombra el puente de Genesis (CORREO_NO_VERIFICADO,
+        // GID_PENDIENTE, CUENTA_NO_VINCULADA…): es lo que distingue un «no tienes
+        // Genesis ID» de un «tu cuenta no está atada».
+        else if (typeof datos?.codigo === 'string') e.codigo = datos.codigo;
         // Y con «otra-cuenta» viaja el correo que la sesión SÍ prueba.
         if (datos?.correoReal) e.correoReal = String(datos.correoReal).toLowerCase();
         throw e;
       }
       return datos;
     } catch (e) {
-      if (e.name === 'AbortError') throw new Error(t('err.tarda'));
+      // `red` marca los dos para quien necesita saberlo sin leer la frase
+      // traducida (la vuelta a AU-RA: `error=red`).
+      if (e.name === 'AbortError') throw Object.assign(new Error(t('err.tarda')), { red: true });
       // Un fallo de red y un error del servidor se sienten igual para quien
       // mira la pantalla, pero se arreglan de forma distinta: conviene decir cuál es.
-      if (e instanceof TypeError) throw new Error(t('err.red'));
+      if (e instanceof TypeError) throw Object.assign(new Error(t('err.red')), { red: true });
       throw e;
     } finally { clearTimeout(reloj); }
   }
@@ -268,7 +274,11 @@ const VETA = (() => {
     try {
       return await crudo(ruta, opciones);
     } catch (e) {
-      const vencio = e.estado === 401 || e.estado === 403 ||
+      /* Un 403 CON código no es una sesión vencida: es el servidor diciendo que
+         no a algo concreto (el puente de Genesis: «tu Genesis ID sigue en
+         revisión»). Renovar ahí no arregla nada, y si la renovación fallaba se
+         cerraba la sesión de alguien que solo pidió un pase. */
+      const vencio = e.estado === 401 || (e.estado === 403 && !e.codigo) ||
                      /jwt|expired|invalid token|unauthor/i.test(e.message || '');
       if (vencio && conSesion) {
         /* Un token vencido se renueva y la peticion se repite. Pero si la
@@ -350,6 +360,9 @@ const VETA = (() => {
     $('#bienve').classList.add('oculto');
     $('#bienve').innerHTML = '';
     document.body.style.overflow = '';
+    /* Quien llegó desde AU-RA sin cuenta sigue ahora: sin Genesis ID todavía,
+       el permiso le ofrece sacarlo sin perder el pedido. */
+    if (auraPendiente && sesion?.token) consentirAura(auraPendiente);
   }
 
   function guardar() {
@@ -1459,6 +1472,9 @@ const VETA = (() => {
         ssoDestino = null;
         if (volviendoACasa) volverConLlave(volviendoACasa);
         if (auraPendiente && !semillaNueva) consentirAura(auraPendiente);
+        // Cuenta recién creada: primero las doce palabras; AU-RA sigue al
+        // confirmar que las anotó (`semListo`).
+        if (auraPendiente && semillaNueva) quitarAvisoAura();
         // Y el cobro que esperaba en la puerta: DESPUES de la cartera, para que
         // la moneda exista cuando se intente elegir.
         if (cobroPendiente) {
@@ -4690,6 +4706,11 @@ const VETA = (() => {
         rostro: bio?.biometria?.motivo || null,
       };
       sol.paso = 4;
+      /* Si vino desde AU-RA, se sigue hacia allá (ver alTerminarAltaAura). Con
+         algo que corregir, no: se queda aquí con el aviso de AU-RA puesto. */
+      const hayQueCorregir = Boolean(identidad?.rostroPendiente)
+        || sol.resultado.aceptable === false || sol.resultado.problemas.length > 0;
+      setTimeout(() => alTerminarAltaAura({ hayQueCorregir }), 0);
     } catch (e) {
       sol.error = e.motivo === SIN_FOTOS ? t('ver.sinFotos') : verFalla(e);
     } finally {
@@ -7051,8 +7072,8 @@ const VETA = (() => {
       /* El 403 es Genesis diciendo que sin identidad verificada no hay token:
          se dice y se abre la verificación, que es lo único que la desbloquea.
          Y se le avisa a la casa de adentro para que deje de esperar. */
-      contestar({ og: 'sso-no', motivo: e.estado === 403 ? 'sin-gid' : 'error' });
-      if (e.estado === 403) { avisar(t('nu.cerrado')); vista('verificar'); }
+      contestar({ og: 'sso-no', motivo: faltaGenesis(e) ? 'sin-gid' : 'error' });
+      if (faltaGenesis(e)) { avisar(t('nu.cerrado')); vista('verificar'); }
       else avisar(e.message);
     }
   });
@@ -7060,8 +7081,9 @@ const VETA = (() => {
   /* ── AU-RA FP · la app de los avatares ─────────────────────────────────
    *
    * AU-RA no es una web con dirección fija como Ordenex o AuCorp: es una app
-   * del teléfono, y vuelve por su esquema (`ultronfp://sso`). Su puerta abre
-   * esta página con `#sso-aura?reto=…&estado=…`.
+   * del teléfono (vuelve por su esquema, `ultronfp://sso`) y ahora también una
+   * web (`https://aura-fp.onrender.com/sso`). Su puerta abre esta página con
+   * `#sso-aura?reto=…&estado=…&vuelta=…`.
    *
    * Dos diferencias con las otras casas, y las dos importan:
    *
@@ -7070,31 +7092,219 @@ const VETA = (() => {
    *     AU-RA—. Si otra app se quedara con el enlace de vuelta, no le serviría.
    *   · SE PREGUNTA ANTES. Las otras casas vuelven solas porque vuelven a SU
    *     dominio; aquí cualquier página puede abrir `#sso-aura`, así que el pase
-   *     no se acuña sin un «Permitir» de la persona. */
+   *     no se acuña sin un «Permitir» de la persona.
+   *
+   * La lista del permiso es EXACTAMENTE lo que Genesis le da a AU-RA al
+   * canjear el pase: nombre (gid.perfil), cumpleaños sin año (gid.cumple),
+   * correo (gid.correo), y el chat, que canjea el mismo pase. Si un día cambian
+   * los alcances de AU-RA en Genesis, esta lista cambia con ellos.
+   *
+   * LA VUELTA ES DE UNA LISTA CERRADA. `vuelta` la escribe quien arma el enlace,
+   * así que no se sigue a cualquier sitio: con un pase en la mano eso sería
+   * regalárselo a quien ponga su dirección. Se compara ENTERA con la lista; lo
+   * que no está (o no viene: las APK viejas no la mandan) vuelve a
+   * `ultronfp://sso`.
+   *
+   * LO QUE SE LE CONTESTA A AU-RA: `pase=…&estado=…`, o `error=…&estado=…` con
+   * uno de estos códigos, que AU-RA traduce a su pantalla: cancelado, sin-gid,
+   * gid-pendiente, no-vinculada, correo-sin-confirmar, limite, red, fallo.
+   *
+   * EL PEDIDO SOBREVIVE A LA RECARGA Y AL ALTA. Quien llega sin Genesis ID
+   * puede crearlo en ese momento; el trámite son varias pantallas y la
+   * dirección deja de decir `#sso-aura` en cuanto se navega. Así que el pedido
+   * se guarda en sessionStorage (esta pestaña y nadie más) por media hora, y
+   * al terminar el trámite se sigue: verificado → el permiso y el pase; en
+   * revisión → de vuelta a AU-RA con `gid-pendiente`, en vez de dejar a la
+   * persona varada en la wallet. Un pedido contestado queda GASTADO: volver
+   * atrás hasta el mismo enlace no acuña un segundo pase con el mismo reto. */
   let auraPendiente = null;
   const RETO_AURA = /^[A-Za-z0-9_-]{43}$/;
   const ESTADO_AURA = /^[A-Za-z0-9_-]{8,64}$/;
+  const VUELTAS_AURA = ['ultronfp://sso', 'https://aura-fp.onrender.com/sso'];
+  const vueltaAuraDe = (v) => (VUELTAS_AURA.includes(v) ? v : VUELTAS_AURA[0]);
+  const LLAVE_AURA = 'veta.aura.pedido';
+  const LLAVE_AURA_GASTADOS = 'veta.aura.gastados';
+  const AURA_VIVE_MS = 30 * 60_000;
 
   function leerPedidoAura(hash) {
     if (!/^#sso-aura(\?|$)/.test(hash || '')) return null;
     const q = new URLSearchParams(hash.slice(hash.indexOf('?') + 1));
     const reto = q.get('reto') || '';
     const estado = q.get('estado') || '';
-    return RETO_AURA.test(reto) && ESTADO_AURA.test(estado) ? { reto, estado } : { malo: true };
+    const vuelta = vueltaAuraDe(q.get('vuelta') || '');
+    return RETO_AURA.test(reto) && ESTADO_AURA.test(estado) ? { reto, estado, vuelta } : { malo: true };
   }
 
-  function vueltaAura({ pase, error, estado }) {
+  /* sessionStorage puede no estar (modo privado estricto, o bloqueado): sin él
+     el pedido vive solo en memoria, como antes. Nada de esto rompe si falla. */
+  function auraLeer(llave) {
+    try { return JSON.parse(sessionStorage.getItem(llave) || 'null'); } catch { return null; }
+  }
+  function auraEscribir(llave, valor) {
+    try {
+      if (valor == null) sessionStorage.removeItem(llave);
+      else sessionStorage.setItem(llave, JSON.stringify(valor));
+    } catch { /* sin almacenamiento, en memoria */ }
+  }
+  const huellaAura = (p) => `${p.estado}|${p.reto}`;
+  function auraGastados() {
+    const ahora = Date.now();
+    const lista = auraLeer(LLAVE_AURA_GASTADOS);
+    return Array.isArray(lista) ? lista.filter((g) => g && g.hasta > ahora) : [];
+  }
+  const pedidoAuraGastado = (p) => auraGastados().some((g) => g.h === huellaAura(p));
+
+  function guardarPedidoAura(p) {
+    if (!p || p.malo) return;
+    auraEscribir(LLAVE_AURA, {
+      reto: p.reto, estado: p.estado, vuelta: vueltaAuraDe(p.vuelta),
+      fase: p.fase || null, hasta: p.hasta || Date.now() + AURA_VIVE_MS,
+    });
+  }
+
+  /** El pedido guardado en esta pestaña, si sigue vivo y no se contestó ya. */
+  function recuperarPedidoAura() {
+    const p = auraLeer(LLAVE_AURA);
+    if (!p || !(p.hasta > Date.now()) || !RETO_AURA.test(p.reto || '') || !ESTADO_AURA.test(p.estado || '')
+        || pedidoAuraGastado(p)) {
+      auraEscribir(LLAVE_AURA, null);
+      return null;
+    }
+    return { reto: p.reto, estado: p.estado, vuelta: vueltaAuraDe(p.vuelta), fase: p.fase || null, hasta: p.hasta };
+  }
+
+  /* Contestado: fuera de la pestaña y apuntado como gastado. */
+  function soltarPedidoAura(p) {
+    auraEscribir(LLAVE_AURA, null);
+    if (!p || p.malo) return;
+    const lista = auraGastados().filter((g) => g.h !== huellaAura(p));
+    lista.push({ h: huellaAura(p), hasta: Date.now() + AURA_VIVE_MS });
+    auraEscribir(LLAVE_AURA_GASTADOS, lista.slice(-20));
+  }
+
+  /* El pedido de AU-RA con el que arranca la página: el del enlace, o el que
+     quedó guardado de antes de una recarga. */
+  function pedidoAuraAlArrancar(hash) {
+    const delEnlace = leerPedidoAura(hash);
+    if (delEnlace && !delEnlace.malo) {
+      if (pedidoAuraGastado(delEnlace)) return { malo: true, gastado: true };
+      const guardado = recuperarPedidoAura();
+      // El mismo pedido que ya estaba en curso (una recarga con el enlace aún
+      // en la barra) conserva su fase y su plazo; uno nuevo empieza de cero.
+      const mismo = guardado && huellaAura(guardado) === huellaAura(delEnlace) ? guardado : null;
+      const p = mismo || delEnlace;
+      guardarPedidoAura(p);
+      return p;
+    }
+    return delEnlace || recuperarPedidoAura();
+  }
+
+  /** De un error del puente, el código que entiende AU-RA. */
+  function codigoAura(e) {
+    const porCodigo = {
+      CORREO_NO_VERIFICADO: 'correo-sin-confirmar',
+      GID_SIN_IDENTIDAD: 'sin-gid',
+      GID_PENDIENTE: 'gid-pendiente',
+      CUENTA_NO_VINCULADA: 'no-vinculada',
+      LIMITE: 'limite',
+      GENESIS_RED: 'red',
+    }[e?.codigo];
+    if (porCodigo) return porCodigo;
+    if (e?.red) return 'red';
+    if (e?.estado === 429) return 'limite';
+    if (e?.estado >= 500) return 'red';
+    /* Un backend de antes de los códigos contesta 403 con una frase: se mira
+       la tarjeta de identidad que ya tiene la página, que es de esta persona. */
+    if (e?.estado === 403 && !e?.codigo) {
+      if (/no está atada/i.test(e.message || '')) return 'no-vinculada';
+      if (!gidEmpezado()) return 'sin-gid';
+      if (!esVerificada()) return 'gid-pendiente';
+    }
+    return 'fallo';
+  }
+
+  /* ¿Es este error un «sin Genesis ID verificado»? Solo entonces tiene sentido
+     mandar a la persona a verificarse; un correo sin confirmar o una cuenta sin
+     atar no se arreglan repitiendo el trámite. */
+  const faltaGenesis = (e) => ['sin-gid', 'gid-pendiente'].includes(codigoAura(e));
+
+  /* ¿Empezó esta persona su Genesis ID? `iniciada` no cuenta: es la identidad
+     vacía que se crea con solo abrir la wallet (`/genesis/estado`). */
+  const gidEmpezado = () => Boolean(identidad && !identidad.error && identidad.estado && identidad.estado !== 'iniciada');
+
+  function enlaceVueltaAura({ pase, error, estado, vuelta }) {
     const q = [];
     if (pase) q.push('pase=' + encodeURIComponent(pase));
     if (error) q.push('error=' + encodeURIComponent(error));
     q.push('estado=' + encodeURIComponent(estado || ''));
-    location.href = 'ultronfp://sso?' + q.join('&');
+    return vueltaAuraDe(vuelta) + '?' + q.join('&');
+  }
+
+  /* EL BOTÓN DE VUELTA, SIEMPRE A LA VISTA. El salto a `ultronfp://` (o a la
+     web de AU-RA) ocurre después de esperar al servidor, y Chrome puede
+     bloquear una navegación que ya no viene de un toque: la persona se quedaba
+     mirando la wallet sin saber que AU-RA la esperaba. Así que se intenta el
+     salto y, además, queda un «Volver a AU-RA» que es un enlace de verdad —el
+     toque de la persona sí lo abre siempre—. */
+  function vueltaAura(datos) {
+    const p = { ...(auraPendiente && !auraPendiente.malo ? auraPendiente : {}), ...datos };
+    const url = enlaceVueltaAura(p);
+    soltarPedidoAura(p);
+    auraPendiente = null;
+    quitarAvisoAura();
+    const velo = document.createElement('div');
+    velo.setAttribute('data-vuelta-aura', '');
+    velo.setAttribute('role', 'dialog');
+    velo.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(5,8,12,.82);display:flex;align-items:center;justify-content:center;padding:16px';
+    velo.innerHTML = `
+      <div style="max-width:380px;width:100%;background:#12161d;color:#F3ECD9;border:1px solid rgba(214,181,108,.35);border-radius:20px;padding:22px;font:15px/1.45 system-ui,sans-serif;text-align:center">
+        <div style="font-weight:800;font-size:18px;margin-bottom:6px">${datos.pase ? 'Listo, volvé a AU-RA' : 'Volvé a AU-RA'}</div>
+        <div style="opacity:.8;margin-bottom:16px">Si AU-RA no se abrió sola, tocá el botón.</div>
+        <a data-ir href="${esc(url)}" style="display:block;padding:13px;border-radius:14px;background:#D6B56C;color:#1b1406;font-weight:800;font-size:15px;text-decoration:none">Volver a AU-RA</a>
+        <button data-quedarme style="width:100%;padding:12px;margin-top:8px;border:1px solid rgba(243,236,217,.2);border-radius:14px;background:transparent;color:#F3ECD9;font-size:14px;cursor:pointer">Quedarme en la wallet</button>
+      </div>`;
+    velo.querySelector('[data-quedarme]').onclick = () => velo.remove();
+    document.body.appendChild(velo);
+    try { location.href = url; } catch { /* queda el botón */ }
+  }
+
+  /* El aviso fijo mientras la persona hace otra cosa por el camino a AU-RA
+     (entrar, crear la cuenta, sacar su Genesis ID): dice adónde vuelve y le
+     deja volver cuando quiera, con el código que corresponda en ese momento. */
+  function pintarAvisoAura(texto, error) {
+    quitarAvisoAura();
+    const aviso = document.createElement('div');
+    aviso.setAttribute('data-aviso-aura', '');
+    aviso.style.cssText = 'position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:99990;display:flex;gap:10px;align-items:center;background:#12161d;color:#F3ECD9;border:1px solid rgba(214,181,108,.45);border-radius:16px;padding:10px 12px;font:13.5px/1.35 system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.45)';
+    aviso.innerHTML = `<span style="flex:1">${esc(texto)}</span>
+      <button data-volver style="flex:none;padding:9px 12px;border:0;border-radius:12px;background:#D6B56C;color:#1b1406;font-weight:800;font-size:13px;cursor:pointer">Volver a AU-RA</button>`;
+    aviso.querySelector('[data-volver]').onclick = () => vueltaAura({ error: typeof error === 'function' ? error() : error });
+    document.body.appendChild(aviso);
+  }
+  function quitarAvisoAura() {
+    document.querySelectorAll('[data-aviso-aura]').forEach((n) => n.remove());
+  }
+
+  /* Sin sesión: el pedido espera a que la persona entre o cree su cuenta.
+     Mientras, puede volver a AU-RA sin entrar. */
+  function esperarAuraEnLaPuerta() {
+    if (!auraPendiente || auraPendiente.malo) return;
+    pintarAvisoAura('AU-RA te espera: entrá o creá tu cuenta para seguir.', 'cancelado');
   }
 
   function consentirAura(pedido) {
     auraPendiente = null;
     if (!pedido) return;
-    if (pedido.malo) { avisar('Ese pedido de AU-RA no es válido. Volvé a intentarlo desde AU-RA.'); return; }
+    if (pedido.malo) {
+      avisar(pedido.gastado
+        ? 'Ese pedido de AU-RA ya se contestó. Volvé a intentarlo desde AU-RA.'
+        : 'Ese pedido de AU-RA no es válido. Volvé a intentarlo desde AU-RA.');
+      return;
+    }
+    auraPendiente = pedido;
+    // A mitad del alta (una recarga en medio del trámite): se sigue el trámite.
+    if (pedido.fase === 'alta') return seguirAltaAura();
+    quitarAvisoAura();
     const velo = document.createElement('div');
     velo.setAttribute('role', 'dialog');
     velo.setAttribute('aria-modal', 'true');
@@ -7102,35 +7312,126 @@ const VETA = (() => {
     velo.innerHTML = `
       <div style="max-width:380px;width:100%;background:#12161d;color:#F3ECD9;border:1px solid rgba(214,181,108,.35);border-radius:20px;padding:22px;font:15px/1.45 system-ui,sans-serif">
         <div style="font-weight:800;font-size:19px;margin-bottom:6px">AU-RA quiere usar tu Genesis ID</div>
-        <div style="opacity:.85;margin-bottom:14px">Vas a entrar a AU-RA FP con esta cuenta, sin crear otra ni repetir la verificación. Se comparte:</div>
-        <ul style="margin:0 0 14px 18px;padding:0;opacity:.9">
-          <li>Tu Genesis ID y tu nombre verificado</li>
-          <li>El correo de tu identidad</li>
-          <li>Tu chat PULSE2CHAT (contactos y conversaciones)</li>
+        <div style="opacity:.85;margin-bottom:14px">Vas a entrar a AU-RA FP con esta cuenta, sin crear otra ni repetir la verificación. AU-RA recibe:</div>
+        <ul data-comparte style="margin:0 0 14px 18px;padding:0;opacity:.9">
+          <li>Tu nombre</li>
+          <li>Tu cumpleaños (día y mes, nunca el año)</li>
+          <li>Tu correo</li>
+          <li>Y tu chat PULSE2CHAT se conecta (contactos y conversaciones)</li>
         </ul>
         <div style="font-size:12.5px;opacity:.65;margin-bottom:16px">Tu contraseña, tu frase semilla y tus fondos no salen de aquí. El pase es de un solo uso y solo AU-RA lo puede canjear.</div>
         <button data-si style="width:100%;padding:13px;border:0;border-radius:14px;background:#D6B56C;color:#1b1406;font-weight:800;font-size:15px;cursor:pointer">Permitir y volver a AU-RA</button>
         <button data-no style="width:100%;padding:12px;margin-top:8px;border:1px solid rgba(243,236,217,.2);border-radius:14px;background:transparent;color:#F3ECD9;font-size:14px;cursor:pointer">No, volver sin entrar</button>
       </div>`;
     const cerrar = () => velo.remove();
-    velo.querySelector('[data-no]').onclick = () => { cerrar(); vueltaAura({ error: 'cancelado', estado: pedido.estado }); };
+    velo.querySelector('[data-no]').onclick = () => { cerrar(); vueltaAura({ error: 'cancelado' }); };
     velo.querySelector('[data-si]').onclick = async (ev) => {
       ev.target.disabled = true;
       ev.target.textContent = 'Pidiendo tu pase…';
-      try {
-        const d = await pedir('/genesis/sso/token', {
-          metodo: 'POST', cuerpo: { aud: ['aura', 'pulse2chat'], reto: pedido.reto },
-        });
-        if (!d?.token) throw new Error(t('err.sesion'));
-        cerrar();
-        vueltaAura({ pase: d.token, estado: pedido.estado });
-      } catch (e) {
-        cerrar();
-        if (e.estado === 403) { avisar(t('nu.cerrado')); vista('verificar'); vueltaAura({ error: 'sin-gid', estado: pedido.estado }); }
-        else { avisar(e.message); vueltaAura({ error: 'fallo', estado: pedido.estado }); }
-      }
+      const r = await pedirPaseAura(pedido);
+      cerrar();
+      if (r.pase) return vueltaAura({ pase: r.pase });
+      return trasNegativaAura(r.error, r.e);
     };
     document.body.appendChild(velo);
+  }
+
+  /* El pase, y si la cuenta verificada todavía no estaba atada a su GID, se
+     ata y se pide UNA vez más: es un paso que la wallet hace sola en cada
+     carga (`cargarIdentidad`), y que la persona no tenga que esperar a la
+     siguiente para entrar a AU-RA. */
+  async function pedirPaseAura(pedido) {
+    const pedirlo = () => pedir('/genesis/sso/token', {
+      metodo: 'POST', cuerpo: { aud: ['aura', 'pulse2chat'], reto: pedido.reto },
+    });
+    try {
+      const d = await pedirlo();
+      if (!d?.token) return { error: 'fallo' };
+      return { pase: d.token };
+    } catch (e) {
+      if (codigoAura(e) !== 'no-vinculada') return { error: codigoAura(e), e };
+      try {
+        await pedir('/genesis/vincular', { metodo: 'POST', cuerpo: {} });
+        const d = await pedirlo();
+        return d?.token ? { pase: d.token } : { error: 'fallo' };
+      } catch (e2) {
+        return { error: codigoAura(e2), e: e2 };
+      }
+    }
+  }
+
+  /* Lo que se hace con cada «no». Sin Genesis ID (o con el trámite sin
+     terminar) se ofrece sacarlo AHORA sin perder el pedido; si ya está en
+     revisión no hay nada que hacer aquí y se vuelve con `gid-pendiente`. Lo
+     demás vuelve a AU-RA con su código, diciendo aquí qué pasó. */
+  async function trasNegativaAura(error, e) {
+    if (error === 'sin-gid' || error === 'gid-pendiente') {
+      await cargarIdentidad().catch(() => {});
+      if (esVerificada()) return vueltaAura({ error });
+      if (identidad?.paso === 'revision') {
+        avisar('Tu Genesis ID está en revisión. Te avisamos cuando esté listo.');
+        return vueltaAura({ error: 'gid-pendiente' });
+      }
+      if (['rechazada', 'suspendida'].includes(identidad?.estado)) return vueltaAura({ error: 'fallo' });
+      return ofrecerAltaAura(error);
+    }
+    const dicho = {
+      'correo-sin-confirmar': 'Confirmá tu correo con el enlace que te mandamos y volvé a intentarlo.',
+      limite: 'Demasiados intentos. Esperá un momento y volvé a probar.',
+      red: t('err.red'),
+    }[error];
+    avisar(dicho || e?.message || 'No se pudo pedir el pase.');
+    return vueltaAura({ error });
+  }
+
+  function ofrecerAltaAura(error) {
+    const velo = document.createElement('div');
+    velo.setAttribute('role', 'dialog');
+    velo.setAttribute('aria-modal', 'true');
+    velo.setAttribute('data-alta-aura', '');
+    velo.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(5,8,12,.78);display:flex;align-items:center;justify-content:center;padding:16px';
+    const aMedias = error === 'gid-pendiente' || gidEmpezado();
+    velo.innerHTML = `
+      <div style="max-width:380px;width:100%;background:#12161d;color:#F3ECD9;border:1px solid rgba(214,181,108,.35);border-radius:20px;padding:22px;font:15px/1.45 system-ui,sans-serif">
+        <div style="font-weight:800;font-size:19px;margin-bottom:6px">Para entrar a AU-RA necesitás tu Genesis ID</div>
+        <div style="opacity:.85;margin-bottom:16px">${aMedias
+          ? 'Tu Genesis ID está a medio hacer. Terminalo ahora y seguimos a AU-RA desde aquí.'
+          : 'Sacalo ahora: son unos minutos con tu documento y una foto. Al terminar seguimos a AU-RA desde aquí.'}</div>
+        <button data-alta style="width:100%;padding:13px;border:0;border-radius:14px;background:#D6B56C;color:#1b1406;font-weight:800;font-size:15px;cursor:pointer">${aMedias ? 'Terminar mi Genesis ID' : 'Crear mi Genesis ID'}</button>
+        <button data-no style="width:100%;padding:12px;margin-top:8px;border:1px solid rgba(243,236,217,.2);border-radius:14px;background:transparent;color:#F3ECD9;font-size:14px;cursor:pointer">Ahora no, volver a AU-RA</button>
+      </div>`;
+    velo.querySelector('[data-no]').onclick = () => { velo.remove(); vueltaAura({ error }); };
+    velo.querySelector('[data-alta]').onclick = () => {
+      velo.remove();
+      if (!auraPendiente) return;
+      auraPendiente = { ...auraPendiente, fase: 'alta' };
+      guardarPedidoAura(auraPendiente);
+      seguirAltaAura();
+    };
+    document.body.appendChild(velo);
+  }
+
+  /* El trámite, con el aviso de AU-RA abajo. Volver desde ahí devuelve
+     `gid-pendiente` si ya hay identidad iniciada y `sin-gid` si no. */
+  function seguirAltaAura() {
+    pintarAvisoAura('Estás sacando tu Genesis ID para AU-RA.',
+      () => (gidEmpezado() ? 'gid-pendiente' : 'sin-gid'));
+    vista('verificar');
+  }
+
+  /* Se llama al terminar de mandar el trámite. Si quedó verificado (en la web
+     hoy no pasa: sin prueba de vida, la aprobación es de una persona), el
+     permiso y el pase; si quedó en revisión, de vuelta a AU-RA. Si hay algo
+     que corregir (documento, cara), se queda aquí con el aviso puesto. */
+  function alTerminarAltaAura({ hayQueCorregir }) {
+    if (!auraPendiente || auraPendiente.malo || auraPendiente.fase !== 'alta' || hayQueCorregir) return;
+    if (esVerificada()) {
+      const p = { ...auraPendiente, fase: null };
+      guardarPedidoAura(p);
+      return consentirAura(p);
+    }
+    avisar('Listo: tu Genesis ID quedó en revisión.');
+    vueltaAura({ error: 'gid-pendiente' });
   }
 
   async function volverConLlave(destino) {
@@ -7148,7 +7449,7 @@ const VETA = (() => {
          verificacion, que es lo unico que desbloquea esta puerta. Cualquier
          otro fallo se enseña tal cual llego — la red y el servidor ya vienen
          traducidos por pedir(). */
-      if (e.estado === 403) { avisar(t('nu.cerrado')); vista('verificar'); }
+      if (faltaGenesis(e)) { avisar(t('nu.cerrado')); vista('verificar'); }
       else avisar(e.message);
     }
   }
@@ -7272,7 +7573,9 @@ const VETA = (() => {
      hay pase». Se dice con la frase de siempre y se abre la verificacion, que
      es lo unico que abre esta puerta. Devuelve true si ya se ocupo del error. */
   function mtpSinIdentidad(e) {
-    if (e?.estado !== 403) return false;
+    // Un correo sin confirmar o una cuenta sin atar también son 403, pero no
+    // se arreglan verificándose otra vez: esos se enseñan tal cual.
+    if (e?.estado !== 403 || !faltaGenesis(e)) return false;
     avisar(t('nu.cerrado'));
     vista('verificar');
     return true;
@@ -16850,7 +17153,9 @@ const VETA = (() => {
        fuera, no una ruta — se consume aqui y no entra al historial. */
     const casaSso = CASAS_SSO[location.hash] ? CASAS_SSO[location.hash]() : null;
     ssoDestino = casaSso;
-    auraPendiente = leerPedidoAura(location.hash);
+    // El de la dirección, o el que quedó guardado en esta pestaña antes de una
+    // recarga (a mitad del alta de Genesis ID, por ejemplo).
+    auraPendiente = pedidoAuraAlArrancar(location.hash);
 
     /* Y si la direccion no es una intencion sino una RUTA —alguien guardo
        #billetera en favoritos, o recarga estando en el chat— se entra por
@@ -16903,7 +17208,7 @@ const VETA = (() => {
        ella— pero ya no es lo primero: quien escribe app.vetawallet.com viene
        a entrar o a abrir cuenta, y hacerle atravesar seis tramos de venta
        para encontrar la puerta era tratarlo de visita en su propia casa. */
-    else ir('acceso', 'entrar');
+    else { ir('acceso', 'entrar'); esperarAuraEnLaPuerta(); }
   }
   document.addEventListener('DOMContentLoaded', arrancar);
 
@@ -17012,6 +17317,8 @@ const VETA = (() => {
            _leerCobro: c => { const x = leerCobro(c); if (x) irACobro(x); return x; },
            _sol: x => { sol = { ...(sol || {}), ...x }; },
            _semilla: f => { semillaNueva = f; mostrarSemilla(f); },
+           // El final del trámite web visto desde AU-RA, sin subir fotos.
+           _auraTerminar: (x) => alTerminarAltaAura(x || {}),
            _ofrecerGid: () => auraOfrecerGid(),
            _mtp: () => URL_MYTOKENPAY,
            _atPunto: (p) => atPunto(p), _atTablero: (v) => atTablero(v),
