@@ -6,7 +6,7 @@
 // Corre en un dyno one-off, como los scripts de veta-wallet-migracion
 // (Atlas solo acepta conexiones desde Heroku):
 //
-//   python3 ../veta-wallet-migracion/dyno.py direcciones-veta.js > salida.txt
+//   python3 ../veta-wallet-migracion/dyno.py direcciones-veta.js MONGO_USER=<usuario de Atlas> > salida.txt
 //   python3 -c "import re,json;t=open('salida.txt').read();print(json.dumps(sum((json.loads(x) for x in re.findall(r'DIRECCIONES (\[.*?\])',t)),[])))" > veta.json
 //
 // Comprobar que el número de veta.json coincide con «direcciones» del RESUMEN.
@@ -15,8 +15,11 @@
 import mongoose from "mongoose";
 
 (async () => {
-  if (!process.env.MONGO_URI) throw new Error("MONGO_URI no esta configurada");
-  await mongoose.connect(process.env.MONGO_URI);
+  // MONGO_URI si está; si no, la que arma el backend con MONGO_PASSWORD (así está en Heroku).
+  const pw = process.env.MONGO_PASSWORD;
+  const uri = process.env.MONGO_URI || (pw && process.env.MONGO_USER && `mongodb+srv://${process.env.MONGO_USER}:${encodeURIComponent(pw)}@cluster0.ngdqmps.mongodb.net/wallet?retryWrites=true&w=majority`);
+  if (!uri) throw new Error("Falta MONGO_URI, o MONGO_USER y MONGO_PASSWORD");
+  await mongoose.connect(uri);
   const col = mongoose.connection.db.collection("users");
 
   const direcciones = new Set();
