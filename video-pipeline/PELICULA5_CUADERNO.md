@@ -55,3 +55,12 @@ cuando esté la voz; se mide frase por frase y la película se corta a la voz, c
 - Seedance 2.5, 5 s: $2,31 a 720p · $5,17 a 1080p.
 - ~30 planos de ~5 s a 720p ≈ $70, más ~30 % de retomas ≈ $90; a 1080p ≈ $200.
 - Recomendado: generar a 720p y subir a 1080p solo los planos elegidos (Topaz en el mismo flujo).
+
+## Estado (1-oct-2026)
+
+- Páginas realistas elegidas: P1 v1 · P2 v2 · P3 v2 · P4 v1 · P5 v2 · P6 v2 · P7 v1 · P8 v2 · P9 v2 · P10 v1
+  (P0 = imagen maestra realista).
+- Voz «Jose latam» (v4): 22 tomas transcritas, todas dicen el guion completo; elegidas v1 salvo P02 v2.
+  Narración total ≈ 1:54; con respiros y giros, la película queda en ≈ 2:06.
+- Animatic gratis (`montaje/animatic_cuaderno.py`): páginas fijas con empuje lento + voz, para validar
+  ritmo antes de gastar Seedance.
