@@ -72,3 +72,13 @@ cuando esté la voz; se mide frase por frase y la película se corta a la voz, c
 - GPT Image 2 se configura siempre en 9:16 · 2K · alta (por defecto sale 16:9).
 - Páginas elegidas: P1 v1 · P2 v1 · P3 v1 · P4 v1 · P5 v2 · P6 v2 · P7 v1 · P8 v1 · P9 v1 · P10 v2; P0 = maestra.
 - Voz en español neutro de tú (sin voseo).
+
+## v1 montada (1-oct-2026)
+
+- Vídeo: MiniMax H3 (Seedance 2.5 probado: $4,62 por 10 s, siguió peor la instrucción y convirtió la llamita en fuego real).
+  21 planos con imagen inicial/final + instrucción por segundos (`prompts/cuaderno_planos.py`); repetidos V00, D06, V09.
+  V00 se usa solo desde 3,6 s (la llamita seguía saliendo como fuego).
+- Montaje: `montaje/cuaderno.py` — voz por página, dibujo acelerado hasta 2x para cuadrar con la voz,
+  pausa en el último cuadro si la voz es más larga, 9 efectos de ElevenLabs, música de 132 s (atempo 0,935,
+  entra con la lámpara), subtítulos por frase, «¿Qué vas a hacer?» y cierre con logo + ordenglobal.org.
+- Costo aproximado: imágenes ~$10, vídeo ~$11 (incluye pruebas), música y efectos ~$0,40.
