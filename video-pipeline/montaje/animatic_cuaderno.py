@@ -1,8 +1,8 @@
 import json, subprocess, numpy as np
 from PIL import Image
 stt=json.load(open("voz/stt.json"))
-elec_img={0:"r2.webp",1:"real/p01_1.png",2:"real/p02_2.png",3:"real/p03_2.png",4:"real/p04_1.png",5:"real/p05_2.png",
-          6:"real/p06_2.png",7:"real/p07_1.png",8:"real/p08_2.png",9:"real/p09_2.png",10:"real/p10_1.png"}
+elec_img={0:"cenital/m1.png",1:"cenital/p01_1.png",2:"cenital/p02_1.png",3:"cenital/p03_1.png",4:"cenital/p04_1.png",5:"cenital/p05_2.png",
+          6:"cenital/p06_2.png",7:"cenital/p07_1.png",8:"cenital/p08_1.png",9:"cenital/p09_1.png",10:"cenital/p10_2.png"}
 elec_voz={p:1 for p in range(11)}; elec_voz[2]=2
 W,H,FPS,PRE,POST,FADE=1080,1920,24,0.5,1.3,0.5
 pags=[]; t=0
@@ -15,8 +15,8 @@ json.dump(pags,open("animatic/tiempos.json","w"),indent=1)
 src={p:Image.open(f).convert("RGB") for p,f in elec_img.items()}
 def cuadro(p,u):
     im=src[p]; w,h=im.size
-    z=1.0+0.35*u            # empuje lento hacia el cuaderno
-    cw,ch=w/z,h/z; cx,cy=w*0.5,h*(0.5+0.12*u)
+    z=1.0+0.10*u            # empuje lento: el cuaderno ya llena el cuadro
+    cw,ch=w/z,h/z; cx,cy=w*0.5,h*0.5
     box=(cx-cw/2,max(0,min(h-ch,cy-ch/2)));box=(box[0],box[1],box[0]+cw,box[1]+ch)
     return np.asarray(im.resize((W,H),Image.BICUBIC,box=box),dtype=np.float32)
 ff=subprocess.Popen(["ffmpeg","-y","-loglevel","error","-f","rawvideo","-pix_fmt","rgb24","-s",f"{W}x{H}","-r",str(FPS),"-i","-",

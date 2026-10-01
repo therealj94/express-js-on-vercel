@@ -64,3 +64,11 @@ cuando esté la voz; se mide frase por frase y la película se corta a la voz, c
   Narración total ≈ 1:54; con respiros y giros, la película queda en ≈ 2:06.
 - Animatic gratis (`montaje/animatic_cuaderno.py`): páginas fijas con empuje lento + voz, para validar
   ritmo antes de gastar Seedance.
+
+## Encuadre definitivo: cenital a pantalla completa (1-oct-2026)
+
+- Cámara desde arriba; el cuaderno abierto, girado con el lomo horizontal, llena todo el 9:16
+  (página de arriba y página de abajo forman una sola escena vertical). Maestra: `maestra_cenital_v1`.
+- GPT Image 2 se configura siempre en 9:16 · 2K · alta (por defecto sale 16:9).
+- Páginas elegidas: P1 v1 · P2 v1 · P3 v1 · P4 v1 · P5 v2 · P6 v2 · P7 v1 · P8 v1 · P9 v1 · P10 v2; P0 = maestra.
+- Voz en español neutro de tú (sin voseo).
