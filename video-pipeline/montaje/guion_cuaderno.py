@@ -7,18 +7,19 @@ import json, os, subprocess, sys, urllib.request
 from pathlib import Path
 
 VOZ = "5rpOswWClIYBLr0xKelj"  # «Jose latam», clon profesional de José
+# Español neutro de tú: nada de voseo (sabés, tenés, querés…), que suena rioplatense.
 L = [
     ("P00", "[softly] Esta no es la típica historia de éxito que ves en Netflix… o que lees en un libro. [pause] [serious] Es la historia real de un sueño… [whispers] que todavía puede perderse."),
-    ("P01", "[warmly] Vos y yo sabemos lo difícil que es salir adelante solo… cuando sabés que tenés algo que puede cambiar vidas. [short pause] Y hasta ayudar a desarrollar países."),
+    ("P01", "[warmly] Tú y yo sabemos lo difícil que es salir adelante solo… cuando sabes que tienes algo que puede cambiar vidas. [short pause] Y hasta ayudar a desarrollar países."),
     ("P02", "[nostalgic] Todo empezó hace cuatro años. Una familia dedicada a la minería de oro. [short pause] Riqueza en la tierra… [sad] y pobreza alrededor."),
-    ("P03", "[frustrated] Pero esos proyectos nunca terminaron de despegar. Faltaron leyes claras. Faltó apoyo. [sighs] [softly] Quizás a vos también te pasó."),
+    ("P03", "[frustrated] Pero esos proyectos nunca terminaron de despegar. Faltaron leyes claras. Faltó apoyo. [sighs] [softly] Quizás a ti también te pasó."),
     ("P04", "[determined] Entonces decidimos estudiar el dinero: los bancos, las criptomonedas… [warmly] y construir una alternativa para la gente."),
     ("P05", "[warmly] Primero fuimos una familia. Después se unió otra. Llegaron personas que sabían de finanzas, de tecnología… un programador que creyó en esto. [emotional] Y muchos que confiaron en nosotros desde el principio."),
     ("P06", "[tired] Fueron cuatro años. Pusimos lo que teníamos. La primera versión no alcanzaba… y la volvimos a hacer. [trembling voice] Hubo cansancio. Hubo lágrimas. [softly] Y quienes creyeron en nosotros desde el principio… también cargaron este cansancio. [pause] [determined] Pero seguimos."),
     ("P07", "[proud] Hoy existe ORIGEN: una moneda digital para Latinoamérica, referenciada al precio del oro. El sistema ya funciona. Una transacción en la red cuesta… un centavo de dólar."),
     ("P08", "[serious] Pero el sistema está hecho para que todo siga igual. [pause] [softly] Y solos… ya no podemos dar el siguiente paso."),
-    ("P09", "[warmly] Por eso hoy te cuento cómo empezó. Porque de vos depende que este sueño no se pierda como tantos otros. [pause] [emotional] Este sueño ya no es solo mío… es tuyo, que estás viendo esto."),
-    ("P10", "[warmly] Si querés ser parte, hablemos. Si conocés a quien debe escuchar esta historia… compartila. [pause] [softly] ¿Qué vas a hacer?"),
+    ("P09", "[warmly] Por eso hoy te cuento cómo empezó. Porque de ti depende que este sueño no se pierda como tantos otros. [pause] [emotional] Este sueño ya no es solo mío… es tuyo, que estás viendo esto."),
+    ("P10", "[warmly] Si quieres ser parte, hablemos. Si conoces a quien debe escuchar esta historia… compártela. [pause] [softly] ¿Qué vas a hacer?"),
 ]
 
 

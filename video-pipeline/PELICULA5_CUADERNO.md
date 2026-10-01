@@ -33,7 +33,7 @@ siguiente: la película es un solo plano continuo de mesa, sin saltos.
 | # | Tiempo | Página dibujada (A) | Vida (plano 2) | Voz |
 |---|---|---|---|---|
 | 0 | 0:00–0:08 | Llamita dorada en el centro de la página | La llamita tiembla, casi se apaga; la mano la cubre | «Esta no es la típica historia de éxito…» |
-| 1 | 0:08–0:18 | Figura sola caminando por una carretera de noche | La figura camina; el camino se dibuja delante | «Vos y yo sabemos lo difícil…» |
+| 1 | 0:08–0:18 | Figura sola caminando por una carretera de noche | La figura camina; el camino se dibuja delante | «Tú y yo sabemos lo difícil…» |
 | 2 | 0:18–0:30 | Montañas, río, manos con batea y un punto de oro; abajo, casas humildes | El agua corre, el oro destella | «Todo empezó hace cuatro años…» |
 | 3 | 0:30–0:42 | Maquinaria detenida bajo la lluvia; pila de papeles con sellos | Cae la lluvia en trazos; los papeles se apilan | «Pero esos proyectos nunca…» |
 | 4 | 0:42–0:54 | Mesa de cocina con 4 siluetas (padre, madre, hijo, hija), libros, laptop; 4 luces doradas | Las 4 luces se encienden una a una | «Entonces decidimos estudiar el dinero…» |
@@ -42,7 +42,7 @@ siguiente: la película es un solo plano continuo de mesa, sin saltos.
 | 7 | 1:30–1:44 | Todas las luces fluyen hacia una moneda dorada (ORIGEN); mercado: una mano paga, otra recibe | La acuarela dorada se derrama y forma la moneda | «Hoy existe ORIGEN…» |
 | 8 | 1:44–1:54 | Mapa de Centroamérica: líneas doradas chocan con un muro gris | **La punta del lápiz se quiebra** | «Pero el sistema está hecho…» |
 | 9 | 1:54–2:08 | Mesa con una silla vacía y una luz sin color | La mano deja el lápiz y **lo desliza hacia la cámara** | «Por eso hoy te cuento…» |
-| 10 | 2:08–2:18 | La luz de la silla se enciende; la red dorada cruza el muro y une los países | El cuaderno se cierra; en la tapa, OG en relieve dorado (logo en montaje) | «Si querés ser parte, hablemos…» |
+| 10 | 2:08–2:18 | La luz de la silla se enciende; la red dorada cruza el muro y une los países | El cuaderno se cierra; en la tapa, OG en relieve dorado (logo en montaje) | «Si quieres ser parte, hablemos…» |
 
 ## Voz
 
