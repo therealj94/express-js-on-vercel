@@ -1,0 +1,6 @@
+# Relacionan direcciones con cuentas o con billeteras internas: no se suben.
+veta.json
+internas.json
+salida.txt
+tenedores-*.json
+inventario-*.json
