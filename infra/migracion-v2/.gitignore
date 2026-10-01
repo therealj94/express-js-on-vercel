@@ -4,3 +4,4 @@ internas.json
 salida.txt
 tenedores-*.json
 inventario-*.json
+__pycache__/
