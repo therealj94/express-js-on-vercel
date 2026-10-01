@@ -13,9 +13,8 @@ import { descifrarLlavePrivada, descifrarFraseSemilla, claveDe, esLlavePrivada, 
     largoNueva: (process.env.PASS_ADM_NUEVA || "").length,
   }));
 
-  await mongoose.connect(
-    `mongodb+srv://blakefalkor:${process.env.MONGO_PASSWORD}@cluster0.ngdqmps.mongodb.net/wallet?retryWrites=true&w=majority`
-  );
+  if (!process.env.MONGO_URI) throw new Error("MONGO_URI no esta configurada");
+  await mongoose.connect(process.env.MONGO_URI);
   const col = mongoose.connection.db.collection("users");
 
   let pkOk = 0, pkMal = 0, sdOk = 0, sdMal = 0, conNueva = 0, conVieja = 0, conRespaldo = 0;

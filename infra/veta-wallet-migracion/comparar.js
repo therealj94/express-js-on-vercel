@@ -33,9 +33,8 @@ const descifrar = (cifrado, clave) => {
 ;(async () => {
   if (!VIEJA || !NUEVA) throw new Error('Hacen falta las dos claves para poder comparar')
 
-  await mongoose.connect(
-    `mongodb+srv://blakefalkor:${process.env.MONGO_PASSWORD}@cluster0.ngdqmps.mongodb.net/wallet?retryWrites=true&w=majority`
-  )
+  if (!process.env.MONGO_URI) throw new Error('MONGO_URI no esta configurada')
+  await mongoose.connect(process.env.MONGO_URI)
   const col = mongoose.connection.db.collection('users')
 
   const cuenta = { conRespaldo: 0, iguales: 0, distintos: 0, sinRespaldo: 0, respaldoIlegible: 0 }

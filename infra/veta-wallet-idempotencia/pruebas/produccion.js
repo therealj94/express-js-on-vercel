@@ -20,9 +20,10 @@ let fallos = 0
 const ok = (c, m) => { console.log((c ? '  ok    ' : '  FALLA ') + m); if (!c) fallos++ }
 
 ;(async () => {
-  await mongoose.connect(
-    `mongodb+srv://blakefalkor:${process.env.MONGO_PASSWORD}@cluster0.ngdqmps.mongodb.net/wallet?retryWrites=true&w=majority`
-  )
+  // Toca la base real: no corre por accidente, hay que pedirlo.
+  if (process.env.PRUEBA_PRODUCCION !== 'si') throw new Error('Esta prueba escribe en produccion: correrla con PRUEBA_PRODUCCION=si')
+  if (!process.env.MONGO_URI) throw new Error('MONGO_URI no esta configurada')
+  await mongoose.connect(process.env.MONGO_URI)
 
   // Mongoose crea los indices en segundo plano; hay que esperarlos.
   await Idempotencia.init()

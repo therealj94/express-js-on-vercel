@@ -50,9 +50,8 @@ const CAMPOS = [
   if (!process.env.PASS_ADM_NUEVA) throw new Error("PASS_ADM_NUEVA no esta configurada");
   if (!process.env.PASS_ADM) throw new Error("PASS_ADM no esta configurada — hace falta para leer lo viejo");
 
-  await mongoose.connect(
-    `mongodb+srv://blakefalkor:${process.env.MONGO_PASSWORD}@cluster0.ngdqmps.mongodb.net/wallet?retryWrites=true&w=majority`
-  );
+  if (!process.env.MONGO_URI) throw new Error("MONGO_URI no esta configurada");
+  await mongoose.connect(process.env.MONGO_URI);
   const col = mongoose.connection.db.collection("users");
 
   const cuenta = { total: 0, migrados: 0, yaNuevos: 0, corruptos: 0, fallos: 0, restaurados: 0 };

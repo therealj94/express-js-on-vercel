@@ -120,7 +120,7 @@ cd pruebas && npm i crypto-js
 mkdir -p node_modules/mongoose && cp mongoose-falso.cjs node_modules/mongoose/index.cjs
 # package.json con {"type":"module"} y main: index.cjs en el falso
 
-PASS_ADM=vieja77 PASS_ADM_NUEVA=$(printf 'N%.0s' {1..64}) \
+PASS_ADM=clave-vieja-de-prueba PASS_ADM_NUEVA=$(printf 'N%.0s' {1..64}) \
   node migracion.test.js                 # simulacro: nada cambia
 MIGRAR=si ... node migracion.test.js     # 20 comprobaciones
 MIGRAR=si ... node idempotencia.test.js  # 8 comprobaciones
