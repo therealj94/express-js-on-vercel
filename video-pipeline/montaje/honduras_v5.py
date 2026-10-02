@@ -62,9 +62,9 @@ DUR_FIJA = {"hook": 9.95}
 EXTRA = {"GU3": 0.5}
 CORTES = {"T06": 2.54, "TVV": 2.56, "TVM": 2.64}
 # destellos del arranque: (archivo, segundo del clip)
-DESTELLOS = [("v4/T06_tiburones_ballena.mp4", 6.2), ("v3/T08_rio_cascada.mp4", 3.2), ("v3/T09_niebla_copan.mp4", 6.0),
-             ("v3/T15_tambor_pies.mp4", 0.8), ("v3/T07_sale_rapidos.mp4", 3.4), ("v5/TMA_mosquitia_amapala.mp4", 6.2),
-             ("v5/TAN_atardecer_noche.mp4", 6.3), ("v4/TCB_ceiba_baleada.mp4", 6.2)]
+DESTELLOS = [("v4/TCB_ceiba_baleada.mp4", 6.2), ("v4/T06_tiburones_ballena.mp4", 6.2), ("v3/T08_rio_cascada.mp4", 3.2),
+             ("v3/T09_niebla_copan.mp4", 6.0), ("v3/T15_tambor_pies.mp4", 0.8), ("v5/TLE_lenca_esperanza.mp4", 6.4),
+             ("v5/TMA_mosquitia_amapala.mp4", 6.2), ("v5/TAN_atardecer_noche.mp4", 6.3)]
 
 VOZ = [  # (segmento, desfase, archivo, ini, fin)
     ("hook", 0.00, "voz/hook_guara.mp3", 0, None),
@@ -109,7 +109,7 @@ CIFRAS = [
     ("T01", 2.3, 1.9, 2, "", ".º", "arrecife más grande del mundo"),
     ("T08", 1.8, 1.8, 43, "", " m", "de caída"),
     ("T13", 0.3, 1.8, 2000, "+", "", "glifos mayas en la escalinata"),
-    ("TLL", 0.6, 1.8, 1700, "+", " m", "la ciudad más alta de Honduras"),
+    ("TLL", 1.7, 1.8, 1700, "+", " m", "la ciudad más alta de Honduras"),
     ("TMM", 2.2, 1.8, 1, "", ".ª", "denominación de origen de Centroamérica"),
 ]
 MUSICA_GOLPE = 11.0     # primer golpe de audio5/musica_v5.mp3 (toma a)
@@ -186,6 +186,10 @@ def frase_final(mg, tl, dur):
     a = int(255 * suave(tl / .5) * salida); txt = "Ahora ya lo sabes:"
     d.text(((W - d.textlength(txt, font=mg.f["cap"])) / 2, 20), txt, font=mg.f["cap"], fill=CREMA + (a,))
     mg._pega(capa, np.array(img), 0, 640)
+    if "grande" not in mg.f:  # letras más grandes que los rótulos de lugar
+        from PIL import ImageFont
+        mg.f["grande"] = ImageFont.truetype(mg.f["titulo"].path, 165)
+    normal = mg.f["titulo"]; mg.f["titulo"] = mg.f["grande"]
     for j, linea in enumerate(("YA NO ES", "UN SECRETO")):
         letras, ancho, alto = mg._letras(linea); x0 = (W - ancho) // 2; y0 = 780 + j * (alto + 10)
         for k, (x, w, rgba) in enumerate(letras):
@@ -193,6 +197,7 @@ def frase_final(mg, tl, dur):
             if p <= 0: continue
             lo = rgba.copy(); lo[..., 3] = (lo[..., 3] * p * salida).astype(np.uint8)
             mg._pega(capa, lo[:, x:x + w + 4], x0 + x, y0 + int((1 - p) * 40))
+    mg.f["titulo"] = normal
     return capa
 
 
@@ -218,7 +223,9 @@ def main():
 
     subs = []
     for seg, off, arch, ini, fin in VOZ:
-        subs += bloques(palabras_de(D, arch, ini, fin, P[seg]["t0"] + off))
+        ps = palabras_de(D, arch, ini, fin, P[seg]["t0"] + off)
+        if ps and "t3" not in arch: ps[0][2] = ps[0][2][:1].upper() + ps[0][2][1:]  # frase suelta: mayúscula inicial
+        subs += bloques(ps)
     subs = [(b[0][0], (subs[i + 1][0][0] if i + 1 < len(subs) and subs[i + 1][0][0] - b[-1][1] < .6 else b[-1][1] + .35), b)
             for i, b in enumerate(subs)]
 

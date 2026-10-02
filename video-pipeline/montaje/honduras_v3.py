@@ -134,14 +134,14 @@ def palabras_de(D, archivo, ini, fin, desplaza):
         segs, _ = m.transcribe(str(D / archivo), language="es", word_timestamps=True)
         json.dump([[w.start, w.end, w.word.strip()] for s in segs for w in s.words], open(cache, "w"), ensure_ascii=False)
     fixes = {"Yohua": "Yojoa", "Yohua,": "Yojoa,", "tela,": "Tela,", "tela": "Tela", "campa,": "Campa,", "malla": "maya",
-             "Copán,": "Copán,", "Mosquitia,": "Mosquitia,", "Maya": "maya", "Escritura": "escritura", "seiba,": "Ceiba,", "seiba": "Ceiba"}
+             "Copán,": "Copán,", "Mosquitia,": "Mosquitia,", "Maya": "maya", "Escritura": "escritura", "seiba,": "Ceiba,", "seiba": "Ceiba", "esperanza,": "Esperanza,", "golfo": "Golfo", "ángeles,": "Ángeles,"}
     ps = []
     for a, b, w in json.load(open(cache)):
         if a >= ini - .05 and (fin is None or b <= fin + .1):
             w = fixes.get(w, w)
             ps.append([a - ini + desplaza, b - ini + desplaza, w])
     for i in range(1, len(ps)):  # «la Campa», «la Mosquitia» con mayúscula
-        if ps[i][2].startswith(("Campa", "Mosquitia")) and ps[i - 1][2] == "la": ps[i - 1][2] = "La"
+        if ps[i][2].startswith(("Campa", "Mosquitia", "Esperanza", "Ceiba")) and ps[i - 1][2] == "la": ps[i - 1][2] = "La"
     return ps
 
 
