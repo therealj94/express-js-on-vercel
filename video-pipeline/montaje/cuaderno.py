@@ -166,7 +166,7 @@ def main():
         fil.append(f"{last}[{i}:v]overlay=0:0:enable='between(t,{i0:.2f},{i1:.2f})'[v{i}]"); last = f"[v{i}]"
     n = len(capas) + 1
     # Audio: voz, música (agachada bajo la voz), ambiente de noche en bucle y efectos.
-    ent += ["-i", str(V / "musica.mp3"), "-stream_loop", "-1", "-i", str(V / "sfx/noche.mp3")]
+    ent += ["-i", str(V / "musica_A.mp3"), "-stream_loop", "-1", "-i", str(V / "sfx/noche.mp3")]
     am, an = n, n + 1
     vi = []
     for j, (mp3, vt) in enumerate(voces):
@@ -179,7 +179,7 @@ def main():
         largo = ",atrim=0:2.6,afade=t=out:st=2.0:d=0.6" if nom == "lapiz" else ""
         fil.append(f"[{base + k}:a]aformat=channel_layouts=stereo{largo},volume={vol},adelay={ms}|{ms}[fx{k}]"); si.append(f"[fx{k}]")
     fil.append("".join(vi) + f"amix=inputs={len(vi)}:normalize=0,apad,atrim=0:{total:.2f},asplit=2[voz][llave]")
-    fil.append(f"[{am}:a]aformat=channel_layouts=stereo,atempo=0.935,adelay=2900|2900,volume=0.34,afade=t=in:st=2.9:d=1.5,afade=t=out:st={total-3:.2f}:d=3,apad,atrim=0:{total:.2f}[mus0]")
+    fil.append(f"[{am}:a]aformat=channel_layouts=stereo,adelay=2900|2900,volume=0.34,afade=t=in:st=2.9:d=1.5,afade=t=out:st={total-3:.2f}:d=3,apad,atrim=0:{total:.2f}[mus0]")
     fil.append("[mus0][llave]sidechaincompress=threshold=0.12:ratio=1.5:attack=40:release=500[mus]")
     fil.append(f"[{an}:a]aformat=channel_layouts=stereo,volume=0.22,atrim=0:{total:.2f}[noche]")
     fil.append("".join(si) + f"amix=inputs={len(si)}:normalize=0,apad,atrim=0:{total:.2f}[fx]")
