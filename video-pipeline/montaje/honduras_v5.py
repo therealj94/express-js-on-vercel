@@ -59,7 +59,7 @@ TEASER = 1.7
 FINAL = 3.6           # «YA NO ES UN SECRETO» sobre las estrellas
 LOGO_DUR = 4.2
 DUR_FIJA = {"hook": 9.95}
-EXTRA = {"GU3": 0.5}
+EXTRA = {"GU3": 1.4}   # la guara respira tras «imaginas» mientras sube la música
 CORTES = {"T06": 2.54, "TVV": 2.56, "TVM": 2.64}
 # destellos del arranque: (archivo, segundo del clip)
 DESTELLOS = [("v4/TCB_ceiba_baleada.mp4", 6.2), ("v4/T06_tiburones_ballena.mp4", 6.2), ("v3/T08_rio_cascada.mp4", 3.2),
@@ -113,6 +113,7 @@ CIFRAS = [
     ("TMM", 2.2, 1.8, 1, "", ".ª", "denominación de origen de Centroamérica"),
 ]
 MUSICA_GOLPE = 11.0     # primer golpe de audio5/musica_v5.mp3 (toma a)
+SWELL_PICO = 1.2       # segundo del golpe en audio5/final_swell.mp3 (toma b)
 MUSICA_CLIMAX = 102.0   # clímax tras 1 s de silencio; la salida suave empieza a los 121,5 s
 
 
@@ -251,8 +252,8 @@ def main():
             elif t >= P["FINAL"]["t0"]:
                 tl = t - P["FINAL"]["t0"]; seg = "FINAL"
                 fr = zoom(estrellas, 1.04 + .05 * tl / FINAL)
-                if tl < .6 and ultimo is not None:  # fundido de la guara a las estrellas
-                    fr = cv2.addWeighted(ultimo, 1 - suave(tl / .6), fr, suave(tl / .6), 0)
+                if tl < .9 and ultimo is not None:  # fundido de la guara a las estrellas
+                    fr = cv2.addWeighted(ultimo, 1 - suave(tl / .9), fr, suave(tl / .9), 0)
             else:
                 seg, fr = cuadro_en(P, orden, t); fr = a_vertical(fr)
                 tl = t - P[seg]["t0"]
@@ -284,84 +285,113 @@ def main():
     tmp.unlink()
 
 
+def curva(puntos):
+    """Expresión ffmpeg de volumen lineal a trozos entre (t, v)."""
+    ex = f"{puntos[-1][1]}"
+    for (t0, v0), (t1, v1) in reversed(list(zip(puntos, puntos[1:]))):
+        tramo = f"{v0}+({v1}-{v0})*(t-{t0:.2f})/{max(.01, t1 - t0):.2f}" if v0 != v1 else f"{v0}"
+        ex = f"if(lt(t,{t1:.2f}),{tramo},{ex})"
+    return f"if(lt(t,{puntos[0][0]:.2f}),{puntos[0][1]},{ex})"
+
+
 def mezcla(D, P, FIN, tmp, sal):
+    """Voz nivelada + música que respira con la historia + sonido inmersivo sincronizado con la imagen."""
     T = lambda s, off=0: P[s]["t0"] + off
     F = lambda s, f: P[s]["t0"] + P[s]["dur"] * f
+    L = lambda s, ts: en_linea(P, s, ts)   # segundo de la línea final en que se ve el segundo ts del clip
     pistas = []
     for seg, off, arch, ini, fin in VOZ:
         pistas.append((arch, T(seg, off), ini, fin, 1.0, False, "voz"))
-    amb = [("audio2/a_playa.mp3", T("hook"), T("T01"), .5), ("audio2/a_picada.mp3", T("T02"), F("T01", .6), .5),
-           ("audio4/burbujas.mp3", F("T01", .62), F("T07", .45), 1.3),
+    # el agua: la cámara rompe la superficie en T01 a los 3,45 s del clip, queda a media agua y se hunde
+    # del todo en T05 a los 0,6 s (burbujas a los 1,2 s)
+    zambullida, media_agua, hundida = L("T01", 3.45), L("T01", 5.3), L("T05", 0.6)
+    amb = [("audio2/a_playa.mp3", T("hook"), T("T01"), .5), ("audio2/a_picada.mp3", T("T02"), zambullida, .5),
+           ("audio/sfx_bajo_agua.mp3", zambullida + .1, media_agua, .9),           # bajo el agua, sordo
+           ("audio2/a_playa.mp3", media_agua, hundida + .2, .45),                  # media agua: olas encima
+           ("audio4/burbujas.mp3", hundida, F("T07", .45), 1.3),                   # buceo: respiración y burbujas
            ("audio2/a_rapidos.mp3", F("T07", .45), T("T08"), .55),
            ("audio4/cascada.mp3", T("T08"), F("T09", .45), .85),
            ("audio2/a_selva.mp3", F("T09", .45), T("T13"), .45),
            ("audio2/a_barro.mp3", T("T16"), F("TLE", .5), .7),
-           ("audio5/pinos.mp3", F("TLE", .45), F("TLY", .5), 1.0),                 # viento entre pinos, pueblo frío
+           ("audio5/pinos.mp3", F("TLE", .45), F("TLY", .5), 1.0),
            ("audio2/a_fritura.mp3", F("TLY", .7), T("TYC"), .4),
            ("audio2/a_playa.mp3", T("TYC"), F("TCB", .6), .35), ("audio2/a_fritura.mp3", F("TCB", .5), F("TBM", .5), .45),
            ("audio2/a_selva.mp3", F("TVM", .5), F("TMA", .6), .4),
-           ("audio5/olas_atardecer.mp3", F("TMA", .55), F("TAN", .6), .9),       # lanchas regresando
-           ("audio5/noche.mp3", F("TAN", .45), T("LOGO"), .9)]                    # grillos y olas de noche
+           ("audio5/olas_atardecer.mp3", F("TMA", .55), F("TAN", .6), 1.0),
+           ("audio5/noche.mp3", F("TAN", .45), FIN, 1.0)]                          # la noche sigue hasta el logo
     for f, t0, t1, vol in amb:
         pistas.append((f, t0, 0, t1 - t0 + .2, vol, True, "amb"))
-    golpes = [("audio5/riser_boom.mp3", 0.0, 1.0),
+    n = len(DESTELLOS)
+    golpes = [("audio5/riser_boom.mp3", 0.0, 1.1)] + \
+             [("audio5/swipe.mp3", k * TEASER / n, .55) for k in range(1, n)] + \
+             [("audio5/final_swell.mp3", TEASER - SWELL_PICO, .9),                    # golpe cuando entra la guara
               ("audio/sfx_guara.mp3", T("T02", .2), .9), ("audio/sfx_swish.mp3", T("T02") - .45, .45),
-              ("audio4/splash.mp3", F("T01", .6), 1.0), ("audio/sfx_swish.mp3", en_linea(P, "T06", CORTES["T06"]) - .45, .5),
+              ("audio/sfx_swish.mp3", zambullida - .35, .5), ("audio4/splash.mp3", zambullida, 1.2),
+              ("audio4/splash.mp3", hundida - .05, .6),
+              ("audio/sfx_swish.mp3", L("T06", CORTES["T06"]) - .45, .5),
               ("audio/sfx_sale_agua.mp3", F("T07", .42), .9), ("audio/sfx_whoosh.mp3", F("T13", .45), .5),
               ("audio/sfx_swish.mp3", T("T16", .3), .45), ("audio5/swipe.mp3", T("TLE", .2), .5),
               ("audio5/swipe.mp3", T("TLY", .3), .45), ("audio/sfx_whoosh.mp3", T("TYC", .3), .5),
               ("audio/sfx_swish.mp3", T("TCB", .2), .4), ("audio4/cafe.mp3", T("TMM", .05), 1.1),
-              ("audio5/campanas.mp3", F("TMV", .55), .8),                               # campanas del pueblo colonial
+              ("audio5/campanas.mp3", F("TMV", .55), .8),
               ("audio5/swipe.mp3", T("TVM", .3), .5), ("audio/sfx_whoosh.mp3", T("TMA", .3), .45),
-              ("audio/sfx_guara.mp3", F("TNG", .5), .6), ("audio2/sfx_logo.mp3", T("LOGO") - .15, .8)]
+              ("audio5/estrellas.mp3", F("TAN", .4), 5.0),                              # brillo al salir las estrellas
+              ("audio/sfx_guara.mp3", F("TNG", .5), .6),
+              ("audio5/final_swell.mp3", T("FINAL", .5) - SWELL_PICO, 1.0),             # «YA NO ES UN SECRETO»
+              ("audio2/sfx_logo.mp3", T("LOGO") - .15, .9)]
     for f, t0, vol in golpes:
-        pistas.append((f, t0, 0, 8.0 if "campanas" in f else 4.0, vol, False, "golpe"))
+        largo = 8.0 if any(k in f for k in ("campanas", "estrellas", "final_swell")) else 4.0
+        pistas.append((f, t0, 0, largo, vol, False, "golpe"))
     g0, g1 = F("T13", .35), T("T16", .4)
     pistas.append(("audio4/garifuna.mp3", g0, 0, g1 - g0, 1.0, True, "gari"))
 
-    # música en dos tramos: (a) desde el inicio, con el primer golpe en el despegue de la guara;
-    # (b) a partir del puente, recolocada para que el clímax caiga en el atardecer de Amapala. Cruce de 2 s.
-    t_golpe, t_climax = T("T02"), F("TMA", .85)
-    off_a = t_golpe - MUSICA_GOLPE            # la pista suena desplazada off_a s
-    off_b = t_climax - MUSICA_CLIMAX
-    xf = T("T16")                              # el cruce entre tramos, en La Campa (puente tranquilo)
+    t_golpe, t_climax = T("T02"), T("TAN", 3.5)   # clímax cuando salen las estrellas; la pista acaba con el logo
+    off_a, off_b = t_golpe - MUSICA_GOLPE, t_climax - MUSICA_CLIMAX
+    xf = T("T16")
+    fin_voz = T("GU3") + dur_audio(D / "voz/guara_cierre2.mp3")
+    vol = curva([(0, .55), (t_golpe - .05, .55), (t_golpe, .9), (g0, .9), (g0 + .6, .35), (g1, .35), (g1 + .8, .9),
+                 (T("TMA"), .9), (T("TMA", 3.0), .5),                    # baja despacio para que se entienda Amapala
+                 (T("TAN", 3.3), .5), (T("TAN", 3.6), .75),              # sube con las estrellas
+                 (T("GU3") - .5, .75), (T("GU3", 2.0), .3),              # la guara habla: música abajo
+                 (fin_voz, .3), (fin_voz + 1.8, 1.0)])                   # y vuelve a subir para el cierre
     entradas = ["-i", str(tmp), "-i", str(D / "audio5" / "musica_v5.mp3"), "-i", str(D / "audio5" / "musica_v5.mp3")]
     for f, *_r in pistas:
         if _r[4]: entradas += ["-stream_loop", "-1"]
         entradas += ["-i", str(D / f)]
     fc, voz, amb_l, gol, gari = [], [], [], [], []
-    for i, (f, t0, ini, fin, vol, bucle, tipo) in enumerate(pistas):
-        ms = int(t0 * 1000)
-        cad = f"[{i+3}:a]" + ("silenceremove=start_periods=1:start_threshold=-40dB," if tipo == "golpe" and "riser" not in f else "")
+    for i, (f, t0, ini, fin, vol_p, bucle, tipo) in enumerate(pistas):
+        ms = int(max(0, t0) * 1000)
+        cad = f"[{i+3}:a]" + ("silenceremove=start_periods=1:start_threshold=-40dB," if tipo == "golpe" and "riser" not in f
+                               and "swell" not in f and "estrellas" not in f else "")
         cad += f"atrim={ini:.2f}" + (f":{fin:.2f}" if fin is not None else "") + ",asetpts=PTS-STARTPTS,"
-        if tipo not in ("voz",) and "riser" not in f: cad += "afade=t=in:d=0.15,"
+        if tipo == "voz": cad += "loudnorm=I=-16:TP=-2:LRA=7,"          # todas las frases al mismo nivel
+        elif "riser" not in f: cad += "afade=t=in:d=0.15,"
         if tipo in ("amb", "gari"): cad += f"afade=t=out:st={max(0, fin - ini - .5):.2f}:d=0.5,"
-        cad += f"volume={vol},adelay={ms}|{ms},aresample=48000,aformat=channel_layouts=mono[p{i}]"
+        cad += f"volume={vol_p},adelay={ms}|{ms},aresample=48000,aformat=channel_layouts=mono[p{i}]"
         fc.append(cad); {"voz": voz, "amb": amb_l, "golpe": gol, "gari": gari}[tipo].append(f"[p{i}]")
-    fc.append("".join(voz) + f"amix=inputs={len(voz)}:normalize=0,asplit=4[v1][v2][v3][v4]")
+    # bus de voz: compresión suave para que las palabras bajas no se pierdan; apad para que los compresores
+    # guiados por la voz sigan sacando audio cuando la voz termina (antes el final quedaba en silencio)
+    fc.append("".join(voz) + f"amix=inputs={len(voz)}:normalize=0,"
+              "acompressor=threshold=-22dB:ratio=3:attack=5:release=150:makeup=2,"
+              f"apad=whole_dur={FIN:.2f},asplit=4[v1][v2][v3][v4]")
 
     def tramo(idx, off, t_ini, t_fin, etq, fade_in, fade_out):
-        # coloca la pista con desplazamiento off y deja solo [t_ini, t_fin] de la línea final
-        if off >= 0:
-            pre = f"adelay={int(off*1000)}|{int(off*1000)}"
-        else:
-            pre = f"atrim=start={-off:.3f},asetpts=PTS-STARTPTS"
-        f = f"[{idx}:a]aresample=48000,aformat=channel_layouts=mono,{pre},atrim=0:{t_fin:.2f},"
+        pre = f"adelay={int(off*1000)}|{int(off*1000)}" if off >= 0 else f"atrim=start={-off:.3f},asetpts=PTS-STARTPTS"
+        f = f"[{idx}:a]aresample=48000,aformat=channel_layouts=mono,{pre},apad=whole_dur={FIN:.2f},atrim=0:{t_fin:.2f},"
         if fade_in: f += f"afade=t=in:st={t_ini:.2f}:d={fade_in},"
         if fade_out: f += f"afade=t=out:st={t_fin - fade_out:.2f}:d={fade_out},"
         f += f"volume='if(lt(t,{t_ini - .01:.2f}),0,1)':eval=frame[{etq}]"
         fc.append(f)
     tramo(1, off_a, 0.0, xf + 1.0, "ma", 0, 2.0)
-    tramo(2, off_b, xf - 1.0, FIN, "mb", 2.0, 3.0)
-    gd0, gd1 = g0, g1
-    vol = (f"if(lt(t,{t_golpe:.2f}),0.5,if(between(t,{gd0:.2f},{gd1:.2f}),0.35,0.9))")
+    tramo(2, off_b, xf - 1.0, FIN, "mb", 2.0, 2.5)
     fc.append(f"[ma][mb]amix=inputs=2:normalize=0,volume='{vol}':eval=frame[mu]")
-    fc.append("[mu][v2]sidechaincompress=threshold=0.07:ratio=4:attack=20:release=350[mx]")
+    fc.append("[mu][v2]sidechaincompress=threshold=0.05:ratio=5:attack=15:release=400[mx]")
     fc.append("".join(amb_l) + f"amix=inputs={len(amb_l)}:normalize=0[am]")
     fc.append("[am][v3]sidechaincompress=threshold=0.1:ratio=2.5:attack=30:release=400[amd]")
-    fc.append(f"{gari[0]}[v4]sidechaincompress=threshold=0.08:ratio=3:attack=20:release=300[gd]")
+    fc.append(f"{gari[0]}apad=whole_dur={FIN:.2f}[gp];[gp][v4]sidechaincompress=threshold=0.08:ratio=3:attack=20:release=300[gd]")
     todo = ["[v1]", "[mx]", "[amd]", "[gd]"] + gol
-    fc.append("".join(todo) + f"amix=inputs={len(todo)}:normalize=0,loudnorm=I=-14:TP=-1.5,aresample=48000,atrim=0:{FIN:.2f}[a]")
+    fc.append("".join(todo) + f"amix=inputs={len(todo)}:normalize=0:duration=longest,loudnorm=I=-14:TP=-1.5,"
+              f"aresample=48000,apad=whole_dur={FIN:.2f},atrim=0:{FIN:.2f}[a]")
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", *entradas, "-filter_complex", ";".join(fc),
                     "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-ac", "2", "-b:a", "192k", sal], check=True)
 
