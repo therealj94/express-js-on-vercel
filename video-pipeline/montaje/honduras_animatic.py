@@ -87,7 +87,7 @@ SUBS_FIN = 47.4
 # porque el clip ya trae su propio movimiento y el 768p no aguanta zooms fuertes.
 # Elegidos mirando cada clip: la mejor parte de cada toma (p. ej. el tiburón pasa pegado a cámara entre 1,6 y 3,2 s,
 # la niebla de Pulhapanzak llena el cuadro al final, las guaras de Copán cruzan después de 3 s).
-CLIP_SS = {1: (2.7, 1.0), 2: (0.5, 1.0), 3: (2.5, 1.5), 4: (1.5, 1.3), 5: (1.6, 1.0), 6: (3.8, 1.4),
+CLIP_SS = {1: (2.7, 1.0), 2: (1.67, 1.0), 3: (2.5, 1.5), 4: (1.5, 1.3), 5: (1.6, 1.0), 6: (3.8, 1.4),
            7: (0.8, 1.0), 8: (3.6, 1.2), 9: (3.0, 1.2), 11: (1.0, 1.0), 12: (0.5, 1.0), 13: (1.0, 1.0),
            14: (1.0, 1.0), 16: (2.14, 1.0), 18: (2.1, 1.0), 19: (0.5, 1.0)}
 CLIP_MOV = {1: (1.25, 1.35, (.42, .40), (.42, .34))}
@@ -161,8 +161,27 @@ def plano_frame(i, t, fuentes, extra=1.0, rot=0.0, dx=0.0, dy=0.0):
     p = rampa((t - t0) / max(.01, t1 - t0))
     z = z0 + (z1 - z0) * p
     c = (c0[0] + (c1[0] - c0[0]) * p, c0[1] + (c1[1] - c0[1]) * p)
-    fuentes[i].pon_t(t - t0)
+    fuentes[i].pon_t(tiempo_rampa(i, t - t0, t1 - t0) if isinstance(fuentes[i], VideoFuente) else t - t0)
     return fuentes[i].render(z, c, rot, extra, dx, dy)
+
+
+RAMPA_W = .22  # anchura (s) de la aceleración junto a cada corte
+RAMPA_A = {"whip": 1.6, "zoom": 1.4, "spin": 1.4, "baja": 1.6, "sube": 1.6, "flash": .5, "mix": 0.0}
+
+
+def tiempo_rampa(i, tl, T):
+    """Rampa de velocidad tipo Kolder: el clip acelera al llegar al corte y el siguiente entra rápido y frena.
+    Velocidad = 1 + A·e^(-(tl/w)²) + B·e^(-((T-tl)/w)²); se integra con erf para que el tiempo sea continuo."""
+    a = RAMPA_A.get(TRANS.get(i, ("mix",))[0], 0) if i in TRANS else 0
+    b = RAMPA_A.get(TRANS.get(i + 1, ("mix",))[0], 0) if (i + 1) in TRANS else 0
+    w, k = RAMPA_W, RAMPA_W * math.sqrt(math.pi) / 2
+    return tl + a * k * math.erf(tl / w) + b * k * (math.erf(T / w) - math.erf((T - tl) / w))
+
+
+def extra_rampa(i):
+    a = RAMPA_A.get(TRANS[i][0], 0) if i in TRANS else 0
+    b = RAMPA_A.get(TRANS[i + 1][0], 0) if (i + 1) in TRANS else 0
+    return (a + b) * RAMPA_W * math.sqrt(math.pi) / 2
 
 
 def desenfoque(img, kx, ky):
@@ -261,6 +280,30 @@ def logo_frame(t, logo_bgr, F):
     return fr
 
 
+def diseno_sonoro():
+    """Ambiente propio para cada escena + golpes sincronizados con la imagen.
+    Los whoosh se colocan para que su pico (medido tras quitar el silencio inicial) caiga justo en el corte."""
+    T = [pl[1] for pl in PLANOS] + [FIN]
+    def amb(f, i0, i1, vol, bucle=False, fi=.12, fo=.3):
+        return dict(f=f, t=T[i0], dur=T[i1] - T[i0] + .15, vol=vol, bucle=bucle, golpe=False, fi=fi, fo=fo)
+    def golpe(f, t, vol, dur=4.0):
+        return dict(f=f, t=max(0, t), dur=dur, vol=vol, bucle=False, golpe=True, fi=.01, fo=.2)
+    S = [amb("audio2/a_movil.mp3", 0, 2, .7), amb("audio2/a_playa.mp3", 2, 3, .9, True),
+         amb("audio/sfx_bajo_agua.mp3", 4, 7, .55), amb("audio2/a_rapidos.mp3", 7, 8, .55),
+         amb("audio2/a_cascada.mp3", 8, 9, .5, True, fo=.5), amb("audio2/a_selva.mp3", 9, 11, .6, True),
+         amb("audio2/a_aplausos.mp3", 11, 12, .35), amb("audio2/a_barro.mp3", 12, 13, .9),
+         amb("audio2/a_fritura.mp3", 13, 15, .45, True), amb("audio2/a_cafe.mp3", 15, 17, 1.5),
+         amb("audio2/a_selva.mp3", 17, 19, .45, True), amb("audio2/a_viento.mp3", 19, 21, .9, True, fo=.8),
+         golpe("audio/sfx_guara.mp3", T[3] - .45, .9), golpe("audio2/a_picada.mp3", T[3] - .1, .7, 2.5),
+         golpe("audio/sfx_sale_agua.mp3", T[7] - .12, .9, 1.0), golpe("audio2/sfx_logo.mp3", T[21] - .2, .8)]
+    picos = {"audio/sfx_whoosh.mp3": .15, "audio/sfx_swish.mp3": .45}
+    alterna = list(picos)
+    for n, (j, (tp, _)) in enumerate(sorted(TRANS.items())):
+        if tp in ("whip", "zoom", "spin") and j < len(PLANOS) - 1 and j != 3:
+            f = alterna[n % 2]; S.append(golpe(f, T[j] - picos[f], .5, 1.6))
+    return S
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", required=True); ap.add_argument("--fuentes", required=True)
@@ -278,7 +321,11 @@ def main():
     for i, (n, *_) in enumerate(PLANOS):
         clip = Path(a.clips) / f"{n.split('_')[0]}.mp4" if a.clips else None
         if clip and clip.exists():
-            ss, vel = CLIP_SS.get(i, (0.0, 1.0)); fu.append(VideoFuente(clip, ss, vel))
+            ss, vel = CLIP_SS.get(i, (0.0, 1.0))
+            T = (PLANOS[i + 1][1] if i + 1 < len(PLANOS) else FIN) - PLANOS[i][1]
+            vf = VideoFuente(clip, ss, vel)
+            vf.ss = max(0.0, min(ss, vf.n / vf.fps - (T + extra_rampa(i) + .15) * vel))  # que no se congele al final
+            fu.append(vf)
         else:
             fu.append(Fuente(carga(D / "ref", n, logo)))
     rot = [rotulo_png(*r[2:], F) for r in ROTULOS]
@@ -325,18 +372,25 @@ def main():
         ff.stdin.write(fr.tobytes())
     ff.stdin.close(); ff.wait()
 
-    A = D / "audio"
-    sfx = [("sfx_guara.mp3", 7.0, .9), ("sfx_bajo_agua.mp3", 8.95, .7), ("sfx_sale_agua.mp3", 14.5, .9)]
-    sfx += [("sfx_whoosh.mp3", PLANOS[j][1] - .35, .55) for j, (tp, _) in TRANS.items() if tp in ("whip", "zoom", "spin") and j < len(PLANOS) - 1]
-    entradas = ["-i", str(tmp), "-i", str(D / "voz" / "t3.mp3"), "-ss", f"{MUS_INI:.2f}", "-i", str(A / "musica_b.mp3")]
-    for f, *_ in sfx: entradas += ["-i", str(A / f)]
-    fc = [f"[1:a]adelay={int(VOZ_OFF*1000)}|{int(VOZ_OFF*1000)},volume=1.0[voz]", "[voz]asplit[v1][v2]",
+    entradas = ["-i", str(tmp), "-i", str(D / "voz" / "t3.mp3"), "-ss", f"{MUS_INI:.2f}", "-i", str(D / "audio" / "musica_b.mp3")]
+    sonidos = diseno_sonoro()
+    for s_ in sonidos:
+        if s_["bucle"]: entradas += ["-stream_loop", "-1"]
+        entradas += ["-i", str(D / s_["f"])]
+    fc = [f"[1:a]adelay={int(VOZ_OFF*1000)}|{int(VOZ_OFF*1000)},volume=1.0[voz]", "[voz]asplit=3[v1][v2][v3]",
           f"[2:a]volume='if(lt(t,{DROP-.2}),0.45,0.85)':eval=frame,afade=t=out:st={FIN-3}:d=3[mus]",
           "[mus][v2]sidechaincompress=threshold=0.08:ratio=4:attack=20:release=300[mx]"]
-    mez = ["[v1]", "[mx]"]
-    for k, (f, st, vol) in enumerate(sfx):
-        fc.append(f"[{k+3}:a]silenceremove=start_periods=1:start_threshold=-40dB,volume={vol},adelay={int(st*1000)}|{int(st*1000)}[s{k}]")
-        mez.append(f"[s{k}]")
+    amb, golpes = [], []
+    for k, s_ in enumerate(sonidos):
+        ms = int(s_["t"] * 1000); cad = f"[{k+3}:a]"
+        if s_["golpe"]:
+            cad += "silenceremove=start_periods=1:start_threshold=-40dB,"
+        cad += (f"atrim=0:{s_['dur']:.2f},asetpts=PTS-STARTPTS,afade=t=in:d={s_['fi']},"
+                f"afade=t=out:st={max(0, s_['dur'] - s_['fo']):.2f}:d={s_['fo']},volume={s_['vol']},adelay={ms}|{ms}[s{k}]")
+        fc.append(cad); (golpes if s_["golpe"] else amb).append(f"[s{k}]")
+    fc.append("".join(amb) + f"amix=inputs={len(amb)}:normalize=0[amb]")
+    fc.append("[amb][v3]sidechaincompress=threshold=0.1:ratio=2.5:attack=30:release=400[ambd]")
+    mez = ["[v1]", "[mx]", "[ambd]"] + golpes
     fc.append("".join(mez) + f"amix=inputs={len(mez)}:normalize=0,loudnorm=I=-14:TP=-1.5,aresample=48000,atrim=0:{FIN}[a]")
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", *entradas, "-filter_complex", ";".join(fc),
                     "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-ac", "2", "-b:a", "192k", a.sal], check=True)

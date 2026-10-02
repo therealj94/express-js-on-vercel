@@ -66,3 +66,9 @@ espaldas, perfil o lejos; revisión cuadro a cuadro; descartar cualquier toma co
 - Guara: GU1 (hook, ala levantada) y GU2 (cierre, saludo con el sombrero), generadas con gpt-image-2 a partir de la descripción del personaje.
 - 18 clips MiniMax H3 768p de 6 s ($6.48). Montaje: `montaje/honduras_animatic.py --clips CLIPS` (sin `--clips` sale el animatic con fotos).
 - Duración final: 53,4 s. Coste total aproximado: imágenes $3.6 + clips $6.5.
+
+## v2
+- Retomas MiniMax: Escalinata (grúa ascendente entre glifos) y guara del hook (despega hacia cámara; se usa hasta 5,05 s porque después pierde el sombrero).
+- Rampas de velocidad en cada corte (`tiempo_rampa`, integral con erf): el clip acelera al llegar al corte y el siguiente entra rápido y frena.
+- Diseño sonoro por escena (`diseno_sonoro`): ambientes en bucle (playa, bajo el agua, rápidos, cascada, selva, aplausos, barro, fritura, café, viento) con ducking bajo la voz, y golpes sincronizados (despegue de la guara, picada, salida del agua, whoosh con su pico en el corte, golpe del logo). Mezcla −14,8 LUFS.
+- Coste extra v2: 2 clips $0.72 + efectos.
