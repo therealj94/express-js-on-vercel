@@ -91,3 +91,12 @@ guara habla (Roatán) → despega → seguimos su vuelo sobre West Bay → picad
 tiburón ballena → sube a la superficie → rápidos del Cangrejal → río arriba a Pulhapanzak → niebla → Copán (guara
 en la estela habla) → escalinata → atardecer en Tela (manos tambor, pies punta) → La Campa → pescado frito →
 baleada → café de Marcala → amanecer en La Mosquitia → viajera al atardecer → guara cierra hablando → logo.
+
+### v3 entregada (92 s)
+- 17 clips de transición MiniMax con imagen de inicio y de fin + 3 escenas de la guara hablando (OmniHuman 1.5 con la voz de José).
+- Montaje `montaje/honduras_v3.py`: empalme de tomas continuas con rampa lento→rápido→lento; tramos con voz a tiempo real.
+- Motion graphics `montaje/honduras_mg.py`: títulos en Monoton (estilo del logo) con el degradado arcoíris, mapa de Honduras
+  con la ruta (contorno Natural Earth), cifras (2.º arrecife, 43 m, +2.000 glifos, 1.ª D.O.), subtítulos con palabra activa,
+  logo animado (HONDURAS se dibuja, la guara entra volando, «Secreta» al final).
+- Música: musica_v3b desde 7 s (golpe en el despegue) + salida suave de musica_b en fundido cruzado. −15 LUFS.
+- Coste v3 ≈ $10 (transiciones $5.0, lipsync $3.6, imágenes $0.8, música $0.4, prueba $0.4).
