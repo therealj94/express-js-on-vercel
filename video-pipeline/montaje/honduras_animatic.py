@@ -1,4 +1,4 @@
-"""Animatic de «Honduras Secreta — Déjame demostrarte» con fotos fijas + voz + música + transiciones.
+"""Animatic (y montaje final con --clips) de «Honduras Secreta — Déjame demostrarte» con fotos fijas + voz + música + transiciones.
 
 Sirve para aprobar ritmo, orden y transiciones antes de generar los clips MiniMax H3.
 Cada plano: Ken Burns con rampa de velocidad; cada corte: transición tipo Sam Kolder
@@ -83,6 +83,23 @@ SUBS = [("Mientras en otros países", 0.0), ("te quieren convencer", 1.2), ("de 
 SUBS_FIN = 47.4
 
 
+# Montaje con clips: (segundo de inicio dentro del clip, velocidad) por plano y movimientos de cámara suaves,
+# porque el clip ya trae su propio movimiento y el 768p no aguanta zooms fuertes.
+# Elegidos mirando cada clip: la mejor parte de cada toma (p. ej. el tiburón pasa pegado a cámara entre 1,6 y 3,2 s,
+# la niebla de Pulhapanzak llena el cuadro al final, las guaras de Copán cruzan después de 3 s).
+CLIP_SS = {1: (2.7, 1.0), 2: (0.5, 1.0), 3: (2.5, 1.5), 4: (1.5, 1.3), 5: (1.6, 1.0), 6: (3.8, 1.4),
+           7: (0.8, 1.0), 8: (3.6, 1.2), 9: (3.0, 1.2), 11: (1.0, 1.0), 12: (0.5, 1.0), 13: (1.0, 1.0),
+           14: (1.0, 1.0), 16: (2.14, 1.0), 18: (2.1, 1.0), 19: (0.5, 1.0)}
+CLIP_MOV = {1: (1.25, 1.35, (.42, .40), (.42, .34))}
+
+
+def usa_clips(carpeta):
+    for i, pl in enumerate(PLANOS):
+        if pl[0] == "LOGO": continue
+        z0, z1, c0, c1 = CLIP_MOV.get(i, (1.0, 1.06, (.5, .5), (.5, .5)))
+        PLANOS[i] = (pl[0], pl[1], z0, z1, c0, c1)
+
+
 def suave(p):
     p = min(1, max(0, p)); return p * p * (3 - 2 * p)
 
@@ -95,6 +112,9 @@ class Fuente:
     def __init__(self, img):
         self.img = img; self.h, self.w = img.shape[:2]
 
+    def pon_t(self, tl):  # las fotos no dependen del tiempo
+        pass
+
     def render(self, z, c, rot=0.0, extra=1.0, dx=0.0, dy=0.0):
         s = W / self.w * z * extra
         zz = z * extra
@@ -104,6 +124,28 @@ class Fuente:
         M[0, 2] += W / 2 - cx * self.w + dx
         M[1, 2] += H / 2 - cy * self.h + dy
         return cv2.warpAffine(self.img, M, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+
+
+class VideoFuente(Fuente):
+    """Clip MiniMax: devuelve el cuadro del instante local del plano (ss + tl*vel), leyendo hacia adelante."""
+    def __init__(self, ruta, ss=0.0, vel=1.0):
+        self.ruta, self.ss, self.vel = str(ruta), ss, vel
+        self.cap = cv2.VideoCapture(self.ruta)
+        self.fps = self.cap.get(cv2.CAP_PROP_FPS) or 24
+        self.n = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        self.idx, self.img = -1, None
+        self.pon_t(0)
+
+    def pon_t(self, tl):
+        k = int(min(self.n - 1, max(0, round((self.ss + tl * self.vel) * self.fps))))
+        if k == self.idx: return
+        if k < self.idx or k > self.idx + 30:
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, k); self.idx = k - 1
+        while self.idx < k:
+            ok, fr = self.cap.read()
+            if not ok: break
+            self.idx += 1; self.img = fr
+        self.h, self.w = self.img.shape[:2]
 
 
 def carga(dirref, nombre, logo):
@@ -119,6 +161,7 @@ def plano_frame(i, t, fuentes, extra=1.0, rot=0.0, dx=0.0, dy=0.0):
     p = rampa((t - t0) / max(.01, t1 - t0))
     z = z0 + (z1 - z0) * p
     c = (c0[0] + (c1[0] - c0[0]) * p, c0[1] + (c1[1] - c0[1]) * p)
+    fuentes[i].pon_t(t - t0)
     return fuentes[i].render(z, c, rot, extra, dx, dy)
 
 
@@ -222,14 +265,22 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", required=True); ap.add_argument("--fuentes", required=True)
     ap.add_argument("--logo", required=True); ap.add_argument("--sal", required=True)
+    ap.add_argument("--clips", help="carpeta con los clips MiniMax (H01.mp4…); sin ella usa las fotos")
     a = ap.parse_args()
+    if a.clips: usa_clips(Path(a.clips))
     D = Path(a.dir); FU = Path(a.fuentes)
     F = {"tit": ImageFont.truetype(str(FU / "Manrope.ttf"), 64), "sub": ImageFont.truetype(str(FU / "ManropeMedium.ttf"), 38),
          "mono": ImageFont.truetype(str(FU / "JetBrainsMono.ttf"), 30), "subs": ImageFont.truetype(str(FU / "ManropeMedium.ttf"), 54)}
     try: F["tit"].set_variation_by_name("ExtraBold")
     except Exception: pass
     logo = cv2.imread(a.logo)
-    fu = [Fuente(carga(D / "ref", n, logo)) for n, *_ in PLANOS]
+    fu = []
+    for i, (n, *_) in enumerate(PLANOS):
+        clip = Path(a.clips) / f"{n.split('_')[0]}.mp4" if a.clips else None
+        if clip and clip.exists():
+            ss, vel = CLIP_SS.get(i, (0.0, 1.0)); fu.append(VideoFuente(clip, ss, vel))
+        else:
+            fu.append(Fuente(carga(D / "ref", n, logo)))
     rot = [rotulo_png(*r[2:], F) for r in ROTULOS]
     subs = [sub_png(s, F) for s, _ in SUBS]
 

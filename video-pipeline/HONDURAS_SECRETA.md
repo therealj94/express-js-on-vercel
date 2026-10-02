@@ -60,3 +60,9 @@ personaje al flow como referencia. Logo y textos se ponen en edición, nunca por
 ## Reglas anti-IA
 Cortes de 1,5–2 s de clips de 6 s; sin primeros planos de dedos/caras con gestos; gente de
 espaldas, perfil o lejos; revisión cuadro a cuadro; descartar cualquier toma con extremidades extra.
+
+## Estado (v1 con clips MiniMax H3)
+- Voz elegida: toma 3 (`t3.mp3`). Música: opción B, arranca en 9,58 s para que el golpe caiga en «Aquí el mar» (7,5 s del vídeo).
+- Guara: GU1 (hook, ala levantada) y GU2 (cierre, saludo con el sombrero), generadas con gpt-image-2 a partir de la descripción del personaje.
+- 18 clips MiniMax H3 768p de 6 s ($6.48). Montaje: `montaje/honduras_animatic.py --clips CLIPS` (sin `--clips` sale el animatic con fotos).
+- Duración final: 53,4 s. Coste total aproximado: imágenes $3.6 + clips $6.5.
