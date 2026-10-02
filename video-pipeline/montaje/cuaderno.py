@@ -113,15 +113,13 @@ def main():
         dd2 = tramo(D, tmp / f"s{p:02d}a.mp4", vel=vel)
         segs.append((tmp / f"s{p:02d}a.mp4", t)); voces.append((voz[p]["mp3"], t + 0.4))
         sfx.append(("lapiz", t + 0.1, 0.32))
-        if p == 6: sfx.append(("gota", t + dd2 - 1.3, 1.0))
+        if p == 6: sfx.append(("gota", t + 5.5, 1.0))   # medido: la gota toca el papel a 5,5 s
         if p == 8: sfx.append(("punta", t + dd2 - 0.9, 1.0))
         t += dd2
         # Si la voz es más larga que la página, el último cuadro espera a que termine.
-        # V10: se corta cuando el cuaderno termina de cerrarse (después el modelo mete otra mano).
-        dv2 = tramo(Vv, tmp / f"s{p:02d}b.mp4", fin=4.8 if p == 10 else None,
-                    pausa=max(0.0, objetivo - dd2 - (4.8 if p == 10 else dv)))
+        dv2 = tramo(Vv, tmp / f"s{p:02d}b.mp4", pausa=max(0.0, objetivo - dd2 - dv))
         segs.append((tmp / f"s{p:02d}b.mp4", t))
-        if p == 6: sfx.append(("arranca", t + 2.2, 0.9))
+        if p == 6: sfx.append(("arranca", t + 2.7, 0.9))   # medido: la hoja se rasga a 2,7 s
         elif p == 9: sfx.append(("rueda", t + 2.0, 0.8))
         elif p == 10: sfx.append(("cierra", t + 3.6, 0.9))
         else: sfx.append(("pagina", t + dv2 * 0.55, 0.8))
@@ -179,7 +177,7 @@ def main():
     for k, (nom, st, vol) in enumerate(sfx):
         ent += ["-i", str(V / f"sfx/{nom}.mp3")]; ms = int(max(0, st) * 1000)
         largo = ",atrim=0:2.6,afade=t=out:st=2.0:d=0.6" if nom == "lapiz" else ""
-        fil.append(f"[{base + k}:a]aformat=channel_layouts=stereo{largo},volume={vol},adelay={ms}|{ms}[fx{k}]"); si.append(f"[fx{k}]")
+        fil.append(f"[{base + k}:a]silenceremove=start_periods=1:start_threshold=-40dB,aformat=channel_layouts=stereo{largo},volume={vol},adelay={ms}|{ms}[fx{k}]"); si.append(f"[fx{k}]")
     fil.append("".join(vi) + f"amix=inputs={len(vi)}:normalize=0,apad,atrim=0:{total:.2f},asplit=2[voz][llave]")
     fil.append(f"[{am}:a]aformat=channel_layouts=stereo,adelay=2900|2900,volume=0.34,afade=t=in:st=2.9:d=1.5,afade=t=out:st={total-3:.2f}:d=3,apad,atrim=0:{total:.2f}[mus0]")
     fil.append("[mus0][llave]sidechaincompress=threshold=0.12:ratio=1.5:attack=40:release=500[mus]")
