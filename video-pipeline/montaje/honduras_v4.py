@@ -92,7 +92,7 @@ ROTULOS = [
     ("T13", 2.2, 4.5, "TRIUNFO DE LA CRUZ", "Tela · cultura garífuna", "15.8°N  87.4°W", 5),
     ("T16", 2.0, 2.6, "LA CAMPA", "Lempira · cerámica lenca", "14.5°N  88.6°W", 6),
     ("T17", 1.8, 2.4, "LAGO DE YOJOA", "pescado frito", "14.9°N  88.0°W", 7),
-    ("TYC", 1.8, 3.0, "LA CEIBA", "Atlántida · capital del ecoturismo", "15.8°N  86.8°W", 8),
+    ("TCB", 0.05, 2.6, "LA CEIBA", "Atlántida · capital del ecoturismo", "15.8°N  86.8°W", 8),
     ("TMM", 0.4, 3.4, "MARCALA", "La Paz · café de altura", "14.2°N  88.0°W", 9),
     ("T19", 2.3, 3.4, "LA MOSQUITIA", "Biosfera del Río Plátano", "15.7°N  85.0°W", 10),
 ]
@@ -265,11 +265,11 @@ def main():
             seg, fr = cuadro_en(P, orden, t)
             fr = a_vertical(fr)
             if seg == "hook":  # cámara viva en el gancho
-                z = 1 + .30 * (1 - min(1, t / .55)) ** 3 + (.14 if t > 6.9 else 0) + .02 * math.sin(t * 1.3)
-                M = cv2.getRotationMatrix2D((W / 2, H * .42), 0, z); fr = cv2.warpAffine(fr, M, (W, H), borderMode=cv2.BORDER_REFLECT)
+                z = 1 + .30 * (1 - min(1, t / .55)) ** 3 + (.14 if t > 6.9 else 0) + .05 * t / 6.9 + .02 * math.sin(t * 1.3)
+                M = cv2.getRotationMatrix2D((W / 2 + 30 * math.sin(t * .45), H * .42), 0, z); fr = cv2.warpAffine(fr, M, (W, H), borderMode=cv2.BORDER_REFLECT)
             elif not P[seg]["rampa"]:  # guara hablando: empuje lento para que la cámara nunca esté muerta
-                u = (t - P[seg]["t0"]) / P[seg]["dur"]; z = 1.02 + .06 * u
-                M = cv2.getRotationMatrix2D((W / 2, H * .45), 0, z); fr = cv2.warpAffine(fr, M, (W, H), borderMode=cv2.BORDER_REFLECT)
+                tl = t - P[seg]["t0"]; u = tl / P[seg]["dur"]; z = 1.03 + .13 * u + .015 * math.sin(tl * 1.1)
+                M = cv2.getRotationMatrix2D((W / 2 + 40 * math.sin(tl * .5), H * .45), 0, z); fr = cv2.warpAffine(fr, M, (W, H), borderMode=cv2.BORDER_REFLECT)
             fr = cv2.merge([cv2.LUT(ch, lut[i]) for i, ch in enumerate(cv2.split(fr))])
             fr = np.clip((fr.astype(np.float32) * vin).astype(np.int16) + granos[k % 6], 0, 255).astype(np.uint8)
             for sg, off, dur, tit, sub, coord, im in ROTULOS:
