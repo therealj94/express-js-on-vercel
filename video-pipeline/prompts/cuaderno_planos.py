@@ -12,7 +12,9 @@ FIJO = ("Locked-off overhead camera looking straight down, absolutely no camera 
         "the drawing never fades in, morphs or redraws itself. No text, no letters, no extra hands or fingers. "
         "Audio: graphite scratching on thick paper, a quiet room at night. No music.")
 DIBUJA = ("Photoreal vertical 9:16, {s} seconds, fast time-lapse of one hand drawing, from the blank pages of the first frame, where there is no hand, "
-          "to the finished drawing of the last frame. The single hand enters from the lower right edge holding a graphite pencil and draws. ")
+          "to the finished drawing of the last frame. The single hand enters from the lower right edge holding a graphite pencil and draws. "
+          "The artist's left hand rests in his lap, completely outside the frame for the whole shot: the left side and the bottom-left "
+          "corner of the paper always stay empty of any hand. ")
 VIVE = "Photoreal vertical 9:16, {s} seconds, the pencil drawing on the open sketchbook comes alive while the paper stays real paper; the animation stays inside the drawn lines. "
 GIRO = ("the same single hand lays the pencil aside, lifts the lower edge of the bottom page and turns it over the spine toward the top, a real paper "
         "page turning with its weight and soft curl, and then the hand leaves the frame to the lower right, revealing fresh blank pages with no hand, "
