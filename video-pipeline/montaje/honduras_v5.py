@@ -112,8 +112,8 @@ CIFRAS = [
     ("TLL", 0.6, 1.8, 1700, "+", " m", "la ciudad más alta de Honduras"),
     ("TMM", 2.2, 1.8, 1, "", ".ª", "denominación de origen de Centroamérica"),
 ]
-MUSICA_GOLPE = 10.0     # primer golpe de audio5/musica_v5.mp3 (se ajusta tras analizar la pista)
-MUSICA_CLIMAX = 100.0   # inicio del clímax de la pista → atardecer de Amapala
+MUSICA_GOLPE = 11.0     # primer golpe de audio5/musica_v5.mp3 (toma a)
+MUSICA_CLIMAX = 102.0   # clímax tras 1 s de silencio; la salida suave empieza a los 121,5 s
 
 
 # ---------- línea de tiempo ----------
