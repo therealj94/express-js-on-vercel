@@ -72,3 +72,22 @@ espaldas, perfil o lejos; revisión cuadro a cuadro; descartar cualquier toma co
 - Rampas de velocidad en cada corte (`tiempo_rampa`, integral con erf): el clip acelera al llegar al corte y el siguiente entra rápido y frena.
 - Diseño sonoro por escena (`diseno_sonoro`): ambientes en bucle (playa, bajo el agua, rápidos, cascada, selva, aplausos, barro, fritura, café, viento) con ducking bajo la voz, y golpes sincronizados (despegue de la guara, picada, salida del agua, whoosh con su pico en el corte, golpe del logo). Mezcla −14,8 LUFS.
 - Coste extra v2: 2 clips $0.72 + efectos.
+
+## v3 — rediseño tras la revisión de José
+Crítica: transiciones pobres (hechas en edición sobre clips casi quietos), garífunas con movimiento feo,
+inicio plano, escena del celular débil, la guara no narra ni interactúa, escenas repetidas.
+
+Cambios de fondo:
+1. **Transiciones dentro de la toma**: cada paso entre lugares es un clip MiniMax con `start_frame` = escena A y
+   `end_frame` = escena B y un movimiento de cámara real (picada, vuelo, atravesar niebla, seguir a la guara).
+   La edición solo empalma clips cuyo último cuadro es el primero del siguiente → una sola toma continua.
+2. **La guara narra**: abre hablando a cámara con lipsync (OmniHuman 1.5, voz de José),
+   reaparece en Copán y cierra hablando. Se elimina la escena del celular.
+3. **Garífunas en detalle y cámara lenta**: manos en el tambor y pies de punta en la arena (menos cuerpo = menos errores).
+4. **Ninguna escena se repite**: un plano = un clip, sin punch-ins del mismo material.
+
+Recorrido (todo encadenado):
+guara habla (Roatán) → despega → seguimos su vuelo sobre West Bay → picada al mar → arrecife → tiburones →
+tiburón ballena → sube a la superficie → rápidos del Cangrejal → río arriba a Pulhapanzak → niebla → Copán (guara
+en la estela habla) → escalinata → atardecer en Tela (manos tambor, pies punta) → La Campa → pescado frito →
+baleada → café de Marcala → amanecer en La Mosquitia → viajera al atardecer → guara cierra hablando → logo.
