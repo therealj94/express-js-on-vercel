@@ -100,3 +100,45 @@ baleada → café de Marcala → amanecer en La Mosquitia → viajera al atardec
   logo animado (HONDURAS se dibuja, la guara entra volando, «Secreta» al final).
 - Música: musica_v3b desde 7 s (golpe en el despegue) + salida suave de musica_b en fundido cruzado. −15 LUFS.
 - Coste v3 ≈ $10 (transiciones $5.0, lipsync $3.6, imágenes $0.8, música $0.4, prueba $0.4).
+
+## v4 — correcciones de José sobre la v3
+Crítica: congelados (0:13, 0:17, 0:28 y otros), el tiburón ballena sale sin que nadie lo nombre, los tiburones
+parecen IA, falta La Ceiba (cuna de la baleada), Marcala pasa demasiado rápido a La Mosquitia, faltan efectos
+inmersivos (entrar al agua, burbujas, cascada, café, canto garífuna) y la música debe ser emotiva tipo Odesza.
+
+Causa de los congelados: MiniMax sostiene casi quietas la imagen de inicio y de fin (0,3–1,2 s) y la rampa
+lento→rápido→lento de la v3 frenaba justo ahí. Medido con `honduras_v4.py --revisa HS_v3.mp4`:
+13,4 s · 16,2 s · 20,6 s · 29,3 s · 37,1 s · 41,1 s · 46,8 s · 50,3 s · 79,9 s.
+
+Arreglo (`montaje/honduras_v4.py`):
+- Recorte automático del tramo quieto de cada clip (diferencia media entre cuadros < 8 % de la mediana).
+- Rampa inversa: rápida en las uniones, cámara lenta en el centro, g(u) = u + 0,38·sin(2πu)/(2π);
+  interpolación entre cuadros y desenfoque de movimiento en lo rápido.
+- Tramos con voz a tiempo real: nunca se sostiene el último cuadro (se ralentiza) y llevan un empuje lento.
+- `--revisa` comprueba el render final y lista cualquier tramo quieto ≥ 0,3 s.
+
+Nuevo material:
+| Id | Qué | Nodo |
+|---|---|---|
+| R04 | Tiburones de arrecife estilo documental GoPro, a distancia | gpt-image-2 IIUsbo3Uekenl7cw2Gnz → ref gQ50JxhNFasuGyaPjSjZ |
+| LC01 | La Ceiba aérea: muelle + Pico Bonito | FwwAGkjhmvxBlAwjMymP → ref 4jiWaQ2T36RjmXlFyZOh |
+| B02 | Puesto de baleadas en La Ceiba | lL0nb7R5MSXdS7jkDcZd → ref yCBfpSJb71ougPC6QbD8 |
+| M02 | Café vertiéndose en la taza de barro, Marcala | cBP5onnvjhEvb8d771vo → ref aincZzJX29pjMDgK8KWU |
+| T05 | R02 → R04 (H3 Max) | WQbcfSVaahkCKMFKO8X7 |
+| T06 | R04 → U01 tiburón ballena (H3 Max) | fJE2C2n9UZHVti7aVRzG |
+| TYC | Pescado frito Yojoa → La Ceiba | tQDCAWZRcyFidv28Vpdm |
+| TCB | La Ceiba → baleada | kLnrUyP51sYEutn15Nml |
+| TBM | Vapor de la baleada → café vertiéndose | FMlExmeUDuUQnQfYtIIr |
+| TMM | Café → paisaje de Marcala (M01) | E3mfeiwgxsBWI1c5gpg6 |
+
+Voz nueva (José, eleven_v4): «Y en Utila… nada el pez más grande del mundo.» (EoHFQCwLTw2Q8APFkZCe) y
+«Y en La Ceiba, donde dicen que nació… la baleada.» (6tNQhIS3ds9ENQuUYIgU). Se quita «una baleada recién hecha»
+de la toma 3. Sonido: chapuzón LGRkOQ5HdomOIM9n2cVS, burbujas 0waFP9hpYVZSw0trJHFJ, cascada BABRtxBQkAYIm6sut2X8,
+café 3V7MEXv6GilIEVo7Xr9C, tambores + canto garífuna 25EbuhhpGMlOJRRDQkhY, música Odesza keAujy7DYL8xfP1IWabi
+(golpe a los 8 s, puente 46–64 s, segundo golpe a los 64 s).
+
+| Dato nuevo | Fuente |
+|---|---|
+| La baleada: la versión más contada la sitúa en La Ceiba (doña Teresa, años 60); otra versión dice La Lima → «dicen que nació» | elheraldo.hn, latribuna.hn |
+| La Ceiba, «Capital del Ecoturismo» de Honduras; Pico Bonito junto a la ciudad | visitatlantida.com, exploracentroamerica.com |
+| Tiburón ballena en Utila (pez más grande del mundo) | blog.padi.com |

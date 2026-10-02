@@ -134,7 +134,7 @@ def palabras_de(D, archivo, ini, fin, desplaza):
         segs, _ = m.transcribe(str(D / archivo), language="es", word_timestamps=True)
         json.dump([[w.start, w.end, w.word.strip()] for s in segs for w in s.words], open(cache, "w"), ensure_ascii=False)
     fixes = {"Yohua": "Yojoa", "Yohua,": "Yojoa,", "tela,": "Tela,", "tela": "Tela", "campa,": "Campa,", "malla": "maya",
-             "Copán,": "Copán,", "Mosquitia,": "Mosquitia,", "Maya": "maya", "Escritura": "escritura"}
+             "Copán,": "Copán,", "Mosquitia,": "Mosquitia,", "Maya": "maya", "Escritura": "escritura", "seiba,": "Ceiba,", "seiba": "Ceiba"}
     ps = []
     for a, b, w in json.load(open(cache)):
         if a >= ini - .05 and (fin is None or b <= fin + .1):
