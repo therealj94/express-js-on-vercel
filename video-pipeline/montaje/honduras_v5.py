@@ -60,7 +60,7 @@ FINAL = 3.6           # «YA NO ES UN SECRETO» sobre las estrellas
 LOGO_DUR = 4.2
 DUR_FIJA = {"hook": 9.95}
 EXTRA = {"GU3": 0.5}
-CORTES = {"T06": 2.54}
+CORTES = {"T06": 2.54, "TVV": 2.56, "TVM": 2.64}
 # destellos del arranque: (archivo, segundo del clip)
 DESTELLOS = [("v4/T06_tiburones_ballena.mp4", 6.2), ("v3/T08_rio_cascada.mp4", 3.2), ("v3/T09_niebla_copan.mp4", 6.0),
              ("v3/T15_tambor_pies.mp4", 0.8), ("v3/T07_sale_rapidos.mp4", 3.4), ("v5/TMA_mosquitia_amapala.mp4", 6.2),
@@ -314,7 +314,7 @@ def mezcla(D, P, FIN, tmp, sal):
 
     # música en dos tramos: (a) desde el inicio, con el primer golpe en el despegue de la guara;
     # (b) a partir del puente, recolocada para que el clímax caiga en el atardecer de Amapala. Cruce de 2 s.
-    t_golpe, t_climax = T("T02"), F("TMA", .62)
+    t_golpe, t_climax = T("T02"), F("TMA", .85)
     off_a = t_golpe - MUSICA_GOLPE            # la pista suena desplazada off_a s
     off_b = t_climax - MUSICA_CLIMAX
     xf = T("T16")                              # el cruce entre tramos, en La Campa (puente tranquilo)

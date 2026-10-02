@@ -142,3 +142,31 @@ café 3V7MEXv6GilIEVo7Xr9C, tambores + canto garífuna 25EbuhhpGMlOJRRDQkhY, mú
 | La baleada: la versión más contada la sitúa en La Ceiba (doña Teresa, años 60); otra versión dice La Lima → «dicen que nació» | elheraldo.hn, latribuna.hn |
 | La Ceiba, «Capital del Ecoturismo» de Honduras; Pico Bonito junto a la ciudad | visitatlantida.com, exploracentroamerica.com |
 | Tiburón ballena en Utila (pez más grande del mundo) | blog.padi.com |
+
+## v5 — la versión de dos minutos (2:17 con logo)
+Pedido de José: hasta 2 min sin perder calidad, más lugares (Amapala, Valle de Ángeles, Intibucá/La Esperanza),
+algo de noche, cierre motivacional que se recuerde. «En un minuto» → «en dos minutos».
+
+Estructura (un día entero, del mar a la noche):
+destellos (1,7 s, riser + golpe) → guara en Roatán → West Bay → al agua → tiburones → tiburón ballena → Cangrejal →
+Pulhapanzak → Copán (guara) → Tela garífuna → La Campa → **La Esperanza** (pañuelos lencas en la neblina) →
+**Laguna de Chiligatoro** → Yojoa → La Ceiba → baleada → café Marcala → **Valle de Ángeles** (calle colonial →
+baúl tallado) → tallado que se vuelve selva → La Mosquitia → río hasta el mar → **Amapala** atardecer en Playa Negra
+con el Cosigüina → se hace de noche en una toma → la guara cierra bajo las estrellas → «YA NO ES UN SECRETO» → logo.
+
+Cierre de la guara: «Y esto… es solo lo que te puedo enseñar en dos minutos. Imagínate todo lo que falta.
+Honduras no se cuenta… se vive. Honduras… es más de lo que imaginas.»
+
+| Dato nuevo | Fuente |
+|---|---|
+| Amapala: Isla del Tigre, Golfo de Fonseca; Playa Negra frente al volcán Cosigüina; atardeceres, lanchas que regresan al caer el sol | laprensa.hn, hondurastips.hn, elheraldo.hn |
+| Valle de Ángeles: 22 km de Tegucigalpa, calles empedradas, «cuna de los artesanos»; baúles tallados en madera como icono | elheraldo.hn, xplorhonduras.com |
+| La Esperanza / Intibucá: ciudades gemelas, la ciudad más alta (>1.700 m) y más fría de Honduras, corazón de la Ruta Lenca; pañuelos lencas | en.wikipedia.org, visitcentroamerica.com |
+| Laguna de Chiligatoro: a 30 min de La Esperanza, rodeada de pinos | espaciohonduras.net, wikivoyage |
+
+Nodos nuevos: imágenes LE01 plwj5mqF2xlQm2s64lz9, LE02 fwDlfgIDit5xvVJi5ylq, VA01 7x2gzdRqwVGweFPxf6Sm,
+VA02 vs0ZdOyo6W8FjDp8ZJsX, AM01 0irrtVUh2OQtdCKVR5OP, AM02 LNWUlJ90uj2nUvekP8PZ, GU3 xfa7sTKbmQFAxINDGsiZ;
+transiciones TLE bh6YYQJUBHO1kCX3DeZI, TLL ksxnaPSDfSofBma2yiUQ, TLY LSOUPVzFIQfwV1VamiV1, TMV tEVE2Tzb22xWUxtz1bEd,
+TVV bzPWCNqgTV25KEqSZPV8, TVM VBFkLDg2HuzsXs47V5Gu, TMA ZWYfpdPEWWi0Ra3Wg3KW, TAN (H3 Max) ocSrECm0PZ2CITiUYLZG,
+TNG FnQt8UNcfeYDzQHMiuHF; lipsync GU3 PHpUpGc5qnGN8ZYKaXOr; música 4TSYdJPFGQICsEo5TYIq (toma a: golpe 11 s,
+puente 58–74 s, clímax 102 s, salida 121,5 s).
