@@ -35,7 +35,7 @@ def tramo(src: Path, out: Path, ini=0.0, fin=None, vel=1.0, pausa=0.0):
     """Recorta, acelera y lleva a 1080x1920/24 fps sin audio; `pausa` congela el último cuadro."""
     fin = fin or dur(src)
     ff("-ss", f"{ini:.3f}", "-to", f"{fin:.3f}", "-i", str(src), "-an", "-vf",
-       f"setpts=PTS/{vel:.4f},scale=-2:{H}:flags=lanczos,crop={W}:{H},setsar=1,fps={FPS}"
+       f"setpts=PTS/{vel:.4f},scale=-2:{int(H*1.07)}:flags=lanczos,crop={W}:{H}:iw-ow:(ih-oh)/2,setsar=1,fps={FPS}"
        + (f",tpad=stop_mode=clone:stop_duration={pausa:.2f}" if pausa > 0 else ""),
        "-c:v", "libx264", "-crf", "16", "-preset", "medium", "-pix_fmt", "yuv420p", str(out))
     return dur(out)
@@ -117,7 +117,9 @@ def main():
         if p == 8: sfx.append(("punta", t + dd2 - 0.9, 1.0))
         t += dd2
         # Si la voz es más larga que la página, el último cuadro espera a que termine.
-        dv2 = tramo(Vv, tmp / f"s{p:02d}b.mp4", pausa=max(0.0, objetivo - dd2 - dv))
+        # V10: se corta cuando el cuaderno termina de cerrarse (después el modelo mete otra mano).
+        dv2 = tramo(Vv, tmp / f"s{p:02d}b.mp4", fin=4.8 if p == 10 else None,
+                    pausa=max(0.0, objetivo - dd2 - (4.8 if p == 10 else dv)))
         segs.append((tmp / f"s{p:02d}b.mp4", t))
         if p == 6: sfx.append(("arranca", t + 2.2, 0.9))
         elif p == 9: sfx.append(("rueda", t + 2.0, 0.8))
