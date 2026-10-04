@@ -298,7 +298,7 @@ ROTULOS = [  # cada uno entra cuando su escena ya está dibujada (segundos de sa
     ("Francisco Morazán", "República Federal de Centroamérica", "V06", 2.0, 2.4),
     ("Costa norte", "siglo XX", "V07", 1.9, 3.0),
     ("España", "1982", "V08", 2.0, 2.8),
-    ("14 de octubre", "2009", "V09", 1.2, 2.8),
+    ("Sudáfrica 2010", "Clasificación · 14 de octubre de 2009", "V09", .3, 3.8),
     ("Mauricio Dubón", "San Pedro Sula · Serie Mundial 2022 · 2 Guantes de Oro", "V09D", 3.0, 3.2),
 ]
 
@@ -400,6 +400,7 @@ def mezcla(T, fin, total, video, sal):
     def at(s): return int(s * 1000)
     vo = [("vo_hook_b.mp3", VO_HOOK), ("hs2_copan_b.mp3", T0["V01"] + .35), ("vo_1502_b.mp3", T0["V03"] + .2),
           ("vo_1821_b.mp3", T0["V05"] + .55), ("vo_banano_b.mp3", T0["V07"] + .55), ("vo_1982_b.mp3", T0["V08"] + .3), ("vo_dubon2_b.mp3", T0["V09D"] + DUBON_VO),
+          ("vo_2010_a.mp3", T0["V09"] + VO_2010),
           ("vo_pero_b.mp3", tc + VO_PERO)]
     # (archivo, inicio, volumen, desde, duración)
     sfx = [("sfx_pings_b.mp3", .33, .9, 0, .7),                       # la notificación del hook
@@ -423,7 +424,9 @@ def mezcla(T, fin, total, video, sal):
         mixv.append(f"[v{idx}]"); idx += 1
     # narración real de 2009: «¡GOL!» en 2,42 s, cae cuando el remate entra
     entradas += ["-i", str(DIR / "narr2010.m4a")]; t_n = T0["V09"] + NARR_OFF
-    filtros.append(f"[{idx}:a]loudnorm=I=-15:TP=-1.5,aresample=48000,afade=t=out:st={T0['V09D'] + DUBON_VO - 1.2 - t_n:.2f}:d=1.2,adelay={at(t_n)}|{at(t_n)}[v{idx}]")
+    baja = T0["V09"] + VO_2010 + 3.6 - t_n  # la narración va baja bajo «…volvimos a un Mundial» y sube para el «¡GOL!»
+    filtros.append(f"[{idx}:a]loudnorm=I=-15:TP=-1.5,aresample=48000,"
+                   f"volume='0.28+0.72*clip((t-{baja - .25:.2f})/0.35,0,1)':eval=frame,afade=t=out:st={T0['V09D'] + DUBON_VO - 1.2 - t_n:.2f}:d=1.2,adelay={at(t_n)}|{at(t_n)}[v{idx}]")
     mixv.append(f"[v{idx}]"); idx += 1
     for f, t0, vol, ss, d in sfx:
         entradas += ["-ss", str(ss), "-t", str(d), "-i", str(DIR / f)]
@@ -453,6 +456,7 @@ def mezcla(T, fin, total, video, sal):
 
 DUBON_VO = 1.6  # «Y un sampedrano, Mauricio Dubón…» entra cuando aparece el estadio de béisbol
 BATE = 3.58     # el chasquido del bate (0,40 s dentro del efecto) cae en el destello del contacto, cuadro ~110
+VO_2010 = -.12  # «Veintiocho años después… volvimos a un Mundial.» justo al terminar el de 1982
 NARR_OFF = 1.12  # «¡GOL!» (2,42 s de la narración) cae cuando el remate de V09 entra (cuadro ~85 a x0,9)
 
 
