@@ -27,6 +27,7 @@ UP = Path("/root/.claude/uploads/2611f717-6182-5311-8e6b-eee5393945e0")
 REAL = {"carlos": "af89be14-copy_97417FB3-3353-4FE3-BBD3-6C8D6AC9A2DC_1.mp4", "romeo": "2990b56a-IMG_6044.mov",
         "samira": "37537b71-IMG_7392.mov", "lenyn": "8bc03e38-IMG_5166.MOV",
         "leiva": "ca51f74f-VIDEO-2026-10-02-16-51-40.mp4"}
+ROMEO_MARCA = 9.0  # desde aquí su video trae el logo de CapCut
 CARLOS_X0 = 995  # recorte vertical 810x1440 del video horizontal de Carlos (centrado en su cara)
 COLMILLOS = "perame perame perameeeeee! una guacamaya con colmillos???? no saben hacer ni anuncios y quiere que uno les apoye! estos gobiernos van de mal en peor"
 ORO = (150, 215, 255)  # BGR
@@ -53,6 +54,7 @@ class Real:
     def cuadro(self, ts):
         f = self.c.cuadro(ts)
         if self.nombre == "carlos": f = f[:, CARLOS_X0:CARLOS_X0 + 810]
+        if self.nombre == "romeo" and ts >= ROMEO_MARCA: f = f[190:, 110:]  # recorte 9:16 sin el logo de CapCut (arriba a la izq.)
         return cv2.resize(f, (W, H), interpolation=cv2.INTER_LANCZOS4) if f.shape[:2] != (H, W) else f
 
 
@@ -79,8 +81,52 @@ def whip_par(fa, fb, p, dire):
     fbw = cv2.warpAffine(fb, Mb, (W, H), borderValue=0)
     lienzo[mb > 0] = fbw[mb > 0]
     out = desenfoque_dir(lienzo, vel * L / FPS * 1.4, vertical=bool(dy))
-    luz = max(0.0, 1 - abs(p - .5) * 6)
-    return cv2.addWeighted(out, 1, np.full_like(out, 255), .10 * luz, 0) if luz > 0 else out
+    # el operador gira un poco la muñeca y la cámara «respira» hacia adentro en el centro del latigazo
+    b = math.sin(math.pi * p)
+    ang = 7 * b * (dx - dy if dx else dy)
+    M = cv2.getRotationMatrix2D((W / 2, H / 2), ang, 1 + .12 * b)
+    out = cv2.warpAffine(out, M, (W, H), borderMode=cv2.BORDER_REFLECT)
+    out = aberracion(out, 10 * vel / 1.5, dx, dy)
+    return fuga_luz(out, max(0.0, 1 - abs(p - .5) * 3.2), dx, dy)
+
+
+def aberracion(fr, px, dx=1, dy=0):
+    """Separación de color en la dirección del movimiento (como un lente a toda velocidad)."""
+    k = int(round(px))
+    if k < 1: return fr
+    out = fr.copy()
+    out[..., 2] = np.roll(fr[..., 2], (k * dy, k * dx), (0, 1)); out[..., 0] = np.roll(fr[..., 0], (-k * dy, -k * dx), (0, 1))
+    return out
+
+
+FUGA = {}
+def fuga_luz(fr, a, dx=1, dy=0):
+    """Fuga de luz cálida que barre desde el lado por donde entra el plano nuevo."""
+    if a <= .01: return fr
+    clave = (dx, dy)
+    if clave not in FUGA:
+        yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+        cx = W * (.5 + .55 * dx); cy = H * (.5 + .45 * dy) if dy else H * .38
+        r = np.hypot((xx - cx) / (W * .55), (yy - cy) / (H * .45))
+        m = np.exp(-r * r * 1.6)[..., None]
+        FUGA[clave] = m * np.array([60, 150, 255], np.float32)  # BGR: naranja
+    return np.clip(fr.astype(np.float32) + FUGA[clave] * (.75 * a), 0, 255).astype(np.uint8)
+
+
+def giro(fa, fb, p):
+    """Giro de cámara (Sam Kolder): el plano que sale rota y se acerca con desenfoque rotacional; el que entra
+    llega girando desde el lado contrario. p ∈ [0, 1]."""
+    if p < .5:
+        q = p / .5; fr, ang, z = fa, 60 * q * q, 1 + .45 * q * q
+    else:
+        q = (1 - p) / .5; fr, ang, z = fb, -60 * q * q, 1 + .45 * q * q
+    n = 5 if q > .15 else 1; acc = np.zeros(fr.shape, np.float32); paso = 9 * q
+    for k in range(n):
+        M = cv2.getRotationMatrix2D((W / 2, H / 2), ang + paso * (k / max(1, n - 1) - .5), z)
+        acc += cv2.warpAffine(fr, M, (W, H), borderMode=cv2.BORDER_REFLECT)
+    out = (acc / n).astype(np.uint8)
+    out = zoom_radial(out, 1, fuerza=.12 * q) if q > .2 else out
+    return fuga_luz(out, max(0.0, 1 - abs(p - .5) * 3), 1, 0)
 
 
 def zoom_radial(fr, z, cx=W / 2, cy=H / 2, fuerza=0.0):
@@ -143,15 +189,54 @@ def usuario(handle):
     return CACHE[handle]
 
 
-def capa_usuario(fr, handle, u, dur=2.6):
-    """El usuario se escribe de izquierda a derecha con luz y se borra igual."""
+def icono_ig(d=104):
+    """Ícono genérico de cámara sobre degradado tipo Instagram, dibujado por código."""
+    from PIL import ImageDraw
+    k = 4; D = d * k
+    yy, xx = np.mgrid[0:D, 0:D].astype(np.float32); t = np.clip((xx + (D - yy)) / (2 * D), 0, 1)[..., None]
+    c0, c1, c2 = np.array([254, 218, 117]), np.array([214, 41, 118]), np.array([79, 91, 213])  # RGB
+    g = np.where(t < .5, c0 + (c1 - c0) * (t / .5), c1 + (c2 - c1) * ((t - .5) / .5))
+    im = Image.fromarray(np.dstack([g, np.full((D, D), 255)]).astype(np.uint8), "RGBA")
+    m = Image.new("L", (D, D), 0); ImageDraw.Draw(m).ellipse((0, 0, D - 1, D - 1), fill=255); im.putalpha(m)
+    dr = ImageDraw.Draw(im); w = int(D * .055); a, b = D * .27, D * .73
+    dr.rounded_rectangle((a, a, b, b), radius=D * .13, outline=(255, 255, 255, 255), width=w)
+    r = D * .115; dr.ellipse((D / 2 - r, D / 2 - r, D / 2 + r, D / 2 + r), outline=(255, 255, 255, 255), width=w)
+    r2 = D * .03; dr.ellipse((D * .63 - r2, D * .36 - r2, D * .63 + r2, D * .36 + r2), fill=(255, 255, 255, 255))
+    return im.resize((d, d), Image.LANCZOS)
+
+
+def burbuja(nombre, handle):
+    """Burbuja blanca: ícono, nombre grande y la cuenta de Instagram debajo (texto por código)."""
+    clave = ("burbuja", nombre, handle)
+    if clave not in CACHE:
+        from PIL import ImageDraw
+        fn, fh = fuente("Montserrat", 58, "ExtraBold"), fuente("Montserrat", 44, "SemiBold")
+        ic = icono_ig(128); pad = 24
+        w = pad + ic.width + 24 + int(max(fn.getlength(nombre), fh.getlength(handle))) + 44; h = ic.height + 2 * pad
+        sh = 30; im = Image.new("RGBA", (w + 2 * sh, h + 2 * sh), (0, 0, 0, 0))
+        sombra = Image.new("L", im.size, 0); ImageDraw.Draw(sombra).rounded_rectangle((sh, sh + 8, sh + w, sh + h + 8), h // 2, fill=120)
+        im.putalpha(sombra.filter(ImageFilter.GaussianBlur(14)))
+        caja = Image.new("RGBA", im.size, (0, 0, 0, 0)); d = ImageDraw.Draw(caja)
+        d.rounded_rectangle((sh, sh, sh + w, sh + h), h // 2, fill=(255, 255, 255, 242))
+        caja.alpha_composite(ic, (sh + pad, sh + pad))
+        x = sh + pad + ic.width + 24
+        d.text((x, sh + pad + 2), nombre, font=fn, fill=(18, 18, 24, 255))
+        d.text((x, sh + pad + 70), handle, font=fh, fill=(90, 92, 104, 255))
+        CACHE[clave] = Image.alpha_composite(im, caja)
+    return CACHE[clave]
+
+
+def capa_usuario(fr, usu, u, dur=3.2):
+    """La burbuja aparece con rebote abajo a la izquierda, se queda y sale hacia abajo."""
+    nombre, handle = usu
     if u < 0 or u > dur: return fr
-    im = usuario(handle); arr = np.array(im); x = np.arange(im.width, dtype=np.float32)[None, :]
-    m = np.clip((im.width * sale(u / .7) - x) / 40, 0, 1)
-    s = suave((u - dur + .6) / .6)
-    if s > 0: m = m * np.clip((x - im.width * s) / 40 + 1, 0, 1)
-    arr[..., 3] = (arr[..., 3] * m).astype(np.uint8)
-    return pega(fr, Image.fromarray(arr), 540, 230)
+    im = burbuja(nombre, handle)
+    e = min(1.0, u / .5); rebote = 1 + .08 * math.sin(math.pi * e) * (1 - e) * 2 if e < 1 else 1.0
+    esc = (.75 + .25 * sale(e)) * rebote
+    salida = suave((u - dur + .35) / .35)
+    a = suave(u / .2) * (1 - salida)
+    y = 1270 + 40 * (1 - sale(e)) + 50 * salida
+    return pega(fr, im, 40 + im.width * esc / 2, y, a, esc)
 
 
 def bloques(palabras, a, b, max_pal=3, max_dur=1.5):
@@ -198,7 +283,7 @@ def T_VO(T):
 def TRAMOS(T):
     """(persona, inicio en la salida, inicio en su video, duración) de cada tramo de voz real."""
     return [("carlos", T["carlos"], 0.0, 6.5), ("romeo", T["romeo"] - 1.0, 0.0, 6.6),
-            ("romeo", T["romeo"] + 5.6, 11.70, 1.05), ("samira", T["samira"] - 1.0, 1.35, 5.0),
+            ("romeo", T["romeo"] + 5.6, 11.70, ROMEO_PIR), ("samira", T["samira"] - .4, 1.35, 4.95),
             ("lenyn", T["lenyn"] - 2.24, 6.1, 7.9), ("leiva", T["leiva_tv"] - LEIVA_SRC, 0.0, 8.7)]
 
 
@@ -231,10 +316,12 @@ def capa_rotulo(fr, txt, sub, u, dur):
 # ---------- segmentos ----------
 class Seg:
     """trans: cómo se entra a este segmento desde el anterior: None (corte o continuidad),
-    "whip-l/r/u/d" (latigazo en esa dirección), "zoom" (empuje radial) o "fundido"."""
+    "whip-l/r/u/d" (latigazo en esa dirección), "giro" (giro de cámara, de lugar a persona), "zoom" (empuje radial)
+    o "fundido"."""
     def __init__(self, nombre, dur, fn, trans=None, rot=None, usu=None, tipo="ia", bloom=0.0):
         self.nombre, self.dur, self.fn, self.trans = nombre, dur, fn, trans
         self.rot, self.usu, self.tipo, self.bloom = rot, usu, tipo, bloom
+        self.rampa = False
 
 
 def seg_clip(nombre, archivo, vel, ini=0.0, fin=None, **kw):
@@ -244,7 +331,8 @@ def seg_clip(nombre, archivo, vel, ini=0.0, fin=None, **kw):
         ts = ini + u * vel
         f = c.cuadro(ts)
         return a_vertical(f)
-    return Seg(nombre, (fin - ini) / vel, fn, **kw)
+    sg = Seg(nombre, (fin - ini) / vel, fn, **kw); sg.rampa = True
+    return sg
 
 
 def tarjeta_resaltada(texto, frase, ancho=980, tam=54):
@@ -297,6 +385,7 @@ E2_FIN = 5.3                     # en 5,6 s el clip regresa a un plano abierto: 
 PARPADEO = 1.7 / VEL_OJO2        # s de salida en que el párpado queda cerrado (cuadro 1,7 s de E2)
 PUPILA = (.5, .55)               # centro del reflejo al final del empuje de E2 (proporción del cuadro)
 MAPA_EXTRA = 1.2
+ROMEO_PIR = 1.35                  # «tenemos pirámides,» completo (11,70–13,05 de su video)
 LEIVA_SRC, LEIVA_DUR = 1.0, 7.25  # la tele se enciende en «…de Honduras» y lo vemos hasta «principalmente su»                 # el mapa se sostiene más para leer la pregunta
 
 
@@ -386,25 +475,27 @@ def construir(bg_final):
     # 8. De la luz a lo real: una línea recorre la silueta de Carlos y él aparece dentro
     S.append(Seg("luz_carlos", 1.5, f_luz_carlos(reales["carlos"]), tipo="real"))
     # 8. Carlos
-    S.append(Seg("carlos", 6.5, lambda u: reales["carlos"].cuadro(u), usu=("@carlosquintanamx", .4), tipo="real"))
+    S.append(Seg("carlos", 6.5, lambda u: reales["carlos"].cuadro(u), usu=("Carlos Quintana", "@carlosquintanamx", .4), tipo="real"))
     # 9–10. Mira arriba (latigazo hacia arriba) → Picacho → vuelo a Los Naranjos
-    S.append(seg_clip("picacho", "W03_cielo_picacho.mp4", 1.7, trans="whip-u", rot=("Cerro El Picacho", "Tegucigalpa", 2.1)))
+    S.append(seg_clip("picacho", "W03_cielo_picacho.mp4", 1.7, ini=1.5, trans="whip-u",
+                      rot=("Cerro El Picacho", "Tegucigalpa", 1.0)))  # 0,8–1,5 s: interior de carro (error de IA)
     S.append(seg_clip("naranjos", "W04_picacho_naranjos.mp4", 1.9, rot=("Los Naranjos", "Lago de Yojoa", 1.6)))
     # 11. Romeo (su voz entra 1 s antes de verlo)
     def f_romeo(u):
         if u < 5.6: return reales["romeo"].cuadro(1.0 + u)
         fr = reales["romeo"].cuadro(11.70 + (u - 5.6))
-        return zoom(fr, 1.12 - .08 * sale((u - 5.6) / .4))  # salto con empuje, no con destello
-    S.append(Seg("romeo", 5.6 + 1.05, f_romeo, trans="whip-l", usu=("@romeo_and_nando_adventures", .3), tipo="real"))
+        k = (u - 5.6) / .35  # salto con empuje radial (aterriza en «tenemos pirámides»)
+        return zoom_radial(fr, 1.18 - .14 * sale(k), fuerza=.14 * (1 - sale(k))) if k < 1 else zoom(fr, 1.04 - .04 * (u - 5.95) / 1.0)
+    S.append(Seg("romeo", 5.6 + ROMEO_PIR, f_romeo, trans="giro", usu=("Romeo y Nando", "@romeo_and_nando_adventures", .3), tipo="real"))
     # 12. Del río de Romeo al río de Samira (agua con agua)
-    S.append(Seg("samira", 4.0, lambda u: reales["samira"].cuadro(2.35 + u), trans="whip-l", usu=("@samirafer_hn", .3),
+    S.append(Seg("samira", 4.0, lambda u: reales["samira"].cuadro(1.75 + u), trans="whip-l", usu=("Samira.HN", "@samirafer_hn", .3),
                  tipo="real"))
     # 13. Lo que ella nombra: el cenote (recreación) → bajo el agua
     S.append(seg_clip("cenote", "W05_rio_cenote.mp4", 1.0, ini=4.5, trans="zoom",
                       rot=("Cenote de San Luis Planes", "Santa Bárbara", .3)))
     # 14–16. Sale del agua en Utila → Lenyn → el arrecife → tiburón ballena
     S.append(seg_clip("utila", "W06_cenote_utila.mp4", 1.8, trans="whip-d", rot=("Utila", "Islas de la Bahía", 1.9)))
-    S.append(Seg("lenyn", 2.16, lambda u: reales["lenyn"].cuadro(8.34 + u), trans="whip-r", usu=("@lenynreye", .1),
+    S.append(Seg("lenyn", 2.16, lambda u: reales["lenyn"].cuadro(8.34 + u), trans="giro", usu=("Lenyn Reyes", "@lenynreye", .05),
                  tipo="real"))
     S.append(seg_clip("arrecife", "W07_utila_snorkel.mp4", 1.6, ini=1.5, fin=5.5, trans="whip-d"))
     S.append(seg_clip("ballena", str(HN / "v4/T06_tiburones_ballena.mp4"), 1.0, ini=2.0, fin=3.0, trans="fundido"))
@@ -413,7 +504,7 @@ def construir(bg_final):
                       rot=("Santa Bárbara", "Occidente de Honduras", .9)))
     S.append(seg_clip("sb_casa", "W09_sb_casa.mp4", 1.8))
     S[-1].fn_crudo = S[-1].fn; S[-1].fn = tele_apagada(S[-1].fn)
-    S.append(Seg("leiva_tv", LEIVA_DUR, f_leiva_tv(reales["leiva"], S[-1], LEIVA_SRC), usu=("@caballeroleiva", 2.4),
+    S.append(Seg("leiva_tv", LEIVA_DUR, f_leiva_tv(reales["leiva"], S[-1], LEIVA_SRC), usu=("Miguel Caballero Leiva", "@caballeroleiva", 2.4),
                  tipo=None))
     # 20–21. Gira hacia la ventana → la gente del pueblo → la guara al atardecer
     S.append(seg_clip("gente", "W10_casa_gente.mp4", 1.3, ini=1.6, trans="whip-l"))
@@ -639,8 +730,18 @@ def tiempos(S):
 MEDIA = .22  # media duración de cada transición (s)
 
 
+RAMPA = .4  # s de rampa a cada lado de un corte con transición
+def rampa(s, u):
+    """Rampa de velocidad: el dron acelera hacia el corte (hasta ~3x) y sale frenando. Solo en planos de IA."""
+    if not s.rampa: return min(max(u, 0), s.dur - 1e-3)
+    u = max(u, 0.0); v = u
+    if s.sale_t and u > s.dur - RAMPA: v += 1.1 * RAMPA * ((u - s.dur + RAMPA) / RAMPA) ** 2
+    if s.entra_t: x = min(u, RAMPA) / RAMPA; v += 1.1 * RAMPA * (1 - (1 - x) ** 2)
+    return v
+
+
 def cuadro_seg(s, u, t):
-    fr = s.fn(min(max(u, 0), s.dur - 1e-3))
+    fr = s.fn(rampa(s, u))
     if s.tipo: fr = grado(fr, s.tipo)
     if s.nombre not in ("mapa", "logo", "luz_final"): fr = acabar(fr, t, s.bloom)
     return fr
@@ -649,6 +750,9 @@ def cuadro_seg(s, u, t):
 def render(S, sal, desde=0, hasta=None):
     global SUBS
     T, total = tiempos(S); hasta = min(hasta or total, total); SUBS = subtitulos(T)
+    for i, sg in enumerate(S):  # qué cortes llevan transición (para la rampa de velocidad)
+        sg.entra_t = bool(sg.trans and i > 0 and sg.trans != "fundido")
+        sg.sale_t = bool(i + 1 < len(S) and S[i + 1].trans and S[i + 1].trans != "fundido")
     cmd = ["ffmpeg", "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{W}x{H}", "-r", str(FPS),
            "-i", "-", "-c:v", "libx264", "-preset", "medium", "-crf", "16", "-pix_fmt", "yuv420p", str(sal)]
     p = subprocess.Popen(cmd, stdin=subprocess.PIPE)
@@ -660,8 +764,10 @@ def render(S, sal, desde=0, hasta=None):
         fr = cuadro_seg(s, u, t)
         # transición de entrada (segunda mitad) y de salida hacia el siguiente (primera mitad)
         if s.trans and s.trans.startswith("whip") and u < MEDIA and i > 0:
-            prev = S[i - 1]; fa = cuadro_seg(prev, prev.dur - 1e-3, t)
+            prev = S[i - 1]; fa = cuadro_seg(prev, prev.dur - 1e-3 + u, t)
             fr = whip_par(fa, fr, .5 + .5 * u / MEDIA, s.trans[-1])
+        elif s.trans == "giro" and u < MEDIA and i > 0:
+            prev = S[i - 1]; fr = giro(cuadro_seg(prev, prev.dur - 1e-3 + u, t), fr, .5 + .5 * u / MEDIA)
         elif s.trans and u < MEDIA:
             q = u / MEDIA
             if False: pass
@@ -672,9 +778,10 @@ def render(S, sal, desde=0, hasta=None):
         if sig and sig.trans and s.dur - u < MEDIA:
             q = 1 - (s.dur - u) / MEDIA
             if sig.trans.startswith("whip"): fr = whip_par(fr, cuadro_seg(sig, 0.0, t), .5 * q, sig.trans[-1])
+            elif sig.trans == "giro": fr = giro(fr, cuadro_seg(sig, 0.0, t), .5 * q)
             elif sig.trans == "zoom": fr = zoom_radial(fr, 1 + 1.2 * q ** 2, fuerza=.22 * q)
         fr = capa_sub(fr, SUBS, t)
-        if s.usu: fr = capa_usuario(fr, s.usu[0], u - s.usu[1])
+        if s.usu: fr = capa_usuario(fr, s.usu[:2], u - s.usu[2], min(3.2, s.dur - s.usu[2] - .05))
         if s.rot: fr = capa_rotulo(fr, s.rot[0], s.rot[1], u - s.rot[2], 2.2)
         p.stdin.write(np.ascontiguousarray(fr).tobytes())
     p.stdin.close(); p.wait()
@@ -721,7 +828,7 @@ def mezcla(S, T, total, video, sal):
             (p2 / "sfx_pueblo_a.mp3", T["gente"], .5, 0, 5),
             (HN / "audio5/final_swell.mp3", T["cierre"] + 2.0, .6, 0, 6), (HN / "audio2/sfx_logo.mp3", T["logo"] - .15, .9)]
     for j, sg in enumerate(S):
-        if sg.trans and (sg.trans.startswith("whip") or sg.trans == "zoom"):
+        if sg.trans and (sg.trans.startswith("whip") or sg.trans in ("zoom", "giro")):
             lista.append((p2 / ("sfx_whoosh_a.mp3" if j % 2 else "sfx_whoosh_b.mp3"), T[sg.nombre] - .3, .55))
     for f, t0, vol, *r in lista:
         add(f, t0, vol, *(r or [None, None]))
