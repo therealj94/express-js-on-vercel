@@ -57,13 +57,22 @@ La plataforma de migración lleva las firmas y comprueba lo ejecutado (sección 
 | CompatibilityFallbackHandler | `0x80C635A83527Bf86D1CC7F08D253132712FE07Fb` |
 | MultiSendCallOnly | `0x330b7A7A756324CfA7A8aAbA69f0C5Df674307DF` |
 
-Las desplegó una billetera de un solo uso, que solo pagó el gas y no tiene ningún poder sobre ellas. Las dos Safes se crean con esas piezas cuando la Junta nombre a los tres custodios:
+Con esas piezas se crearon las dos firmas múltiples de la Junta (`despliegues/orden-multifirma.json`). Tienen los mismos cinco custodios, y los umbrales los decidió la Junta el 4 de octubre de 2026:
 
-```sh
-SAFE_L2=0x60AE3FFab0dfF2193Af504AD62970B13aB76c991 SAFE_FABRICA=0x34f640D5FD95c124215a5797BB65bfC8669c95e1 \
-SAFE_RESPALDO=0x80C635A83527Bf86D1CC7F08D253132712FE07Fb SAFE_MULTISEND=0x330b7A7A756324CfA7A8aAbA69f0C5Df674307DF \
-CUSTODIOS=0xA…,0xB…,0xC… CONFIRMO_PRODUCCION=si npx hardhat run scripts/desplegar-multifirma.ts --network orden
-```
+| Safe | Umbral | Dirección | Para qué |
+|---|---|---|---|
+| Operativa | 3 de 5 | `0xc4BdFA82398687f5425a8b0Fd3792d149cE14dcf` | Tesorería de ORIGEN, regalo, emitir, abrir la migración, quemar, suspender, ratificar pausas |
+| Administración | 4 de 5 | `0xb98C37102105BA3eFE99c34d8B0895Bf0645fdc6` | Roles y registro de los contratos v2 |
+
+| Custodio | Dirección |
+|---|---|
+| Medardo Enamorado | `0x3640204838e31C60ED11b28C1E24D090c7C56238` |
+| Mayra Enamorado | `0x7751d837FA11EBCBFb589554Bf1c8497f585a3b5` |
+| José Martínez | `0xF936854bCafd725599ce23c9BED603EA56dEB458` |
+| Carlos Paguada | `0x96202cB8c27580F4705f117E2D3EB712Be782445` |
+| Vanessa Pinto | `0x35fA7D3074B7A6CA7ef6d89779144C585dA2EAa7` |
+
+Cada custodio es, además, `PAUSADOR` de los tokens v2: pausa solo en emergencia, y la pausa vence a las 72 horas si la operativa no la ratifica. Todo lo desplegó una billetera de un solo uso, que solo pagó el gas y no tiene ningún poder. En la plataforma: `SAFE_DIRECCION`, `SAFE_CONSTITUCIONAL` y `SAFE_MULTISEND`.
 
 ## Comandos
 
@@ -74,7 +83,7 @@ npm run prueba        # 33 pruebas
 
 | Script | Para qué |
 |---|---|
-| `scripts/desplegar-multifirma.ts` | Con `SOLO_INFRA=si`, solo las cuatro piezas de Safe. Si no, despliega las dos Safes (`CUSTODIOS`; la operativa con `UMBRAL`, por defecto 2, y la de los tres custodios) y las piezas que falten, y comprueba su código. En la red 5550 exige `CONFIRMO_PRODUCCION=si`. |
+| `scripts/desplegar-multifirma.ts` | Con `SOLO_INFRA=si`, solo las cuatro piezas de Safe. Si no, despliega las dos Safes (`CUSTODIOS`; la operativa con `UMBRAL`, por defecto 2, y la de administración con `UMBRAL_ADMIN`, por defecto todos) y las piezas que falten, y comprueba su código. En la red 5550 exige `CONFIRMO_PRODUCCION=si`. |
 | `scripts/firmar.ts` | Para el custodio sin MetaMask. Primero muestra lo que de verdad hace la operación, sacado de los datos firmados: cada destino, monto y función. Se niega si el lote va a algo que no es su `MULTISEND`, si el archivo no coincide o si el hash no es el del panel. Con `FIRMAR=si` y su llave, firma en su computadora. |
 | `scripts/desplegar.ts` | Despliega el token (y el registro si no hay uno) con `ADMIN`, `MULTIFIRMA` y `PAUSADORES`. La demora de emisión sale de la serie (siete días en la 200). En la red 5550 exige `CONFIRMO_PRODUCCION=si`. |
 | `scripts/lotes-safe.ts` | Convierte `acunacion.json` en las transacciones para la firma múltiple (formato Safe Transaction Builder): apertura y lotes. Antes verifica cada prueba y el total, y en rondas siguientes deja fuera lo ya acreditado. |
