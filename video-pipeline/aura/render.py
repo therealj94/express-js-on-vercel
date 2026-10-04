@@ -1,5 +1,5 @@
 """Renderiza trailer.html cuadro a cuadro: python3 render.py DESDE HASTA DIR [t1,t2,... para pruebas]"""
-import sys, asyncio
+import sys, asyncio, os
 from playwright.async_api import async_playwright
 CH = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
 ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']
@@ -11,7 +11,7 @@ async def main():
         pg = await br.new_page(viewport={'width': 1080, 'height': 1920})
         pg.on('console', lambda m: print('consola:', m.text) if m.type in ('error', 'warning') else None)
         pg.on('pageerror', lambda e: print('ERROR:', e))
-        await pg.goto('http://127.0.0.1:8765/trailer.html')
+        await pg.goto('http://127.0.0.1:8765/trailer.html?t=' + os.environ.get('TJ', 'tiempos_en.json'))
         await pg.wait_for_function('window.LISTO === true', timeout=180000)
         lista = [(f'{d}/t{t:05.2f}.jpg', t) for t in ts] if ts else [(f'{d}/{n:05d}.jpg', n / 30) for n in range(a, b)]
         for f, t in lista:

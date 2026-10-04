@@ -1,4 +1,4 @@
-# AU-RA FP · investor trailer, v6 («Introducing AU-RA FP»)
+# AU-RA FP · investor trailer, v7 («Introducing AU-RA FP»), English and Spanish
 
 **Format:** 9:16, 1080×1920, 30 fps, 63 s, English.
 
@@ -37,3 +37,18 @@
 - `aura/render.py DESDE HASTA DIR`: Playwright + swiftshader, 3 processes in parallel.
 - `aura/mezcla6.py`: voice + music (`musica_b`, the drop lands at the start of the montage) + SFX, with sidechain, at −14 LUFS.
 - Cost of v6: music ≈ 0.5 USD, sheet of objects ≈ 0.6 USD, voice included in the plan.
+
+## v7 (October 4): current avatars and ElevenLabs shots
+
+- **Claudio and ANT-ONIO as they look today in the app:** the videos in `mobile/assets/avatares/video/*.mp4` (`CuerpoElegido` prefers video over 3D). The old GLB models no longer appear.
+- **9 cinematic shots** (ElevenLabs):
+  - Keyframes with gpt-image-2, using frames from the current videos as references.
+  - Animated with MiniMax H3 Max.
+  - Shots: C3 (both with the orb), C1 (Claudio), C2 (ANT-ONIO), C4 (6:00 call), C5 (ANT-ONIO sorts mail), C6 (Claudio's posts), C7 (gold), C8 (phone to laptop), C9 (farewell).
+- **Code** handles the glass «A», the grid, the orb, the app interface (call, agenda, live computer, sending ORIGEN, Visa card, notch), the carousel and the logo.
+- **Two versions.** Same visuals; the text and voice change.
+  - `tiempos_en.json`: voice `NPil3puXYP3J45yudmVD`.
+  - `tiempos_es.json`: AURA's Spanish voice from the app, `AoT6sxPBYB0OGpSnIiwc`.
+  - The UI text uses the app's real Spanish labels.
+- `montar7.py` derives every scene time from the words of each voice. `mezcla7.py en|es` does the mix.
+- **Cost of v7:** keyframes ≈ 2.4 USD (including one discarded run in 16:9), 9 shots × 0.40 = 3.6 USD. The voice is included in the plan.

@@ -9,7 +9,7 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:var(--noche);fon
 #gl{position:absolute;inset:0}
 #dom{position:absolute;inset:0;pointer-events:none}
 .capa{position:absolute;inset:0;opacity:0}
-.t{position:absolute;left:0;right:0;text-align:center;font-weight:800;letter-spacing:-3px;line-height:1.02}
+.t{position:absolute;left:0;right:0;text-align:center;font-weight:800;letter-spacing:-3px;line-height:1.02;text-shadow:0 6px 40px rgba(0,0,0,.85),0 2px 10px rgba(0,0,0,.6)}
 .vid{background:linear-gradient(160deg,rgba(30,46,72,.72),rgba(10,18,34,.70));border:1.5px solid rgba(255,255,255,.13);box-shadow:0 40px 120px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.16);border-radius:44px}
 .mono{font-family:ui-monospace,'SF Mono',Menlo,monospace}
 .fila{display:flex;align-items:center;gap:22px}
@@ -34,7 +34,7 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:var(--noche);fon
 .app img{width:176px;height:176px;object-fit:contain}
 .app.redondo img{border-radius:0;width:250px;height:250px;object-fit:cover}
 .app::after{content:'';position:absolute;inset:0;border-radius:52px;background:linear-gradient(170deg,rgba(255,255,255,.22),transparent 40%)}
-.rot{position:absolute;left:0;right:0;text-align:center;font-size:26px;letter-spacing:6px;font-weight:700;color:var(--gris)}
+.rot{position:absolute;left:0;right:0;text-align:center;font-size:26px;letter-spacing:6px;font-weight:700;color:var(--gris);text-shadow:0 2px 14px rgba(0,0,0,.9)}
 /* laptop */
 #lap{position:absolute;left:40px;top:560px;width:1000px;height:640px;opacity:0}
 #lap .tapa{position:absolute;left:0;top:0;width:1000px;height:620px;border-radius:30px 30px 8px 8px;background:#0b0d12;box-shadow:0 0 0 3px #2c313b,0 60px 120px rgba(0,0,0,.7);overflow:hidden}
@@ -44,6 +44,7 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:var(--noche);fon
 </style></head><body>
 <canvas id="gl" width="1080" height="1920"></canvas>
 <div id="dom">
+  <div id="clip" style="position:absolute;inset:0;opacity:0;background:#000;overflow:hidden"><img id="clipA" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"><div style="position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,.55),transparent 28%,transparent 72%,rgba(0,0,0,.5))"></div></div>
 
   <!-- S1 intro -->
   <div class="capa" id="introducing"><div class="t" style="top:1450px;font-size:52px;font-weight:600;letter-spacing:1px;color:#c9d6e4">Introducing</div></div>
@@ -54,9 +55,9 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:var(--noche);fon
   <div class="capa" id="t_dia"><div class="t" style="top:1580px;font-size:72px">Your day is full of<br><span style="color:var(--hielo)">little things.</span></div></div>
 
   <!-- S3/S4 nombres del equipo -->
-  <div class="capa" id="n_aura"><div class="rot" style="top:880px;color:var(--hielo)">AURA · TAKES CARE OF YOU</div></div>
-  <div class="capa" id="n_claudio"><div class="rot" style="top:1790px;left:-500px;color:var(--naranja)">CLAUDIO · CREATES</div></div>
-  <div class="capa" id="n_antonio"><div class="rot" style="top:1790px;left:500px;color:var(--hormiga)">ANT-ONIO · GETS IT DONE</div></div>
+  <div class="capa" id="n_aura"><div class="rot" style="top:1500px;font-size:34px;color:var(--hielo)">AURA · TAKES CARE OF YOU</div></div>
+  <div class="capa" id="n_claudio"><div class="rot" style="top:1660px;font-size:34px;color:var(--naranja)">CLAUDIO · CREATES</div></div>
+  <div class="capa" id="n_antonio"><div class="rot" style="top:1660px;font-size:34px;color:var(--hormiga)">ANT-ONIO · GETS IT DONE</div></div>
   <div class="capa" id="t_mente"><div class="t" style="top:120px;font-size:80px">One mind.<br><span style="color:var(--hielo)">Three ways to help.</span></div></div>
 
   <!-- S5–S7 teléfono -->
@@ -191,7 +192,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-const T = await (await fetch('./tiempos.json')).json();   // el guion con segundos (lo arma montar.py)
+const T = await (await fetch('./' + (new URLSearchParams(location.search).get('t') || 'tiempos.json'))).json();   // el guion con segundos (lo arma montar.py)
 const W = 1080, H = 1920;
 const $ = id => document.getElementById(id);
 const cl = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
@@ -295,17 +296,20 @@ const geoE = new THREE.BufferGeometry(); geoE.setAttribute('position', new THREE
 const estela = new THREE.Points(geoE, new THREE.PointsMaterial({ color: '#ffd889', size: .016, transparent: true, opacity: .9, blending: THREE.AdditiveBlending, depthWrite: false })); G.oro.add(estela);
 const luzOro = new THREE.DirectionalLight('#fff6e0', 1.6); luzOro.position.set(-2, 3, 2); G.oro.add(luzOro);
 
+const ES = {"Introducing": "Te presentamos", "Your day is full of": "Tu día está lleno de", "little things.": "pequeñas cosas.", "AURA · TAKES CARE OF YOU": "AURA · TE CUIDA", "CLAUDIO · CREATES": "CLAUDIO · CREA", "ANT-ONIO · GETS IT DONE": "ANT-ONIO · LO RESUELVE", "One mind.": "Una mente.", "Three ways to help.": "Tres formas de ayudarte.", "is calling…": "te está llamando…", "Today": "Hoy", "Board meeting": "Junta directiva", "Lunch with Carlos": "Almuerzo con Carlos", "Mom’s birthday": "Cumpleaños de mamá", "I’ll remind you at 10:00": "Te aviso a las 10:00", "Inbox · sorted by ANT-ONIO": "Correo · ordenado por ANT-ONIO", "Claudio · 3 drafts": "Claudio · 3 borradores", "● LIVE · AURA’s computer": "● EN VIVO · la computadora de AURA", "Industrial parts · ★ 4.6 (312 reviews)": "Repuestos industriales · ★ 4.6 (312 reseñas)", "Payment ready": "Pago preparado", "Later": "Luego", "Accept & sign": "Aceptar y firmar", "Send": "Enviar", "To": "Para", "Mom": "Mamá", "of gold": "de oro", "= 2 g of gold": "= 2 g de oro", "Sign with fingerprint": "Firmar con huella", "AURA prepares it. You sign it.": "AURA lo prepara. Tú lo firmas.", "Sent to Mom": "Enviado a mamá", "≈ 2 g of gold": "≈ 2 g de oro", "Verified on the Orden Global chain": "Verificado en la cadena de Orden Global", "Available balance": "Saldo disponible", "● ACTIVE": "● ACTIVA", "Freeze card": "Congelar tarjeta", "Instant temporary block": "Bloqueo temporal instantáneo", "Show full number": "Ver número completo", "With your password or fingerprint": "Con tu contraseña o huella", "Top up": "Recargar", "From your ORIGEN balance": "Desde tu saldo en ORIGEN", "Every ORIGEN": "Cada ORIGEN", "is gold.": "es oro.", "You sign it.": "Tú lo firmas.", "Always.": "Siempre.", "Your Visa card.": "Tu tarjeta Visa.", "Right here.": "Aquí mismo.", "Your day": "Tu día", "Investor call": "Llamada con inversionistas", "WhatsApp · 3 new": "WhatsApp · 3 nuevos", "From your phone": "Del teléfono", "to your desktop.": "a tu computadora.", "URGENT": "URGENTE", "REPLY": "RESPONDER", "LATER": "DESPUÉS", "Contract · sign today": "Contrato · firmar hoy", "Bank · confirm transfer": "Banco · confirmar transferencia", "Board · agenda": "Junta · agenda", "Draft ready ✓": "Borrador listo ✓", "Weekly newsletter": "Boletín semanal", "Launch day.": "Día de lanzamiento.", "Meet AURA.": "Conoce a AURA.", "by Claudio · ready to post": "de Claudio · listo para publicar", "Opened the supplier site": "Abrí el sitio del proveedor", "Checked reviews & registry": "Revisé reseñas y registro", "Compared 3 prices": "Comparé 3 precios", "Calls.": "Te llama.", "Remembers.": "Recuerda.", "Organizes.": "Ordena.", "Creates.": "Crea.", "Works.": "Trabaja.", "Your wallet.": "Tu wallet.", "Your card.": "Tu tarjeta.", "Your chats.": "Tus chats.", "All in one place.": "Todo en un solo lugar.", "Send 110 ORIGEN to Mom": "Envía 110 ORIGEN a mamá", "✓ Signed": "✓ Firmado", "● FROZEN": "● CONGELADA", "Calendar": "Calendario", "Mail": "Correo", "AURA": "AURA", "6:00 AM": "6:00 a. m.", "Your day.": "Tu día."};
+const TR = x => (T.lang === 'es' ? (ES[x] ?? x) : x);
+if (T.lang === 'es') { const w = document.createTreeWalker($('dom'), NodeFilter.SHOW_TEXT); let nd; while ((nd = w.nextNode())) { const k = nd.nodeValue.trim(); if (k && ES[k]) nd.nodeValue = nd.nodeValue.replace(k, ES[k]); } }
 /* ---------------- DOM armado ---------------- */
 // cuadrícula de objetos (recortados de la hoja por montar.py)
 const OBJ = T.objetos || []; const grid = $('grid');
 OBJ.forEach((src, i) => { const d = document.createElement('div'); d.className = 'obj'; d.style.backgroundImage = `url(${src})`; grid.appendChild(d); });
 // correos
-const CORREOS = [['URGENT', '#ff8a8a', 'Contract · sign today'], ['URGENT', '#ff8a8a', 'Bank · confirm transfer'], ['URGENT', '#ff8a8a', 'Board · agenda'], ['REPLY', '#45C9DE', 'Draft ready ✓'], ['LATER', '#8E9AAB', 'Weekly newsletter']];
+const CORREOS = [['URGENT', '#ff8a8a', 'Contract · sign today'], ['URGENT', '#ff8a8a', 'Bank · confirm transfer'], ['URGENT', '#ff8a8a', 'Board · agenda'], ['REPLY', '#45C9DE', 'Draft ready ✓'], ['LATER', '#8E9AAB', 'Weekly newsletter']].map(([a, b, c]) => [TR(a), b, TR(c)]);
 CORREOS.forEach(([e, c, s]) => { const d = document.createElement('div'); d.className = 'vid'; d.style.cssText = 'position:absolute;left:0;right:0;padding:28px 34px;border-radius:30px'; d.innerHTML = `<div style="font-size:22px;letter-spacing:3px;font-weight:800;color:${c}">${e}</div><div style="font-size:32px;font-weight:700;margin-top:6px">${s}</div>`; $('correos').appendChild(d); });
 // posts de Claudio
-['Launch day.', 'Meet AURA.', 'One mind.'].forEach((s, i) => { const d = document.createElement('div'); d.style.cssText = 'position:absolute;width:330px;height:430px;border-radius:30px;background:#fff;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5)'; d.innerHTML = `<div style="height:260px;background:radial-gradient(160px 160px at 50% 55%,#3fe6fa,#0a2a4a 70%)"></div><div style="padding:22px 24px;color:#0b1220;font-weight:800;font-size:34px">${s}</div><div style="padding:0 24px;color:#667;font-size:20px">by Claudio · ready to post</div>`; $('posts').appendChild(d); });
+['Launch day.', 'Meet AURA.', 'One mind.'].map(TR).forEach((s, i) => { const d = document.createElement('div'); d.style.cssText = 'position:absolute;width:330px;height:430px;border-radius:30px;background:#fff;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5)'; d.innerHTML = `<div style="height:260px;background:radial-gradient(160px 160px at 50% 55%,#3fe6fa,#0a2a4a 70%)"></div><div style="padding:22px 24px;color:#0b1220;font-weight:800;font-size:34px">${s}</div><div style="padding:0 24px;color:#667;font-size:20px">${TR('by Claudio · ready to post')}</div>`; $('posts').appendChild(d); });
 // pasos de su computadora
-['Opened the supplier site', 'Checked reviews & registry', 'Compared 3 prices'].forEach(s => { const d = document.createElement('div'); d.className = 'fila'; d.style.gap = '16px'; d.innerHTML = `<span style="color:#30d158">✓</span>${s}`; $('pasos').appendChild(d); });
+['Opened the supplier site', 'Checked reviews & registry', 'Compared 3 prices'].map(TR).forEach(s => { const d = document.createElement('div'); d.className = 'fila'; d.style.gap = '16px'; d.innerHTML = `<span style="color:#30d158">✓</span>${s}`; $('pasos').appendChild(d); });
 // ecosistema: íconos oficiales + glifos dibujados
 const ECO = [['assets/veta-mark.png', 'Veta Wallet'], ['card', 'Visa'], ['chat', 'PULSE2CHAT'], ['cal', 'Calendar'], ['mail', 'Mail'], ['assets/origen.jpg', 'ORIGEN', 1], ['assets/auka.jpg', 'AUKA', 1], ['assets/agka.jpg', 'AGKA', 1], ['assets/ondk.jpg', 'ONDK', 1]];
 const GLIFO = { card: '<svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="#A6FBFF" stroke-width="1.3"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 9.5h19M6 15h4"/></svg>',
@@ -316,7 +320,20 @@ ECO.forEach(([src, n, red]) => { const d = document.createElement('div'); d.clas
 
 /* ---------------- la línea de tiempo ---------------- */
 const S = T.s; // segundos clave del guion
-function cuadro(t) {
+const CLIPS = T.clips || [];
+const precarga = {};
+function tomaEn(t) { for (const c of CLIPS) if (t >= c.a - .3 && t < c.b + .3) return c; return null; }
+async function ponToma(t) {
+  const c = tomaEn(t); const el = $('clip');
+  if (!c) { el.style.opacity = 0; return 0; }
+  const k = vent(t, c.a, c.b, c.fi ?? .25, c.fo ?? .25);
+  const n = Math.min(c.n, Math.max(1, Math.round((t - c.a + (c.off || 0)) * 30) + 1));
+  const src = `clips/${c.k}/${String(n).padStart(5, '0')}.jpg`; const img = $('clipA');
+  if (!img.src.endsWith(src)) { img.src = src; await img.decode().catch(() => {}); }
+  const u = cl((t - c.a) / (c.b - c.a)); img.style.transform = `scale(${1.02 + (c.zoom ?? .04) * u})`;
+  el.style.opacity = k; return k;
+}
+function cuadro(t, tk = 0) {
   // por defecto todo apagado
   document.querySelectorAll('.capa').forEach(c => c.style.opacity = 0);
   Object.values(G).forEach(g => g.visible = false);
@@ -365,7 +382,7 @@ function cuadro(t) {
     cam.position.set(0, 0, 6.2); cam.lookAt(0, 0, 0);
     const nace = ex((t - S.caida - 1.0) / 1.2);                  // explota desde el centro
     const habla = ss((t - S.hola) / .5) * (1 - ss((t - S.hola - 2.0) / .6));
-    const sube = ss((t - S.equipo + .2) / 1.0);                  // en el equipo, el orbe sube y se achica
+    const sube = 0;                  // en el equipo, el orbe sube y se achica
     const pos = geoO.attributes.position.array;
     for (let i = 0; i < NP; i++) {
       const s = sem[i], w = .02 * Math.sin(t * 1.3 + s * 40);
@@ -383,6 +400,10 @@ function cuadro(t) {
 
   /* S4 · Claudio y ANT-ONIO (GLB) a los lados del orbe */
   if (t >= S.equipo && t < S.montaje + .5) {
+    op('t_mente', vent(t, S.equipo + .3, S.claudio - .1, .5, .3));
+    op('n_claudio', vent(t, S.claudio, S.antonio, .3, .25)); op('n_antonio', vent(t, S.antonio, S.cuida, .3, .25)); op('n_aura', vent(t, S.cuida + .2, S.montaje, .4, .4));
+  }
+  if (false) {
     G.equipo.visible = true; escena.environment = envSala;
     const e = ex((t - S.equipo) / 1.2);
     claudio.m.position.x = claudio.x - claudio.cx - 1.2 * (1 - e); antonio.m.position.x = antonio.x - antonio.cx + 1.2 * (1 - e);
@@ -396,7 +417,7 @@ function cuadro(t) {
   const telIn = ex((t - S.montaje) / .9), telOut = ss((t - S.escritorio - .2) / .9);
   if (t >= S.montaje && t < S.escritorio + 1.2) {
     const heroe = vent(t, S.formula + .45, S.firma - .05, .35, .35);
-    const tel = $('tel'); tel.style.opacity = telIn * (1 - telOut) * (1 - heroe);
+    const tel = $('tel'); tel.style.opacity = telIn * (1 - telOut) * (1 - heroe) * (1 - tk);
     const rx = 8 * (1 - telIn), ry = -12 * (1 - telIn) + 3 * Math.sin(t * .5);
     tel.style.transform = `perspective(2400px) translateY(${120 * (1 - telIn)}px) rotateX(${rx}deg) rotateY(${ry}deg) scale(${.9 + .1 * telIn - .45 * telOut}) translateX(${-520 * telOut}px)`;
     const V = ['v_llamada', 'v_memoria', 'v_correo', 'v_post', 'v_compu', 'v_chat', 'v_tarjeta'];
@@ -404,7 +425,7 @@ function cuadro(t) {
     V.forEach((v, i) => { const a = ini[i], b = ini[i + 1]; const k = vent(t, a, b, .25, .25); $(v).style.opacity = k; $(v).style.transform = `translateY(${30 * (1 - ss((t - a) / .35))}px) scale(${.98 + .02 * ss((t - a) / .35)})`; });
     // palabra grande del montaje
     const PAL = [[S.montaje + .3, S.f_mem, 'Calls.'], [S.f_mem, S.f_correo, 'Remembers.'], [S.f_correo, S.f_post, 'Organizes.'], [S.f_post, S.f_compu, 'Creates.'], [S.f_compu, S.oro0, 'Works.']];
-    for (const [a, b, w] of PAL) if (t >= a && t < b) { $('palabra_t').textContent = w; op('palabra', vent(t, a, b, .2, .2)); }
+    for (const [a, b, w] of PAL) if (t >= a && t < b) { $('palabra_t').textContent = TR(w); op('palabra', vent(t, a, b, .2, .2)); }
     // llamada: vibra
     if (t < S.f_mem) tel.style.transform += ` rotate(${Math.sin(t * 60) * .6 * vent(t, S.montaje + .8, S.montaje + 2, .1, .1)}deg)`;
     // memoria: el cumpleaños se ilumina
@@ -418,17 +439,17 @@ function cuadro(t) {
     [...$('pasos').children].forEach((d, i) => d.style.opacity = ss((t - S.f_compu - .5 - .55 * i) / .3));
     $('pago_listo').style.opacity = ss((t - S.f_compu - 2.3) / .4); $('pago_listo').style.transform = `translateY(${30 * (1 - eo((t - S.f_compu - 2.3) / .5))}px)`;
     // chat → hoja de envío → fórmula → firma → recibo
-    const txt = 'Send 110 ORIGEN to Mom'; $('burbuja').textContent = txt.slice(0, Math.round(txt.length * cl((t - S.oro0 - .2) / 1.0)));
+    const txt = TR('Send 110 ORIGEN to Mom'); $('burbuja').textContent = txt.slice(0, Math.round(txt.length * cl((t - S.oro0 - .2) / 1.0)));
     $('burbuja').style.opacity = ss((t - S.oro0) / .2);
     $('hoja').style.opacity = ss((t - S.oro0 - 1.3) / .35) * (1 - ss((t - S.recibo) / .3)); $('hoja').style.transform = `translateY(${60 * (1 - eo((t - S.oro0 - 1.3) / .5))}px)`;
     $('f_res').style.opacity = ss((t - S.formula) / .3); $('f_res').style.transform = `scale(${1 + .12 * (1 - eo((t - S.formula) / .4))})`;
-    $('firmar').style.background = t > S.firma ? '#30d158' : '#3FE6FA'; $('firmar').textContent = t > S.firma ? '✓ Signed' : 'Sign with fingerprint';
+    $('firmar').style.background = t > S.firma ? '#30d158' : '#3FE6FA'; $('firmar').textContent = TR(t > S.firma ? '✓ Signed' : 'Sign with fingerprint');
     $('recibo').style.opacity = ss((t - S.recibo) / .3); $('recibo').style.transform = `scale(${.96 + .04 * eo((t - S.recibo) / .4)})`;
     // la tarjeta Visa: gira y se congela
     const gv = eo((t - S.visa) / 1.0); $('visa').style.transform = `rotateY(${-160 * (1 - gv) + 6 * Math.sin(t)}deg) rotateX(${8 * (1 - gv)}deg)`;
     $('brillo').style.transform = `translateX(${-400 + 900 * cl((t - S.visa - .6) / 1.2)}px)`;
     const fr = ss((t - S.congela) / .5); $('escarcha').style.opacity = fr * .9; $('sw').style.setProperty('--x', `${42 * fr}px`); $('sw').style.background = fr > .5 ? '#3FE6FA' : 'rgba(255,255,255,.18)';
-    $('estado').textContent = fr > .5 ? '● FROZEN' : '● ACTIVE'; $('estado').style.color = fr > .5 ? '#9fdcff' : '#3ED9A0';
+    $('estado').textContent = TR(fr > .5 ? '● FROZEN' : '● ACTIVE'); $('estado').style.color = fr > .5 ? '#9fdcff' : '#3ED9A0';
     op('t_oro', vent(t, S.formula + .2, S.firma - .2, .4, .3)); op('t_gramos', vent(t, S.formula + .9, S.firma - .1, .4, .3)); op('t_firma', vent(t, S.firma, S.visa, .3, .3)); op('t_visa', vent(t, S.visa + .4, S.escritorio, .4, .3));
   }
 
@@ -448,7 +469,7 @@ function cuadro(t) {
   /* S7 · del teléfono a la laptop: el notch se despliega */
   if (t >= S.escritorio && t < S.eco + .6) {
     const li = ex((t - S.escritorio - .3) / 1.0), lo = ss((t - S.eco + .2) / .6);
-    $('lap').style.opacity = li * (1 - lo); $('lap').style.transform = `perspective(2600px) translateY(${200 * (1 - li)}px) rotateX(${10 * (1 - li)}deg) scale(${.92 + .08 * li})`;
+    $('lap').style.opacity = li * (1 - lo) * (1 - tk); $('lap').style.transform = `perspective(2600px) translateY(${200 * (1 - li)}px) rotateX(${10 * (1 - li)}deg) scale(${.92 + .08 * li})`;
     const nx = ss((t - S.notch) / .7); const n = $('notch'); n.style.width = (220 + 580 * nx) + 'px'; n.style.height = (38 + 330 * nx) + 'px';
     $('notch_c').style.opacity = ss((t - S.notch - .4) / .4);
     op('t_desk', vent(t, S.escritorio + .2, S.eco, .5, .4));
@@ -470,16 +491,16 @@ function cuadro(t) {
       d.style.opacity = ent * (1 - ss((junta - .7) / .3)) * (1 - ss((Math.abs(rel) - 2.2) / .5)); d.style.zIndex = Math.round(z * 10) + 20; d.style.filter = `brightness(${.35 + .65 * (z + 1) / 2})`;
     });
     const P = [[S.e1, 'Your wallet.'], [S.e2, 'Your card.'], [S.e3, 'Your chats.'], [S.e4, 'Your day.'], [S.unlugar, 'All in one place.']];
-    { const fi = Math.round(ss((t - S.e2 + .3) / .55) + ss((t - S.e3 + .3) / .55) + ss((t - S.e4 + .3) / .55)); $('eco_n_t').textContent = ECO[fi][1].toUpperCase(); op('eco_n', vent(t, S.eco + .5, S.unlugar, .3, .3)); }
-    let w = ''; for (const [a, s] of P) if (t >= a) w = s; $('t_eco_t').textContent = w; op('t_eco', vent(t, S.eco + .2, S.firmaF - .2, .3, .4));
+    { const fi = Math.round(ss((t - S.e2 + .3) / .55) + ss((t - S.e3 + .3) / .55) + ss((t - S.e4 + .3) / .55)); $('eco_n_t').textContent = TR(ECO[fi][1]).toUpperCase(); op('eco_n', vent(t, S.eco + .5, S.unlugar, .3, .3)); }
+    let w = ''; for (const [a, s] of P) if (t >= a) w = s; $('t_eco_t').textContent = TR(w); op('t_eco', vent(t, S.eco + .2, S.firmaF - .2, .3, .4));
     // la «A» regresa con el punto encendido, gigante
-    if (t >= S.unlugar + .6) {
-      G.A.visible = true; escena.environmentIntensity = .45; R.toneMappingExposure = .85; bloom.threshold = .92; const v = ex((t - S.unlugar - .6) / 1.4);
+    if (t >= S.aF) {
+      G.A.visible = true; escena.environmentIntensity = .45; R.toneMappingExposure = .85; bloom.threshold = .92; const v = ex((t - S.aF) / 1.4);
       vidrio.opacity = v; vidrio.transmission = .93; halos.forEach((h, i) => h.material.opacity = [.42, .45, .25][i] * v);
       mA.scale.setScalar(.7 + .3 * v); mA.rotation.y = THREE.MathUtils.degToRad(20 * (1 - v) + 3 * Math.sin(t * .5));
-      puntoA.material.emissiveIntensity = .8 + 1.6 * (1 - ss((t - S.unlugar - .6) / .8));
+      puntoA.material.emissiveIntensity = .8 + 1.6 * (1 - ss((t - S.aF) / .8));
       const dd = 10.9 + .5 * ss((t - S.firmaF) / 3); cam.position.set(Math.sin(.1) * dd, .35, dd); cam.lookAt(0, .05, 0);
-      bloom.strength = .12; haloP.material.opacity = .35 + .5 * (1 - ss((t - S.unlugar - .6) / .9)); haloP2.material.opacity = .45 + .4 * (1 - ss((t - S.unlugar - .6) / .9));
+      bloom.strength = .12; haloP.material.opacity = .35 + .5 * (1 - ss((t - S.aF) / .9)); haloP2.material.opacity = .45 + .4 * (1 - ss((t - S.aF) / .9));
     }
     op('firma_final', vent(t, S.firmaF, 999, .7, .1));
   }
@@ -490,6 +511,6 @@ function cuadro(t) {
   document.body.style.filter = fin > 0 ? `brightness(${1 - fin})` : '';
 }
 window.DBG = { puntoA, bloom, halos, mA, G, vidrio, R };
-window.setT = t => new Promise(res => { cuadro(t); requestAnimationFrame(() => requestAnimationFrame(() => res(true))); });
+window.setT = async t => { const tk = await ponToma(t); return new Promise(res => { cuadro(t, tk); requestAnimationFrame(() => requestAnimationFrame(() => res(true))); }); };
 await document.fonts.ready; window.LISTO = true;
 </script></body></html>
