@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1080, height=1920">
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./vendor/three/build/three.module.js",
+          "three/addons/": "./vendor/three/examples/jsm/"
+        }
+      }
+    </script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: #000; }
+      #root { position: relative; width: 1080px; height: 1920px; background: #000; }
+      #luz { position: absolute; inset: 0; width: 1080px; height: 1920px; display: block; }
+    </style>
+  </head>
+  <body>
+    <!-- Prueba de técnica de Honduras Secreta 2: negro → punto → guacamaya de luz → vuelo con estela
+         tricolor que se vuelve la línea dorada → mano que talla → glifo de guacamaya de Copán →
+         el glifo se aplana en el horizonte del mar (1502). -->
+    <div data-hf-id="hf-1lsk" id="root" data-composition-id="main" data-no-timeline="" data-start="0" data-duration="9" data-width="1080" data-height="1920">
+      <canvas data-hf-id="hf-vgc1" id="luz" class="clip" data-start="0" data-duration="9" data-track-index="0"></canvas>
+    </div>
+    <script type="module">
+      import * as THREE from "three";
+      import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+      import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+      import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+      import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+      import TRAZOS from "./assets/trazos/trazos.js";
+
+      const W = 1080, H = 1920;
+
+
+      // ---------- utilidades ----------
+      const lerp = (a, b, u) => a + (b - a) * u;
+      const clamp = (u) => Math.min(1, Math.max(0, u));
+      const tramo = (t, a, b) => clamp((t - a) / (b - a));
+      const suave = (u) => u * u * (3 - 2 * u);
+      const sale = (u) => 1 - Math.pow(1 - u, 3);
+      function prng(seed) { return () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296); }
+
+      function remuestrear(pts, paso) {
+        const out = [pts[0]]; let acc = 0;
+        for (let i = 1; i < pts.length; i++) {
+          const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
+          const d = Math.hypot(x1 - x0, y1 - y0); acc += d;
+          if (acc >= paso) { out.push(pts[i]); acc = 0; }
+        }
+        if (out[out.length - 1] !== pts[pts.length - 1]) out.push(pts[pts.length - 1]);
+        return out;
+      }
+
+      function textoGlow() {
+        const c = document.createElement("canvas"); c.width = c.height = 128;
+        const g = c.getContext("2d"), r = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+        r.addColorStop(0, "rgba(255,255,255,1)"); r.addColorStop(0.18, "rgba(255,236,200,0.85)");
+        r.addColorStop(0.5, "rgba(255,180,90,0.18)"); r.addColorStop(1, "rgba(255,160,60,0)");
+        g.fillStyle = r; g.fillRect(0, 0, 128, 128);
+        const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+      }
+
+      // Un dibujo de luz: tubos por trazo, con su reflejo en el piso mojado.
+      // `colorDe(trazo)` da el color de cada trazo. El avance se mide en longitud recorrida.
+      function dibujo(data, { escala, pos, paso = 0.006, radio = 0.0038, colorDe, piso }) {
+        const grupo = new THREE.Group(), reflejo = new THREE.Group();
+        grupo.position.copy(pos); grupo.scale.setScalar(escala);
+        const trazos = []; let total = 0;
+        for (const crudo of data.trazos) {
+          const p2 = remuestrear(crudo, paso);
+          if (p2.length < 2) continue;
+          const v = p2.map(([x, y]) => new THREE.Vector3(x, y, 0));
+          const curva = new THREE.CatmullRomCurve3(v, false, "centripetal");
+          const seg = Math.max(2, v.length);
+          const geo = new THREE.TubeGeometry(curva, seg, radio / escala, 6, false);
+          const col = colorDe ? colorDe(p2) : new THREE.Color(0.95, 0.72, 0.42);
+          const mat = new THREE.MeshBasicMaterial({ color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+          const mesh = new THREE.Mesh(geo, mat); grupo.add(mesh);
+          const matR = mat.clone(); matR.opacity = 0.16;
+          const meshR = new THREE.Mesh(geo, matR); reflejo.add(meshR);
+          let largo = 0; for (let i = 1; i < p2.length; i++) largo += Math.hypot(p2[i][0] - p2[i - 1][0], p2[i][1] - p2[i - 1][1]);
+          trazos.push({ geo, seg, mat, matR, curva, largo, ini: total });
+          total += largo;
+        }
+        // reflejo: espejo respecto al plano del piso
+        reflejo.position.set(pos.x, 2 * piso - pos.y, pos.z); reflejo.scale.set(escala, -escala, escala);
+        return { grupo, reflejo, trazos, total, escala };
+      }
+
+      // Avanza el dibujo hasta la fracción u (0..1) de su longitud; devuelve la punta del lápiz en el mundo.
+      function avanzar(d, u, brillo = 1) {
+        const meta = u * d.total; let punta = null;
+        for (const tz of d.trazos) {
+          const f = clamp((meta - tz.ini) / tz.largo);
+          tz.geo.setDrawRange(0, Math.floor(f * tz.seg) * 6 * 6);
+          tz.mat.opacity = brillo; tz.matR.opacity = 0.16 * brillo;
+          if (f > 0 && f < 1) punta = tz.curva.getPointAt(f);
+          else if (f >= 1 && !punta && meta - tz.ini - tz.largo < 0.02) punta = tz.curva.getPointAt(1);
+        }
+        if (!punta) return null;
+        return d.grupo.localToWorld(punta.clone());
+      }
+
+      async function construir() {
+        const { guara: dGuara, mano: dMano, glifo: dGlifo } = TRAZOS;
+
+        const canvas = document.getElementById("luz");
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+        renderer.setPixelRatio(1); renderer.setSize(W, H, false);
+        renderer.setClearColor(0x000000, 1);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.95;
+
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x050302, 0.055);
+        const camera = new THREE.PerspectiveCamera(42, W / H, 0.05, 120);
+
+        const PISO = 0.02;
+        // piso mojado: plano oscuro con un brillo cálido que se desvanece en la neblina
+        const piso = new THREE.Mesh(new THREE.PlaneGeometry(60, 80),
+          new THREE.MeshBasicMaterial({ color: 0x120c08, transparent: true, opacity: 0.35, depthWrite: false }));
+        piso.renderOrder = -1;
+        piso.rotation.x = -Math.PI / 2; piso.position.set(0, PISO - 0.001, -20); scene.add(piso);
+
+        // bokeh del fondo (semilla fija)
+        const r = prng(7), glow = textoGlow();
+        const bokeh = new THREE.Group();
+        for (let i = 0; i < 46; i++) {
+          const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, color: new THREE.Color(1, 0.62 + 0.2 * r(), 0.3),
+            transparent: true, opacity: 0.25 + 0.35 * r(), blending: THREE.AdditiveBlending, depthWrite: false }));
+          s.position.set((r() - 0.5) * 16, PISO + 0.2 + r() * 4.5, -9 - r() * 22);
+          s.scale.setScalar(0.18 + r() * 0.35); bokeh.add(s);
+        }
+        scene.add(bokeh);
+
+        // ---- figuras ----
+        // la guacamaya es lo único con color: alas en azul y amarillo, cuerpo y cola en rojo
+        const colorGuara = (pts) => {
+          const cy = pts.reduce((a, p) => a + p[1], 0) / pts.length, cx = pts.reduce((a, p) => a + p[0], 0) / pts.length;
+          if (cy > 0.55) return new THREE.Color(0.18, 0.42, 1.05);      // puntas de las alas: azul
+          if (cy > 0.18 && cx > -0.35) return new THREE.Color(1.0, 0.72, 0.1); // franja amarilla
+          return new THREE.Color(1.05, 0.1, 0.07);                     // rojo
+        };
+        const guara = dibujo(dGuara, { escala: 0.62, pos: new THREE.Vector3(0, 0.95, 0), colorDe: colorGuara, piso: PISO, radio: 0.0045 });
+        const mano = dibujo(dMano, { escala: 0.7, pos: new THREE.Vector3(-0.32, 0.78, -6), piso: PISO });
+        const glifo = dibujo(dGlifo, { escala: 0.78, pos: new THREE.Vector3(1.05, 0.98, -8.6), piso: PISO, radio: 0.006 });
+        for (const d of [guara, mano, glifo]) { scene.add(d.grupo); scene.add(d.reflejo); }
+
+        // estela tricolor: tres hilos que salen de la cola y se funden en la línea dorada
+        mano.grupo.updateMatrixWorld(true); guara.grupo.updateMatrixWorld(true);
+        const inicioMano = mano.grupo.localToWorld(mano.trazos[0].curva.getPointAt(0).clone());
+        // punta de la cola: el punto más bajo a la derecha del dibujo
+        let cola = null;
+        for (const tz of guara.trazos) for (const q of [tz.curva.getPointAt(0), tz.curva.getPointAt(1)]) if (!cola || q.x - q.y > cola.x - cola.y) cola = q.clone();
+        const colaW = guara.grupo.localToWorld(cola.clone());
+        const curvaEstela = new THREE.CatmullRomCurve3([
+          colaW, colaW.clone().add(new THREE.Vector3(-0.5, 0.35, -1.0)), new THREE.Vector3(-0.55, 1.15, -2.6),
+          new THREE.Vector3(0.1, 1.05, -4.2), inicioMano.clone().add(new THREE.Vector3(0.25, 0.2, 0.3)), inicioMano,
+        ], false, "centripetal");
+        const hilos = [new THREE.Color(1.05, 0.1, 0.07), new THREE.Color(1.0, 0.72, 0.1), new THREE.Color(0.18, 0.42, 1.05)].map((c, k) => {
+          const pts = []; const N = 260;
+          for (let i = 0; i <= N; i++) {
+            const u = i / N, p = curvaEstela.getPointAt(u), tan = curvaEstela.getTangentAt(u);
+            const lado = new THREE.Vector3().crossVectors(tan, new THREE.Vector3(0, 1, 0)).normalize();
+            const sep = (k - 1) * 0.035 * Math.pow(1 - u, 1.4); // se juntan en una sola línea
+            pts.push(p.clone().addScaledVector(lado, sep).add(new THREE.Vector3(0, (k - 1) * 0.03 * (1 - u), 0)));
+          }
+          const geo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), N, 0.0042, 6, false);
+          // color por vértice: del color propio al dorado
+          const cols = []; const oro = new THREE.Color(1.0, 0.8, 0.5);
+          for (let i = 0; i <= N; i++) for (let j = 0; j <= 6; j++) { const c2 = c.clone().lerp(oro, Math.min(1, (i / N) * 1.6)).multiplyScalar(0.12 + 0.88 * Math.min(1, (i / N) / 0.45)); cols.push(c2.r, c2.g, c2.b); }
+          geo.setAttribute("color", new THREE.Float32BufferAttribute(cols, 3));
+          const mat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+          const m = new THREE.Mesh(geo, mat); scene.add(m);
+          const mR = new THREE.Mesh(geo, mat.clone()); mR.material.opacity = 0.2; mR.scale.y = -1; mR.position.y = 2 * PISO; scene.add(mR);
+          return { geo, N, mat, matR: mR.material };
+        });
+
+        // rayos del nacimiento
+        const rr = prng(21), rayos = [];
+        for (let i = 0; i < 26; i++) {
+          const a = (i / 26) * Math.PI * 2 + rr() * 0.2, l = 0.35 + rr() * 0.7;
+          const dir = new THREE.Vector3(Math.cos(a), Math.sin(a) * 0.8 + 0.35, (rr() - 0.5) * 0.6).normalize();
+          const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), dir.multiplyScalar(l)]);
+          const mat = new THREE.LineBasicMaterial({ color: new THREE.Color(1.6, 1.2, 0.8), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+          const ln = new THREE.Line(geo, mat); ln.position.set(-0.12, 0.72, 0); scene.add(ln); rayos.push({ ln, mat, l });
+        }
+
+        // olas del horizonte (1502)
+        const olas = [0, 1, 2].map((k) => {
+          const pts = []; for (let i = 0; i <= 200; i++) { const x = -3.2 + i * 0.032; pts.push(new THREE.Vector3(1.05 + x, 0.62 - k * 0.12 + Math.sin(x * 4 + k) * 0.012, -8.6 + k * 0.35)); }
+          const geo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 200, 0.0045, 5, false);
+          const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.75, 0.62, 0.45), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+          const m = new THREE.Mesh(geo, mat); scene.add(m); return { geo, mat };
+        });
+
+        // la punta del lápiz de luz
+        const punta = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+        scene.add(punta);
+        const puntaR = punta.clone(); puntaR.material = punta.material.clone(); scene.add(puntaR);
+
+        const composer = new EffectComposer(renderer);
+        composer.setPixelRatio(1); composer.setSize(W, H);
+        composer.addPass(new RenderPass(scene, camera));
+        const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), 0.62, 0.32, 0.12); composer.addPass(bloom);
+        composer.addPass(new OutputPass());
+
+        // ---- línea de tiempo (todo se calcula desde t) ----
+        function renderAt(t) {
+          // cámara: avanza en profundidad, con un leve vaivén de mano
+          const uc = suave(tramo(t, 2.7, 5.4)), ux = suave(tramo(t, 5.4, 7.4));
+          const cz = lerp(3.4, -2.6, uc) + lerp(0, -1.6, ux) + lerp(0, -0.6, tramo(t, 7.4, 9));
+          const cy = lerp(0.62, 0.66, uc) + 0.08 * tramo(t, 7.4, 9);
+          camera.position.set(lerp(0, -0.25, uc) + lerp(0, 1.1, ux) + 0.04 * Math.sin(t * 0.7), cy + 0.02 * Math.sin(t * 1.1), cz);
+          const mira = new THREE.Vector3(lerp(0, -0.32, uc) + lerp(0, 1.37, ux), lerp(0.75, 0.78, uc) + lerp(0, 0.05, ux), lerp(0, -6, uc) + lerp(0, -2.4, ux));
+          camera.lookAt(mira);
+
+          // nacimiento: el punto respira y estalla en rayos
+          const nace = tramo(t, 0.4, 0.8), rayo = tramo(t, 0.85, 1.35);
+          for (const { ln, mat, l } of rayos) {
+            const g = sale(rayo); ln.scale.setScalar(Math.max(0.001, g));
+            mat.opacity = rayo > 0 ? (1 - tramo(t, 1.05, 1.5)) : 0;
+          }
+
+          // guacamaya: se dibuja 1.3–2.9 s, luego vuela y se va
+          const ug = tramo(t, 1.3, 2.9);
+          const pg = avanzar(guara, ug, 1);
+          const ueG = sale(tramo(t, 2.9, 4.0)), sube = suave(tramo(t, 3.85, 4.6));
+          const enCurva = curvaEstela.getPointAt(Math.min(ueG, 0.97)).sub(colaW);
+          guara.grupo.position.set(0 + enCurva.x - 0.4 * sube, 0.95 + enCurva.y + 2.2 * sube, 0 + enCurva.z - 1.0 * sube);
+          guara.grupo.rotation.z = lerp(0, 0.25, ueG) + 0.3 * sube;
+          const aleteo = t > 2.9 ? 1 + 0.07 * Math.sin((t - 2.9) * 12) * (1 - sube * 0.5) : 1;
+          guara.grupo.scale.set(guara.escala, guara.escala * aleteo, guara.escala);
+          guara.reflejo.position.set(guara.grupo.position.x, 2 * PISO - guara.grupo.position.y, guara.grupo.position.z);
+          guara.reflejo.rotation.z = -guara.grupo.rotation.z;
+          for (const tz of guara.trazos) { tz.mat.opacity = 1 - tramo(t, 4.2, 4.8); tz.matR.opacity = 0.16 * tz.mat.opacity; }
+
+          // estela: 2.9–4.0 s, de la cola al punto donde empieza la mano
+          const ue = sale(tramo(t, 2.9, 4.0));
+          for (const h of hilos) {
+            h.geo.setDrawRange(0, Math.floor(ue * h.N) * 6 * 6);
+            const op = 1 - tramo(t, 3.95, 4.3); h.mat.opacity = op; h.matR.opacity = 0.14 * op;
+          }
+
+          // mano: 4.0–5.8 s; glifo: 5.6–7.2 s
+          const um = tramo(t, 4.0, 5.6), ugl = tramo(t, 5.7, 7.3);
+          const pm = avanzar(mano, um, (1 - 0.82 * tramo(t, 5.6, 6.6)) * (1 - tramo(t, 7.2, 7.9)));
+          const pgl = avanzar(glifo, ugl, 1);
+
+          // el glifo se aplana en el horizonte: la escala vertical cae y la horizontal se abre
+          const ap = suave(tramo(t, 7.4, 8.2));
+          glifo.grupo.scale.set(glifo.escala * (1 + 5 * ap), glifo.escala * lerp(1, 0.012, ap), glifo.escala);
+          glifo.grupo.position.y = lerp(0.98, 0.72, ap);
+          glifo.reflejo.scale.set(glifo.grupo.scale.x, -glifo.grupo.scale.y, glifo.escala);
+          glifo.reflejo.position.y = 2 * PISO - glifo.grupo.position.y;
+          for (const tz of glifo.trazos) { tz.mat.opacity = 1 + 1.5 * ap; tz.matR.opacity = 0.22 * (1 + ap); }
+          for (const tz of mano.trazos) tz.mat.opacity *= 1 - 0.8 * ap;
+          const uo = tramo(t, 7.95, 8.9);
+          olas.forEach((o, k) => { o.geo.setDrawRange(0, Math.floor(clamp(uo * 1.4 - k * 0.2) * 200) * 5 * 6); o.mat.opacity = 0.9 - k * 0.2; });
+
+          // punta del lápiz: primero el punto que nace, luego sigue lo que se esté dibujando
+          let pp = null, tam = 0;
+          if (t < 1.3) { pp = new THREE.Vector3(-0.12, 0.72, 0); tam = 0.12 + 0.25 * nace + 0.06 * Math.sin(t * 9) * nace + 0.5 * Math.max(0, 1 - Math.abs(t - 0.95) / 0.12); }
+          else if (ug < 1) { pp = pg; tam = 0.16; }
+          else if (ue < 1) { pp = curvaEstela.getPointAt(ue); tam = 0.15; }
+          else if (um < 1) { pp = pm; tam = 0.15; }
+          else if (ugl < 1) { pp = pgl; tam = 0.17; }
+          if (pp && t > 0.4) {
+            punta.visible = puntaR.visible = true;
+            punta.position.copy(pp); punta.scale.setScalar(tam);
+            puntaR.position.set(pp.x, 2 * PISO - pp.y, pp.z); puntaR.scale.setScalar(tam * 0.8); puntaR.material.opacity = 0.3;
+          } else punta.visible = puntaR.visible = false;
+
+          bokeh.children.forEach((s, i) => { s.material.opacity = (0.15 + 0.3 * ((i * 37) % 10) / 10) * tramo(t, 0.2, 1.8); });
+          composer.render();
+        }
+
+        window.addEventListener("hf-seek", (e) => renderAt(e.detail.time));
+        renderAt(window.__hfThreeTime || 0);
+      }
+      window.__hf = window.__hf || {};
+      window.__hf.buildReady = window.__hf.buildReady || {};
+      window.__hf.buildReady["hs2-luz"] = construir();
+    </script>
+  </body>
+</html>
