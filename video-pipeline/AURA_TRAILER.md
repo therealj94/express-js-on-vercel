@@ -1,124 +1,92 @@
-# AU-RA FP · tráiler: borrador 2 (guion y diseño, sin producir)
+# AU-RA FP · tráiler para inversionistas: borrador 3
 
-Fuente: rama `claude/ultron-fp-premium-s46jxx` de ULTRON-APP, la más reciente: va 50 commits delante de `main` y tiene cambios del 4 de octubre. El borrador 1 se hizo sobre una versión vieja y queda descartado.
+**Formato:** 9:16, unos 65 s.
 
-## 1. Lo que la app es hoy
+**Logo:** la «A» cian con el orbe, la nueva de José. Ya está vectorizada en `montaje/marca/logo_A.svg`.
 
-**Qué promete.** «Cuatro personajes, un solo cerebro (mismas herramientas y memoria), pero cada uno con su cara, su voz, sus colores y su oficio» (mobile/src/avatares/catalogo.ts).
+**Orden de aparición:** AU-RA es la protagonista, después Claudio y al final ANT-ONIO.
 
-**Quién la usa.** Gente con Veta Wallet o Genesis ID, además de la junta. Ya no es solo un producto interno.
+**Voces:** las de la app (server/eleven.ts), con el modelo eleven_v4:
 
-**Plataformas:**
-- Android: APK 5.3.0 con actualizaciones por OTA.
-- Web y PWA.
-- Windows: AURA 1.2, con un notch negro arriba al centro, al estilo de la isla dinámica.
-- iPhone: solo por la web y **sin verificar**. En el tráiler no se menciona.
-
-**Los tres protagonistas.** El Guardián existe, pero queda fuera del tráiler.
-
-| | AU-RA | Claudio | ANT-ONIO |
-|---|---|---|---|
-| Quién es | Orbe de luz que **forma con partículas las palabras que dice**. Cálida | Zorro con lentes amarillos y suéter negro con la corona verde de OG. Ingenioso y bromista | Hormiga de lentes y **cuatro brazos**, ropa negra con cian. Enérgico y práctico |
-| Oficio | Compañera: agenda, recordatorios, memoria, ánimo | Anfitrión de marketing: ideas, posts, guiones | Aliado para resolver: planes, pendientes, Veta, Genesis, PULSE2CHAT |
-| Color | Oro `#D6B56C` | Naranja `#FF9A4D` | Cian `#45C9DE` |
-| Frase propia | «Aquí estoy. Soy AU-RA, tu compañera. ¿Qué hacemos hoy?» | «Traigo ideas frescas y los lentes puestos. ¿Qué vendemos hoy?» | «Con cuatro brazos hacemos varias cosas a la vez. ¿Qué resolvemos?» |
-| Material | Orbe WebGL (src/14-orbe/orbe.html), aura.glb | 17 clips de video de 720×1280, 5 s, en bucle; claudio.glb con 30 animaciones | Igual: 17 clips; antonio.glb |
-
-Los clips son: reposo, escucha, piensa, habla, teclea, lee, espera, saluda, señala, risa, sorpresa, triste, celebra, asiente, niega, duda y despide. Cada avatar tiene además su voz en ElevenLabs.
-
-**Funciones que se pueden mostrar sin mentir:**
-- **Hablar:** le hablas encima y se calla.
-- **Llamada:** «llámame» funciona incluso con la app cerrada.
-- **Recordatorios** que llaman a la hora.
-- **Cámara:** «qué ves» o leer un papel.
-- **Chats:** PULSE2CHAT, WhatsApp (solo para los dueños) y correo de cualquier proveedor.
-- **Permisos exactos:** «Nada sale sin que tú digas que sí»; un «sí» para Ana no sirve para enviar a Bruno.
-- **Cartera Veta Wallet:**
-  - Es de solo lectura.
-  - El pago lo prepara AURA y se firma en Veta Wallet, con el resultado «Verificado en la cadena de Orden Global».
-  - **AURA nunca mueve el dinero.**
-- **Su propia computadora en la nube:** muestra el plan, la vista en vivo y los pasos con captura. No paga ni compra.
-- **Memoria y su círculo:** el ejemplo es el cumpleaños de mamá.
-- **Propuestas** con las opciones «Sí, hazlo / Luego / No».
-- **Windows:**
-  - El notch, «Oye AURA» y escribir en cualquier app.
-  - Control de la PC por voz y Spotify.
-  - Notificaciones de WhatsApp, Teams y Outlook.
-
-**Lo que no se dice:**
-- Que AURA mueve dinero.
-- Que funciona en iPhone.
-- Que WhatsApp es oficial.
-- «Potenciado por IA» o «tu asistente inteligente», que la propia guía prohíbe.
-- Datos reales de nadie: los ejemplos del recorrido son ficticios y tienen que verse como tales.
-
-## 2. Crítica
-
-1. **Hay dos logos en uso.**
-   - El planeta crema de AU-RA (app móvil, solo en PNG).
-   - El punzón de lingote «AU» de Windows, de la dirección «Contraste», en vector (windows/marca/marca.svg).
-
-   El tráiler necesita **uno solo**. Recomiendo el punzón: es vector, es sobrio y su idea es la más fuerte («el contraste es la marca que se golpea sobre el oro para garantizar su ley»).
-2. **Hay un choque de estilos que se resuelve con una regla.** «Contraste» prohíbe orbes, partículas y glow, pero AU-RA *es* un orbe de partículas, aprobado por ti. La regla: **la marca es el escenario y los avatares son el reparto.**
-   - El escenario: negro obsidiana, filos de oro de 1 px, tipografía grabada.
-   - El reparto: AU-RA, Claudio y ANT-ONIO viven en ese escenario, cada uno con su color.
-   - Fuera de la cara de AU-RA, el escenario no lleva orbes, glow ni partículas.
-3. **Tres personajes pueden convertirse en un catálogo.** Ese error ya se cometió con el ecosistema: «el espectador frío se perdió entre Veta, Genesis, Pulse y AU-RA».
-   - Solución: **un solo cerebro y tres caras** como idea, y cada personaje entra con su oficio en una sola frase.
-   - Las funciones salen como acciones de ellos, no como una lista.
-4. **No hay locutor.** Solo hablan ellos, con sus voces reales. La chispa del recorrido (Claudio y ANT-ONIO pinchándose) se usa una vez: es lo que da personalidad.
-5. **La confianza es el diferencial.** En un mundo de IA que hace cosas solas, la frase que se queda es **«Nada sale sin tu sí.»** El clímax del tráiler es un dedo que toca «Sí».
-6. **La calidad del material:**
-   - Los clips son de 720p, sirven para planos medios en 9:16.
-   - Para los planos héroe al estilo Apple (avatar girando en estudio, macro de los lentes de Claudio, los cuatro brazos de ANT-ONIO) hay que **renderizar los GLB en 4K con luz de estudio**. Ya existen, con 30 animaciones cada uno.
-   - Los teléfonos y la laptop salen como maquetas en 3D con la interfaz real capturada.
-
-## 3. Idea: «Un cerebro. Tres caras. Tu sí.»
-
-## 4. Guion · 75 s · 16:9, con montaje propio en 9:16
-
-| Tiempo | Imagen | Voz / texto en pantalla |
+| Personaje | Voz | ID |
 |---|---|---|
-| 0–4 | Obsidiana. El punzón llega desde la profundidad y **golpea**: destello de 70 ms, sacudida de 2 px y el «AU» queda calado. Silencio y luego un golpe metálico seco. | — |
-| 4–10 | Del negro nace el orbe. Sus partículas **forman la palabra «Hola»** y se deshacen. | AU-RA: «Aquí estoy.» · Texto: **Te escucha.** |
-| 10–15 | Una partícula vuela y se convierte en el reflejo de unos lentes amarillos: **Claudio** (GLB en 4K, giro de estudio) se los acomoda y sonríe. | Claudio: «Traigo ideas frescas… y los lentes puestos.» · **Ideas.** |
-| 15–20 | Un filo de oro de 1 px corta el cuadro y entra **ANT-ONIO**: los cuatro brazos se abren uno tras otro, al ritmo. | ANT-ONIO: «Cuatro brazos. Cero excusas.» · **Resuelve.** |
-| 20–24 | Los tres en fila sobre obsidiana, cada uno con su color de acento. Un filo de oro los une. | Texto grande: **Un cerebro. Tres caras.** |
-| 24–31 | Un teléfono flotando suena: «AU-RA te está llamando». Se contesta. | AU-RA: «Hoy es el cumpleaños de tu mamá.» · **Se acuerda por ti.** |
-| 31–40 | ANT-ONIO teclea. Su pantalla se vuelve la laptop en la nube: plan, pasos con captura, vista en vivo. | ANT-ONIO: «Yo me encargo.» · **Tiene su propia computadora.** |
-| 40–49 | Claudio escribe un borrador de correo. El botón **Sí, envíalo** se graba en oro, el dedo se acerca, pausa, silencio total… y toca. | Claudio: «¿Lo mando?» · **Nada sale sin tu sí.** |
-| 49–56 | Cartera: el pago preparado pasa a Veta Wallet, se firma y aparece «Verificado en la cadena de Orden Global». | **Tu firma. Tu dinero.** |
-| 56–64 | Laptop con Windows. Claudio: «Me hago chiquito y me meto ahí.» Se encoge y vuela al **notch**. | «Oye AURA.» · **También en tu computadora.** |
-| 64–70 | Remate con chispa: ANT-ONIO asiente, Claudio celebra y el orbe forma «Listo». | ANT-ONIO: «¡Ojalá contigo funcionara igual, Claudio!» (o la que se elija del recorrido) |
-| 70–75 | Obsidiana. Punzón, **AU·RA FP** y debajo, en Mono ceniza, POWERED BY ORDEN GLOBAL. Abajo y pequeño: Android · Windows · Web. | Un acorde. |
+| AU-RA | voz en español | `AoT6sxPBYB0OGpSnIiwc` |
+| Claudio | «CLAUDIO», la que diseñó José | `5hNQxGboC72zatTcGoJN` |
+| ANT-ONIO | «Leo» | `wXojZ3FhzsE0AumH6Oym` |
 
-## 5. Diseño
+Las tres pruebas de voz están en /home/user/AURA_voces_prueba.mp3.
 
-- **Escenario «Contraste»:**
-  - Obsidiana `#0D0C0A` y grafito `#171512`.
-  - Oro crudo `#B8913F` y oro pulido `#E3C77E` **solo en filos de 1 px y en lo activo**.
-  - Texto en papel `#ECE5D6`.
-- **Tipografía:**
-  - Títulos en IBM Plex Sans Condensed SemiBold, en mayúsculas y con tracking amplio.
-  - Cifras en Plex Mono.
-  - Una idea por pantalla, cuatro palabras como máximo.
-- **Movimiento** (la guía de Windows ya lo define):
-  - **golpe** (escala de 1,04 a 1 en 200 ms, con un destello mínimo);
-  - **grabado** (un filo de oro que se traza);
-  - **canto estriado** (para «pensando»);
-  - **pátina** (para «escuchando»).
-  - Los empujes de cámara son lentos. Las transiciones salen del objeto: partícula a reflejo de lentes, filo de oro a corte, avatar al notch.
-- **Planos héroe:** los GLB renderizados en 4K con luz de estudio de tres puntos sobre obsidiana, con giro lento y macros (pelo de Claudio, ojos de ANT-ONIO, partículas del orbe).
-- **Interfaz:** capturas reales redibujadas en vector, dentro de maquetas de teléfono y laptop. Los datos de ejemplo son ficticios.
+## 1. Contra quién competimos (investigado el 4 de octubre de 2026)
+
+| | Meta Muse | Grok Companions (xAI) | AU-RA FP |
+|---|---|---|---|
+| Qué es | Agente personal con avatar, navegador visible, correo propio, control de Mac y llamadas a negocios | Avatares 3D de compañía (Ani, Rudi…) para entretenimiento | Un cerebro con tres especialistas, cada uno con su voz y su oficio |
+| Dónde | **Solo EE. UU.**; no se menciona el español | Retirados de Grok en septiembre de 2026 | **Latinoamérica, en español nativo** (y en inglés) |
+| Dinero | Puede comprar. Amazon lo bloqueó porque «parecía capturar y guardar credenciales» | No aplica | **Nunca mueve tu dinero.** Prepara el pago, tú firmas en Veta Wallet y queda «Verificado en la cadena de Orden Global» |
+| Permiso | Permisos de lectura y escritura por servicio | No aplica | **Un sí vale para una sola cosa exacta** (el «sí» de «enviar a Ana» no envía a Bruno) |
+| Datos | Usa tus consultas para entrenar, salvo que lo apagues | No aplica | La memoria es de cada persona |
+| Dónde vive | iOS, Android, web, gafas y un llavero | App de Grok | Android, web y Windows (un notch arriba al centro, «Oye AURA») |
+
+Fuentes:
+- Wikipedia, «Muse (AI agent)».
+- TechCrunch y 9to5Mac, septiembre de 2026.
+- aadhunik.ai y nika.team, sobre el retiro de los Companions.
+
+**El ángulo de venta.** El primer agente de compañía de una gran tecnológica salió solo en inglés y solo en EE. UU., y su mayor tropiezo fue la confianza (las credenciales). AU-RA llega a 650 millones de hispanohablantes con lo que a ellos les falta: **confianza verificable**, un sí exacto, el dinero firmado por ti y comprobado en cadena, y personajes con oficio en lugar de muñecos de compañía.
+
+**Regla para el video:** no se nombra a ningún competidor en pantalla (estilo Apple). La comparación va implícita en el guion y explícita en el deck.
+
+## 2. Guion
+
+| Tiempo | Imagen | Voz / texto |
+|---|---|---|
+| **0–6 · El problema** | Negro azul noche `#050B17`. Tres frases en blanco que entran y salen con golpe seco, una por pantalla. | **Los asistentes conversan.** · **Los agentes ya actúan.** · **¿Quién les dio permiso?** |
+| **6–12 · La marca** | Un punto de luz cian cae al centro y deja una estela: **es el orbe de la «A»**. Alrededor se construye la «A» en 3D de vidrio y luz (extrusión suave, reflejo que barre). Pausa de un segundo, perfecta. | Un solo golpe sonoro grave. |
+| **12–20 · AU-RA** | **La transición wow:** la cámara entra en el orbe de la «A» y el orbe estalla en miles de partículas que se vuelven AU-RA (el orbe real de la app), a pantalla completa. Las partículas **forman la palabra «Hola»**. | AU-RA: «Aquí estoy. Soy AU-RA.» |
+| **20–32 · Lo que hace** | Un teléfono de vidrio flota y gira. Tres viñetas cortas, cada una con su interfaz real redibujada: llamada entrante «AU-RA te está llamando» con el recordatorio del cumpleaños de mamá; la memoria con «Lo que sé de ti»; **su propia computadora en la nube**, con los pasos con captura que se apilan. | Rótulos que se graban: **Te llama.** · **Recuerda.** · **Trabaja por ti.** |
+| **32–40 · La promesa** | Macro de un botón: **«Sí, envíalo»**. Silencio total. El dedo se acerca y toca; onda de luz cian. Luego la cartera: el pago preparado pasa a Veta Wallet, firma, sello «Verificado en la cadena de Orden Global». | AU-RA: «Antes de hacer algo por ti, te pregunto.» · **Un sí. Una acción.** · **Tú firmas. Ella nunca mueve tu dinero.** |
+| **40–47 · Claudio** | Las partículas de AU-RA se arremolinan y se condensan en el **brillo de unos lentes amarillos**: Claudio (render 4K del GLB, giro de estudio, luz de borde naranja) se los acomoda. Alrededor flotan tarjetas de posts y eslóganes que se escriben solas. | Claudio: «¡Hola! Soy Claudio. Traigo ideas frescas… y los lentes puestos.» · **Marketing.** |
+| **47–54 · ANT-ONIO** | Uno de esos posts sale disparado, ANT-ONIO lo atrapa y **sus cuatro brazos se abren uno tras otro**, cada uno con una tarea que se completa (✓). Luz de borde cian. | ANT-ONIO: «¡Aquí ANT-ONIO! Cuatro brazos… cero excusas.» · **Resolver.** |
+| **54–58 · El sistema** | Los tres juntos en escalera de profundidad: AU-RA al frente, Claudio y ANT-ONIO a los lados. Un hilo de luz los une a un solo núcleo. | **Un cerebro. Tres especialistas.** |
+| **58–62 · En todas partes** | El teléfono se vuelve una laptop con Windows y Claudio vuela al notch («me hago chiquito»). | **Android · Windows · Web** · **Hecho en Latinoamérica. Habla tu idioma.** |
+| **62–66 · Cierre** | Todo se recoge en el orbe y el orbe vuelve a ser el punto de la «A». La «A» de vidrio queda quieta, **AU-RA FP** y debajo **POWERED BY ORDEN GLOBAL**. | Acorde final y silencio. |
+
+## 3. Diseño: «Luz con propósito»
+
+**Paleta, sacada del logo:**
+- noche `#050B17` y `#0A1426`;
+- cian del logo, en degradado de `#12C2F2` a `#3FE6FA` y `#A6FBFF`;
+- blanco `#F2F7FA`;
+- acentos por personaje: oro cálido del núcleo de AU-RA, naranja `#FF9A4D` de Claudio y cian `#45C9DE` de ANT-ONIO.
+
+**Tipografía.** Sans geométrica pesada con tracking cerrado (Manrope ExtraBold o Inter Tight Bold), una idea por pantalla y como máximo cuatro palabras. Las cifras van en mono.
+
+**Calidad «nada pobre»:**
+- **Todo en 3D real:**
+  - La «A» se extruye en vidrio con refracción y reflejo que barre.
+  - Los avatares salen de sus GLB (30 animaciones cada uno) renderizados a 1080×1920 o 4K, con luz de estudio de tres puntos, sombras suaves y profundidad de campo.
+  - Los clips de 720p de la app se usan solo en tamaño pequeño, dentro del teléfono.
+- **Curvas:** muelles suaves y salidas exponenciales, sin movimientos lineales.
+- **Profundidad:** desenfoque de movimiento real y paralaje en tres capas.
+- **Transiciones que salen de los objetos:**
+  - el orbe de la «A» se vuelve AU-RA;
+  - las partículas se vuelven el brillo de los lentes de Claudio;
+  - un post se vuelve un brazo de ANT-ONIO;
+  - la laptop se vuelve el notch;
+  - y al final, todo vuelve al orbe de la «A».
+
+  Sin fundidos baratos ni glitch.
+- **Interfaces:** pantallas reales de la app redibujadas en vector, con datos de ejemplo claramente ficticios.
 - **Sonido:**
-  - Pulso grave y piano mínimo; silencio antes del «Sí».
-  - Foley de metal para el golpe, papel y teclas.
-  - Las voces son las reales de los tres personajes.
+  - Música original, minimal, con pulso grave, que respira con los cortes.
+  - Silencio antes del «Sí».
+  - Foley de cristal y de luz.
+  - Las únicas voces son las de los personajes; no hay locutor.
 
-## 6. Decisiones pendientes de José
+## 4. Cómo se produce (todo por código salvo la música)
 
-1. **Logo del tráiler:** el punzón «AU» de Windows (recomendado) o el planeta de la app móvil.
-2. **Público:** usuarios del ecosistema (Veta Wallet y Genesis ID), inversionistas o redes en frío.
-3. **Formato:** 75 s en 16:9 más montaje en 9:16, o solo 9:16.
-4. **Guardián:** fuera (recomendado) o un cameo de un segundo.
-5. **Planos héroe:** ¿renderizamos los GLB en 4K? Recomendado; es por código y sin costo de IA.
+1. Prueba de estilo de 8 s: la «A» de vidrio, la entrada al orbe y AU-RA formando «Hola». Se manda a José antes de producir el resto.
+2. Los avatares en 3D desde sus GLB, con la escena en three.js y render cuadro a cuadro.
+3. Motion graphics e interfaces.
+4. Voces finales, música y mezcla.
+5. Versión para el teléfono, de menos de 30 MB, y versión máster en 1080×1920.
