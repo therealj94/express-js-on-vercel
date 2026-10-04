@@ -227,15 +227,16 @@ def burbuja(nombre, handle):
 
 
 def capa_usuario(fr, usu, u, dur=3.2):
-    """La burbuja aparece con rebote abajo a la izquierda, se queda y sale hacia abajo."""
-    nombre, handle = usu
+    """La burbuja aparece con rebote, se queda y sale. Va arriba o abajo según dónde esté la persona."""
+    nombre, handle, y0 = usu; arriba = y0 < H / 2
     if u < 0 or u > dur: return fr
     im = burbuja(nombre, handle)
     e = min(1.0, u / .5); rebote = 1 + .08 * math.sin(math.pi * e) * (1 - e) * 2 if e < 1 else 1.0
     esc = (.75 + .25 * sale(e)) * rebote
     salida = suave((u - dur + .35) / .35)
     a = suave(u / .2) * (1 - salida)
-    y = 1270 + 40 * (1 - sale(e)) + 50 * salida
+    d = -1 if arriba else 1  # entra y sale hacia el borde más cercano
+    y = y0 + d * (40 * (1 - sale(e)) + 50 * salida)
     return pega(fr, im, 40 + im.width * esc / 2, y, a, esc)
 
 
@@ -282,9 +283,9 @@ def T_VO(T):
 
 def TRAMOS(T):
     """(persona, inicio en la salida, inicio en su video, duración) de cada tramo de voz real."""
-    return [("carlos", T["carlos"], 0.0, 6.5), ("romeo", T["romeo"] - 1.0, 0.0, 6.6),
-            ("romeo", T["romeo"] + 5.6, 11.70, ROMEO_PIR), ("samira", T["samira"] - .4, 1.35, 4.95),
-            ("lenyn", T["lenyn"] - 2.24, 6.1, 7.9), ("leiva", T["leiva_tv"] - LEIVA_SRC, 0.0, 8.7)]
+    return [("carlos", T["carlos"], 0.0, 6.6), ("romeo", T["romeo"] - 1.0, 0.0, 1.0 + ROMEO_CORTE),
+            ("romeo", T["romeo"] + ROMEO_CORTE, 11.70, ROMEO_PIR), ("samira", T["samira"] - .2, 1.35, 11.05),
+            ("lenyn", T["lenyn"] - 2.24, 6.1, 8.02), ("leiva", T["leiva_tv"] - LEIVA_SRC, 0.0, 8.85)]
 
 
 GUARA_SUBS = ("¿Una guacamaya con colmillos?", "¿Yo?", "Bueno…", "uno.", "Siempre vamos a encontrar", "algo malo…",
@@ -385,7 +386,11 @@ E2_FIN = 5.3                     # en 5,6 s el clip regresa a un plano abierto: 
 PARPADEO = 1.7 / VEL_OJO2        # s de salida en que el párpado queda cerrado (cuadro 1,7 s de E2)
 PUPILA = (.5, .55)               # centro del reflejo al final del empuje de E2 (proporción del cuadro)
 MAPA_EXTRA = 1.2
-ROMEO_PIR = 1.35                  # «tenemos pirámides,» completo (11,70–13,05 de su video)
+ROMEO_CORTE = 5.75                # «…de Santa Cruz de Yojoa» termina (6,70 de su video) y salta a las pirámides
+ROMEO_PIR = 1.4                   # «tenemos pirámides,» completo y una pausa (11,70–13,10; «también» entra en 13,30)
+SAMIRA_DUR = 6.95                 # ella en cuadro hasta «…su información» (8,5); el resto de su frase va sobre el cenote
+LENYN_DUR = 2.6                   # él hasta «…belleza natural,»; «playas… vida marina» va sobre el arrecife y la ballena
+ARRIBA, ABAJO = 330, 1690         # altura de la burbuja: arriba sobre el fondo o abajo bajo los subtítulos
 LEIVA_SRC, LEIVA_DUR = 1.0, 7.25  # la tele se enciende en «…de Honduras» y lo vemos hasta «principalmente su»                 # el mapa se sostiene más para leer la pregunta
 
 
@@ -475,27 +480,27 @@ def construir(bg_final):
     # 8. De la luz a lo real: una línea recorre la silueta de Carlos y él aparece dentro
     S.append(Seg("luz_carlos", 1.5, f_luz_carlos(reales["carlos"]), tipo="real"))
     # 8. Carlos
-    S.append(Seg("carlos", 6.5, lambda u: reales["carlos"].cuadro(u), usu=("Carlos Quintana", "@carlosquintanamx", .4), tipo="real"))
+    S.append(Seg("carlos", 6.8, lambda u: zoom(reales["carlos"].cuadro(min(u, 6.5)), 1 + .05 * suave((u - 6.3) / .5)), usu=("Carlos Quintana", "@carlosquintanamx", .4, ABAJO), tipo="real"))
     # 9–10. Mira arriba (latigazo hacia arriba) → Picacho → vuelo a Los Naranjos
     S.append(seg_clip("picacho", "W03_cielo_picacho.mp4", 1.7, ini=1.5, trans="whip-u",
                       rot=("Cerro El Picacho", "Tegucigalpa", 1.0)))  # 0,8–1,5 s: interior de carro (error de IA)
     S.append(seg_clip("naranjos", "W04_picacho_naranjos.mp4", 1.9, rot=("Los Naranjos", "Lago de Yojoa", 1.6)))
     # 11. Romeo (su voz entra 1 s antes de verlo)
     def f_romeo(u):
-        if u < 5.6: return reales["romeo"].cuadro(1.0 + u)
-        fr = reales["romeo"].cuadro(11.70 + (u - 5.6))
-        k = (u - 5.6) / .35  # salto con empuje radial (aterriza en «tenemos pirámides»)
-        return zoom_radial(fr, 1.18 - .14 * sale(k), fuerza=.14 * (1 - sale(k))) if k < 1 else zoom(fr, 1.04 - .04 * (u - 5.95) / 1.0)
-    S.append(Seg("romeo", 5.6 + ROMEO_PIR, f_romeo, trans="giro", usu=("Romeo y Nando", "@romeo_and_nando_adventures", .3), tipo="real"))
+        if u < ROMEO_CORTE: return reales["romeo"].cuadro(1.0 + u)
+        fr = reales["romeo"].cuadro(11.70 + (u - ROMEO_CORTE))
+        k = (u - ROMEO_CORTE) / .35  # salto con empuje radial (aterriza en «tenemos pirámides»)
+        return zoom_radial(fr, 1.18 - .14 * sale(k), fuerza=.14 * (1 - sale(k))) if k < 1 else zoom(fr, 1.04 - .03 * (u - ROMEO_CORTE - .35))
+    S.append(Seg("romeo", ROMEO_CORTE + ROMEO_PIR, f_romeo, trans="giro", usu=("Romeo y Nando", "@romeo_and_nando_adventures", .3, ARRIBA), tipo="real"))
     # 12. Del río de Romeo al río de Samira (agua con agua)
-    S.append(Seg("samira", 4.0, lambda u: reales["samira"].cuadro(1.75 + u), trans="whip-l", usu=("Samira.HN", "@samirafer_hn", .3),
+    S.append(Seg("samira", SAMIRA_DUR, lambda u: reales["samira"].cuadro(1.55 + u), trans="whip-l", usu=("Samira.HN", "@samirafer_hn", .3, ARRIBA),
                  tipo="real"))
     # 13. Lo que ella nombra: el cenote (recreación) → bajo el agua
-    S.append(seg_clip("cenote", "W05_rio_cenote.mp4", 1.0, ini=4.5, trans="zoom",
+    S.append(seg_clip("cenote", "W05_rio_cenote.mp4", .52, ini=4.5, trans="zoom",  # en cámara lenta, bajo su voz
                       rot=("Cenote de San Luis Planes", "Santa Bárbara", .3)))
     # 14–16. Sale del agua en Utila → Lenyn → el arrecife → tiburón ballena
     S.append(seg_clip("utila", "W06_cenote_utila.mp4", 1.8, trans="whip-d", rot=("Utila", "Islas de la Bahía", 1.9)))
-    S.append(Seg("lenyn", 2.16, lambda u: reales["lenyn"].cuadro(8.34 + u), trans="giro", usu=("Lenyn Reyes", "@lenynreye", .05),
+    S.append(Seg("lenyn", LENYN_DUR, lambda u: reales["lenyn"].cuadro(8.34 + u), trans="giro", usu=("Lenyn Reyes", "@lenynreye", .05, ABAJO),
                  tipo="real"))
     S.append(seg_clip("arrecife", "W07_utila_snorkel.mp4", 1.6, ini=1.5, fin=5.5, trans="whip-d"))
     S.append(seg_clip("ballena", str(HN / "v4/T06_tiburones_ballena.mp4"), 1.0, ini=2.0, fin=3.0, trans="fundido"))
@@ -504,7 +509,7 @@ def construir(bg_final):
                       rot=("Santa Bárbara", "Occidente de Honduras", .9)))
     S.append(seg_clip("sb_casa", "W09_sb_casa.mp4", 1.8))
     S[-1].fn_crudo = S[-1].fn; S[-1].fn = tele_apagada(S[-1].fn)
-    S.append(Seg("leiva_tv", LEIVA_DUR, f_leiva_tv(reales["leiva"], S[-1], LEIVA_SRC), usu=("Miguel Caballero Leiva", "@caballeroleiva", 2.4),
+    S.append(Seg("leiva_tv", LEIVA_DUR, f_leiva_tv(reales["leiva"], S[-1], LEIVA_SRC), usu=("Miguel Caballero Leiva", "@caballeroleiva", 2.4, ABAJO),
                  tipo=None))
     # 20–21. Gira hacia la ventana → la gente del pueblo → la guara al atardecer
     S.append(seg_clip("gente", "W10_casa_gente.mp4", 1.3, ini=1.6, trans="whip-l"))
@@ -781,7 +786,7 @@ def render(S, sal, desde=0, hasta=None):
             elif sig.trans == "giro": fr = giro(fr, cuadro_seg(sig, 0.0, t), .5 * q)
             elif sig.trans == "zoom": fr = zoom_radial(fr, 1 + 1.2 * q ** 2, fuerza=.22 * q)
         fr = capa_sub(fr, SUBS, t)
-        if s.usu: fr = capa_usuario(fr, s.usu[:2], u - s.usu[2], min(3.2, s.dur - s.usu[2] - .05))
+        if s.usu: fr = capa_usuario(fr, (s.usu[0], s.usu[1], s.usu[3]), u - s.usu[2], min(3.2, s.dur - s.usu[2] - .05))
         if s.rot: fr = capa_rotulo(fr, s.rot[0], s.rot[1], u - s.rot[2], 2.2)
         p.stdin.write(np.ascontiguousarray(fr).tobytes())
     p.stdin.close(); p.wait()
@@ -810,7 +815,7 @@ def mezcla(S, T, total, video, sal):
     t_parp = T["ojo_parpadeo"] + PARPADEO
     add(p2 / "vo_cierre_b.mp3", T["cierre"] + .25, 1.0, tipo="voz", norm=True)
     for quien, t0, src, dur in TRAMOS(T):  # testimonios con su voz original (J-cuts)
-        add(UP / REAL[quien], t0, 1.0, src, dur, "voz", True, .15)
+        add(UP / REAL[quien], t0, 1.0, src, dur, "voz", True, .3)
     lista = [
             (ap / "sfx_nace.mp3", T["luz_guara"] + .2, .55, 0, 3),
             (ap / "sfx_pings_b.mp3", T["lee"] + .05, .7, 0, .6),
