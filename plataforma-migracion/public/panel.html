@@ -232,7 +232,7 @@ $('#formLista').addEventListener('submit', intentar(async (e) => {
 const ESTADO_LIB = { propuesta: 'aviso', aprobada: '', ejecutada: 'bien', rechazada: 'mal' }
 const cargarOrigen = intentar(async () => {
   const o = await api('/origen')
-  $('#circulacion').innerHTML = `<b>ORIGEN en circulación: ${unidades(o.circulante)}</b> · en tesorería ${unidades(o.enTesoreria)} · supply fijo ${unidades(o.supplyFijo)} · bloque ${o.bloque.toLocaleString('es')}
+  $('#circulacion').innerHTML = `<b>Supply de ORIGEN (en manos de la gente): ${unidades(o.circulante)}</b> · en tesorería, sin contar: ${unidades(o.enTesoreria)} · bloque ${o.bloque.toLocaleString('es')}
     ${o.completa ? '' : '<div class="aviso">Falta cargar la lista de tesorería: sin ella todo cuenta como circulante.</div>'}
     <p class="sub" style="margin:6px 0 0">Una liberación necesita ${o.umbral} firmas de firmantes distintos de quien la propone.</p>`
   $('#tablaLib').innerHTML = '<tr><th>Tipo</th><th class="num">Monto</th><th>Destino</th><th>Motivo / respaldo</th><th>Estado</th><th></th></tr>' +

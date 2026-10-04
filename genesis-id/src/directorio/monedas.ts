@@ -7,7 +7,13 @@
 // para todo el mundo, y un panel que enseña ceros se ve igual de bien que uno
 // correcto.
 //
-// Se puede cambiar sin tocar código con GENESIS_MONEDAS:
+// La fuente es la lista única que sirve la plataforma de migración
+// (MONEDAS_URL, por defecto migracion-sfsp): la misma que leen la billetera y el
+// explorador. El día del corte a la v2, el contrato vigente de cada moneda
+// cambia ahí y este panel lo toma solo. La lista de abajo es la copia de
+// respaldo, para cuando la plataforma no responde.
+//
+// Se puede fijar sin tocar código con GENESIS_MONEDAS (manda sobre todo lo demás):
 //   "SIMBOLO|nombre|0xcontrato|decimales,SIMBOLO|nombre||18"
 // (contrato vacío = moneda nativa de la cadena).
 // ─────────────────────────────────────────────────────────────────────────────
@@ -38,9 +44,41 @@ const DEL_ECOSISTEMA: Moneda[] = [
   { simbolo: 'POLITICAL', nombre: 'Political',                contrato: '0x92496E1848e001428A3495409a9A9f616bB6dD3B', decimales: 18 },
 ]
 
+const MONEDAS_URL = () => process.env.MONEDAS_URL || 'https://migracion-sfsp.onrender.com/api/monedas'
+const VIGENCIA_MS = 5 * 60_000
+let vigentes: { lista: Moneda[]; hasta: number } | null = null
+
+/**
+ * Trae la lista única si la copia en memoria venció. Un fallo no borra lo que
+ * había: se sigue con la última lista buena o, si nunca llegó, con el respaldo.
+ */
+export async function refrescarMonedas(f: typeof fetch = fetch): Promise<void> {
+  if ((process.env.GENESIS_MONEDAS || '').trim()) return
+  if (vigentes && vigentes.hasta > Date.now()) return
+  try {
+    const r = await f(MONEDAS_URL(), { signal: AbortSignal.timeout(8000) })
+    const d: any = await r.json()
+    const lista: Moneda[] = (Array.isArray(d?.monedas) ? d.monedas : [])
+      .filter((m: any) => m?.simbolo && m.visible !== false)
+      .map((m: any) => ({
+        simbolo: String(m.simbolo).toUpperCase(),
+        nombre: String(m.nombre || m.simbolo),
+        contrato: typeof m.contrato === 'string' && /^0x[0-9a-fA-F]{40}$/.test(m.contrato) ? m.contrato : null,
+        decimales: Number(m.decimales) || 18,
+      }))
+    if (lista.length) vigentes = { lista, hasta: Date.now() + VIGENCIA_MS }
+  } catch (e: any) {
+    console.error('[monedas] la lista única no respondió; sigo con la anterior:', e?.message)
+    if (vigentes) vigentes.hasta = Date.now() + 60_000
+  }
+}
+
+/** Solo para las pruebas. */
+export function _olvidarMonedas() { vigentes = null }
+
 export function monedas(): Moneda[] {
   const crudo = (process.env.GENESIS_MONEDAS || '').trim()
-  if (!crudo) return DEL_ECOSISTEMA
+  if (!crudo) return vigentes?.lista ?? DEL_ECOSISTEMA
   return crudo.split(',').map((linea) => {
     const [simbolo, nombre, contrato, decimales] = linea.split('|').map((s) => s.trim())
     return {
@@ -126,6 +164,7 @@ export interface LecturaSaldos {
  * decir «faltan datos» en vez de enseñar ceros con cara de certeza.
  */
 export async function saldosDe(direcciones: string[]): Promise<LecturaSaldos> {
+  await refrescarMonedas()
   const lista = monedas()
   const saldos = new Map<string, Record<string, number>>()
   let fallidas = 0
@@ -177,6 +216,7 @@ export async function saldosDe(direcciones: string[]): Promise<LecturaSaldos> {
  * y repartida, emitida y sin repartir, y sin emisión.
  */
 export async function emisiones(): Promise<Record<string, number | null>> {
+  await refrescarMonedas()
   const lista = monedas().filter((m) => m.contrato)
   const salida: Record<string, number | null> = {}
   for (const m of monedas()) salida[m.simbolo] = null

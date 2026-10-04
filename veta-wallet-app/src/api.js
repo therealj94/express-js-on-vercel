@@ -644,9 +644,12 @@ const CG_ID = { AUKA: 'pax-gold', ORIGEN: 'pax-gold', AGKA: 'kinesis-silver' };
 // leyendo su propio bundle compilado (vetawallet.com), donde aparecen como
 // una serie plana: el mismo número repetido en cada punto del histórico, lo
 // que confirma que son fijos y no un precio de mercado real.
+//
+// Es la copia de respaldo: manda la lista única (cargarMonedas). AUBEX va sin
+// precio, porque el precio fijo se retira (SFSP §19).
 const FIXED_PRICES = {
   AGRO: 13.13, AIT: 5.32, SOL: 0.75, REST: 8.57, LOVE: 0.1,
-  POLITICAL: 0.33, ASL: 2.328, AUBEX: 10, HARV: 0.75, IBS: 1.2,
+  POLITICAL: 0.33, ASL: 2.328, HARV: 0.75, IBS: 1.2,
 };
 const CG_FACTOR = { ORIGEN: 1 / OZ_GRAMS / 55 };
 
@@ -734,6 +737,43 @@ export const ONCHAIN_TOKENS = [
   { symbol: 'POLITICAL', contract: '0x92496E1848e001428A3495409a9A9f616bB6dD3B', decimals: 18 },
 ];
 
+// ---------- lista única de monedas ----------
+// La sirve la plataforma de migración y es la misma que leen la web, Genesis ID
+// y el explorador. El día del corte a la v2, el contrato vigente de cada moneda
+// cambia ahí con una variable y la app lo toma sin publicar una versión nueva.
+// Si no responde, se queda la copia de respaldo de ONCHAIN_TOKENS.
+const MONEDAS_URL = process.env.EXPO_PUBLIC_MONEDAS_URL || 'https://migracion-sfsp.onrender.com/api/monedas';
+// Se vuelve a pedir cada cinco minutos (como Genesis ID, el explorador y AURA), para que el
+// corte llegue también a la app abierta; si falla, se reintenta en la siguiente carga.
+const MONEDAS_TTL = 5 * 60 * 1000;
+let monedasCargadas = null;
+let monedasHasta = 0;
+export function cargarMonedas() {
+  if (monedasCargadas && Date.now() < monedasHasta) return monedasCargadas;
+  monedasHasta = Infinity; // mientras la petición está en curso
+  monedasCargadas = (async () => {
+    const ctrl = new AbortController();
+    const id = setTimeout(() => ctrl.abort(), 5000);
+    try {
+      const r = await fetch(MONEDAS_URL, { signal: ctrl.signal });
+      const d = await r.json();
+      const lista = (d?.monedas || []).filter((m) => m?.simbolo && m.visible !== false);
+      if (!lista.length) { monedasHasta = 0; return; }
+      // En el mismo arreglo: las pantallas importan ONCHAIN_TOKENS por referencia.
+      ONCHAIN_TOKENS.splice(0, ONCHAIN_TOKENS.length, ...lista.map((m) => (m.contrato
+        ? { symbol: m.simbolo, contract: m.contrato, decimals: m.decimales || 18 }
+        : { symbol: m.simbolo, native: true, decimals: m.decimales || 18 })));
+      for (const k of Object.keys(FIXED_PRICES)) delete FIXED_PRICES[k];
+      for (const m of lista) if (m.precioFijo > 0) FIXED_PRICES[m.simbolo] = m.precioFijo;
+      monedasHasta = Date.now() + MONEDAS_TTL;
+    } catch (e) {
+      // Sin lista única se sigue con la copia de respaldo.
+      monedasHasta = 0;
+    } finally { clearTimeout(id); }
+  })();
+  return monedasCargadas;
+}
+
 // Caché del último precio "bueno" de ONDK que devolvió el endpoint de
 // chain. Vive en memoria + en AsyncStorage para sobrevivir a reinicios
 // de la app. Sirve de respaldo cuando el server no incluye el precio en
@@ -803,6 +843,7 @@ export async function apiPortfolio() {
   }
 
   const { prices, changes } = await livePrices().catch(() => ({ prices: {}, changes: {} }));
+  await cargarMonedas();
 
   const balances = await Promise.all(ONCHAIN_TOKENS.map(async (t) => {
     let qty = 0;

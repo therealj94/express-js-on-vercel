@@ -18,9 +18,14 @@ const CADENA = (() => {
   const COINGECKO = 'https://api.coingecko.com/api/v3';
   const OZ_GRAMOS = 31.1035;
 
-  // Los quince tokens reales de la red 5550. Los contratos estan confirmados
-  // contra la cadena y todos usan 18 decimales: se fija el valor para no
-  // gastar una llamada extra por token en cada carga.
+  // La lista unica de monedas la sirve la plataforma de migracion. Es la misma
+  // que leen el telefono, Genesis ID y el explorador: el dia del corte a la v2
+  // el contrato vigente cambia ahi, con una variable, y esta pagina lo toma
+  // sola. Si no responde, se usa la copia de respaldo de abajo.
+  const REGISTRO = 'https://migracion-sfsp.onrender.com/api/monedas';
+
+  // Copia de respaldo: los quince tokens de la red 5550, con sus contratos
+  // heredados confirmados contra la cadena. Todos usan 18 decimales.
   const TOKENS = [
     { s: 'ORIGEN', nativo: true },
     { s: 'AUKA', contrato: '0x6Facc8Df79cEDc6C5065442ce27e915Aa3a26B9B' },
@@ -137,10 +142,47 @@ const CADENA = (() => {
   // mercado publico. No tienen variacion 24 h que reportar: se manda null en
   // vez de un 0 %, que se leeria como "hoy no se movio" cuando en realidad
   // nunca se mueve.
+  // Copia de respaldo de los precios de la lista unica. AUBEX va sin precio:
+  // el precio fijo se retira (SFSP §19).
   const FIJOS = {
     AGRO: 13.13, AIT: 5.32, SOL: 0.75, REST: 8.57, LOVE: 0.1,
-    POLITICAL: 0.33, ASL: 2.328, AUBEX: 10, HARV: 0.75, IBS: 1.2,
+    POLITICAL: 0.33, ASL: 2.328, HARV: 0.75, IBS: 1.2,
   };
+
+  // ── lista unica ───────────────────────────────────────────────────────────
+
+  // Si llega, reemplaza la copia de respaldo en el mismo arreglo (app.js guarda
+  // la referencia a TOKENS) y manda en los precios. Se vuelve a pedir cada cinco
+  // minutos, para que el corte llegue a la pestana abierta; si falla, se
+  // reintenta en la siguiente carga del portafolio.
+  const REGISTRO_TTL = 5 * 60 * 1000;
+  let registroCargado = null;
+  let registroHasta = 0;
+  function cargarMonedas() {
+    if (registroCargado && Date.now() < registroHasta) return registroCargado;
+    registroHasta = Infinity; // mientras la peticion esta en curso
+    registroCargado = (async () => {
+      const ctrl = new AbortController();
+      const id = setTimeout(() => ctrl.abort(), 5000);
+      try {
+        const r = await fetch(REGISTRO, { signal: ctrl.signal });
+        const d = await r.json();
+        const lista = (d && d.monedas || []).filter(m => m && m.simbolo && m.visible !== false);
+        if (!lista.length) { registroHasta = 0; return; }
+        TOKENS.splice(0, TOKENS.length, ...lista.map(m => m.contrato
+          ? { s: m.simbolo, contrato: m.contrato, estado: m.estado }
+          : { s: m.simbolo, nativo: true, estado: m.estado }));
+        for (const k of Object.keys(FIJOS)) delete FIJOS[k];
+        for (const m of lista) if (m.precioFijo > 0) FIJOS[m.simbolo] = m.precioFijo;
+        registroHasta = Date.now() + REGISTRO_TTL;
+      } catch {
+        registroHasta = 0;
+        // Sin lista unica se sigue con la copia de respaldo: mejor un contrato
+        // conocido que una pantalla vacia.
+      } finally { clearTimeout(id); }
+    })();
+    return registroCargado;
+  }
 
   // ── RPC ───────────────────────────────────────────────────────────────────
 
@@ -223,7 +265,7 @@ const CADENA = (() => {
 
   // ── el portafolio entero ──────────────────────────────────────────────────
 
-  /* Devuelve los quince tokens SIEMPRE, incluso los que estan en cero: una
+  /* Devuelve todos los tokens de la lista SIEMPRE, incluso los que estan en cero: una
    * billetera que esconde lo que tenes en cero parece tener menos monedas de
    * las que tiene, y la lista cambiaria de forma sola al recibir un pago.
    *
@@ -231,6 +273,7 @@ const CADENA = (() => {
    * queda sin precio y se pinta con un guion. */
   async function portafolio(direccion, precioOndk) {
     if (!direccion) return [];
+    await cargarMonedas();
     const [{ p, chg }, saldos] = await Promise.all([
       precios().catch(() => ({ p: {}, chg: {} })),
       Promise.all(TOKENS.map(async t => {
@@ -259,5 +302,5 @@ const CADENA = (() => {
 
   const ficha = (sim, idioma) => (FICHAS[sim] || {})[idioma] || (FICHAS[sim] || {}).es || null;
 
-  return { TOKENS, META, FICHAS, ficha, portafolio, precios, rpc, RPC };
+  return { TOKENS, META, FICHAS, ficha, portafolio, precios, rpc, RPC, cargarMonedas };
 })();

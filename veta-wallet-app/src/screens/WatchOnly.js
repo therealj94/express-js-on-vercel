@@ -4,7 +4,7 @@ import { Icon } from '../icons';
 import { C } from '../theme';
 import { Header, Button3D, Skeleton, TokenIcon, hap, useToast } from '../ui';
 import { listWatched, addWatched, removeWatched, isAddress } from '../watchList';
-import { apiPortfolio, ONCHAIN_TOKENS, rpcBalance, erc20Balance, RPC_FALLBACK, walletApi, CHAIN_ID } from '../api';
+import { apiPortfolio, ONCHAIN_TOKENS, rpcBalance, erc20Balance, RPC_FALLBACK, walletApi, CHAIN_ID, cargarMonedas } from '../api';
 import { money, qtyFmt, tokensFromBalances } from '../data';
 import { ScanModal } from './Scan';
 import { useT } from '../i18n';
@@ -20,6 +20,7 @@ async function readAddress(address) {
     const chain = Array.isArray(raw) ? raw[0] : raw?.chain || raw?.data || raw;
     provider = chain?.provider || RPC_FALLBACK;
   } catch (e) {}
+  await cargarMonedas();
   const balances = await Promise.all(ONCHAIN_TOKENS.map(async (t) => {
     let qty = 0;
     try {
