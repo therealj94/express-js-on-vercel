@@ -6279,8 +6279,8 @@ const VETA = (() => {
      se puede contestar: «¿esto que estoy viendo es lo último que subimos, o
      mi navegador se quedó con una copia vieja?». La ficha de Ajustes lo
      enseña, y con eso se sabe. */
-  const VETA_V = 'cdf086343d';
-  const VETA_FECHA = '2026-09-29';
+  const VETA_V = '66e649e498';
+  const VETA_FECHA = '2026-10-04';
 
   const AET_V = '11c0a0e475';
 
@@ -7074,21 +7074,31 @@ const VETA = (() => {
   let auraPendiente = null;
   const RETO_AURA = /^[A-Za-z0-9_-]{43}$/;
   const ESTADO_AURA = /^[A-Za-z0-9_-]{8,64}$/;
+  /* LAS VUELTAS DE AU-RA, EN LISTA CERRADA. La app Android vuelve por su
+     esquema; la web de AU-RA (Safari en el iPhone, el icono instalado, la
+     computadora) vuelve a su /sso, donde el servidor de AU-RA guarda el pase
+     atado a su pedido. Sin esto el iPhone recibia `ultronfp://`, que no existe
+     ahi: «Safari no puede abrir la pagina porque la direccion no es valida»
+     (Jose, 4-oct). Cualquier otra `vuelta` se ignora: el pase solo sale hacia
+     AU-RA. */
+  const VUELTAS_AURA = ['ultronfp://sso', 'https://aura-fp.onrender.com/sso'];
+  const vueltaAuraDe = (v) => (VUELTAS_AURA.includes(v) ? v : VUELTAS_AURA[0]);
 
   function leerPedidoAura(hash) {
     if (!/^#sso-aura(\?|$)/.test(hash || '')) return null;
     const q = new URLSearchParams(hash.slice(hash.indexOf('?') + 1));
     const reto = q.get('reto') || '';
     const estado = q.get('estado') || '';
-    return RETO_AURA.test(reto) && ESTADO_AURA.test(estado) ? { reto, estado } : { malo: true };
+    const vuelta = vueltaAuraDe(q.get('vuelta') || '');
+    return RETO_AURA.test(reto) && ESTADO_AURA.test(estado) ? { reto, estado, vuelta } : { malo: true };
   }
 
-  function vueltaAura({ pase, error, estado }) {
+  function vueltaAura({ pase, error, estado, vuelta }) {
     const q = [];
     if (pase) q.push('pase=' + encodeURIComponent(pase));
     if (error) q.push('error=' + encodeURIComponent(error));
     q.push('estado=' + encodeURIComponent(estado || ''));
-    location.href = 'ultronfp://sso?' + q.join('&');
+    location.href = vueltaAuraDe(vuelta) + '?' + q.join('&');
   }
 
   function consentirAura(pedido) {
@@ -7113,7 +7123,7 @@ const VETA = (() => {
         <button data-no style="width:100%;padding:12px;margin-top:8px;border:1px solid rgba(243,236,217,.2);border-radius:14px;background:transparent;color:#F3ECD9;font-size:14px;cursor:pointer">No, volver sin entrar</button>
       </div>`;
     const cerrar = () => velo.remove();
-    velo.querySelector('[data-no]').onclick = () => { cerrar(); vueltaAura({ error: 'cancelado', estado: pedido.estado }); };
+    velo.querySelector('[data-no]').onclick = () => { cerrar(); vueltaAura({ error: 'cancelado', estado: pedido.estado, vuelta: pedido.vuelta }); };
     velo.querySelector('[data-si]').onclick = async (ev) => {
       ev.target.disabled = true;
       ev.target.textContent = 'Pidiendo tu pase…';
@@ -7123,11 +7133,11 @@ const VETA = (() => {
         });
         if (!d?.token) throw new Error(t('err.sesion'));
         cerrar();
-        vueltaAura({ pase: d.token, estado: pedido.estado });
+        vueltaAura({ pase: d.token, estado: pedido.estado, vuelta: pedido.vuelta });
       } catch (e) {
         cerrar();
-        if (e.estado === 403) { avisar(t('nu.cerrado')); vista('verificar'); vueltaAura({ error: 'sin-gid', estado: pedido.estado }); }
-        else { avisar(e.message); vueltaAura({ error: 'fallo', estado: pedido.estado }); }
+        if (e.estado === 403) { avisar(t('nu.cerrado')); vista('verificar'); vueltaAura({ error: 'sin-gid', estado: pedido.estado, vuelta: pedido.vuelta }); }
+        else { avisar(e.message); vueltaAura({ error: 'fallo', estado: pedido.estado, vuelta: pedido.vuelta }); }
       }
     };
     document.body.appendChild(velo);
