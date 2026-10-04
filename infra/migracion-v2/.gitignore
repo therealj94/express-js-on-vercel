@@ -5,3 +5,5 @@ salida.txt
 tenedores-*.json
 inventario-*.json
 __pycache__/
+tenedores.out
+tenedores.err
