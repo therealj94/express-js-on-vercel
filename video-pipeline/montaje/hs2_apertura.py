@@ -297,7 +297,7 @@ ROTULOS = [  # cada uno entra cuando su escena ya está dibujada
     ("Costa norte", "siglo XX", "V07", 2.0, 3.2),
     ("España", "1982", "V08", 2.2, 3.0),
     ("14 de octubre", "2009", "V09", 1.3, 3.0),
-    ("Mauricio Dubón", "San Pedro Sula · campeón de la Serie Mundial 2022", "V09D", 3.6, 2.8),
+    ("Mauricio Dubón", "San Pedro Sula · Serie Mundial 2022 · 2 Guantes de Oro", "V09D", 3.6, 3.4),
 ]
 
 
@@ -397,7 +397,7 @@ def mezcla(T, fin, total, video, sal):
     T0 = {n: t for n, t, _ in T}; tc = fin
     def at(s): return int(s * 1000)
     vo = [("vo_hook_b.mp3", VO_HOOK), ("hs2_copan_b.mp3", T0["V01"] + .35), ("vo_1502_b.mp3", T0["V03"] + .2),
-          ("vo_1821_b.mp3", T0["V05"] + .45), ("vo_banano_b.mp3", T0["V07"] + .3), ("vo_1982_b.mp3", T0["V08"] + .3), ("vo_dubon_c.mp3", T0["V09D"] + DUBON_VO),
+          ("vo_1821_b.mp3", T0["V05"] + .45), ("vo_banano_b.mp3", T0["V07"] + .3), ("vo_1982_b.mp3", T0["V08"] + .3), ("vo_dubon2_b.mp3", T0["V09D"] + DUBON_VO),
           ("vo_pero_b.mp3", tc + VO_PERO)]
     # (archivo, inicio, volumen, desde, duración)
     sfx = [("sfx_pings_b.mp3", .33, .9, 0, .7),                       # la notificación del hook
@@ -411,7 +411,7 @@ def mezcla(T, fin, total, video, sal):
            ("sfx_estadio_b.mp3", T0["V08"] + .8, .55, 0, 6),
            ("sfx_estadio_a.mp3", T0["V09"] + 3.6, .45, 1.5, 4.5),
            ("sfx_bate_b.mp3", T0["V09D"] + BATE, .8, 0, 5),
-           ("sfx_pings_a.mp3", T0["V10D"] + 2.6, .75, 0, 6)]
+           ("sfx_pings_a.mp3", T0["V10D"] + 3.8, .75, 0, 6)]
     sfx += [("sfx_pings_b.mp3", tc + c[3], .55, 0, .6) for c in CAIDA]  # un aviso por tarjeta que cae
     entradas, filtros, mixv, mixs = [], [], [], []
     idx = 1
