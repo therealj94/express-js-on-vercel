@@ -481,3 +481,58 @@ La gente del pueblo se vuelve línea de luz. La guara (con sombrero) cierra el t
 - Mejora del video de Leiva: menos de 1 USD
 - Voces, efectos y música: unos 0,50 USD
 - **Total: unos 8 USD**
+
+---
+
+## 17. Video completo v1 (4 de octubre): 2:33
+
+Se arma con `montaje/hs2_apertura.py` (apertura de 68,6 s, sin fundido final) y `montaje/hs2_resto.py` (84 s), que además pega las dos partes con `--une`.
+
+**Recorrido:** hook → historia en luz → Dubón → el «pero».
+Luego, partes 2 a 4:
+1. Tarjeta real «guacamaya con colmillos».
+2. El diente real del lipsync de HS1 (9,4–10,1 s), con zoom y un aro de luz.
+3. La guacamaya de luz aterriza y se vuelve la guara de HS (W01).
+4. «¿Colmillos?… Bueno, uno.» (OmniHuman).
+5. La guara despega y rompe el «PERO» (W02).
+6. El polvo cae sobre el contorno de Honduras y se encienden los cinco lugares, con la voz «Antes del pero… mira otra vez.».
+7. La luz dibuja el contorno de Carlos.
+8. Carlos.
+9. Mira arriba, latigazo vertical y Cerro El Picacho (W03).
+10. Vuelo al Lago de Yojoa y Los Naranjos (W04).
+11. Romeo: «…Los Naranjos de Santa Cruz de Yojoa» más «tenemos pirámides».
+12. El río se vuelve turquesa y llega al cenote (W05).
+13. Samira: «…el cenote de San Luis Planes».
+14. Bajo el agua del cenote, la cámara sale al mar de Utila (W06).
+15. Lenyn: «…definitivamente es Utila…», y su voz sigue sobre el arrecife (W07).
+16. Atardecer en Utila y vuelo tierra adentro a Santa Bárbara (W08).
+17. La cámara entra por la ventana de la casa (W09).
+18. Leiva en el televisor; la pantalla se detecta sola y su video se pone con perspectiva.
+19. Sale por la ventana hacia la gente del pueblo (W10).
+20. La gente sube al mirador y la guara vuela al atardecer (W11), con «Honduras no necesita que la inventen…».
+21. Todo se vuelve líneas de luz y entra el logo.
+
+**Edición:**
+- Las voces reales usan J-cuts: se oyen antes de ver a la persona.
+- Entre lo real y la IA hay latigazos (whip) hechos por código. No se pueden subir cuadros reales a ElevenLabs desde esta sesión.
+- Subtítulos en todos los testimonios.
+- Usuario escrito con luz: @carlosquintanamx, @romeo_and_nando_adventures, @samirafer_hn, @lenynreye y @caballeroleiva.
+
+**Sonido:**
+- La música 2 entra cuando la guara rompe el «PERO». Su tempo se ajusta (×0,95) para que la parte tranquila caiga en la frase final.
+- **Bug corregido:** `atrim` después de `adelay` corta la pista antes de tiempo. Hay que poner `asetpts=N/SR/TB` antes de `atrim`. Por eso cada grupo de sonido se mezcla aparte.
+
+**Verificado:**
+- Cristo del Picacho: brazos abiertos, unos 30 m, construido en 1997.
+- Dubón: Braves, número 14, Serie Mundial 2022 y Guantes de Oro 2023 y 2025.
+
+**Costo de esta tanda:** unos 9,30 USD.
+- 20 imágenes fijas: 3,60
+- 11 clips H3 Max: 5,28
+- Lipsync: 0,52
+- Música y efectos: unos 0,10
+
+**Pendiente:**
+- Los 4 videos que faltan.
+- El video original de Leiva en buena calidad.
+- Confirmar los derechos del audio de 2009.

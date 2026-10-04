@@ -19,8 +19,10 @@ PUNTO = (540, 883)  # el punto de luz de luz_inicio.png (576, 942 sobre 1152x204
 
 # (clip, velocidad). Cada clip termina en la imagen con la que empieza el siguiente.
 HOOK = 7.8
-CLIPS = [("V01", 1.5), ("V02", 1.5), ("V03", 1.4), ("V04", 1.4), ("V05", 1.4), ("V06", 1.4),
-         ("V07", 1.1), ("V08", 1.1), ("V09", 0.9), ("V09D", 1.0), ("V10D", 1.0)]
+CLIPS = [("V01", 1.8), ("V02", 1.8), ("V03", 1.75), ("V04", 1.75), ("V05", 1.6), ("V06", 1.6),
+         ("V07", 1.15), ("V08", 1.2), ("V09", 1.0), ("V09D", 1.15), ("V10D", 1.5)]
+# Versión de 2:15 (opción A): la historia va más rápido y la voz manda; con la v1 de 77 s eran 1,5/1,4/1,1/0,9/1,0.
+CONTINUA = True  # la apertura no funde a negro: el «PERO» se queda para que entre la guara (hs2_resto.py)
 ULTIMO = CLIPS[-1][0]  # su último cuadro es el fondo del conflicto
 CONFLICTO = 10.6
 RECORTE = {"V01": (0.30, 0), "V04": (0, 0.5), "V09": (0, 0.3)}  # quietos de MiniMax al inicio/fin
@@ -288,16 +290,16 @@ def rotulo(t1, t2=None):
 
 
 # (texto, subtítulo, clip, segundo dentro del tramo de salida, duración)
-ROTULOS = [  # cada uno entra cuando su escena ya está dibujada
-    ("Copán", "siglo VIII", "V01", 1.2, 3.0),
-    ("Guanaja", "1502", "V03", 2.6, 2.6),
-    ("Peñol de Cerquín", "Lempira · 1537", "V04", 2.1, 2.6),
-    ("15 de septiembre", "1821", "V05", 2.4, 2.4),
-    ("Francisco Morazán", "República Federal de Centroamérica", "V06", 2.3, 2.6),
-    ("Costa norte", "siglo XX", "V07", 2.0, 3.2),
-    ("España", "1982", "V08", 2.2, 3.0),
-    ("14 de octubre", "2009", "V09", 1.3, 3.0),
-    ("Mauricio Dubón", "San Pedro Sula · Serie Mundial 2022 · 2 Guantes de Oro", "V09D", 3.6, 3.4),
+ROTULOS = [  # cada uno entra cuando su escena ya está dibujada (segundos de salida dentro del clip)
+    ("Copán", "siglo VIII", "V01", 1.0, 2.6),
+    ("Guanaja", "1502", "V03", 2.1, 2.2),
+    ("Peñol de Cerquín", "Lempira · 1537", "V04", 1.7, 2.3),
+    ("15 de septiembre", "1821", "V05", 2.1, 2.2),
+    ("Francisco Morazán", "República Federal de Centroamérica", "V06", 2.0, 2.4),
+    ("Costa norte", "siglo XX", "V07", 1.9, 3.0),
+    ("España", "1982", "V08", 2.0, 2.8),
+    ("14 de octubre", "2009", "V09", 1.2, 2.8),
+    ("Mauricio Dubón", "San Pedro Sula · Serie Mundial 2022 · 2 Guantes de Oro", "V09D", 3.0, 3.2),
 ]
 
 
@@ -359,9 +361,9 @@ class Conflicto:
                 a = suave((t - t_corte) / .4) * (1 - suave((t - t_junta) / .5))
                 fr = pega(fr, img, px, py, a, .55 + .25 * suave((t - t_corte) / .6), g * (1 - j))
         if t >= t_junta - .1:
-            a = suave((t - t_junta + .1) / .5) * (1 - suave((t - t_fin - .6) / 1.8))
+            a = suave((t - t_junta + .1) / .5) * (1 - (.45 if CONTINUA else 1) * suave((t - t_fin - .6) / 1.8))
             fr = pega(fr, self.pero, 540, 940, a, 1 + .06 * (t - t_junta) / 4)
-        if t > CONFLICTO - 1.2: fr = (fr * (1 - suave((t - CONFLICTO + 1.2) / 1.0))).astype(np.uint8)
+        if t > CONFLICTO - 1.2 and not CONTINUA: fr = (fr * (1 - suave((t - CONFLICTO + 1.2) / 1.0))).astype(np.uint8)
         return fr
 
 
@@ -397,7 +399,7 @@ def mezcla(T, fin, total, video, sal):
     T0 = {n: t for n, t, _ in T}; tc = fin
     def at(s): return int(s * 1000)
     vo = [("vo_hook_b.mp3", VO_HOOK), ("hs2_copan_b.mp3", T0["V01"] + .35), ("vo_1502_b.mp3", T0["V03"] + .2),
-          ("vo_1821_b.mp3", T0["V05"] + .45), ("vo_banano_b.mp3", T0["V07"] + .3), ("vo_1982_b.mp3", T0["V08"] + .3), ("vo_dubon2_b.mp3", T0["V09D"] + DUBON_VO),
+          ("vo_1821_b.mp3", T0["V05"] + .55), ("vo_banano_b.mp3", T0["V07"] + .55), ("vo_1982_b.mp3", T0["V08"] + .3), ("vo_dubon2_b.mp3", T0["V09D"] + DUBON_VO),
           ("vo_pero_b.mp3", tc + VO_PERO)]
     # (archivo, inicio, volumen, desde, duración)
     sfx = [("sfx_pings_b.mp3", .33, .9, 0, .7),                       # la notificación del hook
@@ -411,7 +413,7 @@ def mezcla(T, fin, total, video, sal):
            ("sfx_estadio_b.mp3", T0["V08"] + .8, .55, 0, 6),
            ("sfx_estadio_a.mp3", T0["V09"] + 3.6, .45, 1.5, 4.5),
            ("sfx_bate_b.mp3", T0["V09D"] + BATE, .8, 0, 5),
-           ("sfx_pings_a.mp3", T0["V10D"] + 3.8, .75, 0, 6)]
+           ("sfx_pings_a.mp3", T0["V10D"] + 1.2, .75, 0, 6)]
     sfx += [("sfx_pings_b.mp3", tc + c[3], .55, 0, .6) for c in CAIDA]  # un aviso por tarjeta que cae
     entradas, filtros, mixv, mixs = [], [], [], []
     idx = 1
@@ -441,17 +443,17 @@ def mezcla(T, fin, total, video, sal):
     filtros.append("[voz]asplit=2[voz1][vozsc]")
     filtros.append("[mus][vozsc]sidechaincompress=threshold=0.05:ratio=6:attack=20:release=350[musd]")
     filtros.append(f"{''.join(mixs)}amix=inputs={len(mixs)}:normalize=0:duration=longest[sf]")
-    filtros.append(f"[voz1][musd][sf][col]amix=inputs=4:normalize=0:duration=longest,atrim=0:{total},"
-                   f"alimiter=limit=0.89,afade=t=out:st={total - .6}:d=0.6[a]")
+    filtros.append(f"[voz1][musd][sf][col]amix=inputs=4:normalize=0:duration=longest,apad=whole_dur={total},asetpts=N/SR/TB,atrim=0:{total},"
+                   f"alimiter=limit=0.89{'' if CONTINUA else f',afade=t=out:st={total - .6}:d=0.6'}[a]")
     cmd = ["ffmpeg", "-y", "-v", "error", "-i", str(video), *entradas, "-filter_complex", ";".join(filtros),
-           "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "256k", "-shortest", str(sal)]
+           "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "256k", str(sal)]
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode: raise SystemExit(r.stderr[:1500])
 
 
-DUBON_VO = 2.2  # «Y un sampedrano, Mauricio Dubón…» entra cuando aparece el estadio de béisbol
-BATE = 4.18     # el chasquido del bate (0,40 s dentro del efecto) cae en el destello del contacto, cuadro ~110
-NARR_OFF = 1.5  # «¡GOL!» (2,42 s de la narración) cae cuando el remate de V09 entra (cuadro ~85 a x0,9)
+DUBON_VO = 1.6  # «Y un sampedrano, Mauricio Dubón…» entra cuando aparece el estadio de béisbol
+BATE = 3.58     # el chasquido del bate (0,40 s dentro del efecto) cae en el destello del contacto, cuadro ~110
+NARR_OFF = 1.12  # «¡GOL!» (2,42 s de la narración) cae cuando el remate de V09 entra (cuadro ~85 a x0,9)
 
 
 def main():
