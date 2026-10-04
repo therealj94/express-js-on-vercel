@@ -9,7 +9,7 @@ export interface Transaccion { to: string; value: string; data: string }
 export async function prepararLotes(
   e: typeof Ethers, a: Archivo, token: string, proveedor: Ethers.Provider, contrato: Ethers.Contract,
   opciones: { lote?: number; referencia?: string } = {},
-): Promise<{ transacciones: Transaccion[]; pendientes: Archivo['tenedores']; total: bigint; desplegado: boolean }> {
+): Promise<{ transacciones: Transaccion[]; pendientes: Archivo['tenedores']; total: bigint; desplegado: boolean; anuncio?: { ejecutableDesde: number } }> {
   const lote = opciones.lote ?? 40
   if (!Number.isInteger(lote) || lote < 1 || lote > 200) throw new Error('LOTE tiene que ser un entero entre 1 y 200')
 
@@ -35,6 +35,18 @@ export async function prepararLotes(
 
   const iface = contrato.interface
   const referencia = e.encodeBytes32String((opciones.referencia || `${a.activo ?? ''} ${a.bloque ?? ''}`).trim().slice(0, 31))
+  // Con demora de emisión (un security), la ronda se anuncia primero y se abre pasada la demora, con
+  // exactamente la misma raíz, total y referencia.
+  if (desplegado && (await contrato.demoraEmision()) > 0n) {
+    const desde = Number(await contrato.emisionAnunciada(await contrato.idMigracion(a.raiz, total, referencia)))
+    if (desde === 0) {
+      const demora = Number(await contrato.demoraEmision())
+      const ahora = (await proveedor.getBlock('latest'))!.timestamp
+      return { transacciones: [{ to: token, value: '0', data: iface.encodeFunctionData('anunciarMigracion', [a.raiz, total, referencia]) }], pendientes, total, desplegado, anuncio: { ejecutableDesde: ahora + demora } }
+    }
+    const ahora = (await proveedor.getBlock('latest'))!.timestamp
+    if (ahora < desde) throw new Error(`La ronda está anunciada y en demora hasta ${new Date(desde * 1000).toISOString()}`)
+  }
   const transacciones: Transaccion[] = [{ to: token, value: '0', data: iface.encodeFunctionData('abrirMigracion', [a.raiz, total, referencia]) }]
   for (let i = 0; i < pendientes.length; i += lote) {
     const parte = pendientes.slice(i, i + lote)

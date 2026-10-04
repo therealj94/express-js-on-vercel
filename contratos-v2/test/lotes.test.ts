@@ -1,6 +1,7 @@
 // Las transacciones que genera scripts/lotes.ts, ejecutadas como las ejecutaría la firma múltiple.
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
+import { time } from '@nomicfoundation/hardhat-toolbox/network-helpers'
 import { StandardMerkleTree } from '@openzeppelin/merkle-tree'
 import { prepararLotes, type Archivo } from '../scripts/lotes'
 import acunacion from './acunacion-ejemplo.json'
@@ -51,6 +52,23 @@ describe('lotes para la firma múltiple', () => {
 
     // Volver a generar el mismo archivo ya no tiene nada que firmar.
     expect((await prepararLotes(ethers, conReclamos, dir, ethers.provider, token as any)).transacciones).to.deep.equal([])
+  })
+
+  it('un security con demora: primero solo el anuncio, y pasados siete días la apertura y los lotes', async () => {
+    const [multifirma] = await ethers.getSigners()
+    const token = await ethers.deployContract('TokenSFSP', ['ONDK', 'ONDK', 'P', 'SFSP-200', multifirma.address, multifirma.address, [], 7 * 86400])
+    const dir = await token.getAddress()
+    const a = acunacion as Archivo
+    const r1 = await prepararLotes(ethers, a, dir, ethers.provider, token as any, { referencia: 'ONDK corte' })
+    expect(r1.anuncio).to.not.equal(undefined)
+    expect(r1.transacciones.length).to.equal(1)
+    await ejecutar(multifirma, r1.transacciones)
+    await expect(prepararLotes(ethers, a, dir, ethers.provider, token as any, { referencia: 'ONDK corte' })).to.be.rejectedWith(/en demora/)
+    await time.increase(7 * 86400)
+    const r2 = await prepararLotes(ethers, a, dir, ethers.provider, token as any, { referencia: 'ONDK corte' })
+    expect(r2.anuncio).to.equal(undefined)
+    await ejecutar(multifirma, r2.transacciones)
+    expect(await token.totalSupply()).to.equal(BigInt(a.totalAcunar))
   })
 
   it('rechaza un LOTE inválido, una prueba rota y un total que no suma', async () => {

@@ -16,7 +16,8 @@ interface IRegistroElegibilidad {
 ///           firma múltiple de los tres custodios, la operación en la de dos de tres;
 ///         - pausa de emergencia de un solo custodio, que vence a las 72 horas si dos custodios no la
 ///           ratifican (§5.3), y suspensión de cuentas;
-///         - ampliación de supply con demora pública cuando la serie la exige (siete días en un security, §5.3);
+///         - ampliación de supply con demora pública cuando la serie la exige (siete días en un security, §5.3),
+///           por cualquier camino que acuñe: emisión o ronda de migración;
 ///         - restricción de transferencia por elegibilidad (Genesis ID), cuando el registro está fijado;
 ///         - acreditación de la migración por raíz de Merkle: cada saldo de la instantánea se acuña a la
 ///           misma dirección, por el monto que fijó la política (§14.6), una sola vez.
@@ -68,6 +69,7 @@ contract TokenSFSP is ERC20, AccessControl, Pausable {
     event PausaRatificada(address indexed por);
     event EmisionAnunciada(bytes32 indexed id, address indexed cuenta, uint256 monto, bytes32 motivo, uint256 ejecutableDesde);
     event EmisionCancelada(bytes32 indexed id);
+    event MigracionAnunciada(bytes32 indexed id, bytes32 indexed raiz, uint256 total, bytes32 referencia, uint256 ejecutableDesde);
 
     error DireccionCero();
     error RaizYaAbierta();
@@ -106,10 +108,33 @@ contract TokenSFSP is ERC20, AccessControl, Pausable {
 
     // ─── Migración ─────────────────────────────────────────────────────────
 
+    /// @notice Con demora de emisión, una ronda también se anuncia antes: abrir una raíz es acuñar, y sin
+    ///         esto el emisor podría saltarse la demora con una «migración» de una sola hoja.
+    function anunciarMigracion(bytes32 raiz, uint256 total, bytes32 referencia) external onlyRole(EMISOR_ROLE) {
+        bytes32 id = idMigracion(raiz, total, referencia);
+        if (emisionAnunciada[id] != 0) revert EmisionYaAnunciada();
+        uint256 desde = block.timestamp + demoraEmision;
+        emisionAnunciada[id] = desde;
+        emit MigracionAnunciada(id, raiz, total, referencia, desde);
+    }
+
+    function cancelarMigracion(bytes32 raiz, uint256 total, bytes32 referencia) external onlyRole(EMISOR_ROLE) {
+        bytes32 id = idMigracion(raiz, total, referencia);
+        if (emisionAnunciada[id] == 0) revert EmisionNoAnunciada();
+        delete emisionAnunciada[id];
+        emit EmisionCancelada(id);
+    }
+
+    function idMigracion(bytes32 raiz, uint256 total, bytes32 referencia) public pure returns (bytes32) {
+        return keccak256(abi.encode("migracion", raiz, total, referencia));
+    }
+
     /// @notice Abre una ronda: la raíz publicada por la plataforma y el total que se va a acuñar con ella.
-    ///         Una ronda para la instantánea y otra por cada lote de reclamos aprobados.
+    ///         Una ronda para la instantánea y otra por cada lote de reclamos aprobados. Con demora de
+    ///         emisión (un security), solo lo anunciado y pasada la demora.
     function abrirMigracion(bytes32 raiz, uint256 total, bytes32 referencia) external onlyRole(EMISOR_ROLE) {
         if (restante[raiz] != 0) revert RaizYaAbierta();
+        if (demoraEmision > 0) _consumirAnuncio(idMigracion(raiz, total, referencia));
         restante[raiz] = total;
         emit MigracionAbierta(raiz, total, referencia);
     }
@@ -159,15 +184,16 @@ contract TokenSFSP is ERC20, AccessControl, Pausable {
     /// @notice Emisión nueva conforme a la serie: la tesorería que se re-acuña, o la colocación contra metal.
     ///         Con demora (un security), solo lo anunciado y pasada la demora, una vez.
     function emitir(address cuenta, uint256 monto, bytes32 motivo) external onlyRole(EMISOR_ROLE) whenNotPaused {
-        if (demoraEmision > 0) {
-            bytes32 id = idEmision(cuenta, monto, motivo);
-            uint256 desde = emisionAnunciada[id];
-            if (desde == 0) revert EmisionNoAnunciada();
-            if (block.timestamp < desde) revert EmisionEnDemora(desde);
-            delete emisionAnunciada[id];
-        }
+        if (demoraEmision > 0) _consumirAnuncio(idEmision(cuenta, monto, motivo));
         _mint(cuenta, monto);
         emit EmisionEjecutada(cuenta, monto, motivo);
+    }
+
+    function _consumirAnuncio(bytes32 id) private {
+        uint256 desde = emisionAnunciada[id];
+        if (desde == 0) revert EmisionNoAnunciada();
+        if (block.timestamp < desde) revert EmisionEnDemora(desde);
+        delete emisionAnunciada[id];
     }
 
     function quemar(address cuenta, uint256 monto, bytes32 motivo) external onlyRole(QUEMA_ROLE) {

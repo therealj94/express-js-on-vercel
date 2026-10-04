@@ -125,12 +125,26 @@ describe('TokenSFSP', () => {
       await expect(token.emitir(beneficiario.address, E, motivo)).to.be.revertedWithCustomError(token, 'EmisionNoAnunciada')
     })
 
-    it('la migración no es ampliación: abrir y acreditar no esperan', async () => {
-      const { token } = await loadFixture(security)
+    it('una ronda de migración también se anuncia: no hay atajo para acuñar sin la demora', async () => {
+      const { token, beneficiario } = await loadFixture(security)
+      // El atajo: una «migración» de una sola hoja a cualquier cuenta. Sin anuncio no se abre.
+      const hoja = ethers.keccak256(ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(['address', 'uint256'], [beneficiario.address, 1000n * E])))
+      await expect(token.abrirMigracion(hoja, 1000n * E, motivo)).to.be.revertedWithCustomError(token, 'EmisionNoAnunciada')
+      // La de verdad: se anuncia, y pasados siete días se abre con la misma raíz, total y referencia.
+      await expect(token.anunciarMigracion(acunacion.raiz, acunacion.totalAcunar, motivo)).to.emit(token, 'MigracionAnunciada')
+      await expect(token.abrirMigracion(acunacion.raiz, acunacion.totalAcunar, motivo)).to.be.revertedWithCustomError(token, 'EmisionEnDemora')
+      await time.increase(7 * 86400)
+      await expect(token.abrirMigracion(acunacion.raiz, BigInt(acunacion.totalAcunar) + 1n, motivo)).to.be.revertedWithCustomError(token, 'EmisionNoAnunciada')
       await token.abrirMigracion(acunacion.raiz, acunacion.totalAcunar, motivo)
       const t = acunacion.tenedores[0]
       await token.acreditar(acunacion.raiz, t.direccion, t.acunar, t.prueba)
       expect(await token.balanceOf(t.direccion)).to.equal(BigInt(t.acunar))
+    })
+
+    it('en una commodity (sin demora) la migración se abre directo', async () => {
+      const { token } = await loadFixture(desplegar)
+      await token.abrirMigracion(acunacion.raiz, acunacion.totalAcunar, motivo)
+      expect(await token.restante(acunacion.raiz)).to.equal(BigInt(acunacion.totalAcunar))
     })
   })
 

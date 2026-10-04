@@ -8,8 +8,9 @@
 //   - ADMIN: la firma múltiple de los tres custodios (roles y registro de elegibilidad);
 //   - MULTIFIRMA: la de dos de tres (abrir la migración, emitir, quemar, suspender, ratificar pausas);
 //   - PAUSADORES: cada custodio, que puede pausar solo en emergencia (vence a las 72 horas sin ratificar).
-// La demora de emisión es de siete días en un security (serie 200) y cero en las demás, salvo que se
-// fije DEMORA_EMISION_DIAS. Quien despliega no se queda con ningún rol.
+// La demora de emisión es de siete días en un security (serie 200) y cero en las demás.
+// DEMORA_EMISION_DIAS solo puede alargarla: un security nunca baja de siete. Quien despliega no se
+// queda con ningún rol.
 // En la red 5550 se niega a correr sin CONFIRMO_PRODUCCION=si, porque desplegar ahí exige
 // firma múltiple activa, auditoría externa y acta de la Junta (plan de migración, fase 3).
 import { ethers, network } from 'hardhat'
@@ -28,8 +29,11 @@ async function main() {
     if (!ethers.isAddress(v)) throw new Error(`${k}: ${v} no es una dirección`)
   }
   if (!PAUSADORES.length) throw new Error('Falta PAUSADORES: los custodios que pueden pausar en emergencia')
-  const dias = process.env.DEMORA_EMISION_DIAS != null ? Number(process.env.DEMORA_EMISION_DIAS) : SERIE.includes('200') ? 7 : 0
+  // Un security (serie 200) nunca baja de siete días (§5.3): la variable solo puede alargar la demora.
+  const minimo = SERIE.includes('200') ? 7 : 0
+  const dias = process.env.DEMORA_EMISION_DIAS != null ? Number(process.env.DEMORA_EMISION_DIAS) : minimo
   if (!Number.isInteger(dias) || dias < 0) throw new Error('DEMORA_EMISION_DIAS inválida')
+  if (dias < minimo) throw new Error(`Un security (${SERIE}) exige al menos ${minimo} días de demora de emisión (SFSP §5.3)`)
   if (network.name === 'orden' && process.env.CONFIRMO_PRODUCCION !== 'si') {
     throw new Error('Esto despliega en la red 5550 de producción. Requiere firma múltiple activa, auditoría y acta: CONFIRMO_PRODUCCION=si')
   }

@@ -22,14 +22,14 @@ Las hojas usan el formato de OpenZeppelin (`keccak256(keccak256(abi.encode(addre
 | Acción (§5.3) | Firmas y demora | En el contrato |
 |---|---|---|
 | Colocación de AUKA o AGKA contra metal | Dos de tres, sin demora | `emitir` desde la operativa; `demoraEmision` es cero en la serie 300. |
-| Ampliación de supply de un security | Siete días, publicada | `anunciarEmision` (evento público) y, pasados siete días, `emitir`; `demoraEmision` es de siete días en la serie 200 y no se puede cambiar. |
+| Ampliación de supply de un security | Siete días, publicada | Todo lo que acuña espera: `anunciarEmision` y, pasados siete días, `emitir`; y también cada ronda de migración (`anunciarMigracion` y, pasados siete días, `abrirMigracion`), para que no sirva de atajo. `demoraEmision` es fija desde el despliegue y en la serie 200 nunca baja de siete días. |
 | Pausa de emergencia | Una firma, inmediata; vence a las 72 horas si dos custodios no la ratifican | `pausar` por un custodio (`PAUSA_ROLE`); `paused()` deja de valer a las 72 horas salvo `ratificarPausa` de la operativa. Desde la operativa nace ratificada. |
 | Supply de ORIGEN | No existe como acción | ORIGEN no tiene contrato: es la moneda nativa. |
 | Acciones de los tres custodios | Tres de tres | Roles y registro, en la Safe de los tres custodios. |
 
 Fuera de estos contratos quedan las acciones de la red (registrar un contrato, abrir la red, actualizar un módulo, el oráculo), que viven en el complemento de validación de los nodos. Sus demoras (48 horas a catorce días) no las aplica la Safe: hay que aplicarlas en ese complemento o con un módulo de demora, todavía sin hacer.
 
-La migración no es ampliación de supply: abrir una ronda y acreditar no esperan demora.
+En un security, `lotes-safe.ts` genera primero solo el anuncio de la ronda; pasados siete días, con la misma `REFERENCIA`, genera la apertura y los lotes. En las commodities la ronda se abre directo.
 
 ## La firma múltiple
 
@@ -50,7 +50,7 @@ La plataforma de migración lleva las firmas y comprueba lo ejecutado (sección 
 
 ```sh
 npm install
-npm run prueba        # 31 pruebas
+npm run prueba        # 33 pruebas
 ```
 
 | Script | Para qué |
