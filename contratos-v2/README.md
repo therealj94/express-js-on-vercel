@@ -21,19 +21,19 @@ Las hojas usan el formato de OpenZeppelin (`keccak256(keccak256(abi.encode(addre
 
 ```sh
 npm install
-npm run prueba        # 11 pruebas
+npm run prueba        # 14 pruebas
 ```
 
 | Script | Para qué |
 |---|---|
 | `scripts/desplegar.ts` | Despliega el token (y el registro si no hay uno), con todos los roles en `MULTIFIRMA`. En la red 5550 exige `CONFIRMO_PRODUCCION=si`. |
-| `scripts/lotes-safe.ts` | Convierte `acunacion.json` en las transacciones para la firma múltiple (formato Safe Transaction Builder): apertura y lotes. Antes verifica cada prueba y el total. |
+| `scripts/lotes-safe.ts` | Convierte `acunacion.json` en las transacciones para la firma múltiple (formato Safe Transaction Builder): apertura y lotes. Antes verifica cada prueba y el total, y en rondas siguientes deja fuera lo ya acreditado. |
 | `scripts/ensayo.ts` | Ensayo general: despliega, acuña por lotes y concilia cada moneda. No corre en la 5550. |
 
 ```sh
 NOMBRE="Gold Kapital" SIMBOLO=AUKA PASAPORTE=COM-OG-0001 SERIE=SFSP-300 MULTIFIRMA=0x… \
   npx hardhat run scripts/desplegar.ts --network ensayo
-ACUNACION=acunacion.json TOKEN=0x… CHAIN_ID=5550 npx hardhat run scripts/lotes-safe.ts
+ACUNACION=acunacion.json TOKEN=0x… npx hardhat run scripts/lotes-safe.ts --network orden
 ENSAYO_DIR=carpeta npx hardhat run scripts/ensayo.ts
 ```
 
