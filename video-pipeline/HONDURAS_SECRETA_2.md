@@ -536,3 +536,25 @@ Luego, partes 2 a 4:
 - Los 4 videos que faltan.
 - El video original de Leiva en buena calidad.
 - Confirmar los derechos del audio de 2009.
+
+### v2 (4 de octubre): auditoría de José — el colmillo no se entendía y las transiciones se sentían baratas
+
+**Colmillo, rehecho como una escena que se entiende sin sonido:**
+1. La guacamaya de luz aterriza y se vuelve la guara; el «PERO» sube y flota arriba.
+2. Le llega el comentario real. Es una tarjeta grande con «una guacamaya con colmillos????» marcada en amarillo, el texto sin cambios y el autor borrado. Queda 4,2 s en pantalla mientras la guara lo lee en voz alta: «¿Una guacamaya… con colmillos?… ¿Yo?» (OmniHuman L02).
+3. Suena un rayado de disco, «pausa», y aparece la repetición del video anterior en un teléfono, con la etiqueta «Honduras Secreta · video anterior». Se congela en el diente, con zoom y un aro rojo.
+4. La guara dice «Bueno… uno.» y suena un «ting».
+5. El «PERO» cae de golpe y la guara lo atraviesa.
+- OmniHuman dibujó un recuadro de subtítulos falso y un «YO» (filas 1534–1753). Se tapa con el piso de la imagen fija original.
+
+**Transiciones:**
+- `whip_par`: paneo continuo. Los dos planos van lado a lado y se desplazan juntos, con el desenfoque proporcional a la velocidad y sin espejos en los bordes.
+- La dirección del latigazo sigue la acción: arriba cuando Carlos mira, abajo al sumergirse, de lado hacia la ventana.
+- `grado()`: la IA baja saturación y bloom; lo real gana contraste y calidez.
+- Samira entra río con río desde Romeo. Después de que ella dice «el cenote de San Luis Planes», se ve el cenote y la cámara se sumerge.
+- Se quitaron la toma aérea de Utila repetida y el salto de atardecer a mediodía.
+- La tele de Leiva se enciende como una de tubo, sin aparecer de golpe.
+- Los subtítulos ya no se pisan cuando hay J-cuts.
+- La luz de Carlos recorre solo su silueta real, sin los bordes del cuadro.
+
+**Duración:** 2:30. **Costo de la v2:** unos 0,75 USD (lipsync, voz y 3 efectos de sonido).

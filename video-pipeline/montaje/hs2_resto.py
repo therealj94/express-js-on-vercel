@@ -54,16 +54,71 @@ class Real:
         return cv2.resize(f, (W, H), interpolation=cv2.INTER_LANCZOS4) if f.shape[:2] != (H, W) else f
 
 
-def latigazo(fr, w, vertical):
-    """Whip pan: corrimiento y desenfoque direccional, w en [0, 1]."""
-    if w <= 0.02: return fr
-    n = int(3 + 80 * w); k = np.zeros((n, n), np.float32)
+def desenfoque_dir(fr, px, vertical):
+    """Desenfoque de movimiento: núcleo lineal de px píxeles en la dirección del movimiento."""
+    n = int(min(161, abs(px)))
+    if n < 3: return fr
+    k = np.zeros((n, n), np.float32)
     if vertical: k[:, n // 2] = 1
     else: k[n // 2, :] = 1
-    out = cv2.filter2D(fr, -1, k / n)
-    d = int(w * 120)
-    M = np.float32([[1, 0, 0 if vertical else d], [0, 1, d if vertical else 0]])
-    return cv2.warpAffine(out, M, (W, H), borderMode=cv2.BORDER_REFLECT)
+    return cv2.filter2D(fr, -1, k / n, borderType=cv2.BORDER_REPLICATE)
+
+
+DIRS = {"l": (-1, 0), "r": (1, 0), "u": (0, -1), "d": (0, 1)}
+def whip_par(fa, fb, p, dire):
+    """Latigazo continuo como un paneo rápido: el plano que sale y el que entra están lado a lado y se desplazan
+    juntos (sin espejos en los bordes). p ∈ [0, 1] a lo largo de toda la transición; velocidad en campana."""
+    dx, dy = DIRS[dire]; L = W if dx else H
+    e = p * p * (3 - 2 * p); vel = 6 * p * (1 - p)  # posición suave, velocidad máxima en el corte
+    s = e * L
+    Ma = np.float32([[1, 0, -s * dx], [0, 1, -s * dy]]); Mb = np.float32([[1, 0, (L - s) * dx], [0, 1, (L - s) * dy]])
+    lienzo = cv2.warpAffine(fa, Ma, (W, H), borderValue=0)
+    mb = cv2.warpAffine(np.full((H, W), 255, np.uint8), Mb, (W, H), borderValue=0)
+    fbw = cv2.warpAffine(fb, Mb, (W, H), borderValue=0)
+    lienzo[mb > 0] = fbw[mb > 0]
+    out = desenfoque_dir(lienzo, vel * L / FPS * 1.4, vertical=bool(dy))
+    luz = max(0.0, 1 - abs(p - .5) * 6)
+    return cv2.addWeighted(out, 1, np.full_like(out, 255), .10 * luz, 0) if luz > 0 else out
+
+
+def zoom_radial(fr, z, cx=W / 2, cy=H / 2, fuerza=0.0):
+    """Zoom con desenfoque radial (varias capas de escala promediadas)."""
+    if fuerza < .01: return zoom(fr, z, cx, cy)
+    acc = np.zeros(fr.shape, np.float32); n = 7
+    for k in range(n):
+        acc += zoom(fr, z * (1 + fuerza * k / (n - 1)), cx, cy)
+    return (acc / n).astype(np.uint8)
+
+
+def grado(fr, tipo):
+    """Une el color de la IA y de lo real: la IA baja saturación y brillo de cielo; lo real gana contraste y calidez."""
+    f = fr.astype(np.float32)
+    g = f.mean(2, keepdims=True)
+    if tipo == "ia":
+        f = g + (f - g) * .82
+        f = 255 * ((f / 255) ** 1.06)
+        f[..., 2] *= 1.02; f[..., 0] *= .97
+    elif tipo == "real":
+        f = g + (f - g) * 1.10
+        f = (f - 128) * 1.06 + 128
+        f[..., 2] *= 1.03; f[..., 0] *= .96
+    return np.clip(f, 0, 255).astype(np.uint8)
+
+
+VIN2 = None
+def acabar(fr, t, bloom=0.0):
+    """Viñeta suave y grano fijo por cuadro, iguales para IA y real; bloom solo donde hay luz."""
+    global VIN2
+    if VIN2 is None:
+        yy, xx = np.mgrid[0:H, 0:W]; r = np.hypot((xx - W / 2) / (W / 2), (yy - H / 2) / (H / 2))
+        VIN2 = np.clip(1.06 - .22 * r ** 2, .7, 1)[..., None].astype(np.float32)
+    f = fr.astype(np.float32)
+    if bloom:
+        peq = cv2.resize(fr, (W // 4, H // 4), interpolation=cv2.INTER_AREA)
+        f += bloom * cv2.resize(cv2.GaussianBlur(peq, (0, 0), 9), (W, H)).astype(np.float32)
+    rng = np.random.default_rng(int(t * FPS) + 11)
+    gr = cv2.resize(rng.normal(0, 2.6, (H // 2, W // 2)).astype(np.float32), (W, H))
+    return np.clip(f * VIN2 + gr[..., None], 0, 255).astype(np.uint8)
 
 
 def zoom(fr, z, cx=W / 2, cy=H / 2):
@@ -110,12 +165,18 @@ def bloques(palabras, a, b, max_pal=3, max_dur=1.5):
 
 
 def subtitulos(T):
-    """Subtítulos en tiempo de salida para cada tramo de voz real (siguen los J-cuts)."""
+    """Subtítulos en tiempo de salida: testimonios (siguen los J-cuts) y las frases de la guara."""
     P = json.load(open(HN / "p2/loc/palabras_test.json"))
     out = []
     for quien, t0, src, dur in TRAMOS(T):
         for txt, s, e in bloques(P[quien], src, src + dur):
             out.append((txt, t0 + s - src, min(t0 + dur, t0 + e - src)))
+    out += [("¿Una guacamaya con colmillos?", T["lee"] + .0, T["lee"] + 2.75),
+            ("¿Yo?", T["lee"] + 3.25, T["lee"] + 3.95),
+            ("Bueno…", T["bueno"] + .05, T["bueno"] + 1.2), ("uno.", T["bueno"] + 1.3, T["bueno"] + 1.85)]
+    out.sort(key=lambda x: x[1])
+    for j in range(len(out) - 1):  # nunca dos subtítulos a la vez (los J-cuts se solapan)
+        if out[j][2] > out[j + 1][1] - .3: out[j] = (out[j][0], out[j][1], out[j + 1][1] - .3)
     return out
 
 
@@ -123,7 +184,10 @@ def TRAMOS(T):
     """(persona, inicio en la salida, inicio en su video, duración) de cada tramo de voz real."""
     return [("carlos", T["carlos"], 0.0, 6.5), ("romeo", T["romeo"] - 1.0, 0.0, 6.6),
             ("romeo", T["romeo"] + 5.6, 11.70, 1.05), ("samira", T["samira"] - 1.0, 1.35, 5.0),
-            ("lenyn", T["lenyn"] - .9, 6.1, 7.9), ("leiva", T["leiva_tv"] - 2.34, 0.0, 8.6)]
+            ("lenyn", T["lenyn"] - 2.24, 6.1, 7.9), ("leiva", T["leiva_tv"] - 3.3, 0.0, 8.6)]
+
+
+GUARA_SUBS = ("¿Una guacamaya con colmillos?", "¿Yo?", "Bueno…", "uno.")
 
 
 def capa_sub(fr, subs, ts):
@@ -135,7 +199,7 @@ def capa_sub(fr, subs, ts):
                 sh = Image.new("RGBA", img.size, (0, 0, 0, 0)); sh.putalpha(img.getchannel("A").filter(ImageFilter.GaussianBlur(6)))
                 img = Image.alpha_composite(sh, img); CACHE[("sub", txt)] = img
             a = suave((ts - s + .05) / .12) * (1 - suave((ts - e - .1) / .15))
-            fr = pega(fr, img, 540, 1470, a)
+            fr = pega(fr, img, 540, 1640 if txt in GUARA_SUBS else 1470, a, 1.0)
     return fr
 
 
@@ -148,9 +212,11 @@ def capa_rotulo(fr, txt, sub, u, dur):
 
 # ---------- segmentos ----------
 class Seg:
-    def __init__(self, nombre, dur, fn, whip_in=None, rot=None, usu=None):
-        self.nombre, self.dur, self.fn, self.whip_in = nombre, dur, fn, whip_in
-        self.rot, self.usu = rot, usu
+    """trans: cómo se entra a este segmento desde el anterior: None (corte o continuidad),
+    "whip-l/r/u/d" (latigazo en esa dirección), "zoom" (empuje radial) o "fundido"."""
+    def __init__(self, nombre, dur, fn, trans=None, rot=None, usu=None, tipo="ia", bloom=0.0):
+        self.nombre, self.dur, self.fn, self.trans = nombre, dur, fn, trans
+        self.rot, self.usu, self.tipo, self.bloom = rot, usu, tipo, bloom
 
 
 def seg_clip(nombre, archivo, vel, ini=0.0, fin=None, **kw):
@@ -163,80 +229,156 @@ def seg_clip(nombre, archivo, vel, ini=0.0, fin=None, **kw):
     return Seg(nombre, (fin - ini) / vel, fn, **kw)
 
 
+def tarjeta_resaltada(texto, frase, ancho=980, tam=54):
+    """Tarjeta de comentario (autor borrado) con la frase clave marcada en amarillo, sin cambiar el texto."""
+    from PIL import ImageDraw
+    f = fuente("Manrope", tam); pad = 46; lh = int(tam * 1.38)
+    lineas_ = ha.envuelve(texto, f, ancho - 2 * pad)
+    alto = pad + 78 + len(lineas_) * lh + pad - 8
+    im = Image.new("RGBA", (ancho, alto), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    d.rounded_rectangle((0, 0, ancho - 1, alto - 1), 36, fill=(24, 26, 32, 246), outline=(255, 255, 255, 40), width=2)
+    av = Image.new("RGBA", (60, 60), (0, 0, 0, 0)); ImageDraw.Draw(av).ellipse((0, 0, 59, 59), fill=(120, 126, 140, 255))
+    im.alpha_composite(av.filter(ImageFilter.GaussianBlur(3)), (pad, pad - 6))
+    d.rounded_rectangle((pad + 78, pad + 6, pad + 78 + 200, pad + 28), 10, fill=(90, 95, 108, 255))
+    objetivo = frase.split(); i_obj = 0; y = pad + 78
+    for li in lineas_:
+        x = pad; ps = li.split(" ")
+        for j, pal in enumerate(ps):
+            tok = pal + (" " if j < len(ps) - 1 else "")
+            marcada = i_obj < len(objetivo) and pal == objetivo[i_obj]
+            if marcada:
+                w = f.getlength(pal); d.rounded_rectangle((x - 6, y + 4, x + w + 6, y + lh - 2), 8, fill=(255, 205, 40, 235))
+                i_obj += 1
+            elif i_obj and i_obj < len(objetivo): i_obj = 0
+            d.text((x, y), tok, font=f, fill=(20, 20, 24, 255) if marcada else (240, 242, 247, 255))
+            x += f.getlength(tok)
+        y += lh
+    return im
+
+
+def telefono(pantalla, ancho=700):
+    """Marco de teléfono genérico (sin marca) alrededor de un cuadro 9:16."""
+    h = int(ancho * 16 / 9); bez = 22
+    scr = cv2.resize(pantalla, (ancho - 2 * bez, h - 2 * bez), interpolation=cv2.INTER_AREA)
+    img = np.zeros((h, ancho, 4), np.uint8)
+    cv2.rectangle(img, (0, 0), (ancho - 1, h - 1), (18, 18, 20, 255), -1)
+    rgba = np.dstack([scr[..., ::-1], np.full(scr.shape[:2], 255, np.uint8)])
+    img[bez:h - bez, bez:ancho - bez] = rgba
+    m = np.zeros((h, ancho), np.uint8); cv2.rectangle(m, (0, 0), (ancho - 1, h - 1), 255, -1)
+    r = 60
+    for cx, cy in ((r, r), (ancho - r, r), (r, h - r), (ancho - r, h - r)):
+        cv2.rectangle(m, (cx - r if cx < ancho / 2 else cx, cy - r if cy < h / 2 else cy),
+                      (cx if cx < ancho / 2 else cx + r, cy if cy < h / 2 else cy + r), 0, -1)
+        cv2.circle(m, (cx, cy), r, 255, -1)
+    img[..., 3] = np.minimum(img[..., 3], m)
+    return Image.fromarray(img, "RGBA")
+
+
 def construir(bg_final):
     reales = {k: Real(k) for k in REAL}
     S = []
+    pero = palabra("PERO", 230, "Black")
 
-    # 1. Cae la tarjeta «guacamaya con colmillos» sobre el final de la apertura
-    card, *_ = tarjeta(COLMILLOS, None, 920, 50)
-    def f_card(u):
-        fr = zoom(bg_final, 1 + .02 * u)
-        a = sale(u / .3); y = 980 - 160 * (1 - sale(u / .45))
-        return pega(fr, card, 540, y, a, 1.0, -3 + 2 * sale(u / .5))
-    S.append(Seg("tarjeta", 1.6, f_card))
+    # 1. Fin de la historia: la guacamaya de luz aterriza frente a la gente y se vuelve la guara de HS.
+    #    El «PERO» sube y queda flotando arriba.
+    w01 = Clip(HN / "p2/W01_luz_guara.mp4")
+    def f_luz_guara(u):
+        fr = a_vertical(w01.cuadro(u * 1.9))
+        e = sale(u / .9); y = 940 * (1 - e) + 380 * e
+        return pega(fr, pero, 540, y, .9 - .35 * e, 1 - .3 * e)
+    S.append(Seg("luz_guara", w01.n / w01.fps / 1.9, f_luz_guara, bloom=.2))
 
-    # 2. El diente real de Honduras Secreta 1 (lipsync del video pasado), con zoom y aro de luz
-    hs1 = Clip(HN / "v3/GU_hook_habla.mp4"); tx, ty = .474 * W, .396 * H  # el diente, cuadro 9,8 s
-    def f_diente(u):
-        fr = a_vertical(hs1.cuadro(9.40 + u * .45))
-        z = 1 + .9 * suave(u / 1.1); fr = zoom(fr, z, tx, ty)
-        if u > .75:
-            capa = np.zeros((H, W), np.float32); cv2.circle(capa, (int(tx), int(ty)), 105, 1.0, 5)
-            capa = cv2.GaussianBlur(capa, (0, 0), 2) * 1.5 + cv2.GaussianBlur(capa, (0, 0), 10)
-            k = suave((u - .75) / .25) * (.8 + .2 * math.sin(u * 20))
-            fr = np.clip(fr + (capa * k)[..., None] * np.array([210, 240, 255], np.float32), 0, 255).astype(np.uint8)
+    # 2. Le llega el comentario real; lo lee en voz alta (la frase clave va marcada) — 4,2 s para leerlo.
+    card = tarjeta_resaltada(COLMILLOS, "una guacamaya con colmillos????", 920, 46)
+    l02 = Clip(HN / "p2/L02_lee.mp4"); dur_lee = l02.n / l02.fps
+    # OmniHuman inventó un recuadro de subtítulos ilegible (filas 1534–1753) y un «YO»: se tapa con el piso
+    # de la imagen fija original, con borde suave
+    quieta = cv2.resize(cv2.imread(str(HN / "p2/P_guara_colmillo_b.png")), (1088, 1920), interpolation=cv2.INTER_AREA)
+    mezcla_piso = np.clip((np.arange(1920, dtype=np.float32) - 1420) / 70, 0, 1)[:, None, None]
+    def f_lee(u):
+        f = l02.cuadro(u).astype(np.float32)
+        fr = a_vertical((f * (1 - mezcla_piso) + quieta * mezcla_piso).astype(np.uint8))
+        y = 360 - 260 * (1 - sale(u / .35))
+        fr = pega(fr, pero, 540, 380 - 200 * sale(u / .3), .55 * (1 - sale(u / .3)), .7)
+        return pega(fr, card, 540, y, sale(u / .25), 1.0, -1.5 * (1 - sale(u / .5)))
+    S.append(Seg("lee", dur_lee, f_lee))
+
+    # 3. «Pausa»: la repetición del video pasado en un teléfono, congelada en el diente, con aro rojo.
+    hs1 = Clip(HN / "v3/GU_hook_habla.mp4"); tx, ty = .474, .396  # el diente, cuadro 9,8 s (proporción)
+    fondo_lee = cv2.GaussianBlur(a_vertical(l02.cuadro(dur_lee - .05)), (0, 0), 18)
+    fondo_lee = (fondo_lee * .45).astype(np.uint8)
+    etiqueta = palabra("Honduras Secreta · video anterior", 36, "SemiBold", (240, 240, 245), 2)
+    def f_replay(u):
+        fr = fondo_lee.copy()
+        ts = 9.36 + min(u, .55) * .8  # corre un instante y se congela en el diente
+        pant = a_vertical(hs1.cuadro(ts))
+        z = 1 + 1.4 * suave((u - .7) / .8)
+        pant = zoom(pant, z, tx * W, ty * H)
+        if u > 1.3:  # aro rojo que se dibuja alrededor del diente
+            ang = int(360 * sale((u - 1.3) / .4))
+            cv2.ellipse(pant, (int(tx * W), int(ty * H)), (115, 115), -90, 0, ang, (40, 40, 235), 12, cv2.LINE_AA)
+        tel = telefono(pant)
+        y = 1000 + 900 * (1 - sale(u / .35))
+        fr = pega(fr, tel, 540, y)
+        fr = pega(fr, etiqueta, 540, y - tel.height / 2 - 50, sale((u - .2) / .3))
+        if .55 < u < .62: fr = cv2.addWeighted(fr, .7, np.full_like(fr, 255), .3, 0)  # clic de pausa
         return fr
-    S.append(Seg("diente", 1.35, f_diente, whip_in="h"))
+    S.append(Seg("replay", 2.3, f_replay, trans="zoom"))
 
-    # 3. La guacamaya de luz aterriza y se vuelve la guara de HS (fin de la historia)
-    S.append(seg_clip("luz_guara", "W01_luz_guara.mp4", 2.3, whip_in="h"))
-    # 4. «¿Colmillos?… Bueno, uno.»
-    lip = Clip(HN / "p2/L01_colmillo.mp4")
-    S.append(Seg("colmillo", lip.n / lip.fps, lambda u: a_vertical(lip.cuadro(u))))
-    # 5. La guara despega y rompe el «PERO»
-    pero = palabra("PERO", 230, "Black"); VEL_VUELO = 1.85; RUPTURA = 4.88 / VEL_VUELO
+    # 4. «Bueno… uno.» — sonríe enseñando el diente
+    l01 = Clip(HN / "p2/L01_colmillo.mp4")
+    S.append(Seg("bueno", 2.0, lambda u: zoom(a_vertical(l01.cuadro(1.25 + u)), 1 + .06 * u, W / 2, H * .38),
+                 trans="zoom"))
+
+    # 5. La guara despega y atraviesa el «PERO», que cae de golpe frente a ella
+    VEL_VUELO = 1.85; RUPTURA = 4.88 / VEL_VUELO
     polvo_pero = ha.Polvo(pero, 540, 940, 7000, 21, deriva=(0, -420))
     w02 = Clip(HN / "p2/W02_vuelo.mp4")
     def f_vuelo(u):
         fr = a_vertical(w02.cuadro(u * VEL_VUELO))
-        if u < RUPTURA: fr = pega(fr, pero, 540, 940, .9 * suave((u - .9) / .5), 1 + .05 * u)
-        else: fr = polvo_pero.dibuja(fr, min(1, (u - RUPTURA) / 1.0), (255, 236, 200), 1.2)
+        if u < RUPTURA:
+            k = sale(u / .25); fr = pega(fr, pero, 540, 940, .95 * k, 1.35 - .35 * k + .04 * u)
+        else: fr = polvo_pero.dibuja(fr, min(1, (u - RUPTURA) / 1.0), (255, 236, 200), 1.3)
         return fr
-    S.append(Seg("vuelo", w02.n / w02.fps / VEL_VUELO, f_vuelo))
+    S.append(Seg("vuelo", w02.n / w02.fps / VEL_VUELO, f_vuelo, bloom=.15))
 
-    # 6. Las letras se vuelven el mapa de Honduras
-    S.append(Seg("mapa", 3.8, f_mapa()))
-    # 7. De la luz a lo real: la línea dibuja a Carlos
-    S.append(Seg("luz_carlos", 1.5, f_luz_carlos(reales["carlos"])))
+    # 6. Las letras se vuelven el mapa de Honduras y la ruta del viaje
+    S.append(Seg("mapa", 3.8, f_mapa(), tipo=None))
+    # 7. De la luz a lo real: una línea recorre la silueta de Carlos y él aparece dentro
+    S.append(Seg("luz_carlos", 1.5, f_luz_carlos(reales["carlos"]), tipo="real"))
     # 8. Carlos
-    S.append(Seg("carlos", 6.5, lambda u: reales["carlos"].cuadro(u), usu=("@carlosquintanamx", .4)))
-    # 9–10. Mira arriba → Picacho → Los Naranjos
-    S.append(seg_clip("picacho", "W03_cielo_picacho.mp4", 1.7, whip_in="v", rot=("Cerro El Picacho", "Tegucigalpa", 2.1)))
+    S.append(Seg("carlos", 6.5, lambda u: reales["carlos"].cuadro(u), usu=("@carlosquintanamx", .4), tipo="real"))
+    # 9–10. Mira arriba (latigazo hacia arriba) → Picacho → vuelo a Los Naranjos
+    S.append(seg_clip("picacho", "W03_cielo_picacho.mp4", 1.7, trans="whip-u", rot=("Cerro El Picacho", "Tegucigalpa", 2.1)))
     S.append(seg_clip("naranjos", "W04_picacho_naranjos.mp4", 1.9, rot=("Los Naranjos", "Lago de Yojoa", 1.6)))
     # 11. Romeo (su voz entra 1 s antes de verlo)
     def f_romeo(u):
-        ts = 1.0 + u if u < 5.6 else 11.70 + (u - 5.6)
-        fr = reales["romeo"].cuadro(ts)
-        if 5.6 <= u < 5.75: fr = cv2.addWeighted(fr, .6, np.full_like(fr, 255), .4, 0)  # salto con destello
-        return fr
-    S.append(Seg("romeo", 5.6 + 1.05, f_romeo, whip_in="h", usu=("@romeo_and_nando_adventures", .3)))
-    # 12–13. El río se vuelve turquesa → cenote → Samira
-    S.append(seg_clip("rio", "W05_rio_cenote.mp4", 1.9, whip_in="h"))
-    S.append(Seg("samira", 4.0, lambda u: reales["samira"].cuadro(2.35 + u), usu=("@samirafer_hn", .3),
-                 rot=("San Luis Planes", "Santa Bárbara", 1.0)))
-    # 14–16. Bajo el agua del cenote → Utila → Lenyn → arrecife
-    S.append(seg_clip("utila", "W06_cenote_utila.mp4", 1.8, whip_in="v", rot=("Utila", "Islas de la Bahía", 1.7)))
-    S.append(Seg("lenyn", 1.6, lambda u: reales["lenyn"].cuadro(7.0 + u), whip_in="h", usu=("@lenynreye", .1)))
-    S.append(seg_clip("arrecife", "W07_utila_snorkel.mp4", 1.15))
-    # 17–19. Atardecer en Utila → Santa Bárbara → la casa con la tele (Leiva)
-    S.append(seg_clip("utila_sb", "W08_utila_sb.mp4", 1.9, whip_in="h", rot=("Santa Bárbara", "Occidente de Honduras", 1.6)))
+        if u < 5.6: return reales["romeo"].cuadro(1.0 + u)
+        fr = reales["romeo"].cuadro(11.70 + (u - 5.6))
+        return zoom(fr, 1.12 - .08 * sale((u - 5.6) / .4))  # salto con empuje, no con destello
+    S.append(Seg("romeo", 5.6 + 1.05, f_romeo, trans="whip-l", usu=("@romeo_and_nando_adventures", .3), tipo="real"))
+    # 12. Del río de Romeo al río de Samira (agua con agua)
+    S.append(Seg("samira", 4.0, lambda u: reales["samira"].cuadro(2.35 + u), trans="whip-l", usu=("@samirafer_hn", .3),
+                 tipo="real"))
+    # 13. Lo que ella nombra: el cenote (recreación) → bajo el agua
+    S.append(seg_clip("cenote", "W05_rio_cenote.mp4", 1.0, ini=4.5, trans="zoom",
+                      rot=("Cenote de San Luis Planes", "Santa Bárbara", .3)))
+    # 14–16. Sale del agua en Utila → Lenyn → el arrecife → tiburón ballena
+    S.append(seg_clip("utila", "W06_cenote_utila.mp4", 1.8, trans="whip-d", rot=("Utila", "Islas de la Bahía", 1.9)))
+    S.append(Seg("lenyn", 2.16, lambda u: reales["lenyn"].cuadro(8.34 + u), trans="whip-r", usu=("@lenynreye", .1),
+                 tipo="real"))
+    S.append(seg_clip("arrecife", "W07_utila_snorkel.mp4", 1.6, ini=1.5, fin=5.5, trans="whip-d"))
+    S.append(seg_clip("ballena", str(HN / "v4/T06_tiburones_ballena.mp4"), 1.0, ini=2.0, fin=3.0, trans="fundido"))
+    # 17–19. Sube al cielo → vuelo sobre los cafetales → Santa Bárbara → la casa con la tele (Leiva)
+    S.append(seg_clip("utila_sb", "W08_utila_sb.mp4", 1.5, ini=3.0, trans="whip-u",
+                      rot=("Santa Bárbara", "Occidente de Honduras", .9)))
     S.append(seg_clip("sb_casa", "W09_sb_casa.mp4", 1.8))
-    S.append(Seg("leiva_tv", 4.7, f_leiva_tv(reales["leiva"], S[-1]), usu=("@caballeroleiva", .2)))
-    # 20–21. Sale por la ventana a la gente → la guara al atardecer
-    S.append(seg_clip("gente", "W10_casa_gente.mp4", 1.45, ini=1.0))
+    S.append(Seg("leiva_tv", 3.7, f_leiva_tv(reales["leiva"], S[-1], 3.3), usu=("@caballeroleiva", .5), tipo=None))
+    # 20–21. Gira hacia la ventana → la gente del pueblo → la guara al atardecer
+    S.append(seg_clip("gente", "W10_casa_gente.mp4", 1.3, ini=1.6, trans="whip-l"))
     S.append(Seg("cierre", 6.59, f_cierre()))
-    S.append(Seg("luz_final", 1.4, f_luz_final()))
-    S.append(Seg("logo", 3.5, f_logo()))
+    S.append(Seg("luz_final", 1.4, f_luz_final(), tipo=None))
+    S.append(Seg("logo", 3.5, f_logo(), tipo=None))
     return S
 
 
@@ -255,7 +397,9 @@ def f_mapa():
     ret = rng.uniform(0, .5, n).astype(np.float32); giro = rng.uniform(-1, 1, n).astype(np.float32)
     teg = destinos[0]
     def fn(u):
-        fr = np.zeros((H, W, 3), np.float32); fr[:] = (14, 8, 4)
+        fr = np.zeros((H, W, 3), np.float32); fr[:] = (22, 12, 6)
+        yy0 = np.linspace(0, 1, H, dtype=np.float32)[:, None, None]
+        fr += (1 - np.abs(yy0 - .47) * 2) .clip(0, 1) * np.array([24, 14, 6], np.float32)  # halo cálido al centro
         capa = np.zeros((H, W), np.float32)
         # contorno que se dibuja
         k = suave(u / 1.4)
@@ -270,20 +414,27 @@ def f_mapa():
         for i, (nom, lo, la) in enumerate(LUGARES):
             x, y = destinos[i]; a = suave((u - 1.3 - .12 * i) / .4)
             if a > 0: cv2.circle(capa, (int(x), int(y)), 6 if nom else 4, 1.5 * a, -1)
-        glow = cv2.GaussianBlur(capa, (0, 0), 1.2) * 1.4 + cv2.GaussianBlur(capa, (0, 0), 9) * 2.2
+        # la ruta del viaje (Tegucigalpa → Yojoa → San Luis Planes → Utila → Santa Bárbara) se dibuja
+        ruta = destinos[[0, 1, 2, 4, 3]]; kr = suave((u - 1.5) / 1.3) * 4
+        for j in range(4):
+            fr_j = min(1, max(0, kr - j))
+            if fr_j > 0:
+                a0, a1 = ruta[j], ruta[j] + (ruta[j + 1] - ruta[j]) * fr_j
+                cv2.line(capa, tuple(a0.astype(int)), tuple(a1.astype(int)), .9, 3, cv2.LINE_AA)
+        glow = cv2.GaussianBlur(capa, (0, 0), 1.2) * 1.6 + cv2.GaussianBlur(capa, (0, 0), 10) * 2.6
         fr += np.clip(glow, 0, 2)[..., None] * np.array(ORO, np.float32)
         fr = np.clip(fr, 0, 255).astype(np.uint8)
         for i, (nom, lo, la) in enumerate(LUGARES[:5]):
-            a = suave((u - 1.6 - .15 * i) / .4) * (1 - suave((u - 3.0) / .4))
+            a = suave((u - 1.3 - .15 * i) / .35) * (1 - suave((u - 3.05) / .3))
             if a > 0:
-                x, y = destinos[i]; img = CACHE.setdefault(("map", nom), palabra(nom, 36, "SemiBold", (255, 238, 210), 2))
+                x, y = destinos[i]; img = CACHE.setdefault(("map", nom), palabra(nom, 42, "Bold", (255, 240, 215), 2))
                 dx = 0 if nom != "Santa Bárbara" else -40; dy = -34 if nom not in ("San Luis Planes",) else -30
                 if nom == "Santa Bárbara": dy = 34
                 fr = pega(fr, img, x + dx, y + dy, a)
         # la cámara se lanza a Tegucigalpa
         z = 1 + 9 * suave((u - 3.1) / 1.1) ** 2
         fr = zoom(fr, z, teg[0], teg[1])
-        if u > 3.7: fr = cv2.addWeighted(fr, 1, np.full_like(fr, 255), suave((u - 3.7) / .5) * .9, 0)
+        fr = zoom_radial(fr, 1, teg[0], teg[1], .25 * suave((u - 3.2) / .6))
         return fr
     return fn
 
@@ -300,17 +451,29 @@ def contorno_luz(f, col=ORO):
 
 def f_luz_carlos(real):
     f0 = real.cuadro(0.0)
-    li = contorno_luz(f0)
-    yy, xx = np.mgrid[0:H, 0:W]; r = np.hypot(xx - 540, yy - 820).astype(np.float32)
+    m = cv2.imread(str(HN / "p2/loc/carlos_mask.png"), cv2.IMREAD_GRAYSCALE)
+    cs, _ = cv2.findContours((m > 127).astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    c = max(cs, key=cv2.contourArea)[:, 0, :].astype(np.float32)
+    lejos = (c[:, 0] > 12) & (c[:, 0] < W - 12) & (c[:, 1] > 12) & (c[:, 1] < H - 12)
+    c = c[lejos]  # solo la silueta real (pelo y hombros), no los bordes del cuadro
+    mf = cv2.GaussianBlur((m > 127).astype(np.float32), (0, 0), 6)[..., None]
+    rasgos = contorno_luz(f0)  # rasgos interiores, muy suaves
     def fn(u):
-        rad = 1500 * sale(u / .8)
-        m = np.clip((rad - r) / 160, 0, 1)[..., None]
-        fl = np.full_like(f0, 255).astype(np.float32) * (1 - suave(u / .25))
-        fr = np.clip(fl * (1 - m) + li * m, 0, 255).astype(np.uint8)
-        if u > .75:
-            k = suave((u - .75) / .7)
-            fr = np.clip(f0.astype(np.float32) * k + fr * (1 - .7 * k), 0, 255).astype(np.uint8)  # lo real entra y el trazo queda de borde
-        return fr
+        capa = np.zeros((H, W), np.float32)
+        k = sale(u / .75); n = max(2, int(len(c) * k))
+        tramos, ini = [], 0  # se corta la línea donde la silueta toca el borde (saltos grandes)
+        for j in range(1, n):
+            if np.hypot(*(c[j] - c[j - 1])) > 30: tramos.append(c[ini:j]); ini = j
+        tramos.append(c[ini:n])
+        cv2.polylines(capa, [t_.astype(np.int32) for t_ in tramos if len(t_) > 1], False, 1.0, 4, cv2.LINE_AA)
+        cab = c[n - 1].astype(int); cv2.circle(capa, tuple(cab), 9, 1.6 * (1 - suave((u - .7) / .2)), -1)  # la punta de luz
+        glow = cv2.GaussianBlur(capa, (0, 0), 1.5) * 1.4 + cv2.GaussianBlur(capa, (0, 0), 12) * 2.4
+        linea = np.clip(glow, 0, 2)[..., None] * np.array(ORO, np.float32)
+        dentro = suave((u - .2) / .6)
+        fr = f0.astype(np.float32) * mf * dentro + rasgos.astype(np.float32) * .35 * mf * (1 - dentro)
+        fr = fr + f0.astype(np.float32) * (1 - mf) * suave((u - .5) / .6)  # el fondo del carro entra después
+        fr = fr + linea * (1 - .6 * suave((u - 1.0) / .5))
+        return np.clip(fr, 0, 255).astype(np.uint8)
     return fn
 
 
@@ -326,7 +489,7 @@ def pantalla_tv(fr):
     return np.float32([q[np.argmin(s)], q[np.argmin(d)], q[np.argmax(s)], q[np.argmax(d)]])  # tl, tr, br, bl
 
 
-def f_leiva_tv(real, seg_casa):
+def f_leiva_tv(real, seg_casa, src0):
     base = seg_casa.fn(seg_casa.dur - 1 / FPS)
     quad = pantalla_tv(base)
     tvw, tvh = 640, 360
@@ -334,16 +497,22 @@ def f_leiva_tv(real, seg_casa):
     M = cv2.getPerspectiveTransform(src, quad)
     tvc = quad.mean(0)
     def fn(u):
-        f = real.c.cuadro(2.34 + u)  # 478x850: plano medio 16:9 de su cara y pecho
+        f = real.c.cuadro(src0 + u)  # 478x850: plano medio 16:9 de su cara y pecho
         f = cv2.resize(f[40:309], (tvw, tvh), interpolation=cv2.INTER_CUBIC)
-        f = cv2.convertScaleAbs(f, alpha=1.05, beta=6)
+        f = grado(f, "real"); fh = cv2.cvtColor(f, cv2.COLOR_BGR2HSV)
+        fh[..., 1] = (fh[..., 1] * .75).astype(np.uint8); f = cv2.cvtColor(fh, cv2.COLOR_HSV2BGR)  # menos magenta del set
+        # encendido de televisor: negro → línea blanca → la imagen se abre en vertical
+        if u < .12: f = np.full_like(f, 8)
+        elif u < .4:
+            e = sale((u - .12) / .28); h = max(2, int(tvh * e)); g = np.full_like(f, 8)
+            y0 = (tvh - h) // 2; g[y0:y0 + h] = cv2.resize(f, (tvw, h)); f = cv2.addWeighted(g, 1, np.full_like(g, 255), .5 * (1 - e), 0)
         f[::3] = (f[::3] * .9).astype(np.uint8)  # líneas de televisor
         warp = cv2.warpPerspective(f, M, (W, H)); mask = cv2.warpPerspective(np.full((tvh, tvw), 255, np.uint8), M, (W, H))
         m = cv2.GaussianBlur(mask, (3, 3), 0)[..., None] / 255.
         fr = (base * (1 - m) + warp * m).astype(np.uint8)
         glow = cv2.GaussianBlur((warp * m).astype(np.uint8), (0, 0), 25)
         fr = cv2.add(fr, (glow * .35).astype(np.uint8))
-        return zoom(fr, 1 + .32 * suave(u / 4.7), tvc[0], tvc[1])
+        return zoom(fr, 1 + .28 * suave(u / 3.7), tvc[0], tvc[1])
     return fn
 
 
@@ -377,27 +546,46 @@ def tiempos(S):
     return T, t
 
 
+MEDIA = .22  # media duración de cada transición (s)
+
+
+def cuadro_seg(s, u, t):
+    fr = s.fn(min(max(u, 0), s.dur - 1e-3))
+    if s.tipo: fr = grado(fr, s.tipo)
+    if s.nombre not in ("mapa", "logo", "luz_final"): fr = acabar(fr, t, s.bloom)
+    return fr
+
+
 def render(S, sal, desde=0, hasta=None):
     global SUBS
     T, total = tiempos(S); hasta = min(hasta or total, total); SUBS = subtitulos(T)
     cmd = ["ffmpeg", "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{W}x{H}", "-r", str(FPS),
            "-i", "-", "-c:v", "libx264", "-preset", "medium", "-crf", "16", "-pix_fmt", "yuv420p", str(sal)]
     p = subprocess.Popen(cmd, stdin=subprocess.PIPE)
-    WH = .18
     for k in range(int(desde * FPS), int(hasta * FPS)):
         t = k / FPS
         i = max(j for j, s in enumerate(S) if T[s.nombre] <= t + 1e-9)
         s = S[i]; u = t - T[s.nombre]
-        fr = s.fn(min(u, s.dur - 1e-3))
-        if s.nombre not in ("mapa", "logo", "luz_final", "tarjeta", "luz_carlos") + tuple(REAL) + ("leiva_tv",):
-            fr = acabado(fr, t)
+        sig = S[i + 1] if i + 1 < len(S) else None
+        fr = cuadro_seg(s, u, t)
+        # transición de entrada (segunda mitad) y de salida hacia el siguiente (primera mitad)
+        if s.trans and s.trans.startswith("whip") and u < MEDIA and i > 0:
+            prev = S[i - 1]; fa = cuadro_seg(prev, prev.dur - 1e-3, t)
+            fr = whip_par(fa, fr, .5 + .5 * u / MEDIA, s.trans[-1])
+        elif s.trans and u < MEDIA:
+            q = u / MEDIA
+            if False: pass
+            elif s.trans == "zoom": fr = zoom_radial(fr, 1 + .5 * (1 - q) ** 2, fuerza=.18 * (1 - q))
+            elif s.trans == "fundido" and i > 0:
+                prev = S[i - 1]; fp = cuadro_seg(prev, prev.dur - 1e-3, t)
+                fr = cv2.addWeighted(fp, 1 - q, fr, q, 0)
+        if sig and sig.trans and s.dur - u < MEDIA:
+            q = 1 - (s.dur - u) / MEDIA
+            if sig.trans.startswith("whip"): fr = whip_par(fr, cuadro_seg(sig, 0.0, t), .5 * q, sig.trans[-1])
+            elif sig.trans == "zoom": fr = zoom_radial(fr, 1 + 1.2 * q ** 2, fuerza=.22 * q)
         fr = capa_sub(fr, SUBS, t)
         if s.usu: fr = capa_usuario(fr, s.usu[0], u - s.usu[1])
         if s.rot: fr = capa_rotulo(fr, s.rot[0], s.rot[1], u - s.rot[2], 2.2)
-        # latigazo en la unión con el siguiente / anterior
-        if s.whip_in and u < WH: fr = latigazo(fr, 1 - u / WH, s.whip_in == "v")
-        if i + 1 < len(S) and S[i + 1].whip_in and s.dur - u < WH:
-            fr = latigazo(fr, 1 - (s.dur - u) / WH, S[i + 1].whip_in == "v")
         p.stdin.write(np.ascontiguousarray(fr).tobytes())
     p.stdin.close(); p.wait()
     return T, total
@@ -416,24 +604,32 @@ def mezcla(S, T, total, video, sal):
         cad += f",volume={vol},adelay={at(t0)}|{at(t0)}"
         grupos[tipo].append((arg, cad))
     p2, ap = HN / "p2", HN / "ap"
-    add(p2 / "vo_colmillo_b.mp3", T["colmillo"] + .02, 1.0, tipo="voz", norm=True)
+    add(p2 / "vo_lee_a.mp3", T["lee"] + .0, 1.0, tipo="voz", norm=True)
+    add(p2 / "vo_colmillo_b.mp3", T["bueno"] - .05, 1.0, 1.2, 2.0, "voz", True, .1)
     add(p2 / "vo_mira_b.mp3", T["mapa"] + .5, 1.0, tipo="voz", norm=True)
     add(p2 / "vo_cierre_b.mp3", T["cierre"] + .25, 1.0, tipo="voz", norm=True)
     for quien, t0, src, dur in TRAMOS(T):  # testimonios con su voz original (J-cuts)
         add(UP / REAL[quien], t0, 1.0, src, dur, "voz", True, .15)
-    for f, t0, vol, *r in [
-            (ap / "sfx_pings_b.mp3", T["tarjeta"] + .1, .6, 0, .6),
-            (p2 / "sfx_whoosh_a.mp3", T["diente"] - .15, .6), (p2 / "sfx_whoosh_b.mp3", T["luz_guara"] - .15, .5),
-            (ap / "sfx_nace.mp3", T["luz_guara"] + .3, .55, 0, 3), (p2 / "sfx_pop_alas_a.mp3", T["vuelo"] + .3, .8),
+    lista = [
+            (ap / "sfx_nace.mp3", T["luz_guara"] + .2, .55, 0, 3),
+            (ap / "sfx_pings_b.mp3", T["lee"] + .05, .7, 0, .6),
+            (p2 / "sfx_scratch_a.mp3", T["replay"] - .05, .8),
+            (p2 / "sfx_ting_a.mp3", T["bueno"] + 1.25, .8),
+            (p2 / "sfx_pop_alas_a.mp3", T["vuelo"] + .3, .8),
             (HN / "audio5/riser_boom.mp3", T["vuelo"] + 4.88 / 1.85 - 2.0, .7),
             (HN / "audio5/estrellas.mp3", T["mapa"] + .4, .5, 0, 4), (ap / "sfx_nace.mp3", T["luz_carlos"], .5, 0, 1.8),
-            (p2 / "sfx_whoosh_a.mp3", T["picacho"] - .2, .55), (HN / "audio5/pinos.mp3", T["picacho"] + .5, .45, 0, 5),
-            (p2 / "sfx_viento_humedal_a.mp3", T["naranjos"], .5, 0, 5), (p2 / "sfx_whoosh_b.mp3", T["romeo"] - .2, .45),
-            (p2 / "sfx_whoosh_a.mp3", T["rio"] - .2, .5), (p2 / "sfx_rio_a.mp3", T["rio"], .5, 0, 5),
-            (p2 / "sfx_whoosh_b.mp3", T["utila"] - .2, .5), (p2 / "sfx_superficie_a.mp3", T["utila"] + .6, .6, 0, 4.5),
-            (p2 / "sfx_whoosh_a.mp3", T["lenyn"] - .2, .4), (HN / "audio5/olas_atardecer.mp3", T["arrecife"], .35, 0, 5),
-            (p2 / "sfx_whoosh_b.mp3", T["utila_sb"] - .2, .5), (p2 / "sfx_pueblo_a.mp3", T["gente"], .5, 0, 5),
-            (HN / "audio5/final_swell.mp3", T["cierre"] + 2.0, .6, 0, 6), (HN / "audio2/sfx_logo.mp3", T["logo"] - .15, .9)]:
+            (HN / "audio5/pinos.mp3", T["picacho"] + .5, .45, 0, 5),
+            (p2 / "sfx_viento_humedal_a.mp3", T["naranjos"], .5, 0, 5),
+            (p2 / "sfx_rio_a.mp3", T["cenote"], .45, 0, 3),
+            (p2 / "sfx_superficie_a.mp3", T["utila"] + .3, .6, 0, 4.5),
+            (HN / "audio5/olas_atardecer.mp3", T["arrecife"], .3, 0, 3.5),
+            (p2 / "sfx_tv_a.mp3", T["leiva_tv"] + .05, .55, 0, 1.2),
+            (p2 / "sfx_pueblo_a.mp3", T["gente"], .5, 0, 5),
+            (HN / "audio5/final_swell.mp3", T["cierre"] + 2.0, .6, 0, 6), (HN / "audio2/sfx_logo.mp3", T["logo"] - .15, .9)]
+    for j, sg in enumerate(S):
+        if sg.trans and (sg.trans.startswith("whip") or sg.trans == "zoom"):
+            lista.append((p2 / ("sfx_whoosh_a.mp3" if j % 2 else "sfx_whoosh_b.mp3"), T[sg.nombre] - .3, .55))
+    for f, t0, vol, *r in lista:
         add(f, t0, vol, *(r or [None, None]))
     # música: entra con la ruptura del «PERO»; su bajada para narrador (segundo 58) cae en la frase final
     t_m = T["vuelo"] + 4.88 / 1.85
