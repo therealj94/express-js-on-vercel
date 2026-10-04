@@ -1,0 +1,9 @@
+{
+  "red": "orden",
+  "chainId": 5550,
+  "SafeL2": "0x60AE3FFab0dfF2193Af504AD62970B13aB76c991",
+  "SafeProxyFactory": "0x34f640D5FD95c124215a5797BB65bfC8669c95e1",
+  "CompatibilityFallbackHandler": "0x80C635A83527Bf86D1CC7F08D253132712FE07Fb",
+  "MultiSendCallOnly": "0x330b7A7A756324CfA7A8aAbA69f0C5Df674307DF",
+  "fecha": "2026-10-04T15:15:05.796Z"
+}
