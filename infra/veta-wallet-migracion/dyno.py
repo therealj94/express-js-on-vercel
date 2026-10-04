@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Corre un script Node en un dyno one-off de vetawallet y devuelve su salida.
+"""Corre un script Node en un dyno one-off de una app (vetawallet por defecto,
+u otra con DYNO_APP) y devuelve su salida.
 
 El dyno se lanza sin adjuntar (attach=False) y la salida se lee por una
 log-session filtrada a ese dyno. El script viaja en base64 por una variable de
@@ -8,7 +9,7 @@ no en /tmp — porque desde /tmp Node no resuelve los node_modules del slug.
 """
 import base64, json, os, sys, time, urllib.request
 
-APP = "vetawallet"
+APP = os.environ.get("DYNO_APP", "vetawallet")
 TOK = os.environ["HEROKU_API_KEY"]
 
 def api(method, path, body=None):
@@ -26,9 +27,12 @@ script = open(sys.argv[1], "rb").read()
 # dyno no lo destroce, y se escribe en /app — no en /tmp — porque desde /tmp
 # Node no resuelve los node_modules del slug. Se ejecuta con babel-node, que es
 # como arranca la aplicacion, asi que puede importar `lib/cripto.js` tal cual.
-cmd = ("node -e \"require('fs').writeFileSync('/app/v.js',"
+# Un .cjs corre con node a secas: sirve en cualquier app, use o no babel.
+destino, ejecutar = (("/app/v.cjs", "node /app/v.cjs") if sys.argv[1].endswith(".cjs")
+                     else ("/app/v.js", "npx babel-node /app/v.js"))
+cmd = (f"node -e \"require('fs').writeFileSync('{destino}',"
        "Buffer.from(process.env.SCRIPT_B64,'base64'))\" "
-       "&& npx babel-node /app/v.js")
+       f"&& {ejecutar}")
 
 # Variables extra para el dyno, con la forma CLAVE=valor. Se usa para pasar
 # MIGRAR=si sin dejarlo escrito en la configuracion permanente de la
@@ -64,3 +68,12 @@ with urllib.request.urlopen(url, timeout=deadline - time.time()) as r:
         sys.stdout.flush()
         if " Process exited " in line or "State changed from up to complete" in line:
             break
+
+# Heroku a veces entrega las líneas del proceso después del aviso de salida:
+# se vuelve a pedir el registro completo del dyno y se imprime lo que faltaba.
+time.sleep(3)
+ls = api("POST", f"/apps/{APP}/log-sessions", {"dyno": name, "lines": 1500, "tail": False})
+with urllib.request.urlopen(ls["logplex_url"], timeout=60) as r:
+    for line in r.read().decode("utf-8", "replace").splitlines():
+        if line.rstrip() not in seen:
+            print(line.rstrip())

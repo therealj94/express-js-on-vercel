@@ -13,9 +13,11 @@ import { descifrarLlavePrivada, descifrarFraseSemilla, claveDe, esLlavePrivada, 
     largoNueva: (process.env.PASS_ADM_NUEVA || "").length,
   }));
 
-  await mongoose.connect(
-    `mongodb+srv://blakefalkor:${process.env.MONGO_PASSWORD}@cluster0.ngdqmps.mongodb.net/wallet?retryWrites=true&w=majority`
-  );
+  // MONGO_URI si está; si no, la que arma el backend con MONGO_PASSWORD (así está en Heroku).
+  const pw = process.env.MONGO_PASSWORD;
+  const uri = process.env.MONGO_URI || (pw && process.env.MONGO_USER && `mongodb+srv://${process.env.MONGO_USER}:${encodeURIComponent(pw)}@cluster0.ngdqmps.mongodb.net/wallet?retryWrites=true&w=majority`);
+  if (!uri) throw new Error("Falta MONGO_URI, o MONGO_USER y MONGO_PASSWORD");
+  await mongoose.connect(uri);
   const col = mongoose.connection.db.collection("users");
 
   let pkOk = 0, pkMal = 0, sdOk = 0, sdMal = 0, conNueva = 0, conVieja = 0, conRespaldo = 0;

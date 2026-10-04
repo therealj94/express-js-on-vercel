@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel de migración · Orden Global</title>
+<link rel="stylesheet" href="/estilo.css">
+</head>
+<body>
+<main>
+  <h1>Panel de migración</h1>
+  <p class="sub" id="quien">Uso interno. Nada de aquí firma en la cadena: lo ejecuta la firma múltiple y la plataforma lo comprueba.</p>
+
+  <section class="tarjeta" id="login">
+    <form class="fila" id="entrar">
+      <input id="correo" type="email" placeholder="Correo" autocomplete="username" required>
+      <input id="clave" type="password" placeholder="Clave" autocomplete="current-password" required>
+      <button>Entrar</button>
+    </form>
+    <div id="errorLogin"></div>
+  </section>
+
+  <div id="app" class="oculto">
+    <nav class="pestanas">
+      <button data-p="fotos" class="activa">Fotos y migración</button>
+      <button data-p="listas">Listas</button>
+      <button data-p="origen">ORIGEN</button>
+      <button data-p="reclamos">Reclamos</button>
+      <button data-p="regalo">ORIGEN para gas</button>
+      <button data-p="bitacora">Bitácora</button>
+      <button data-p="salir" class="sec">Salir</button>
+    </nav>
+    <div id="mensaje"></div>
+
+    <section data-v="fotos">
+      <div class="tarjeta">
+        <form class="fila" id="nuevaFoto">
+          <select id="fotoActivo" aria-label="Activo"></select>
+          <input id="fotoBloque" type="number" min="0" placeholder="Bloque (vacío = último)">
+          <label style="align-self:center"><input type="checkbox" id="fotoNativas" checked> barrer transacciones nativas</label>
+          <button>Tomar foto</button>
+        </form>
+        <p class="sub" style="margin:8px 0 0">La foto aplica la política de cada moneda: lo de tesorería por encima del umbral no pasa, los topes dejan el máximo fijado y el resto pasa completo. Si queda algo sin ubicar, se publica con un plazo de reclamos.</p>
+      </div>
+      <h2>Fotos</h2>
+      <div class="tabla-scroll"><table id="tablaFotos"></table></div>
+      <div id="detalleFoto"></div>
+    </section>
+
+    <section data-v="listas" class="oculto">
+      <p class="sub">Pega direcciones (una por línea o en JSON). Al guardar, la lista se reemplaza entera.</p>
+      <div class="tarjeta">
+        <form id="formLista">
+          <div class="fila" style="margin-bottom:8px"><select id="tipoLista">
+            <option value="usuarios">Usuarios de Veta Wallet</option><option value="tesoreria">Tesorería</option>
+            <option value="sistema">Sistema</option><option value="inventario">Inventario cadena 8532</option></select>
+            <button>Guardar lista</button></div>
+          <textarea id="textoLista" placeholder="0x…"></textarea>
+        </form>
+      </div>
+      <div class="tabla-scroll"><table id="tablaListas"></table></div>
+    </section>
+
+    <section data-v="origen" class="oculto">
+      <div id="circulacion" class="tarjeta"></div>
+      <h2>Proponer liberación de tesorería</h2>
+      <div class="tarjeta">
+        <form id="formLib">
+          <div class="fila" style="margin-bottom:8px">
+            <input id="libMonto" placeholder="Monto en ORIGEN" required>
+            <input id="libDestino" class="largo" placeholder="Destino (0x…)" required>
+          </div>
+          <div class="fila" style="margin-bottom:8px">
+            <input id="libMotivo" class="largo" placeholder="Motivo" required>
+            <input id="libRespaldo" class="largo" placeholder="Respaldo: qué lo asegura (referencia documental)" required>
+          </div>
+          <button>Proponer</button>
+        </form>
+      </div>
+      <h2>Liberaciones</h2>
+      <div class="tabla-scroll"><table id="tablaLib"></table></div>
+    </section>
+
+    <section data-v="reclamos" class="oculto">
+      <p class="sub">Reclamos de direcciones que la foto no encontró. La firma ya se comprobó: falta revisar que proceda.</p>
+      <div class="tabla-scroll"><table id="tablaReclamos"></table></div>
+    </section>
+
+    <section data-v="regalo" class="oculto">
+      <div class="tarjeta">
+        <p>A cada usuario de Veta Wallet con menos de 1 ORIGEN se le completa lo que le falta, una sola vez. Preparar lee los saldos, crea la lista y una liberación por el total, que hay que aprobar antes de enviar.</p>
+        <button id="prepararRegalo">Preparar</button>
+        <h2>Registrar envíos</h2>
+        <p class="sub">Una línea por envío: «dirección hash». Cada envío se comprueba en la cadena por el monto exacto que le faltaba.</p>
+        <textarea id="textoEnvios" placeholder="0xdirección 0xhash"></textarea>
+        <button id="registrarEnvios" style="margin-top:8px">Registrar</button>
+      </div>
+      <div class="tabla-scroll"><table id="tablaRegalo"></table></div>
+    </section>
+
+    <section data-v="bitacora" class="oculto">
+      <div class="tabla-scroll"><table id="tablaBitacora"></table></div>
+    </section>
+  </div>
+</main>
+<script>
+const $ = (s) => document.querySelector(s)
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+const unidades = (wei) => {
+  if (wei == null || wei === '') return '—'
+  const v = BigInt(wei), neg = v < 0n, a = neg ? -v : v
+  const entero = a / 10n ** 18n, frac = (a % 10n ** 18n).toString().padStart(18, '0').slice(0, 4).replace(/0+$/, '')
+  return (neg ? '−' : '') + entero.toLocaleString('es') + (frac ? ',' + frac : '')
+}
+const aWei = (txt) => {
+  const [e, f = ''] = String(txt).trim().replace(',', '.').split('.')
+  if (!/^\d+$/.test(e) || !/^\d*$/.test(f) || f.length > 18) throw new Error('Monto inválido')
+  return (BigInt(e) * 10n ** 18n + BigInt((f + '0'.repeat(18)).slice(0, 18))).toString()
+}
+let token = ''
+try { token = sessionStorage.getItem('migracion') || '' } catch {}
+let yo = null
+
+async function api(ruta, opciones = {}) {
+  const r = await fetch('/api/panel' + ruta, { ...opciones, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, ...(opciones.headers || {}) } })
+  if (r.status === 401) { salir(); throw new Error('La sesión venció') }
+  const d = r.headers.get('content-type')?.includes('json') ? await r.json() : await r.text()
+  if (!r.ok) throw new Error(d.error || r.status)
+  return d
+}
+const aviso = (txt, error = false) => { $('#mensaje').innerHTML = txt ? `<div class="${error ? 'error' : 'aviso'}">${esc(txt)}</div>` : '' }
+const intentar = (fn) => async (...a) => { try { aviso(''); await fn(...a) } catch (e) { aviso(e.message, true) } }
+
+function salir() { token = ''; try { sessionStorage.removeItem('migracion') } catch {}; $('#app').classList.add('oculto'); $('#login').classList.remove('oculto') }
+
+$('#entrar').addEventListener('submit', async (e) => {
+  e.preventDefault()
+  const r = await fetch('/api/panel/entrar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ correo: $('#correo').value, clave: $('#clave').value }) })
+  const d = await r.json()
+  if (!r.ok) { $('#errorLogin').innerHTML = `<div class="error">${esc(d.error)}</div>`; return }
+  token = d.token; try { sessionStorage.setItem('migracion', token) } catch {}
+  iniciar()
+})
+
+async function iniciar() {
+  try { yo = await api('/yo') } catch { return }
+  $('#login').classList.add('oculto'); $('#app').classList.remove('oculto')
+  $('#quien').textContent = `${yo.correo} · ${yo.roles.join(', ')}`
+  const est = await fetch('/api/estado').then((r) => r.json())
+  $('#fotoActivo').innerHTML = est.activos.map((a) => `<option value="${esc(a.clave)}">${esc(a.nombre)} (${esc(a.simbolo)})</option>`).join('')
+  ver('fotos')
+}
+
+document.querySelectorAll('nav.pestanas button').forEach((b) => b.addEventListener('click', () => b.dataset.p === 'salir' ? salir() : ver(b.dataset.p)))
+function ver(p) {
+  document.querySelectorAll('nav.pestanas button').forEach((b) => b.classList.toggle('activa', b.dataset.p === p))
+  document.querySelectorAll('section[data-v]').forEach((s) => s.classList.toggle('oculto', s.dataset.v !== p))
+  aviso('')
+  ;({ fotos: cargarFotos, listas: cargarListas, origen: cargarOrigen, reclamos: cargarReclamos, regalo: cargarRegalo, bitacora: cargarBitacora })[p]?.()
+}
+
+// ─── Fotos ───
+const ESTADO_FOTO = { 'en-curso': 'aviso', lista: '', publicada: 'bien', fallida: 'mal' }
+const cargarFotos = intentar(async () => {
+  const fotos = await api('/fotos')
+  $('#tablaFotos').innerHTML = '<tr><th>Activo</th><th>Bloque</th><th>Estado</th><th class="num">Supply</th><th class="num">Pasa a v2</th><th class="num">No pasa</th><th class="num">Sin ubicar</th><th>Tenedores</th><th></th></tr>' +
+    fotos.map((f) => `<tr><td>${esc(f.activo)}</td><td>${f.bloque.toLocaleString('es')}</td>
+      <td><span class="chip ${ESTADO_FOTO[f.estado]}">${esc(f.estado)}</span>${f.error ? `<div class="meta">${esc(f.error)}</div>` : ''}</td>
+      <td class="num">${unidades(f.supply)}</td><td class="num">${unidades(f.acunar)}</td><td class="num">${unidades(f.excluido)}</td><td class="num">${f.sinUbicar && f.sinUbicar !== '0' ? `<span class="chip mal">${unidades(f.sinUbicar)}</span>` : f.sinUbicar === '0' ? '<span class="chip bien">0</span>' : '—'}</td>
+      <td>${f.totalTenedores ?? '—'}</td>
+      <td><button class="sec" data-ver="${esc(f.id)}">Ver</button>
+        ${f.estado === 'lista' ? `<button data-publicar="${esc(f.id)}" data-sin="${esc(f.sinUbicar)}">Publicar</button>` : ''}
+        ${f.estado === 'publicada' && f.activo !== 'ORIGEN' ? `<button class="sec" data-conciliar="${esc(f.activo)}">Conciliar v2</button>` : ''}</td></tr>`).join('')
+  if (fotos.some((f) => f.estado === 'en-curso')) setTimeout(cargarFotos, 5000)
+})
+$('#tablaFotos').addEventListener('click', intentar(async (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  if (b.dataset.ver) {
+    const f = await api('/fotos/' + b.dataset.ver)
+    $('#detalleFoto').innerHTML = `<h2>${esc(f.activo)} · bloque ${f.bloque.toLocaleString('es')}</h2>
+      <p class="mono">Raíz: ${esc(f.raiz || '—')}</p>
+      <p>Pasa a la v2: <b>${unidades(f.acunar)}</b> · No pasa: ${unidades(f.excluido)} · Sin ubicar: ${unidades(f.sinUbicar)}${f.plazoReclamos ? ` · reclamos hasta ${esc(new Date(f.plazoReclamos).toLocaleDateString('es'))}` : ''}</p>
+      <p class="sub">Por clase: usuarios ${unidades(f.sumas?.usuario)} · tesorería ${unidades(f.sumas?.tesoreria)} · sistema ${unidades(f.sumas?.sistema)} · externas ${unidades(f.sumas?.externa)}</p>
+      <p><a href="#" data-csv="${esc(f.id)}">Descargar CSV</a>${f.estado === 'publicada' ? ` · <a href="#" data-acun="${esc(f.id)}">Archivo de acuñación (JSON)</a>` : ''}</p>
+      <div class="tabla-scroll"><table><tr><th>Dirección</th><th class="num">Saldo</th><th class="num">Pasa</th><th>Clase</th><th>Motivo</th></tr>
+      ${(f.tenedores || []).map((t) => `<tr><td class="mono">${esc(t.direccion)}</td><td class="num">${unidades(t.saldo)}</td><td class="num">${unidades(t.acunar)}</td><td>${esc(t.clase)}</td><td>${esc(t.motivo || '')}</td></tr>`).join('')}</table></div>`
+  } else if (b.dataset.publicar) {
+    let plazoReclamos
+    if (b.dataset.sin && b.dataset.sin !== '0') {
+      const dias = prompt(`Quedan ${unidades(b.dataset.sin)} sin ubicar. ¿Cuántos días de plazo para reclamar?`, '90')
+      if (!dias) return
+      plazoReclamos = new Date(Date.now() + Number(dias) * 86_400_000).toISOString()
+    }
+    if (!confirm('Publicar fija la foto que se va a acuñar en la v2. ¿Seguir?')) return
+    await api(`/fotos/${b.dataset.publicar}/publicar`, { method: 'POST', body: JSON.stringify({ plazoReclamos }) }); aviso('Foto publicada.'); cargarFotos()
+  } else if (b.dataset.conciliar) {
+    const c = await api('/conciliar/' + b.dataset.conciliar, { method: 'POST' })
+    aviso(c.cuadra ? 'La v2 cuadra con la foto: cada tenedor tiene su saldo exacto.' : `No cuadra: ${c.diferencias.length} diferencias; supply v2 ${unidades(c.supplyV2)} frente a ${unidades(c.esperado)}.`, !c.cuadra)
+  }
+}))
+$('#detalleFoto').addEventListener('click', intentar(async (e) => {
+  const a = e.target.closest('a'); if (!a) return
+  e.preventDefault()
+  const ruta = a.dataset.csv ? `/fotos/${a.dataset.csv}/tenedores.csv` : `/fotos/${a.dataset.acun}/acunacion.json`
+  const r = await fetch('/api/panel' + ruta, { headers: { Authorization: 'Bearer ' + token } })
+  if (!r.ok) throw new Error('No se pudo descargar')
+  const url = URL.createObjectURL(await r.blob()), enlace = document.createElement('a')
+  enlace.href = url; enlace.download = a.dataset.csv ? 'tenedores.csv' : 'acunacion.json'; enlace.click(); URL.revokeObjectURL(url)
+}))
+$('#nuevaFoto').addEventListener('submit', intentar(async (e) => {
+  e.preventDefault()
+  await api('/fotos', { method: 'POST', body: JSON.stringify({ activo: $('#fotoActivo').value, bloque: Number($('#fotoBloque').value) || undefined, barrerNativas: $('#fotoNativas').checked }) })
+  aviso('Foto en curso. El barrido de la cadena tarda unos minutos.'); cargarFotos()
+}))
+
+// ─── Listas ───
+const NOMBRES = { usuarios: 'Usuarios de Veta Wallet', tesoreria: 'Tesorería', sistema: 'Sistema', inventario: 'Inventario cadena 8532' }
+const cargarListas = intentar(async () => {
+  const l = await api('/listas')
+  $('#tablaListas').innerHTML = '<tr><th>Lista</th><th>Direcciones</th><th>Actualizada</th><th>Por</th></tr>' +
+    Object.entries(l).map(([k, v]) => `<tr><td>${esc(NOMBRES[k])}</td><td>${v.total}</td><td>${esc(v.actualizada ? new Date(v.actualizada).toLocaleString('es') : '—')}</td><td>${esc(v.autor || '—')}</td></tr>`).join('')
+})
+$('#formLista').addEventListener('submit', intentar(async (e) => {
+  e.preventDefault()
+  const txt = $('#textoLista').value
+  let dirs; try { dirs = JSON.parse(txt) } catch { dirs = txt.match(/0x[0-9a-fA-F]{40}/g) || [] }
+  const r = await api('/listas/' + $('#tipoLista').value, { method: 'PUT', body: JSON.stringify({ direcciones: dirs }) })
+  aviso(`Lista guardada: ${r.total} direcciones${r.invalidas ? `, ${r.invalidas} inválidas descartadas` : ''}.`); $('#textoLista').value = ''; cargarListas()
+}))
+
+// ─── ORIGEN ───
+const ESTADO_LIB = { propuesta: 'aviso', aprobada: '', ejecutada: 'bien', rechazada: 'mal' }
+const cargarOrigen = intentar(async () => {
+  const o = await api('/origen')
+  $('#circulacion').innerHTML = `<b>ORIGEN en circulación: ${unidades(o.circulante)}</b> · en tesorería ${unidades(o.enTesoreria)} · supply fijo ${unidades(o.supplyFijo)} · bloque ${o.bloque.toLocaleString('es')}
+    ${o.completa ? '' : '<div class="aviso">Falta cargar la lista de tesorería: sin ella todo cuenta como circulante.</div>'}
+    <p class="sub" style="margin:6px 0 0">Una liberación necesita ${o.umbral} firmas de firmantes distintos de quien la propone.</p>`
+  $('#tablaLib').innerHTML = '<tr><th>Tipo</th><th class="num">Monto</th><th>Destino</th><th>Motivo / respaldo</th><th>Estado</th><th></th></tr>' +
+    o.liberaciones.map((l) => `<tr><td>${esc(l.tipo)}</td><td class="num">${unidades(l.monto)}</td><td class="mono">${esc(l.destino || 'varios')}</td>
+      <td>${esc(l.motivo)}<div class="meta">${esc(l.respaldo)}</div><div class="meta">propuso ${esc(l.autor)}</div></td>
+      <td><span class="chip ${ESTADO_LIB[l.estado]}">${esc(l.estado)}</span><div class="meta">${l.aprobaciones.map((x) => esc(x.firmante)).join(', ')}</div>${l.tx ? `<div class="mono">${esc(l.tx)}</div>` : ''}</td>
+      <td>${l.estado === 'propuesta' && yo.roles.includes('firmante') ? `<button data-aprobar="${esc(l.id)}">Aprobar</button> <button class="sec" data-rechazar="${esc(l.id)}">Rechazar</button>` : ''}
+        ${l.estado === 'aprobada' && l.tipo === 'liberacion' && yo.roles.includes('operador') ? `<button data-ejecutar="${esc(l.id)}">Registrar ejecución</button>` : ''}</td></tr>`).join('')
+})
+$('#tablaLib').addEventListener('click', intentar(async (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  if (b.dataset.aprobar) await api(`/liberaciones/${b.dataset.aprobar}/aprobar`, { method: 'POST' })
+  if (b.dataset.rechazar) await api(`/liberaciones/${b.dataset.rechazar}/rechazar`, { method: 'POST', body: JSON.stringify({ motivo: prompt('Motivo del rechazo') || '' }) })
+  if (b.dataset.ejecutar) {
+    const tx = prompt('Hash de la transacción que ejecutó la firma múltiple'); if (!tx) return
+    await api(`/liberaciones/${b.dataset.ejecutar}/ejecutar`, { method: 'POST', body: JSON.stringify({ tx: tx.trim() }) })
+    aviso('Ejecución comprobada en la cadena.')
+  }
+  cargarOrigen()
+}))
+$('#formLib').addEventListener('submit', intentar(async (e) => {
+  e.preventDefault()
+  await api('/liberaciones', { method: 'POST', body: JSON.stringify({ monto: aWei($('#libMonto').value), destino: $('#libDestino').value.trim(), motivo: $('#libMotivo').value, respaldo: $('#libRespaldo').value }) })
+  e.target.reset(); aviso('Liberación propuesta. Falta que la aprueben los firmantes.'); cargarOrigen()
+}))
+
+// ─── Reclamos ───
+const ESTADO_REC = { pendiente: 'aviso', aprobado: 'bien', rechazado: 'mal' }
+const cargarReclamos = intentar(async () => {
+  const r = await api('/reclamos')
+  $('#tablaReclamos').innerHTML = `<tr><th>Moneda</th><th>Dirección</th><th class="num">Saldo</th><th class="num">Pasa</th><th>Estado</th><th></th></tr>` +
+    r.map((x) => `<tr><td>${esc(x.activo)}</td><td class="mono">${esc(x.direccion)}</td><td class="num">${unidades(x.saldo)}</td><td class="num">${unidades(x.acunar)}${x.motivo ? `<div class="meta">${esc(x.motivo)}</div>` : ''}</td>
+      <td><span class="chip ${ESTADO_REC[x.estado]}">${esc(x.estado)}</span>${x.revisor ? `<div class="meta">${esc(x.revisor)}</div>` : ''}</td>
+      <td>${x.estado === 'pendiente' && yo.roles.includes('operador') ? `<button data-aprobar="${esc(x.id)}">Aprobar</button> <button class="sec" data-rechazar="${esc(x.id)}">Rechazar</button>` : ''}</td></tr>`).join('')
+})
+$('#tablaReclamos').addEventListener('click', intentar(async (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  if (b.dataset.aprobar) await api(`/reclamos/${b.dataset.aprobar}/aprobar`, { method: 'POST' })
+  if (b.dataset.rechazar) await api(`/reclamos/${b.dataset.rechazar}/rechazar`, { method: 'POST', body: JSON.stringify({ nota: prompt('Motivo del rechazo') || '' }) })
+  cargarReclamos()
+}))
+
+// ─── Regalo ───
+const cargarRegalo = intentar(async () => {
+  const r = await api('/regalo')
+  $('#tablaRegalo').innerHTML = `<tr><th>Dirección (${r.length})</th><th class="num">Monto</th><th>Estado</th><th>Transacción</th></tr>` +
+    r.map((x) => `<tr><td class="mono">${esc(x.direccion)}</td><td class="num">${unidades(x.monto)}</td><td><span class="chip ${x.estado === 'enviado' ? 'bien' : 'aviso'}">${esc(x.estado)}</span></td><td class="mono">${esc(x.tx || '')}</td></tr>`).join('')
+})
+$('#prepararRegalo').addEventListener('click', intentar(async () => {
+  const r = await api('/regalo/preparar', { method: 'POST' })
+  aviso(r.nuevos ? `Preparado para ${r.nuevos} usuarios (total ${unidades(r.liberacion.monto)} ORIGEN). Ahora hay que aprobar la liberación en ORIGEN.` : 'Ningún usuario necesita que se le complete ORIGEN.'); cargarRegalo()
+}))
+$('#registrarEnvios').addEventListener('click', intentar(async () => {
+  const envios = $('#textoEnvios').value.split('\n').map((l) => l.trim().split(/\s+/)).filter((p) => p.length === 2).map(([direccion, tx]) => ({ direccion, tx }))
+  const r = await api('/regalo/envios', { method: 'POST', body: JSON.stringify({ envios }) })
+  const malos = r.filter((x) => !x.ok)
+  aviso(`${r.length - malos.length} envíos comprobados.${malos.length ? ' Rechazados: ' + malos.map((x) => `${x.direccion} (${x.error})`).join('; ') : ''}`, malos.length > 0)
+  cargarRegalo()
+}))
+
+// ─── Bitácora ───
+const cargarBitacora = intentar(async () => {
+  const b = await api('/bitacora')
+  $('#tablaBitacora').innerHTML = '<tr><th>Fecha</th><th>Quién</th><th>Acción</th><th>Detalle</th></tr>' +
+    b.map((x) => `<tr><td>${esc(new Date(x.fecha).toLocaleString('es'))}</td><td>${esc(x.actor)}</td><td>${esc(x.accion)}</td><td class="mono">${esc(JSON.stringify(x.detalle))}</td></tr>`).join('')
+})
+
+if (token) iniciar()
+</script>
+</body>
+</html>

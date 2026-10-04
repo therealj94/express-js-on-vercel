@@ -1,0 +1,27 @@
+{
+  "name": "plataforma-migracion",
+  "version": "1.0.0",
+  "description": "Plataforma de la migraci\u00f3n SFSP-700: foto de saldos, pruebas de Merkle, conciliaci\u00f3n de la v2, liberaciones de ORIGEN y regalo de gas",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "prueba": "node --import tsx --test src/pruebas/*.test.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "clave": "tsx src/clave.ts"
+  },
+  "dependencies": {
+    "ethers": "^6.13.4",
+    "express": "^4.18.2",
+    "mongodb": "^7.5.0",
+    "tsx": "^4.23.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.25",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
