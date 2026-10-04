@@ -252,8 +252,8 @@ $('#formLista').addEventListener('submit', intentar(async (e) => {
 const ESTADO_LIB = { propuesta: 'aviso', aprobada: '', ejecutada: 'bien', rechazada: 'mal' }
 const cargarOrigen = intentar(async () => {
   const o = await api('/origen')
-  $('#circulacion').innerHTML = `<b>Supply de ORIGEN (en manos de la gente): ${unidades(o.circulante)}</b> · en tesorería, sin contar: ${unidades(o.enTesoreria)} · bloque ${o.bloque.toLocaleString('es')}
-    ${o.completa ? '' : '<div class="aviso">Falta cargar la lista de tesorería: sin ella todo cuenta como circulante.</div>'}
+  $('#circulacion').innerHTML = `<b>Supply de ORIGEN: ${unidades(o.circulante)}</b> · lo que tienen ${o.usuarios.toLocaleString('es')} usuarios de Veta Wallet (${o.conSaldo.toLocaleString('es')} con saldo) · bloque ${o.bloque.toLocaleString('es')}
+    ${o.completa ? '' : '<div class="aviso">Falta cargar la lista de usuarios de Veta Wallet: sin ella no hay supply que mostrar.</div>'}
     <p class="sub" style="margin:6px 0 0">${o.multifirma ? `Cada liberación sale de la firma múltiple: ${o.umbral} custodios la firman con su billetera en «Firma múltiple».` : `Una liberación necesita ${o.umbral} firmas de firmantes distintos de quien la propone.`}</p>`
   multifirmaActiva = o.multifirma
   $('#tablaLib').innerHTML = '<tr><th>Tipo</th><th class="num">Monto</th><th>Destino</th><th>Motivo / respaldo</th><th>Estado</th><th></th></tr>' +

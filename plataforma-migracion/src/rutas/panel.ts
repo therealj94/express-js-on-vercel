@@ -161,7 +161,8 @@ export function rutasPanel(ctx: Contexto) {
   r.get('/origen', exige(), async (_req, res) => {
     try {
       const umbral = safe ? (await OP.estado(ctx.cadena, safe)).umbral : ctx.umbral
-      res.json({ ...(await circulacion(ctx.cadena, a.datos.listas.tesoreria.direcciones, safe ? [safe.safe] : [])), umbral, multifirma: !!safe, liberaciones: [...a.datos.liberaciones].reverse() })
+      const noGente = [...a.datos.listas.tesoreria.direcciones, ...a.datos.listas.sistema.direcciones, ...(safe ? [safe.safe] : [])]
+      res.json({ ...(await circulacion(ctx.cadena, a.datos.listas.usuarios.direcciones, noGente)), umbral, multifirma: !!safe, liberaciones: [...a.datos.liberaciones].reverse() })
     } catch (e) { fallo(res, e) }
   })
 

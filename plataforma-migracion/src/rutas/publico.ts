@@ -52,8 +52,8 @@ export function rutasPublicas(ctx: Contexto) {
     let origen: unknown = null
     try {
       if (!cacheCirculacion || cacheCirculacion.hasta < Date.now()) {
-        const c = await circulacion(ctx.cadena, d.listas.tesoreria.direcciones, ctx.safe ? [ctx.safe.safe] : [])
-        cacheCirculacion = { hasta: Date.now() + 60_000, valor: { bloque: c.bloque, circulante: c.circulante, completa: c.completa } }
+        const c = await circulacion(ctx.cadena, d.listas.usuarios.direcciones, [...d.listas.tesoreria.direcciones, ...d.listas.sistema.direcciones, ...(ctx.safe ? [ctx.safe.safe] : [])])
+        cacheCirculacion = { hasta: Date.now() + 60_000, valor: { bloque: c.bloque, circulante: c.circulante, usuarios: c.usuarios, completa: c.completa } }
       }
       origen = cacheCirculacion.valor
     } catch { origen = { error: 'el nodo no respondió' } }

@@ -209,10 +209,15 @@ test('HTTP con la Safe: aprobar a la antigua se niega, se firma la operación, y
 
     const estado = await (await fetch(base.replace('/panel', '') + '/estado')).json()
     assert.equal(estado.multifirma.safe, SAFE_DIR)
-    // La Safe cuenta como tesorería, pero sin la lista de tesorería cargada la cuenta sigue provisional.
+    // Sin la lista de usuarios no hay supply que mostrar.
     assert.equal(estado.origen.completa, false)
+    // El supply de ORIGEN es solo lo que tienen los usuarios: la Safe no cuenta aunque esté en la lista.
+    almacen.datos.listas.usuarios.direcciones = [dir(1), dir(2), SAFE_DIR]
+    s.saldos[dir(1)] = E
+    s.saldos[dir(2)] = E / 2n
     const o = await (await pedir(ana, '/origen')).json()
-    assert.equal(o.enTesoreria, (1000n * E).toString(), 'lo de la Safe no circula')
+    assert.equal(o.circulante, (E + E / 2n).toString())
+    assert.equal(o.usuarios, 2)
     assert.equal(o.multifirma, true)
   } finally {
     srv.close()

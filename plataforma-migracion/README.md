@@ -24,7 +24,7 @@ La plataforma donde se hace y se comprueba el paso de las monedas de la red 5550
 
 La política vive en `src/catalogo.ts` (`POLITICA`). Cada exclusión queda en la foto con su motivo (`umbral` o `tope`).
 
-- **ORIGEN** queda nativo. Su supply visible es lo que circula fuera de tesorería. El «mint» de ORIGEN es una **liberación de tesorería**, que solo procede contra lo asegurado (con su referencia documental) y con las firmas de dos de los tres custodios de la firma múltiple.
+- **ORIGEN** queda nativo. Su supply es solo lo que tienen los usuarios de Veta Wallet (la suma de sus saldos): no hay un supply fijo del que se reste nada, y lo que no está en manos de un usuario no cuenta. El «mint» de ORIGEN es una **liberación de tesorería**, que solo procede contra lo asegurado (con su referencia documental) y con las firmas de dos de los tres custodios de la firma múltiple.
 - **ORIGEN para gas**: a cada usuario de Veta Wallet con menos de 1 ORIGEN se le completa lo que le falta, una sola vez, para que pueda pagar el gas fee al operar sus activos v2.
 - **Reclamos**: lo que la foto no ubicó se publica con un plazo. Quien tenía saldo en una dirección no encontrada la reclama firmando un mensaje con esa misma billetera (no mueve fondos ni cuesta gas). Se le aplica la misma política, un operador lo revisa, y lo aprobado entra a la acuñación. Pasado el plazo, lo no reclamado desaparece.
 

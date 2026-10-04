@@ -1,9 +1,10 @@
 // ORIGEN: circulación, liberaciones de tesorería y regalo de gas.
 //
 // ORIGEN es la moneda nativa y no se acuña: su «mint» es liberar unidades de la
-// tesorería. El supply que se muestra es lo que circula, es decir, todo lo que
-// no está en tesorería (SFSP §4.3). Una liberación solo procede contra algo que
-// la asegure, con su referencia documental, y con las firmas del umbral.
+// tesorería. Su supply es solo lo que tiene la gente (los usuarios de Veta
+// Wallet); no hay un supply fijo del que se reste nada. Una liberación solo
+// procede contra algo que la asegure, con su referencia documental, y con las
+// firmas del umbral.
 //
 // Esta plataforma no tiene llaves y no envía nada. Registra la propuesta y las
 // aprobaciones, y cuando la firma múltiple ejecuta la transferencia, comprueba
@@ -14,29 +15,28 @@
 // pagar el gas fee al operar sus activos v2.
 
 import { Cadena } from './cadena.js'
-import { SUPPLY_ORIGEN } from './catalogo.js'
 import type { Almacen, Liberacion } from './almacen.js'
 import { nuevoId, registrar } from './almacen.js'
 
 export const UN_ORIGEN = 10n ** 18n
 
 /**
- * `tesoreria`: la lista cargada; `ademas`: otras direcciones que también son tesorería (la Safe).
- * La cuenta solo está completa con la lista cargada: la Safe sola no es toda la tesorería.
+ * El supply de ORIGEN es lo que tiene la gente: la suma de los saldos de los usuarios de Veta Wallet,
+ * y nada más. No hay un supply fijo del que se reste nada: lo que no está en manos de un usuario no
+ * cuenta. `excluir` saca a quien esté en la lista de usuarios pero no sea gente (tesorería, sistema,
+ * la Safe). Sin la lista de usuarios cargada no hay supply que mostrar.
  */
-export async function circulacion(cadena: Cadena, lista: string[], ademas: string[] = []) {
-  const tesoreria = [...new Set([...lista, ...ademas.map((d) => d.toLowerCase())])]
+export async function circulacion(cadena: Cadena, usuarios: string[], excluir: string[] = []) {
+  const fuera = new Set(excluir.map((d) => d.toLowerCase()))
+  const gente = [...new Set(usuarios.map((d) => d.toLowerCase()))].filter((d) => !fuera.has(d))
   const bloque = await cadena.ultimoBloque()
-  const saldos = tesoreria.length ? await cadena.saldos(null, tesoreria, bloque) : []
-  const enTesoreria = saldos.reduce((s, v) => s + v, 0n)
+  const saldos = gente.length ? await cadena.saldos(null, gente, bloque) : []
   return {
     bloque,
-    supplyFijo: SUPPLY_ORIGEN.toString(),
-    enTesoreria: enTesoreria.toString(),
-    circulante: (SUPPLY_ORIGEN - enTesoreria).toString(),
-    tesoreria: tesoreria.map((d, i) => ({ direccion: d, saldo: saldos[i].toString() })),
-    /** Sin direcciones de tesorería cargadas, todo cuenta como circulante: se avisa. */
-    completa: lista.length > 0,
+    circulante: saldos.reduce((s, v) => s + v, 0n).toString(),
+    usuarios: gente.length,
+    conSaldo: saldos.filter((v) => v > 0n).length,
+    completa: gente.length > 0,
   }
 }
 

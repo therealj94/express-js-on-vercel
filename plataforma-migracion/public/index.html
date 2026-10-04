@@ -25,7 +25,7 @@
 
   <footer>
     Cada foto publica una raíz de Merkle de lo que pasa a la v2. Con tu prueba, cualquiera puede verificar que tu monto está incluido, sin confiar en esta página.
-    ORIGEN es la moneda nativa: no se migra y tu saldo sigue igual. Su supply es lo que está en manos de la gente; lo de tesorería no cuenta hasta que se libera. A los usuarios de Veta Wallet se les completa hasta 1 ORIGEN para el gas.
+    ORIGEN es la moneda nativa: no se migra y tu saldo sigue igual. Su supply es solo lo que tienen los usuarios de Veta Wallet: no existe otro supply. A los usuarios de Veta Wallet se les completa hasta 1 ORIGEN para el gas.
   </footer>
 </main>
 <script>
@@ -50,9 +50,9 @@ async function estado() {
         <div class="meta">${esc(a.serie)}</div><div style="margin-top:8px"><span class="chip ${cls}">${esc(txt)}</span></div>
         ${a.foto ? `<div class="meta" style="margin-top:6px">Foto en el bloque ${a.foto.bloque.toLocaleString('es')} · ${a.foto.tenedores} tenedores</div>` : ''}</div>`
     }).join('')
-    if (d.origen?.circulante) {
-      $('#origen').innerHTML = `<p class="sub" style="margin-top:14px">Supply de ORIGEN (lo que tiene la gente): <b>${unidades(d.origen.circulante)}</b>
-        ${d.origen.completa ? '' : ' (provisional: falta cargar la tesorería)'} · Completar a 1 ORIGEN: ${d.regalo.enviados} de ${d.regalo.total} enviados</p>`
+    if (d.origen?.completa) {
+      $('#origen').innerHTML = `<p class="sub" style="margin-top:14px">Supply de ORIGEN (lo que tienen los ${d.origen.usuarios.toLocaleString('es')} usuarios de Veta Wallet): <b>${unidades(d.origen.circulante)}</b>
+        · Completar a 1 ORIGEN: ${d.regalo.enviados} de ${d.regalo.total} enviados</p>`
         + (d.multifirma ? `<p class="sub">Todo lo que sale de la tesorería y toda acción sobre los contratos v2 la firman dos de los tres custodios de la firma múltiple <span class="mono">${esc(d.multifirma.safe)}</span>.
           ${d.multifirma.ejecutadas.length ? `Ejecutadas: ${d.multifirma.ejecutadas.slice(0, 5).map((o) => `${esc(o.titulo)} (<span class="mono">${esc(o.tx.slice(0, 10))}…</span>)`).join(' · ')}` : 'Todavía no ejecutó ninguna operación.'}</p>` : '')
     }

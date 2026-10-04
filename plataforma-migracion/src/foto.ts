@@ -12,7 +12,7 @@
 
 import { verifyMessage } from 'ethers'
 import type { Activo } from './catalogo.js'
-import { SUPPLY_ORIGEN, aplicarPolitica } from './catalogo.js'
+import { aplicarPolitica } from './catalogo.js'
 import { Cadena, CERO } from './cadena.js'
 import { construir } from './merkle.js'
 import type { Clase, Datos, Foto, Conciliacion, Tenedor, Reclamo } from './almacen.js'
@@ -45,7 +45,8 @@ export const entradasAcunacion = (tenedores: { direccion: string; acunar: string
 
 export async function tomarFoto(cadena: Cadena, a: Activo, bloque: number, direcciones: string[], listas: Datos['listas']):
   Promise<Pick<Foto, 'supply' | 'raiz' | 'tenedores' | 'sumas' | 'acunar' | 'excluido' | 'sinUbicar'>> {
-  const supply = a.heredado ? await cadena.supply(a.heredado, bloque) : SUPPLY_ORIGEN
+  // ORIGEN no tiene supply propio: es lo que tiene la gente (se calcula abajo, con los usuarios).
+  let supply = a.heredado ? await cadena.supply(a.heredado, bloque) : 0n
   const saldos = await cadena.saldos(a.heredado, direcciones, bloque)
   const clase = clasificador(listas)
   const tenedores: Tenedor[] = []
@@ -63,6 +64,7 @@ export async function tomarFoto(cadena: Cadena, a: Activo, bloque: number, direc
   })
   tenedores.sort((x, y) => (BigInt(y.saldo) > BigInt(x.saldo) ? 1 : -1))
   const ubicado = Object.values(sumas).reduce((s, v) => s + v, 0n)
+  if (!a.heredado) supply = sumas.usuario
   return {
     supply: supply.toString(),
     raiz: construir(entradasAcunacion(tenedores)).raiz,
@@ -70,7 +72,8 @@ export async function tomarFoto(cadena: Cadena, a: Activo, bloque: number, direc
     sumas: Object.fromEntries(Object.entries(sumas).map(([k, v]) => [k, v.toString()])) as Record<Clase, string>,
     acunar: acunar.toString(),
     excluido: (ubicado - acunar).toString(),
-    sinUbicar: (supply - ubicado).toString(),
+    // En ORIGEN no falta nadie por ubicar: lo que no tiene la gente no es supply.
+    sinUbicar: (a.heredado ? supply - ubicado : 0n).toString(),
   }
 }
 
