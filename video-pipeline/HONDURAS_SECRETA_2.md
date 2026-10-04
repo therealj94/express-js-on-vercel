@@ -315,3 +315,13 @@ Las imágenes de cada lugar se generan con IA solo si no llegan reales, y se mar
   - quitarle el fondo y ponerlo delante de Santa Bárbara (es una recreación, porque no grabó ahí);
   - dejar el set y entrar por el color;
   - enmarcarlo como pantalla de televisión dentro del paisaje, que es honesto con que es un presentador de TV.
+
+### ✅ Decisiones cerradas (4 de octubre, segunda ronda)
+| Tema | Decisión |
+|---|---|
+| Hook | «Honduras es hermoso. Lástima la delincuencia.» Se borra todo menos «Honduras es hermoso». Voz: «Nos dijeron que Honduras es hermoso… pero. Antes del pero… mira de dónde venimos.» |
+| Conflicto | **El «pero»**: cada comentario se corta en «pero», «lástima» o «lastimosamente». Voz: «Siempre hay un pero… Y es cierto: hay mucho por cambiar. Pero cuando solo miramos el pero… dejamos de ver lo que vale la pena cuidar.» |
+| «Guacamaya con colmillos» | **Sí, con humor.** Aparece completo en la cascada. La guara se detiene, se toca el pico con el ala, como diciendo «¿colmillos?», y sigue. Es un respiro de 1 s antes de que todo se oscurezca. |
+| Fondo de Caballero Leiva | **Pantalla de TV dentro del paisaje de Santa Bárbara.** El vuelo sobre los cafetales llega a una casa del pueblo con un televisor encendido, y en la pantalla está él. Al decir «…y principalmente su gente», la cámara sale por la ventana hacia la gente del pueblo. |
+
+**Pendiente para cerrar el plan:** los 4 videos que faltan, las imágenes reales de los lugares (o el visto bueno para recrearlas con IA), la confirmación del cenote y los derechos del audio de 2010.
