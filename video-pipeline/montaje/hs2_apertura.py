@@ -407,13 +407,13 @@ def mezcla(T, fin, total, video, sal):
            ("sfx_nace.mp3", HOOK - .6, .8, 0, 4),
            ("sfx_cincel.mp3", T0["V02"] + 1.4, .7, 0, 3),
            ("sfx_mar_b.mp3", T0["V03"] + .5, .55, 0, 6),
-           ("sfx_monte_b.mp3", T0["V04"] + .1, .6, 0, 6),
+           ("sfx_monte_b.mp3", T0["V04"] + .1, .16, 0, 6),   # el grito, lejano: no tapa «…se negaron a rendirse»
            ("sfx_pluma_b.mp3", T0["V05"] + 1.2, .6, 0, 6),
            ("sfx_caballo_b.mp3", T0["V06"] + 1.3, .6, 0, 5),
            ("sfx_tren_b.mp3", T0["V07"], .55, 0, 6),
            ("sfx_estadio_b.mp3", T0["V08"] + .8, .55, 0, 6),
-           ("sfx_estadio_a.mp3", T0["V09"] + 3.6, .45, 1.5, 4.5),
-           ("sfx_bate_b.mp3", T0["V09D"] + BATE, .8, 0, 5),
+           ("sfx_estadio_a.mp3", T0["V09"] + 3.6, .3, 1.5, 4.5),
+           ("sfx_bate_b.mp3", T0["V09D"] + BATE, .45, 0, 2.5),
            ("sfx_pings_a.mp3", T0["V10D"] + 1.2, .75, 0, 6)]
     sfx += [("sfx_pings_b.mp3", tc + c[3], .55, 0, .6) for c in CAIDA]  # un aviso por tarjeta que cae
     entradas, filtros, mixv, mixs = [], [], [], []
@@ -443,9 +443,11 @@ def mezcla(T, fin, total, video, sal):
     filtros.append(f"[{idx}:a]aresample=48000,atrim=0:9,asetrate=48000*0.84,aresample=48000,lowpass=f=900,volume=0.7,"
                    f"afade=t=in:d=2,afade=t=out:st=6.5:d=2.5,adelay={at(tc + .4)}|{at(tc + .4)}[col]"); idx += 1
     filtros.append(f"{''.join(mixv)}amix=inputs={len(mixv)}:normalize=0:duration=longest,apad=whole_dur={total}[voz]")
-    filtros.append("[voz]asplit=2[voz1][vozsc]")
-    filtros.append("[mus][vozsc]sidechaincompress=threshold=0.05:ratio=6:attack=20:release=350[musd]")
-    filtros.append(f"{''.join(mixs)}amix=inputs={len(mixs)}:normalize=0:duration=longest[sf]")
+    # la voz manda: música y efectos bajan solos cuando habla el narrador
+    filtros.append("[voz]asplit=3[voz1][vozsc][vozsc2]")
+    filtros.append("[mus][vozsc]sidechaincompress=threshold=0.03:ratio=10:attack=15:release=400[musd]")
+    filtros.append(f"{''.join(mixs)}amix=inputs={len(mixs)}:normalize=0:duration=longest[sf0]")
+    filtros.append("[sf0][vozsc2]sidechaincompress=threshold=0.03:ratio=8:attack=10:release=300[sf]")
     filtros.append(f"[voz1][musd][sf][col]amix=inputs=4:normalize=0:duration=longest,apad=whole_dur={total},asetpts=N/SR/TB,atrim=0:{total},"
                    f"alimiter=limit=0.89{'' if CONTINUA else f',afade=t=out:st={total - .6}:d=0.6'}[a]")
     cmd = ["ffmpeg", "-y", "-v", "error", "-i", str(video), *entradas, "-filter_complex", ";".join(filtros),

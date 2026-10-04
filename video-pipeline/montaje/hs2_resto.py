@@ -20,6 +20,7 @@ import numpy as np
 from PIL import Image, ImageFilter
 
 import hs2_apertura as ha
+from sin_dientes import sin_dientes
 from hs2_apertura import (W, H, FPS, Clip, a_vertical, acabado, lineas, palabra, pega, suave, sale, tarjeta,
                           rotulo, punto, fuente)
 
@@ -404,7 +405,7 @@ def construir(bg_final):
     #    El «PERO» sube y queda flotando arriba.
     w01 = Clip(HN / "p2/W01_luz_guara.mp4")
     def f_luz_guara(u):
-        fr = a_vertical(w01.cuadro(u * 1.9))
+        fr = a_vertical(sin_dientes(w01.cuadro(u * 1.9)))  # la IA le pintó dientes blancos en el pico
         e = sale(u / .9); y = 940 * (1 - e) + 380 * e
         return pega(fr, pero, 540, y, .9 - .35 * e, 1 - .3 * e)
     S.append(Seg("luz_guara", w01.n / w01.fps / 1.9, f_luz_guara, bloom=.2))
@@ -417,7 +418,7 @@ def construir(bg_final):
     quieta = cv2.resize(cv2.imread(str(HN / "p2/P_guara_colmillo_b.png")), (1088, 1920), interpolation=cv2.INTER_AREA)
     mezcla_piso = np.clip((np.arange(1920, dtype=np.float32) - 1420) / 70, 0, 1)[:, None, None]
     def f_lee(u):
-        f = l02.cuadro(u).astype(np.float32)
+        f = sin_dientes(l02.cuadro(u)).astype(np.float32)
         fr = a_vertical((f * (1 - mezcla_piso) + quieta * mezcla_piso).astype(np.uint8))
         y = 360 - 260 * (1 - sale(u / .35))
         fr = pega(fr, pero, 540, 380 - 200 * sale(u / .3), .55 * (1 - sale(u / .3)), .7)
@@ -455,7 +456,8 @@ def construir(bg_final):
     #    (lo malo que buscamos). El «PERO» vuelve, frío, flotando delante.
     e1 = Clip(HN / "p2/E1_ojo_entra.mp4")
     def f_ojo_entra(u):
-        fr = a_vertical(e1.cuadro(u * VEL_OJO1))
+        f = e1.cuadro(u * VEL_OJO1)
+        fr = a_vertical(sin_dientes(f) if u * VEL_OJO1 < 2.4 else f)  # mientras se ve el pico entero
         k = suave((u - 3.4) / .6)  # antes de esto el sombrero (con letras) está en cuadro
         return pega(fr, pero_frio, 540, 330 + 10 * u, .42 * k, .62 + .015 * u)
     S.append(Seg("ojo_entra", e1.n / e1.fps / VEL_OJO1, f_ojo_entra, trans="fundido", bloom=.1))
