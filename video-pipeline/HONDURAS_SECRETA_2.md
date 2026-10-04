@@ -354,3 +354,31 @@ Las imágenes de cada lugar se generan con IA solo si no llegan reales, y se mar
 - Donde no la hay, hacemos una **réplica** generada a partir de la foto real (el Cristo del Picacho, el cenote desde la foto de Samira y la pasarela de Los Naranjos).
 
 **Cenote:** la referencia sale de las publicaciones fijadas de Samira (poza turquesa ancha con un muro de selva). Hay que confirmar con ella que esa foto es el cenote de San Luis Planes.
+
+---
+
+## 14. Apertura v1 (4 de octubre): hook, historia en luz y el «pero» (71 s)
+
+Editor: `montaje/hs2_apertura.py`. Usa 10 clips MiniMax H3 Max encadenados. Cada imagen fija S*n* es el final del clip *n* y el inicio del clip *n*+1, así que no hay cortes.
+
+| Tramo | Tiempo | Imagen | Voz / sonido |
+|---|---|---|---|
+| Hook | 0–7,8 s | Tarjeta del comentario real (autor borrado). «Lástima la delincuencia.» se vuelve polvo. «Honduras es hermoso.» se centra y se vuelve el punto de luz | «Nos dijeron que Honduras es hermoso… pero…» y notificación |
+| Copán | 7,8–16,4 s | Juego de pelota con marcadores de guacamaya, nace la guara, el escultor talla en la escalinata | «Hace más de mil años, en Copán…» y cincel |
+| 1502 / Lempira | 16,4–25,4 s | Carabelas y canoa maya en Guanaja; Peñol de Cerquín | «En 1502 llegaron barcos…», mar y caracol |
+| 1821 / Morazán | 25,4–34,8 s | Pluma que firma; emblema de los cinco volcanes y Morazán a caballo | «En 1821 firmamos…», campana y caballo |
+| Enclave bananero | 34,8–40,8 s | Trabajadores con racimos y tren | «Cargamos en la espalda…» y tren |
+| España 82 | 40,8–46,8 s | Gol y familia frente a la tele | «En España 82…» y estadio |
+| 2009 | 46,8–53,8 s | Cabezazo y calle celebrando | Narración real del 14/10/2009 (el «¡GOL!» cae con el remate) |
+| Bajan la mirada | 53,8–60,4 s | Del grito de gol a la luz del teléfono | Notificaciones que se multiplican; la música se corta |
+| Conflicto | 60,4–71 s | Caen las tarjetas reales. Cada comentario se corta en «lástima», «lastimosamente», «pero» o «lo malo», y todo se junta en un «PERO» gigante | «Siempre hay un pero…» |
+
+- **Rótulos de época** (dibujados por código): Copán siglo VIII, Guanaja 1502, Peñol de Cerquín 1537, 15 de septiembre de 1821, Morazán y la República Federal, Costa norte siglo XX, España 1982 y 14 de octubre de 2009. Al inicio aparece «Recreación artística».
+- **Arreglo en posproducción:** MiniMax metió césped y gente fotorrealista en 1821, 1982 y 2009. Esos tramos se convierten en líneas de luz (`A_LINEAS`): bordes con brillo y el color de la época. Reintentar con prompts más estrictos no lo quitó.
+- **Fuera de esta versión:**
+  - El comentario «guacamaya con colmillos» necesita su propio clip de la guara tocándose el pico.
+  - La guara que atraviesa el «PERO» y lo vuelve polvo sobre el mapa es el siguiente bloque.
+- **Costo de esta tanda:** unos 9,8 USD.
+  - 10 imágenes fijas × 2 variantes: 3,40
+  - 12 clips H3 Max (incluye 2 reintentos): 5,76
+  - Música, 7 efectos de sonido × 2 y 6 voces × 2: unos 0,65
