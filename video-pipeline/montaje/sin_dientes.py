@@ -1,34 +1,32 @@
-"""Quita los «dientes» blancos que la IA le dibujó a la guara dentro del pico abierto.
+"""Quita los «dientes» blancos que la IA le dibujó a la guara dentro del pico abierto (W01 al final y L02).
 
-En la zona de la cara busca la boca (la mancha oscura grande que no toca el borde de esa zona) y repinta
-lo blanco que cae dentro de su envolvente con el color de la boca. La pupila es pequeña y no cuenta.
+Un diente es una mancha blanca pequeña rodeada de boca oscura. Se buscan solo en la zona de la boca, por
+debajo de los ojos (así el brillo de la pupila no cuenta), y se repintan con el color de alrededor.
 """
 import cv2
 import numpy as np
 
-ZONA = (.30, .75, .28, .58)  # x0, x1, y0, y1 (proporción del cuadro): la cara de la guara en W01 y L02
+BOCA = (.36, .70, .39, .52)  # x0, x1, y0, y1 (proporción del cuadro) en W01 (final) y L02
 
 
-def sin_dientes(f, zona=ZONA):
+def sin_dientes(f, zona=BOCA):
     h, w = f.shape[:2]; esc = w / 1088
     x0, x1, y0, y1 = int(zona[0] * w), int(zona[1] * w), int(zona[2] * h), int(zona[3] * h)
     sub = f[y0:y1, x0:x1]
     hsv = cv2.cvtColor(sub, cv2.COLOR_BGR2HSV); s, v = hsv[..., 1], hsv[..., 2]
-    oscuro = (v < 100).astype(np.uint8)
-    n, lab, st, _ = cv2.connectedComponentsWithStats(oscuro)
-    H, Wd = oscuro.shape; boca = np.zeros_like(oscuro)
+    blanco = ((v > 145) & (s < 125)).astype(np.uint8)  # blanco cálido; el pico beige y la lengua son más saturados
+    n, lab, st, _ = cv2.connectedComponentsWithStats(blanco)
+    r = max(3, int(8 * esc)); ker = np.ones((2 * r + 1, 2 * r + 1), np.uint8)
+    dientes = np.zeros_like(blanco)
     for i in range(1, n):
         x, y, bw, bh, a = st[i]
-        if a > 4000 * esc * esc and x > 2 and y > 2 and x + bw < Wd - 2 and y + bh < H - 2:
-            boca[lab == i] = 1
-    if not boca.any(): return f
-    cs, _ = cv2.findContours(boca, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    lleno = np.zeros_like(boca)
-    for c in cs: cv2.drawContours(lleno, [cv2.convexHull(c)], -1, 1, -1)
-    blanco = (v > 140) & (s < 80)  # diente: blanco; el pico es beige más saturado
-    dientes = (lleno.astype(bool) & blanco).astype(np.uint8)
-    if dientes.sum() < 15: return f
-    dientes = cv2.dilate(dientes, np.ones((int(7 * esc) | 1,) * 2, np.uint8)) & lleno
+        if not (10 < a < 1800 * esc * esc and bw < 95 * esc and bh < 50 * esc): continue
+        m = (lab[max(0, y - r):y + bh + r, max(0, x - r):x + bw + r] == i).astype(np.uint8)
+        anillo = cv2.dilate(m, ker).astype(bool) & ~m.astype(bool)
+        vv = v[max(0, y - r):y + bh + r, max(0, x - r):x + bw + r][anillo]
+        if vv.size and np.median(vv) < 150: dientes[lab == i] = 1  # rodeada de boca y lengua (el pico beige es más claro)
+    if not dientes.any(): return f
+    dientes = cv2.dilate(dientes, np.ones((int(5 * esc) | 1,) * 2, np.uint8))
     out = f.copy()
-    out[y0:y1, x0:x1] = cv2.inpaint(sub, dientes * 255, int(9 * esc), cv2.INPAINT_TELEA)
+    out[y0:y1, x0:x1] = cv2.inpaint(sub, dientes * 255, int(7 * esc), cv2.INPAINT_TELEA)
     return out

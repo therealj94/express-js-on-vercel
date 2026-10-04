@@ -286,7 +286,7 @@ def TRAMOS(T):
     """(persona, inicio en la salida, inicio en su video, duración) de cada tramo de voz real."""
     return [("carlos", T["carlos"], 0.0, 6.6), ("romeo", T["romeo"] - 1.0, 0.0, 1.0 + ROMEO_CORTE),
             ("romeo", T["romeo"] + ROMEO_CORTE, 11.70, ROMEO_PIR), ("samira", T["samira"] - .2, 1.35, 11.05),
-            ("lenyn", T["lenyn"] - 2.24, 6.1, LENYN_FIN - 6.1), ("leiva", T["leiva_tv"] - LEIVA_SRC, 0.0, 9.3)]
+            ("lenyn", T["lenyn"] - 2.24, 6.1, LENYN_FIN - 6.1), ("leiva", T["leiva_tv"] - LEIVA_SRC, 0.0, 9.5)]
 
 
 GUARA_SUBS = ("¿Una guacamaya con colmillos?", "¿Yo?", "Bueno…", "uno.", "Siempre vamos a encontrar", "algo malo…",
@@ -393,7 +393,7 @@ SAMIRA_DUR = 6.95                 # ella en cuadro hasta «…su información» 
 LENYN_DUR = 2.6                   # él hasta «…belleza natural,»; «playas… vida marina» va sobre el arrecife y la ballena
 ARRIBA, ABAJO = 330, 1690         # altura de la burbuja: arriba sobre el fondo o abajo bajo los subtítulos
 LENYN_FIN = 14.07                 # «…vida marina» termina en 14,05 de su video; «y» entra en 14,10
-LEIVA_SRC, LEIVA_DUR = 1.0, 7.7  # la tele se enciende en «…de Honduras» y lo vemos hasta terminar «…su gente»
+LEIVA_SRC, LEIVA_DUR = 1.0, 8.0  # la tele se enciende en «…de Honduras» y lo vemos hasta terminar «…su gente»
 
 
 def construir(bg_final):
@@ -406,7 +406,8 @@ def construir(bg_final):
     #    El «PERO» sube y queda flotando arriba.
     w01 = Clip(HN / "p2/W01_luz_guara.mp4")
     def f_luz_guara(u):
-        fr = a_vertical(sin_dientes(w01.cuadro(u * 1.9)))  # la IA le pintó dientes blancos en el pico
+        f = w01.cuadro(u * 1.9)
+        fr = a_vertical(sin_dientes(f) if u * 1.9 > 5.4 else f)  # al aterrizar abre el pico: la IA le pintó dientes
         e = sale(u / .9); y = 940 * (1 - e) + 380 * e
         return pega(fr, pero, 540, y, .9 - .35 * e, 1 - .3 * e)
     S.append(Seg("luz_guara", w01.n / w01.fps / 1.9, f_luz_guara, bloom=.2))
@@ -457,8 +458,7 @@ def construir(bg_final):
     #    (lo malo que buscamos). El «PERO» vuelve, frío, flotando delante.
     e1 = Clip(HN / "p2/E1_ojo_entra.mp4")
     def f_ojo_entra(u):
-        f = e1.cuadro(u * VEL_OJO1)
-        fr = a_vertical(sin_dientes(f) if u * VEL_OJO1 < 2.4 else f)  # mientras se ve el pico entero
+        fr = a_vertical(e1.cuadro(u * VEL_OJO1))
         k = suave((u - 3.4) / .6)  # antes de esto el sombrero (con letras) está en cuadro
         return pega(fr, pero_frio, 540, 330 + 10 * u, .42 * k, .62 + .015 * u)
     S.append(Seg("ojo_entra", e1.n / e1.fps / VEL_OJO1, f_ojo_entra, trans="fundido", bloom=.1))
