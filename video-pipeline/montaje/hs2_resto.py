@@ -286,7 +286,7 @@ def TRAMOS(T):
     """(persona, inicio en la salida, inicio en su video, duración) de cada tramo de voz real."""
     return [("carlos", T["carlos"], 0.0, 6.6), ("romeo", T["romeo"] - 1.0, 0.0, 1.0 + ROMEO_CORTE),
             ("romeo", T["romeo"] + ROMEO_CORTE, 11.70, ROMEO_PIR), ("samira", T["samira"] - .2, 1.35, 11.05),
-            ("lenyn", T["lenyn"] - 2.24, 6.1, 8.02), ("leiva", T["leiva_tv"] - LEIVA_SRC, 0.0, 8.85)]
+            ("lenyn", T["lenyn"] - 2.24, 6.1, LENYN_FIN - 6.1), ("leiva", T["leiva_tv"] - LEIVA_SRC, 0.0, 9.3)]
 
 
 GUARA_SUBS = ("¿Una guacamaya con colmillos?", "¿Yo?", "Bueno…", "uno.", "Siempre vamos a encontrar", "algo malo…",
@@ -386,13 +386,14 @@ VEL_OJO1, VEL_OJO2 = 1.3, 1.15  # velocidad de los clips del ojo
 E2_FIN = 5.3                     # en 5,6 s el clip regresa a un plano abierto: se corta antes
 PARPADEO = 1.7 / VEL_OJO2        # s de salida en que el párpado queda cerrado (cuadro 1,7 s de E2)
 PUPILA = (.5, .55)               # centro del reflejo al final del empuje de E2 (proporción del cuadro)
-MAPA_EXTRA = 1.2
+MAPA_EXTRA = 1.2                 # el mapa se sostiene más para leer la pregunta
 ROMEO_CORTE = 5.75                # «…de Santa Cruz de Yojoa» termina (6,70 de su video) y salta a las pirámides
 ROMEO_PIR = 1.4                   # «tenemos pirámides,» completo y una pausa (11,70–13,10; «también» entra en 13,30)
 SAMIRA_DUR = 6.95                 # ella en cuadro hasta «…su información» (8,5); el resto de su frase va sobre el cenote
 LENYN_DUR = 2.6                   # él hasta «…belleza natural,»; «playas… vida marina» va sobre el arrecife y la ballena
 ARRIBA, ABAJO = 330, 1690         # altura de la burbuja: arriba sobre el fondo o abajo bajo los subtítulos
-LEIVA_SRC, LEIVA_DUR = 1.0, 7.25  # la tele se enciende en «…de Honduras» y lo vemos hasta «principalmente su»                 # el mapa se sostiene más para leer la pregunta
+LENYN_FIN = 14.07                 # «…vida marina» termina en 14,05 de su video; «y» entra en 14,10
+LEIVA_SRC, LEIVA_DUR = 1.0, 7.7  # la tele se enciende en «…de Honduras» y lo vemos hasta terminar «…su gente»
 
 
 def construir(bg_final):
@@ -817,7 +818,7 @@ def mezcla(S, T, total, video, sal):
     t_parp = T["ojo_parpadeo"] + PARPADEO
     add(p2 / "vo_cierre_b.mp3", T["cierre"] + .25, 1.0, tipo="voz", norm=True)
     for quien, t0, src, dur in TRAMOS(T):  # testimonios con su voz original (J-cuts)
-        add(UP / REAL[quien], t0, 1.0, src, dur, "voz", True, .3)
+        add(UP / REAL[quien], t0, 1.0, src, dur, "voz", True, .05 if quien == "lenyn" else .35)  # Lenyn: «y» pegado a «marina»
     lista = [
             (ap / "sfx_nace.mp3", T["luz_guara"] + .2, .55, 0, 3),
             (ap / "sfx_pings_b.mp3", T["lee"] + .05, .7, 0, .6),
