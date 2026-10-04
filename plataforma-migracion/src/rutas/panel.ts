@@ -8,7 +8,7 @@ import { Router, type Request, type Response } from 'express'
 import type { Contexto } from '../app.js'
 import { activo, contratoV2 } from '../catalogo.js'
 import { esDireccion } from '../cadena.js'
-import { barrido, candidatas, conciliar, puedePublicar, tomarFoto } from '../foto.js'
+import { aAcunar, barrido, candidatas, conciliar, entradasAcunacion, puedePublicar, tomarFoto } from '../foto.js'
 import { construir, prueba } from '../merkle.js'
 import { ErrorRegla, aprobar, circulacion, ejecutar, prepararRegalo, proponer, rechazar, registrarEnvioRegalo } from '../origen.js'
 import { entrar, exige } from '../sesion.js'
@@ -76,14 +76,17 @@ export function rutasPanel(ctx: Contexto) {
     res.send(['direccion,saldo_wei,clase', ...(f.tenedores || []).map((t) => `${t.direccion},${t.saldo},${t.clase}`)].join('\n'))
   })
 
-  /** Lo que necesita la acuñación de la v2: cada tenedor con su saldo y su prueba, y la raíz. */
+  /** Lo que necesita la acuñación de la v2: cada dirección con su monto y su prueba, y la raíz. Incluye los reclamos aprobados. */
   r.get('/fotos/:id/acunacion.json', exige('operador'), (req, res) => {
     const f = a.datos.fotos.find((x) => x.id === req.params.id)
     if (!f || f.estado !== 'publicada') return res.status(409).json({ error: 'Solo una foto publicada se acuña' })
-    const arbol = ctx.arbol(f.id, () => construir((f.tenedores || []).map((t) => ({ direccion: t.direccion, saldo: BigInt(t.saldo) }))))
+    const lista = aAcunar(f, a.datos.reclamos)
+    const arbol = ctx.arbol(`${f.id}:${lista.length}`, () => construir(entradasAcunacion(lista)))
     res.json({
-      activo: f.activo, bloque: f.bloque, raiz: f.raiz, supply: f.supply,
-      tenedores: (f.tenedores || []).map((t) => ({ direccion: t.direccion, saldo: t.saldo, prueba: prueba(arbol, t.direccion, BigInt(t.saldo)) })),
+      activo: f.activo, bloque: f.bloque, raiz: arbol.raiz, supplyHeredado: f.supply,
+      totalAcunar: lista.reduce((s, t) => s + BigInt(t.acunar), 0n).toString(),
+      reclamosAprobados: a.datos.reclamos.filter((x) => x.fotoId === f.id && x.estado === 'aprobado').length,
+      tenedores: lista.map((t) => ({ direccion: t.direccion, acunar: t.acunar, prueba: prueba(arbol, t.direccion, BigInt(t.acunar)) })),
     })
   })
 
@@ -116,11 +119,17 @@ export function rutasPanel(ctx: Contexto) {
   r.post('/fotos/:id/publicar', exige('operador'), async (req, res) => {
     const f = a.datos.fotos.find((x) => x.id === req.params.id)
     if (!f) return res.status(404).json({ error: 'No existe esa foto' })
-    const motivo = puedePublicar(f)
+    const plazo = req.body?.plazoReclamos ? String(req.body.plazoReclamos) : undefined
+    const motivo = puedePublicar(f, plazo)
     if (motivo) return res.status(409).json({ error: `No se puede publicar: ${motivo}` })
+    // Solo una foto publicada por moneda: la anterior deja de ser la que se acuña.
+    if (a.datos.fotos.some((x) => x.activo === f.activo && x.estado === 'publicada')) {
+      return res.status(409).json({ error: `Ya hay una foto publicada de ${f.activo}` })
+    }
     f.estado = 'publicada'
     f.publicada = new Date().toISOString()
-    registrar(a, quien(req), 'foto.publicada', { id: f.id, activo: f.activo, bloque: f.bloque, raiz: f.raiz })
+    if (BigInt(f.sinUbicar || '0') > 0n) f.plazoReclamos = new Date(plazo!).toISOString()
+    registrar(a, quien(req), 'foto.publicada', { id: f.id, activo: f.activo, bloque: f.bloque, raiz: f.raiz, plazoReclamos: f.plazoReclamos })
     await a.guardar()
     res.json(resumen(f))
   })
@@ -134,7 +143,7 @@ export function rutasPanel(ctx: Contexto) {
     const f = a.datos.fotos.filter((x) => x.activo === act.clave && x.estado === 'publicada').at(-1)
     if (!f) return res.status(409).json({ error: 'No hay foto publicada de ese activo' })
     try {
-      const c = { ...(await conciliar(ctx.cadena, f, v2)), fecha: new Date().toISOString() }
+      const c = { ...(await conciliar(ctx.cadena, f, a.datos.reclamos, v2)), fecha: new Date().toISOString() }
       a.datos.conciliaciones.push(c)
       registrar(a, quien(req), 'conciliacion', { activo: act.clave, cuadra: c.cuadra, diferencias: c.diferencias.length })
       await a.guardar()
@@ -185,10 +194,27 @@ export function rutasPanel(ctx: Contexto) {
   r.get('/regalo', exige(), (_req, res) => res.json(a.datos.regalos))
 
   r.post('/regalo/preparar', exige('operador'), async (req, res) => {
-    const p = prepararRegalo(a, quien(req))
-    await a.guardar()
-    res.json(p)
+    try {
+      const p = await prepararRegalo(a, ctx.cadena, quien(req))
+      await a.guardar()
+      res.json(p)
+    } catch (e) { fallo(res, e) }
   })
+
+  // ─── Reclamos de lo no ubicado ───────────────────────────────────────────
+  r.get('/reclamos', exige(), (_req, res) => res.json([...a.datos.reclamos].reverse()))
+
+  const revisar = (estado: 'aprobado' | 'rechazado') => async (req: Request, res: Response) => {
+    const rc = a.datos.reclamos.find((x) => x.id === req.params.id)
+    if (!rc) return res.status(404).json({ error: 'No existe ese reclamo' })
+    if (rc.estado !== 'pendiente') return res.status(409).json({ error: `El reclamo ya está ${rc.estado}` })
+    Object.assign(rc, { estado, revisor: quien(req), revisado: new Date().toISOString(), nota: String(req.body?.nota || '') })
+    registrar(a, quien(req), `reclamo.${estado}`, { id: rc.id, activo: rc.activo, direccion: rc.direccion, acunar: rc.acunar })
+    await a.guardar()
+    res.json(rc)
+  }
+  r.post('/reclamos/:id/aprobar', exige('operador'), revisar('aprobado'))
+  r.post('/reclamos/:id/rechazar', exige('operador'), revisar('rechazado'))
 
   r.post('/regalo/envios', exige('operador'), async (req, res) => {
     const envios: { direccion: string; tx: string }[] = Array.isArray(req.body?.envios) ? req.body.envios : []

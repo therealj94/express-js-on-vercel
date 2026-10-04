@@ -45,6 +45,42 @@ export const CATALOGO: Activo[] = [
     heredado: '0x638f2ba0e3e1083d1ba570b449bd266f3860d164', decimales: 18 },
 ]
 
+/**
+ * Qué parte de cada saldo pasa a la v2. Decisión del 4 de octubre de 2026:
+ *   - lo que supera el umbral es tesorería y desaparece (no se acuña);
+ *   - un tope deja a una dirección concreta con ese máximo y el resto desaparece;
+ *   - todo lo demás pasa completo, a la misma dirección.
+ * Los montos van en unidades enteras de la moneda (no en wei).
+ */
+export interface Politica { umbral?: number; topes?: Record<string, number> }
+
+export const POLITICA: Record<string, Politica> = {
+  ONDK: { umbral: 100_000 },
+  // 0x7462 queda con 50 AUKA; el resto de las posiciones de más de 50 desaparece.
+  AUKA: { umbral: 50, topes: { '0x746268404cc9ca2ef0ac344f02b236db232c3ad8': 50 } },
+  AGKA: { umbral: 50 },
+  // En estas cuatro solo pasa lo de los usuarios: lo de más de 100.000 es tesorería.
+  HARV: { umbral: 100_000 },
+  IBS: { umbral: 100_000 },
+  MONARKA: { umbral: 100_000 },
+  AMOR: { umbral: 100_000 },
+}
+
+export type MotivoExclusion = 'umbral' | 'tope'
+
+/** Aplica la política a un saldo: cuánto se acuña y, si algo desaparece, por qué. */
+export function aplicarPolitica(a: Activo, direccion: string, saldo: bigint): { acunar: bigint; motivo?: MotivoExclusion } {
+  const p = POLITICA[a.clave] || {}
+  const unidad = 10n ** BigInt(a.decimales)
+  const tope = p.topes?.[direccion.toLowerCase()]
+  if (tope != null) {
+    const max = BigInt(tope) * unidad
+    return saldo > max ? { acunar: max, motivo: 'tope' } : { acunar: saldo }
+  }
+  if (p.umbral != null && saldo > BigInt(p.umbral) * unidad) return { acunar: 0n, motivo: 'umbral' }
+  return { acunar: saldo }
+}
+
 /** ORIGEN tiene supply fijo declarado: un billón de unidades (SFSP §10.1). */
 export const SUPPLY_ORIGEN = 10n ** 12n * 10n ** 18n
 

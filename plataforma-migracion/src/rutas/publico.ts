@@ -8,6 +8,9 @@ import type { Contexto } from '../app.js'
 import { CATALOGO, contratoV2 } from '../catalogo.js'
 import { esDireccion } from '../cadena.js'
 import { construir, prueba } from '../merkle.js'
+import { aAcunar, entradasAcunacion, ErrorReclamo, mensajeReclamo, prepararReclamo } from '../foto.js'
+import { activo as buscarActivo } from '../catalogo.js'
+import { nuevoId, registrar } from '../almacen.js'
 import { circulacion } from '../origen.js'
 
 export function rutasPublicas(ctx: Contexto) {
@@ -56,23 +59,62 @@ export function rutasPublicas(ctx: Contexto) {
     const salida = []
     for (const a of CATALOGO.filter((x) => x.heredado)) {
       const f = ultimaPublicada(a.clave)
+      const lista = f ? aAcunar(f, ctx.almacen.datos.reclamos) : []
       const t = f?.tenedores?.find((x) => x.direccion === dir)
+      const aAc = lista.find((x) => x.direccion === dir)
+      const rc = f ? ctx.almacen.datos.reclamos.filter((x) => x.fotoId === f.id && x.direccion === dir).at(-1) : undefined
       let enV2: string | null = null
       const v2 = contratoV2(a.clave, ctx.entorno)
       if (v2) {
         try { enV2 = (await ctx.cadena.saldos(v2, [dir], await ctx.cadena.ultimoBloque()))[0].toString() } catch { enV2 = null }
       }
+      const arbol = f && aAc ? ctx.arbol(`${f.id}:${lista.length}`, () => construir(entradasAcunacion(lista))) : null
       salida.push({
         clave: a.clave, simbolo: a.simbolo,
-        foto: f ? { bloque: f.bloque, raiz: f.raiz } : null,
-        saldoEnFoto: t?.saldo ?? (f ? '0' : null),
-        prueba: t && f ? prueba(ctx.arbol(f.id, () => construir((f.tenedores || []).map((x) => ({ direccion: x.direccion, saldo: BigInt(x.saldo) })))), dir, BigInt(t.saldo)) : null,
+        foto: f ? { bloque: f.bloque, raiz: arbol?.raiz ?? f.raiz, plazoReclamos: f.plazoReclamos ?? null } : null,
+        saldoEnFoto: t?.saldo ?? rc?.saldo ?? (f ? '0' : null),
+        aAcunar: aAc?.acunar ?? (f ? '0' : null),
+        motivo: t?.motivo ?? rc?.motivo ?? null,
+        reclamo: rc ? { estado: rc.estado } : null,
+        prueba: arbol && aAc ? prueba(arbol, dir, BigInt(aAc.acunar)) : null,
         saldoV2: enV2,
-        completo: t && enV2 != null ? enV2 === t.saldo : null,
+        completo: aAc && enV2 != null ? enV2 === aAc.acunar : null,
       })
     }
     const regalo = ctx.almacen.datos.regalos.find((x) => x.direccion === dir)
     res.json({ direccion: dir, activos: salida, regaloGas: regalo ? { estado: regalo.estado, tx: regalo.tx ?? null } : null })
+  })
+
+  /** El mensaje exacto que hay que firmar para reclamar una dirección que la foto no encontró. */
+  r.get('/reclamo/mensaje', (req, res) => {
+    const a = buscarActivo(String(req.query.activo || ''))
+    const dir = String(req.query.direccion || '').toLowerCase()
+    const f = a ? ultimaPublicada(a.clave) : undefined
+    if (!a || !f || !esDireccion(dir)) return res.status(400).json({ error: 'Moneda sin foto publicada o dirección inválida' })
+    res.json({ mensaje: mensajeReclamo(a.clave, dir, f.bloque), plazo: f.plazoReclamos ?? null })
+  })
+
+  const intentos = new Map<string, number[]>()
+  r.post('/reclamos', async (req, res) => {
+    const ip = req.ip || '?'
+    const ahora = Date.now()
+    const recientes = (intentos.get(ip) || []).filter((t) => t > ahora - 3600_000)
+    if (recientes.length >= 20) return res.status(429).json({ error: 'Demasiados reclamos. Intenta más tarde.' })
+    intentos.set(ip, [...recientes, ahora])
+    const a = buscarActivo(String(req.body?.activo || ''))
+    const dir = String(req.body?.direccion || '').toLowerCase()
+    const f = a?.heredado ? ultimaPublicada(a.clave) : undefined
+    if (!a || !f || !esDireccion(dir)) return res.status(400).json({ error: 'Moneda sin foto publicada o dirección inválida' })
+    try {
+      const datos = await prepararReclamo(ctx.cadena, a, f, ctx.almacen.datos.reclamos, dir, String(req.body?.firma || ''))
+      const rc = { id: nuevoId('rec'), creado: new Date().toISOString(), estado: 'pendiente' as const, ...datos }
+      ctx.almacen.datos.reclamos.push(rc)
+      registrar(ctx.almacen, dir, 'reclamo.recibido', { id: rc.id, activo: rc.activo, saldo: rc.saldo, acunar: rc.acunar })
+      await ctx.almacen.guardar()
+      res.status(201).json({ id: rc.id, estado: rc.estado, saldo: rc.saldo, acunar: rc.acunar, motivo: rc.motivo ?? null })
+    } catch (e: any) {
+      res.status(e instanceof ErrorReclamo ? 409 : 502).json({ error: String(e?.message || e).slice(0, 200) })
+    }
   })
 
   return r

@@ -9,7 +9,7 @@
 <body>
 <main>
   <h1>Migración a la v2</h1>
-  <p class="sub">Las monedas de la red Orden Global pasan a contratos conformes a SFSP. Todos los saldos pasan completos, a la misma dirección. Aquí puedes comprobar el tuyo.</p>
+  <p class="sub">Las monedas de la red Orden Global pasan a contratos conformes a SFSP, a la misma dirección. Aquí puedes comprobar qué pasa de tu saldo.</p>
 
   <section class="tarjeta">
     <form class="fila" id="consulta">
@@ -24,8 +24,8 @@
   <div id="origen"></div>
 
   <footer>
-    Cada foto de saldos publica una raíz de Merkle. Con tu prueba, cualquiera puede verificar que tu saldo está incluido, sin confiar en esta página.
-    ORIGEN es la moneda nativa: no se migra y tu saldo sigue igual.
+    Cada foto publica una raíz de Merkle de lo que pasa a la v2. Con tu prueba, cualquiera puede verificar que tu monto está incluido, sin confiar en esta página.
+    ORIGEN es la moneda nativa: no se migra y tu saldo sigue igual; a los usuarios de Veta Wallet se les completa hasta 1 ORIGEN para el gas.
   </footer>
 </main>
 <script>
@@ -52,7 +52,7 @@ async function estado() {
     }).join('')
     if (d.origen?.circulante) {
       $('#origen').innerHTML = `<p class="sub" style="margin-top:14px">ORIGEN en circulación: <b>${unidades(d.origen.circulante)}</b>
-        ${d.origen.completa ? '' : ' (provisional: falta cargar la tesorería)'} · Regalo de gas: ${d.regalo.enviados} de ${d.regalo.total} enviados</p>`
+        ${d.origen.completa ? '' : ' (provisional: falta cargar la tesorería)'} · Completar a 1 ORIGEN: ${d.regalo.enviados} de ${d.regalo.total} enviados</p>`
     }
   } catch { $('#activos').innerHTML = '<div class="error">No se pudo cargar el estado.</div>' }
 }
@@ -66,18 +66,55 @@ $('#consulta').addEventListener('submit', async (e) => {
   try {
     const r = await fetch('/api/tenedor/' + dir), d = await r.json()
     if (!r.ok) throw new Error(d.error)
-    const filas = d.activos.filter((a) => a.saldoEnFoto && a.saldoEnFoto !== '0' || a.saldoV2 && a.saldoV2 !== '0')
+    const filas = d.activos.filter((a) => (a.saldoEnFoto && a.saldoEnFoto !== '0') || (a.saldoV2 && a.saldoV2 !== '0') || a.reclamo)
     const sinFoto = d.activos.filter((a) => !a.foto).map((a) => a.simbolo)
+    const conPlazo = d.activos.filter((a) => a.foto?.plazoReclamos && new Date(a.foto.plazoReclamos) > new Date() && (!a.saldoEnFoto || a.saldoEnFoto === '0') && !a.reclamo)
+    const MOTIVO = { umbral: 'Posición de tesorería: no pasa a la v2', tope: 'Pasa hasta el tope fijado' }
     out.innerHTML = `<h2>Tu dirección</h2>
-      ${filas.length ? `<div class="tabla-scroll"><table><tr><th>Activo</th><th class="num">En la foto</th><th class="num">En la v2</th><th>Estado</th></tr>
-      ${filas.map((a) => `<tr><td>${esc(a.simbolo)}</td><td class="num">${unidades(a.saldoEnFoto)}</td><td class="num">${unidades(a.saldoV2)}</td>
-        <td>${a.completo === true ? '<span class="chip bien">Completo</span>' : a.completo === false ? '<span class="chip mal">Revisar</span>' : '<span class="chip aviso">Pendiente de acuñar</span>'}
+      ${filas.length ? `<div class="tabla-scroll"><table><tr><th>Activo</th><th class="num">En la foto</th><th class="num">Pasa a la v2</th><th class="num">En la v2</th><th>Estado</th></tr>
+      ${filas.map((a) => `<tr><td>${esc(a.simbolo)}</td><td class="num">${unidades(a.saldoEnFoto)}</td><td class="num">${unidades(a.aAcunar)}</td><td class="num">${unidades(a.saldoV2)}</td>
+        <td>${a.reclamo ? `<span class="chip ${a.reclamo.estado === 'aprobado' ? 'bien' : a.reclamo.estado === 'rechazado' ? 'mal' : 'aviso'}">Reclamo ${esc(a.reclamo.estado)}</span>`
+          : a.aAcunar === '0' ? '<span class="chip mal">No pasa</span>'
+          : a.completo === true ? '<span class="chip bien">Completo</span>' : a.completo === false ? '<span class="chip mal">Revisar</span>' : '<span class="chip aviso">Pendiente de acuñar</span>'}
+        ${a.motivo ? `<div class="meta">${esc(MOTIVO[a.motivo] || a.motivo)}</div>` : ''}
         ${a.prueba ? `<details><summary>Prueba de Merkle</summary><div class="mono">Raíz: ${esc(a.foto.raiz)}<br>${a.prueba.map(esc).join('<br>')}</div></details>` : ''}</td></tr>`).join('')}
       </table></div>` : '<p>No encontramos saldos de las monedas que se migran en esta dirección.</p>'}
       ${sinFoto.length ? `<p class="sub">Todavía sin foto publicada: ${sinFoto.map(esc).join(', ')}. Vuelve a consultar más adelante.</p>` : ''}
-      ${d.regaloGas ? `<p>Regalo de 1 ORIGEN para gas: <span class="chip ${d.regaloGas.estado === 'enviado' ? 'bien' : 'aviso'}">${d.regaloGas.estado === 'enviado' ? 'Enviado' : 'Pendiente'}</span></p>` : ''}`
+      ${conPlazo.length ? `<div class="tarjeta" style="margin-top:12px"><b>¿Tenías saldo y no apareces?</b>
+        <p class="sub" style="margin:4px 0 8px">Puedes reclamarlo firmando con la billetera de esta dirección. Firmar no mueve fondos ni cuesta gas.</p>
+        <form class="fila" id="reclamar"><select id="recActivo">${conPlazo.map((a) => `<option value="${esc(a.clave)}">${esc(a.simbolo)} (hasta ${esc(new Date(a.foto.plazoReclamos).toLocaleDateString('es'))})</option>`).join('')}</select>
+        <button>Reclamar con mi billetera</button></form>
+        <details style="margin-top:8px"><summary>Firmar por otro medio</summary><p class="sub">Firma el mensaje que aparece al pulsar «Ver mensaje» y pega la firma.</p>
+        <button type="button" class="sec" id="verMensaje">Ver mensaje</button><pre class="mono" id="mensajeRec"></pre>
+        <div class="fila"><input class="largo" id="firmaManual" placeholder="Firma (0x…)"><button type="button" id="enviarManual">Enviar</button></div></details>
+        <div id="resReclamo"></div></div>` : ''}
+      ${d.regaloGas ? `<p>Completar hasta 1 ORIGEN para gas: <span class="chip ${d.regaloGas.estado === 'enviado' ? 'bien' : 'aviso'}">${d.regaloGas.estado === 'enviado' ? 'Enviado' : 'Pendiente'}</span></p>` : ''}`
+    if (conPlazo.length) prepararReclamo(dir)
   } catch (err) { out.innerHTML = `<div class="error">${esc(err.message || 'No se pudo consultar.')}</div>` }
 })
+
+async function enviarReclamo(dir, activo, firma) {
+  const r = await fetch('/api/reclamos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ activo, direccion: dir, firma }) })
+  const d = await r.json()
+  $('#resReclamo').innerHTML = r.ok
+    ? `<div class="aviso">Reclamo recibido: saldo ${unidades(d.saldo)}, pasa ${unidades(d.acunar)}. Un operador lo revisa; consulta tu dirección para ver el estado.</div>`
+    : `<div class="error">${esc(d.error)}</div>`
+}
+function prepararReclamo(dir) {
+  const mensaje = async () => (await (await fetch(`/api/reclamo/mensaje?activo=${encodeURIComponent($('#recActivo').value)}&direccion=${dir}`)).json()).mensaje
+  $('#reclamar').addEventListener('submit', async (e) => {
+    e.preventDefault()
+    try {
+      if (!window.ethereum) throw new Error('No hay una billetera en este navegador. Usa «Firmar por otro medio».')
+      const [cuenta] = await window.ethereum.request({ method: 'eth_requestAccounts' })
+      if (String(cuenta).toLowerCase() !== dir.toLowerCase()) throw new Error('La billetera conectada no es la dirección que consultaste.')
+      const firma = await window.ethereum.request({ method: 'personal_sign', params: [await mensaje(), cuenta] })
+      await enviarReclamo(dir, $('#recActivo').value, firma)
+    } catch (err) { $('#resReclamo').innerHTML = `<div class="error">${esc(err.message || err)}</div>` }
+  })
+  $('#verMensaje').addEventListener('click', async () => { $('#mensajeRec').textContent = await mensaje() })
+  $('#enviarManual').addEventListener('click', () => enviarReclamo(dir, $('#recActivo').value, $('#firmaManual').value.trim()))
+}
 
 estado()
 </script>

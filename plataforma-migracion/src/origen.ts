@@ -9,8 +9,9 @@
 // aprobaciones, y cuando la firma múltiple ejecuta la transferencia, comprueba
 // en la cadena que lo ejecutado es exactamente lo aprobado.
 //
-// El regalo de gas da 1 ORIGEN a cada tenedor que no es tesorería ni sistema,
-// una sola vez, para que pueda pagar el gas fee al operar sus activos v2.
+// El regalo de gas deja a cada usuario de Veta Wallet con al menos 1 ORIGEN,
+// una sola vez: a quien tiene menos, se le completa lo que le falta. Así puede
+// pagar el gas fee al operar sus activos v2.
 
 import { Cadena } from './cadena.js'
 import { SUPPLY_ORIGEN } from './catalogo.js'
@@ -102,23 +103,25 @@ export async function ejecutar(a: Almacen, cadena: Cadena, id: string, hash: str
 }
 
 /**
- * Prepara el regalo: una entrada por tenedor (de cualquier foto publicada o de
- * la lista de usuarios) que no sea tesorería ni sistema y que no lo haya
- * recibido ya, y una liberación por el total que hay que aprobar antes de enviar.
+ * Prepara el regalo: a cada usuario de Veta Wallet (sin tesorería ni sistema)
+ * que tenga menos de 1 ORIGEN y no lo haya recibido ya, lo que le falta para
+ * llegar a 1. Crea una liberación por el total, que hay que aprobar antes de enviar.
  */
-export function prepararRegalo(a: Almacen, autor: string): { liberacion: Liberacion | null; nuevos: number } {
+export async function prepararRegalo(a: Almacen, cadena: Cadena, autor: string): Promise<{ liberacion: Liberacion | null; nuevos: number }> {
   const excluidas = new Set([...a.datos.listas.tesoreria.direcciones, ...a.datos.listas.sistema.direcciones])
   const ya = new Set(a.datos.regalos.map((r) => r.direccion))
-  const destinos = new Set<string>(a.datos.listas.usuarios.direcciones)
-  for (const f of a.datos.fotos) if (f.estado === 'publicada') f.tenedores?.forEach((t) => destinos.add(t.direccion))
-  const nuevos = [...destinos].filter((d) => !excluidas.has(d) && !ya.has(d)).sort()
-  if (!nuevos.length) return { liberacion: null, nuevos: 0 }
+  const destinos = a.datos.listas.usuarios.direcciones.filter((d) => !excluidas.has(d) && !ya.has(d)).sort()
+  const saldos = destinos.length ? await cadena.saldos(null, destinos, await cadena.ultimoBloque()) : []
+  const faltan = destinos.map((d, i) => ({ direccion: d, monto: UN_ORIGEN - saldos[i] })).filter((x) => x.monto > 0n)
+  if (!faltan.length) return { liberacion: null, nuevos: 0 }
+  const total = faltan.reduce((s, x) => s + x.monto, 0n)
   const l = proponer(a, autor, {
-    tipo: 'regalo-gas', monto: (UN_ORIGEN * BigInt(nuevos.length)).toString(), destino: '',
-    motivo: `Regalo de gas: 1 ORIGEN a ${nuevos.length} tenedores`, respaldo: 'Programa de regalo de gas de la migración v2',
+    tipo: 'regalo-gas', monto: total.toString(), destino: '',
+    motivo: `Regalo de gas: completar hasta 1 ORIGEN a ${faltan.length} usuarios de Veta Wallet`,
+    respaldo: 'Programa de regalo de gas de la migración v2',
   })
-  nuevos.forEach((d) => a.datos.regalos.push({ direccion: d, estado: 'pendiente', liberacion: l.id }))
-  return { liberacion: l, nuevos: nuevos.length }
+  faltan.forEach((x) => a.datos.regalos.push({ direccion: x.direccion, monto: x.monto.toString(), estado: 'pendiente', liberacion: l.id }))
+  return { liberacion: l, nuevos: faltan.length }
 }
 
 export async function registrarEnvioRegalo(a: Almacen, cadena: Cadena, direccion: string, hash: string, actor: string) {
@@ -128,7 +131,7 @@ export async function registrarEnvioRegalo(a: Almacen, cadena: Cadena, direccion
   const l = buscar(a, r.liberacion)
   if (l.estado !== 'aprobada') throw new ErrorRegla(`el regalo todavía no está aprobado (está ${l.estado})`)
   if (a.datos.regalos.some((x) => x.tx === hash.toLowerCase())) throw new ErrorRegla('esa transacción ya se usó')
-  const fallo = await comprobarEnvio(cadena, hash, { destino: r.direccion, monto: UN_ORIGEN, tesoreria: a.datos.listas.tesoreria.direcciones })
+  const fallo = await comprobarEnvio(cadena, hash, { destino: r.direccion, monto: BigInt(r.monto), tesoreria: a.datos.listas.tesoreria.direcciones })
   if (fallo) throw new ErrorRegla(fallo)
   r.estado = 'enviado'
   r.tx = hash.toLowerCase()

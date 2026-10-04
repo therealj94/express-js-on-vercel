@@ -25,7 +25,8 @@
       <button data-p="fotos" class="activa">Fotos y migración</button>
       <button data-p="listas">Listas</button>
       <button data-p="origen">ORIGEN</button>
-      <button data-p="regalo">Regalo de gas</button>
+      <button data-p="reclamos">Reclamos</button>
+      <button data-p="regalo">ORIGEN para gas</button>
       <button data-p="bitacora">Bitácora</button>
       <button data-p="salir" class="sec">Salir</button>
     </nav>
@@ -39,7 +40,7 @@
           <label style="align-self:center"><input type="checkbox" id="fotoNativas" checked> barrer transacciones nativas</label>
           <button>Tomar foto</button>
         </form>
-        <p class="sub" style="margin:8px 0 0">Una foto se publica solo si no falta nadie: la suma de saldos tiene que igualar el supply.</p>
+        <p class="sub" style="margin:8px 0 0">La foto aplica la política de cada moneda: lo de tesorería por encima del umbral no pasa, los topes dejan el máximo fijado y el resto pasa completo. Si queda algo sin ubicar, se publica con un plazo de reclamos.</p>
       </div>
       <h2>Fotos</h2>
       <div class="tabla-scroll"><table id="tablaFotos"></table></div>
@@ -80,12 +81,17 @@
       <div class="tabla-scroll"><table id="tablaLib"></table></div>
     </section>
 
+    <section data-v="reclamos" class="oculto">
+      <p class="sub">Reclamos de direcciones que la foto no encontró. La firma ya se comprobó: falta revisar que proceda.</p>
+      <div class="tabla-scroll"><table id="tablaReclamos"></table></div>
+    </section>
+
     <section data-v="regalo" class="oculto">
       <div class="tarjeta">
-        <p>Cada tenedor que no es tesorería ni sistema recibe 1 ORIGEN, una sola vez. Preparar crea la lista y una liberación por el total, que hay que aprobar antes de enviar.</p>
-        <button id="prepararRegalo">Preparar regalo</button>
+        <p>A cada usuario de Veta Wallet con menos de 1 ORIGEN se le completa lo que le falta, una sola vez. Preparar lee los saldos, crea la lista y una liberación por el total, que hay que aprobar antes de enviar.</p>
+        <button id="prepararRegalo">Preparar</button>
         <h2>Registrar envíos</h2>
-        <p class="sub">Una línea por envío: «dirección hash». Cada envío se comprueba en la cadena.</p>
+        <p class="sub">Una línea por envío: «dirección hash». Cada envío se comprueba en la cadena por el monto exacto que le faltaba.</p>
         <textarea id="textoEnvios" placeholder="0xdirección 0xhash"></textarea>
         <button id="registrarEnvios" style="margin-top:8px">Registrar</button>
       </div>
@@ -150,20 +156,20 @@ function ver(p) {
   document.querySelectorAll('nav.pestanas button').forEach((b) => b.classList.toggle('activa', b.dataset.p === p))
   document.querySelectorAll('section[data-v]').forEach((s) => s.classList.toggle('oculto', s.dataset.v !== p))
   aviso('')
-  ;({ fotos: cargarFotos, listas: cargarListas, origen: cargarOrigen, regalo: cargarRegalo, bitacora: cargarBitacora })[p]?.()
+  ;({ fotos: cargarFotos, listas: cargarListas, origen: cargarOrigen, reclamos: cargarReclamos, regalo: cargarRegalo, bitacora: cargarBitacora })[p]?.()
 }
 
 // ─── Fotos ───
 const ESTADO_FOTO = { 'en-curso': 'aviso', lista: '', publicada: 'bien', fallida: 'mal' }
 const cargarFotos = intentar(async () => {
   const fotos = await api('/fotos')
-  $('#tablaFotos').innerHTML = '<tr><th>Activo</th><th>Bloque</th><th>Estado</th><th class="num">Supply</th><th class="num">Sin ubicar</th><th>Tenedores</th><th></th></tr>' +
+  $('#tablaFotos').innerHTML = '<tr><th>Activo</th><th>Bloque</th><th>Estado</th><th class="num">Supply</th><th class="num">Pasa a v2</th><th class="num">No pasa</th><th class="num">Sin ubicar</th><th>Tenedores</th><th></th></tr>' +
     fotos.map((f) => `<tr><td>${esc(f.activo)}</td><td>${f.bloque.toLocaleString('es')}</td>
       <td><span class="chip ${ESTADO_FOTO[f.estado]}">${esc(f.estado)}</span>${f.error ? `<div class="meta">${esc(f.error)}</div>` : ''}</td>
-      <td class="num">${unidades(f.supply)}</td><td class="num">${f.sinUbicar && f.sinUbicar !== '0' ? `<span class="chip mal">${unidades(f.sinUbicar)}</span>` : f.sinUbicar === '0' ? '<span class="chip bien">0</span>' : '—'}</td>
+      <td class="num">${unidades(f.supply)}</td><td class="num">${unidades(f.acunar)}</td><td class="num">${unidades(f.excluido)}</td><td class="num">${f.sinUbicar && f.sinUbicar !== '0' ? `<span class="chip mal">${unidades(f.sinUbicar)}</span>` : f.sinUbicar === '0' ? '<span class="chip bien">0</span>' : '—'}</td>
       <td>${f.totalTenedores ?? '—'}</td>
       <td><button class="sec" data-ver="${esc(f.id)}">Ver</button>
-        ${f.estado === 'lista' ? `<button data-publicar="${esc(f.id)}">Publicar</button>` : ''}
+        ${f.estado === 'lista' ? `<button data-publicar="${esc(f.id)}" data-sin="${esc(f.sinUbicar)}">Publicar</button>` : ''}
         ${f.estado === 'publicada' && f.activo !== 'ORIGEN' ? `<button class="sec" data-conciliar="${esc(f.activo)}">Conciliar v2</button>` : ''}</td></tr>`).join('')
   if (fotos.some((f) => f.estado === 'en-curso')) setTimeout(cargarFotos, 5000)
 })
@@ -173,13 +179,20 @@ $('#tablaFotos').addEventListener('click', intentar(async (e) => {
     const f = await api('/fotos/' + b.dataset.ver)
     $('#detalleFoto').innerHTML = `<h2>${esc(f.activo)} · bloque ${f.bloque.toLocaleString('es')}</h2>
       <p class="mono">Raíz: ${esc(f.raiz || '—')}</p>
-      <p>Usuarios: ${unidades(f.sumas?.usuario)} · Tesorería: ${unidades(f.sumas?.tesoreria)} · Sistema: ${unidades(f.sumas?.sistema)} · Externas: ${unidades(f.sumas?.externa)}</p>
+      <p>Pasa a la v2: <b>${unidades(f.acunar)}</b> · No pasa: ${unidades(f.excluido)} · Sin ubicar: ${unidades(f.sinUbicar)}${f.plazoReclamos ? ` · reclamos hasta ${esc(new Date(f.plazoReclamos).toLocaleDateString('es'))}` : ''}</p>
+      <p class="sub">Por clase: usuarios ${unidades(f.sumas?.usuario)} · tesorería ${unidades(f.sumas?.tesoreria)} · sistema ${unidades(f.sumas?.sistema)} · externas ${unidades(f.sumas?.externa)}</p>
       <p><a href="#" data-csv="${esc(f.id)}">Descargar CSV</a>${f.estado === 'publicada' ? ` · <a href="#" data-acun="${esc(f.id)}">Archivo de acuñación (JSON)</a>` : ''}</p>
-      <div class="tabla-scroll"><table><tr><th>Dirección</th><th class="num">Saldo</th><th>Clase</th></tr>
-      ${(f.tenedores || []).map((t) => `<tr><td class="mono">${esc(t.direccion)}</td><td class="num">${unidades(t.saldo)}</td><td>${esc(t.clase)}</td></tr>`).join('')}</table></div>`
+      <div class="tabla-scroll"><table><tr><th>Dirección</th><th class="num">Saldo</th><th class="num">Pasa</th><th>Clase</th><th>Motivo</th></tr>
+      ${(f.tenedores || []).map((t) => `<tr><td class="mono">${esc(t.direccion)}</td><td class="num">${unidades(t.saldo)}</td><td class="num">${unidades(t.acunar)}</td><td>${esc(t.clase)}</td><td>${esc(t.motivo || '')}</td></tr>`).join('')}</table></div>`
   } else if (b.dataset.publicar) {
+    let plazoReclamos
+    if (b.dataset.sin && b.dataset.sin !== '0') {
+      const dias = prompt(`Quedan ${unidades(b.dataset.sin)} sin ubicar. ¿Cuántos días de plazo para reclamar?`, '90')
+      if (!dias) return
+      plazoReclamos = new Date(Date.now() + Number(dias) * 86_400_000).toISOString()
+    }
     if (!confirm('Publicar fija la foto que se va a acuñar en la v2. ¿Seguir?')) return
-    await api(`/fotos/${b.dataset.publicar}/publicar`, { method: 'POST' }); aviso('Foto publicada.'); cargarFotos()
+    await api(`/fotos/${b.dataset.publicar}/publicar`, { method: 'POST', body: JSON.stringify({ plazoReclamos }) }); aviso('Foto publicada.'); cargarFotos()
   } else if (b.dataset.conciliar) {
     const c = await api('/conciliar/' + b.dataset.conciliar, { method: 'POST' })
     aviso(c.cuadra ? 'La v2 cuadra con la foto: cada tenedor tiene su saldo exacto.' : `No cuadra: ${c.diferencias.length} diferencias; supply v2 ${unidades(c.supplyV2)} frente a ${unidades(c.esperado)}.`, !c.cuadra)
@@ -246,15 +259,31 @@ $('#formLib').addEventListener('submit', intentar(async (e) => {
   e.target.reset(); aviso('Liberación propuesta. Falta que la aprueben los firmantes.'); cargarOrigen()
 }))
 
+// ─── Reclamos ───
+const ESTADO_REC = { pendiente: 'aviso', aprobado: 'bien', rechazado: 'mal' }
+const cargarReclamos = intentar(async () => {
+  const r = await api('/reclamos')
+  $('#tablaReclamos').innerHTML = `<tr><th>Moneda</th><th>Dirección</th><th class="num">Saldo</th><th class="num">Pasa</th><th>Estado</th><th></th></tr>` +
+    r.map((x) => `<tr><td>${esc(x.activo)}</td><td class="mono">${esc(x.direccion)}</td><td class="num">${unidades(x.saldo)}</td><td class="num">${unidades(x.acunar)}${x.motivo ? `<div class="meta">${esc(x.motivo)}</div>` : ''}</td>
+      <td><span class="chip ${ESTADO_REC[x.estado]}">${esc(x.estado)}</span>${x.revisor ? `<div class="meta">${esc(x.revisor)}</div>` : ''}</td>
+      <td>${x.estado === 'pendiente' && yo.roles.includes('operador') ? `<button data-aprobar="${esc(x.id)}">Aprobar</button> <button class="sec" data-rechazar="${esc(x.id)}">Rechazar</button>` : ''}</td></tr>`).join('')
+})
+$('#tablaReclamos').addEventListener('click', intentar(async (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  if (b.dataset.aprobar) await api(`/reclamos/${b.dataset.aprobar}/aprobar`, { method: 'POST' })
+  if (b.dataset.rechazar) await api(`/reclamos/${b.dataset.rechazar}/rechazar`, { method: 'POST', body: JSON.stringify({ nota: prompt('Motivo del rechazo') || '' }) })
+  cargarReclamos()
+}))
+
 // ─── Regalo ───
 const cargarRegalo = intentar(async () => {
   const r = await api('/regalo')
-  $('#tablaRegalo').innerHTML = `<tr><th>Dirección (${r.length})</th><th>Estado</th><th>Transacción</th></tr>` +
-    r.map((x) => `<tr><td class="mono">${esc(x.direccion)}</td><td><span class="chip ${x.estado === 'enviado' ? 'bien' : 'aviso'}">${esc(x.estado)}</span></td><td class="mono">${esc(x.tx || '')}</td></tr>`).join('')
+  $('#tablaRegalo').innerHTML = `<tr><th>Dirección (${r.length})</th><th class="num">Monto</th><th>Estado</th><th>Transacción</th></tr>` +
+    r.map((x) => `<tr><td class="mono">${esc(x.direccion)}</td><td class="num">${unidades(x.monto)}</td><td><span class="chip ${x.estado === 'enviado' ? 'bien' : 'aviso'}">${esc(x.estado)}</span></td><td class="mono">${esc(x.tx || '')}</td></tr>`).join('')
 })
 $('#prepararRegalo').addEventListener('click', intentar(async () => {
   const r = await api('/regalo/preparar', { method: 'POST' })
-  aviso(r.nuevos ? `Regalo preparado para ${r.nuevos} tenedores. Ahora hay que aprobar la liberación en ORIGEN.` : 'No hay tenedores nuevos para el regalo.'); cargarRegalo()
+  aviso(r.nuevos ? `Preparado para ${r.nuevos} usuarios (total ${unidades(r.liberacion.monto)} ORIGEN). Ahora hay que aprobar la liberación en ORIGEN.` : 'Ningún usuario necesita que se le complete ORIGEN.'); cargarRegalo()
 }))
 $('#registrarEnvios').addEventListener('click', intentar(async () => {
   const envios = $('#textoEnvios').value.split('\n').map((l) => l.trim().split(/\s+/)).filter((p) => p.length === 2).map(([direccion, tx]) => ({ direccion, tx }))

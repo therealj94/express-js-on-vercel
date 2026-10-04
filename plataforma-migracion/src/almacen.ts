@@ -16,7 +16,16 @@ import { dirname } from 'path'
 export type Clase = 'usuario' | 'tesoreria' | 'sistema' | 'externa'
 export type TipoLista = 'usuarios' | 'tesoreria' | 'sistema' | 'inventario'
 
-export interface Tenedor { direccion: string; saldo: string; clase: Clase }
+export interface Tenedor {
+  direccion: string
+  /** Saldo en el contrato heredado, en el bloque de la foto. */
+  saldo: string
+  clase: Clase
+  /** Lo que se acuña en la v2 según la política de la moneda. */
+  acunar: string
+  /** Por qué no se acuña todo el saldo, si es el caso. */
+  motivo?: 'umbral' | 'tope'
+}
 
 export interface Foto {
   id: string
@@ -27,11 +36,39 @@ export interface Foto {
   estado: 'en-curso' | 'lista' | 'publicada' | 'fallida'
   error?: string
   supply?: string
+  /** Raíz de Merkle de lo que se acuña (dirección y monto a acuñar). */
   raiz?: string
   tenedores?: Tenedor[]
   sumas?: Record<Clase, string>
+  /** Total que se acuña y total que desaparece por la política. */
+  acunar?: string
+  excluido?: string
   sinUbicar?: string
   publicada?: string
+  /** Hasta cuándo se puede reclamar lo no ubicado. */
+  plazoReclamos?: string
+}
+
+/**
+ * Reclamo de una dirección que la foto no encontró. El tenedor prueba que es
+ * suya firmando un mensaje con esa misma billetera; se le aplica la misma
+ * política y un operador lo revisa antes de sumarlo a la acuñación.
+ */
+export interface Reclamo {
+  id: string
+  fotoId: string
+  activo: string
+  direccion: string
+  /** Saldo en el contrato heredado en el bloque de la foto. */
+  saldo: string
+  acunar: string
+  motivo?: 'umbral' | 'tope'
+  firma: string
+  creado: string
+  estado: 'pendiente' | 'aprobado' | 'rechazado'
+  revisor?: string
+  revisado?: string
+  nota?: string
 }
 
 export interface Conciliacion {
@@ -68,6 +105,8 @@ export interface Liberacion {
 
 export interface Regalo {
   direccion: string
+  /** Lo que le falta para llegar a 1 ORIGEN, en wei. */
+  monto: string
   estado: 'pendiente' | 'enviado'
   liberacion: string
   tx?: string
@@ -80,6 +119,7 @@ export interface Datos {
   listas: Record<TipoLista, { direcciones: string[]; actualizada: string | null; autor: string | null }>
   fotos: Foto[]
   conciliaciones: Conciliacion[]
+  reclamos: Reclamo[]
   liberaciones: Liberacion[]
   regalos: Regalo[]
   bitacora: Evento[]
@@ -89,7 +129,7 @@ export function vacio(): Datos {
   const lista = () => ({ direcciones: [] as string[], actualizada: null, autor: null })
   return {
     listas: { usuarios: lista(), tesoreria: lista(), sistema: lista(), inventario: lista() },
-    fotos: [], conciliaciones: [], liberaciones: [], regalos: [], bitacora: [],
+    fotos: [], conciliaciones: [], reclamos: [], liberaciones: [], regalos: [], bitacora: [],
   }
 }
 
