@@ -5,7 +5,9 @@
 
 Arranca en el último cuadro de la apertura (el «PERO» sobre la gente con teléfonos) y sigue en una sola escena:
 tarjeta «guacamaya con colmillos» → el diente real de HS1 → la guacamaya de luz se vuelve la guara de HS →
-«¿Colmillos?… Bueno, uno.» → la guara rompe el «PERO» → el polvo cae sobre el mapa → la luz dibuja a Carlos →
+«¿Colmillos?… Bueno, uno.» → entramos a su ojo: refleja a la gente mirando el teléfono («siempre vamos a encontrar
+algo malo…») → parpadea, el «PERO» se hace polvo y el reflejo es otra Honduras («…¿y si empezamos a verla con otros
+ojos?») → caemos por la pupila al mapa: «¿Cuál es tu lugar favorito de Honduras?» → la luz dibuja a Carlos →
 Picacho → Los Naranjos (Romeo) → río → cenote (Samira) → Utila (Lenyn) → Santa Bárbara → Leiva en la tele →
 la gente del pueblo → la guara vuela al atardecer → logo.
 Testimonios reales con su voz; los enlaces son clips MiniMax encadenados por imagen y latigazos (whips) por código.
@@ -174,10 +176,22 @@ def subtitulos(T):
     out += [("¿Una guacamaya con colmillos?", T["lee"] + .0, T["lee"] + 2.75),
             ("¿Yo?", T["lee"] + 3.25, T["lee"] + 3.95),
             ("Bueno…", T["bueno"] + .05, T["bueno"] + 1.2), ("uno.", T["bueno"] + 1.3, T["bueno"] + 1.85)]
+    v1, v2 = T_VO(T)[:2]
+    out += [("Siempre vamos a encontrar algo malo…", v1, v1 + 2.75), ("si es lo único que buscamos.", v1 + 2.85, v1 + 4.5),
+            ("Pero…", v2, v2 + .85), ("¿y si empezamos a ver Honduras", v2 + .9, v2 + 2.6),
+            ("con otros ojos?", v2 + 2.6, v2 + 3.55)]
     out.sort(key=lambda x: x[1])
     for j in range(len(out) - 1):  # nunca dos subtítulos a la vez (los J-cuts se solapan)
         if out[j][2] > out[j + 1][1] - .3: out[j] = (out[j][0], out[j][1], out[j + 1][1] - .3)
     return out
+
+
+def T_VO(T):
+    """Inicio de las tres voces del puente: «algo malo», «otros ojos» (su «Pero» cae en el parpadeo) y la pregunta."""
+    v1 = T["ojo_entra"] + .35
+    v2 = T["ojo_parpadeo"] + PARPADEO - .08
+    v3 = max(T["mapa"] + .45, v2 + 3.48 + .4)
+    return v1, v2, v3
 
 
 def TRAMOS(T):
@@ -187,7 +201,8 @@ def TRAMOS(T):
             ("lenyn", T["lenyn"] - 2.24, 6.1, 7.9), ("leiva", T["leiva_tv"] - 3.3, 0.0, 8.6)]
 
 
-GUARA_SUBS = ("¿Una guacamaya con colmillos?", "¿Yo?", "Bueno…", "uno.")
+GUARA_SUBS = ("¿Una guacamaya con colmillos?", "¿Yo?", "Bueno…", "uno.", "Siempre vamos a encontrar algo malo…",
+              "si es lo único que buscamos.", "Pero…", "¿y si empezamos a ver Honduras", "con otros ojos?")
 
 
 def capa_sub(fr, subs, ts):
@@ -274,10 +289,17 @@ def telefono(pantalla, ancho=700):
     return Image.fromarray(img, "RGBA")
 
 
+VEL_OJO1, VEL_OJO2 = 1.15, 1.3   # velocidad de los clips del ojo
+PARPADEO = 1.0                   # s de salida en que el párpado cierra (medido en E2)
+PUPILA = (.5, .45)               # centro de la pupila al final de E2 (proporción del cuadro)
+MAPA_EXTRA = 1.2                 # el mapa se sostiene más para leer la pregunta
+
+
 def construir(bg_final):
     reales = {k: Real(k) for k in REAL}
     S = []
     pero = palabra("PERO", 230, "Black")
+    pero_frio = palabra("PERO", 230, "Black", (215, 228, 255))
 
     # 1. Fin de la historia: la guacamaya de luz aterriza frente a la gente y se vuelve la guara de HS.
     #    El «PERO» sube y queda flotando arriba.
@@ -330,21 +352,33 @@ def construir(bg_final):
     S.append(Seg("bueno", 2.0, lambda u: zoom(a_vertical(l01.cuadro(1.25 + u)), 1 + .06 * u, W / 2, H * .38),
                  trans="zoom"))
 
-    # 5. La guara despega y atraviesa el «PERO», que cae de golpe frente a ella
-    VEL_VUELO = 1.85; RUPTURA = 4.88 / VEL_VUELO
-    polvo_pero = ha.Polvo(pero, 540, 940, 7000, 21, deriva=(0, -420))
-    w02 = Clip(HN / "p2/W02_vuelo.mp4")
-    def f_vuelo(u):
-        fr = a_vertical(w02.cuadro(u * VEL_VUELO))
-        if u < RUPTURA:
-            k = sale(u / .25); fr = pega(fr, pero, 540, 940, .95 * k, 1.35 - .35 * k + .04 * u)
-        else: fr = polvo_pero.dibuja(fr, min(1, (u - RUPTURA) / 1.0), (255, 236, 200), 1.3)
+    # 5. «Otros ojos». La cámara entra al ojo de la guara: en su reflejo, la gente mirando el teléfono
+    #    (lo malo que buscamos). El «PERO» vuelve, frío, flotando delante.
+    e1 = Clip(HN / "p2/E1_ojo_entra.mp4")
+    def f_ojo_entra(u):
+        fr = a_vertical(e1.cuadro(u * VEL_OJO1))
+        k = suave((u - .8) / .9)
+        return pega(fr, pero_frio, 540, 330 + 10 * u, .42 * k, .62 + .015 * u)
+    S.append(Seg("ojo_entra", e1.n / e1.fps / VEL_OJO1, f_ojo_entra, trans="fundido", bloom=.1))
+    # 6. Parpadea: el «PERO» se deshace en polvo y el reflejo cambia a la Honduras que no miramos.
+    #    Al final la cámara cae dentro de la pupila y de su negro nace el mapa.
+    e2 = Clip(HN / "p2/E2_ojo_parpadeo.mp4")
+    polvo_pero = ha.Polvo(pero_frio, 540, 380, 6000, 21, deriva=(0, -380))
+    dur_e2 = e2.n / e2.fps / VEL_OJO2
+    def f_ojo_parpadeo(u):
+        fr = a_vertical(e2.cuadro(u * VEL_OJO2))
+        if u < PARPADEO: fr = pega(fr, pero_frio, 540, 380, .42, .7)
+        else: fr = polvo_pero.dibuja(fr, min(1, (u - PARPADEO) / 1.2), (255, 236, 200), 1.2)
+        q = suave((u - (dur_e2 - .9)) / .9)  # caída dentro de la pupila
+        if q > 0:
+            fr = zoom(fr, 1 + 5 * q * q, PUPILA[0] * W, PUPILA[1] * H)
+            fr = zoom_radial(fr, 1, PUPILA[0] * W, PUPILA[1] * H, .2 * q)
+            fr = (fr * (1 - .9 * q)).astype(np.uint8)
         return fr
-    S.append(Seg("vuelo", w02.n / w02.fps / VEL_VUELO, f_vuelo, bloom=.15))
-
-    # 6. Las letras se vuelven el mapa de Honduras y la ruta del viaje
-    S.append(Seg("mapa", 3.8, f_mapa(), tipo=None))
-    # 7. De la luz a lo real: una línea recorre la silueta de Carlos y él aparece dentro
+    S.append(Seg("ojo_parpadeo", dur_e2, f_ojo_parpadeo, bloom=.15))
+    # 7. Del negro de la pupila nace el mapa con la pregunta que les hicimos
+    S.append(Seg("mapa", 3.8 + MAPA_EXTRA, f_mapa(), tipo=None))
+    # 8. De la luz a lo real: una línea recorre la silueta de Carlos y él aparece dentro
     S.append(Seg("luz_carlos", 1.5, f_luz_carlos(reales["carlos"]), tipo="real"))
     # 8. Carlos
     S.append(Seg("carlos", 6.5, lambda u: reales["carlos"].cuadro(u), usu=("@carlosquintanamx", .4), tipo="real"))
@@ -382,6 +416,18 @@ def construir(bg_final):
     return S
 
 
+def pregunta_grande(txt, ancho=900, tam=76):
+    """La pregunta en dos líneas centradas, con sombra suave (texto por código, nunca generado)."""
+    from PIL import ImageDraw
+    f = fuente("Montserrat", tam, "ExtraBold")
+    lineas_ = ha.envuelve(txt, f, ancho); lh = int(tam * 1.18)
+    im = Image.new("RGBA", (ancho + 60, lh * len(lineas_) + 40), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    for j, li in enumerate(lineas_):
+        d.text(((im.width - f.getlength(li)) / 2, 20 + j * lh), li, font=f, fill=(255, 255, 255, 255))
+    sh = Image.new("RGBA", im.size, (0, 0, 0, 0)); sh.putalpha(im.getchannel("A").filter(ImageFilter.GaussianBlur(10)))
+    return Image.alpha_composite(sh, im)
+
+
 def f_mapa():
     import json as _j
     poli = _j.load(open(HN / "honduras_contorno.json"))
@@ -395,7 +441,9 @@ def f_mapa():
     asig = rng.choice(len(LUGARES), n, p=peso)
     d = destinos[asig] + rng.normal(0, 4, (n, 2)).astype(np.float32)
     ret = rng.uniform(0, .5, n).astype(np.float32); giro = rng.uniform(-1, 1, n).astype(np.float32)
-    teg = destinos[0]
+    teg = destinos[0]; X = MAPA_EXTRA
+    preg1 = palabra("Le preguntamos a quienes la recorren:", 44, "SemiBold", (235, 225, 210), 1)
+    preg2 = pregunta_grande("¿Cuál es tu lugar favorito de Honduras?")
     def fn(u):
         fr = np.zeros((H, W, 3), np.float32); fr[:] = (22, 12, 6)
         yy0 = np.linspace(0, 1, H, dtype=np.float32)[:, None, None]
@@ -425,16 +473,24 @@ def f_mapa():
         fr += np.clip(glow, 0, 2)[..., None] * np.array(ORO, np.float32)
         fr = np.clip(fr, 0, 255).astype(np.uint8)
         for i, (nom, lo, la) in enumerate(LUGARES[:5]):
-            a = suave((u - 1.3 - .15 * i) / .35) * (1 - suave((u - 3.05) / .3))
+            a = suave((u - 1.3 - .15 * i) / .35) * (1 - suave((u - 3.05 - X) / .3))
             if a > 0:
                 x, y = destinos[i]; img = CACHE.setdefault(("map", nom), palabra(nom, 42, "Bold", (255, 240, 215), 2))
                 dx = 0 if nom != "Santa Bárbara" else -40; dy = -34 if nom not in ("San Luis Planes",) else -30
                 if nom == "Santa Bárbara": dy = 34
                 fr = pega(fr, img, x + dx, y + dy, a)
+        # la pregunta que les hicimos (texto por código)
+        a = suave((u - .55) / .4) * (1 - suave((u - 3.75 - X) / .35))
+        if a > 0:
+            fr = pega(fr, preg1, 540, 250 - 14 * (1 - sale((u - .55) / .6)), a)
+            a2 = suave((u - 1.0) / .45) * (1 - suave((u - 3.75 - X) / .35))
+            fr = pega(fr, preg2, 540, 380 - 18 * (1 - sale((u - 1.0) / .6)), a2)
         # la cámara se lanza a Tegucigalpa
-        z = 1 + 9 * suave((u - 3.1) / 1.1) ** 2
+        z = 1 + 9 * suave((u - 3.1 - X) / 1.1) ** 2
         fr = zoom(fr, z, teg[0], teg[1])
-        fr = zoom_radial(fr, 1, teg[0], teg[1], .25 * suave((u - 3.2) / .6))
+        fr = zoom_radial(fr, 1, teg[0], teg[1], .25 * suave((u - 3.2 - X) / .6))
+        # nace del negro de la pupila
+        if u < .45: fr = (fr * suave(u / .45)).astype(np.uint8)
         return fr
     return fn
 
@@ -606,7 +662,11 @@ def mezcla(S, T, total, video, sal):
     p2, ap = HN / "p2", HN / "ap"
     add(p2 / "vo_lee_a.mp3", T["lee"] + .0, 1.0, tipo="voz", norm=True)
     add(p2 / "vo_colmillo_b.mp3", T["bueno"] - .05, 1.0, 1.2, 2.0, "voz", True, .1)
-    add(p2 / "vo_mira_b.mp3", T["mapa"] + .5, 1.0, tipo="voz", norm=True)
+    v1, v2, v3 = T_VO(T)
+    add(p2 / "vo_puente1_b.mp3", v1, 1.0, tipo="voz", norm=True)
+    add(p2 / "vo_puente2_a.mp3", v2, 1.0, tipo="voz", norm=True)
+    add(p2 / "vo_puente3_a.mp3", v3, 1.0, tipo="voz", norm=True)
+    t_parp = T["ojo_parpadeo"] + PARPADEO
     add(p2 / "vo_cierre_b.mp3", T["cierre"] + .25, 1.0, tipo="voz", norm=True)
     for quien, t0, src, dur in TRAMOS(T):  # testimonios con su voz original (J-cuts)
         add(UP / REAL[quien], t0, 1.0, src, dur, "voz", True, .15)
@@ -615,8 +675,8 @@ def mezcla(S, T, total, video, sal):
             (ap / "sfx_pings_b.mp3", T["lee"] + .05, .7, 0, .6),
             (p2 / "sfx_scratch_a.mp3", T["replay"] - .05, .8),
             (p2 / "sfx_ting_a.mp3", T["bueno"] + 1.25, .8),
-            (p2 / "sfx_pop_alas_a.mp3", T["vuelo"] + .3, .8),
-            (HN / "audio5/riser_boom.mp3", T["vuelo"] + 4.88 / 1.85 - 2.0, .7),
+            (HN / "audio5/riser_boom.mp3", t_parp - 2.0, .6),
+            (ap / "sfx_nace.mp3", t_parp + .05, .5, 0, 2.5),
             (HN / "audio5/estrellas.mp3", T["mapa"] + .4, .5, 0, 4), (ap / "sfx_nace.mp3", T["luz_carlos"], .5, 0, 1.8),
             (HN / "audio5/pinos.mp3", T["picacho"] + .5, .45, 0, 5),
             (p2 / "sfx_viento_humedal_a.mp3", T["naranjos"], .5, 0, 5),
@@ -631,14 +691,14 @@ def mezcla(S, T, total, video, sal):
             lista.append((p2 / ("sfx_whoosh_a.mp3" if j % 2 else "sfx_whoosh_b.mp3"), T[sg.nombre] - .3, .55))
     for f, t0, vol, *r in lista:
         add(f, t0, vol, *(r or [None, None]))
-    # música: entra con la ruptura del «PERO»; su bajada para narrador (segundo 58) cae en la frase final
-    t_m = T["vuelo"] + 4.88 / 1.85
+    # música: entra con el parpadeo (el «PERO» se deshace); su bajada para narrador (segundo 58) cae en la frase final
+    t_m = t_parp
     tramo = T["cierre"] + .25 - t_m
     tempo = min(1.1, max(.85, 58.0 / tramo)); m_ini = max(0.0, 58.0 - tramo * tempo)
     add(p2 / "musica2_a.mp3", t_m, .62, m_ini, None, "mus",
         extra=f",atempo={tempo:.4f},afade=t=in:d=0.4,afade=t=out:st={total - t_m - 1.5:.2f}:d=1.5")
     # colchón grave antes de la ruptura (continúa el de la apertura)
-    add(ap / "musica_b.mp3", 0, .55, 0, 9, "col", extra=f",asetrate=48000*0.84,aresample=48000,lowpass=f=900,"
+    add(ap / "musica_b.mp3", 0, .55, 0, t_m + .5, "col", extra=f",asetrate=48000*0.84,aresample=48000,lowpass=f=900,"
         f"afade=t=out:st={t_m - .6:.2f}:d=0.8")
     tmp = Path(sal).with_suffix("")
     def stem(nombre):
