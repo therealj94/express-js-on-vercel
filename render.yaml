@@ -96,6 +96,8 @@ services:
       # La firma múltiple (Safe 1.4.1), cuando se despliegue con contratos-v2/scripts/desplegar-multifirma.ts:
       # - key: SAFE_DIRECCION
       #   value: "0x…"
+      # - key: SAFE_CONSTITUCIONAL
+      #   value: "0x…"   # la de los tres custodios (roles y registro, SFSP §5.3)
       # - key: SAFE_MULTISEND
       #   value: "0x…"
       # Contratos v2, cuando se desplieguen:

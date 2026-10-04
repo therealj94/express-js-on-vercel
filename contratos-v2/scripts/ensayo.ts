@@ -2,7 +2,7 @@
 // acredita por lotes y concilia: cada dirección con su monto exacto y el supply igual al total.
 //
 //   ENSAYO_DIR=carpeta-con-archivos npx hardhat run scripts/ensayo.ts            (red local)
-//   ENSAYO_DIR=… MULTIFIRMA=0x… npx hardhat run scripts/ensayo.ts --network ensayo   (red 5534)
+//   ENSAYO_DIR=… ADMIN=0x… MULTIFIRMA=0x… npx hardhat run scripts/ensayo.ts --network ensayo   (red 5534)
 //
 // Cada archivo es el acunacion.json que entrega la plataforma (/api/panel/fotos/:id/acunacion.json).
 // No corre en la red 5550: ahí la acuñación la firma la firma múltiple con los lotes de lotes-safe.ts.
@@ -19,7 +19,8 @@ async function main() {
   let fallos = 0
   for (const f of readdirSync(dir).filter((x) => x.endsWith('.json') && !x.endsWith('.safe.json')).sort()) {
     const a = JSON.parse(readFileSync(join(dir, f), 'utf8'))
-    const token = await ethers.deployContract('TokenSFSP', [a.activo, a.activo, `ENSAYO-${a.activo}`, 'ensayo', process.env.MULTIFIRMA || quien.address])
+    const m = process.env.MULTIFIRMA || quien.address
+    const token = await ethers.deployContract('TokenSFSP', [a.activo, a.activo, `ENSAYO-${a.activo}`, 'ensayo', process.env.ADMIN || m, m, [], 0])
     await token.waitForDeployment()
     await (await token.abrirMigracion(a.raiz, a.totalAcunar, ethers.encodeBytes32String('ensayo'))).wait()
     let gas = 0n

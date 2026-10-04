@@ -161,7 +161,7 @@ export function rutasPanel(ctx: Contexto) {
   r.get('/origen', exige(), async (_req, res) => {
     try {
       const umbral = safe ? (await OP.estado(ctx.cadena, safe)).umbral : ctx.umbral
-      const noGente = [...a.datos.listas.tesoreria.direcciones, ...a.datos.listas.sistema.direcciones, ...(safe ? [safe.safe] : [])]
+      const noGente = [...a.datos.listas.tesoreria.direcciones, ...a.datos.listas.sistema.direcciones, ...(safe ? [safe.safe, safe.constitucional ?? ''] : [])].filter(Boolean)
       res.json({ ...(await circulacion(ctx.cadena, a.datos.listas.usuarios.direcciones, noGente)), umbral, multifirma: !!safe, liberaciones: [...a.datos.liberaciones].reverse() })
     } catch (e) { fallo(res, e) }
   })
@@ -221,7 +221,7 @@ export function rutasPanel(ctx: Contexto) {
 
   r.post('/regalo/preparar', exige('operador'), async (req, res) => {
     try {
-      const p = await prepararRegalo(a, ctx.cadena, quien(req), safe ? { excluir: [safe.safe], porTanda: OP.POR_TANDA } : {})
+      const p = await prepararRegalo(a, ctx.cadena, quien(req), safe ? { excluir: [safe.safe, safe.constitucional ?? ''].filter(Boolean), porTanda: OP.POR_TANDA } : {})
       // Con la firma múltiple, cada tanda es una transacción de la Safe: un solo par de firmas por tanda.
       const operaciones = []
       try {
@@ -275,7 +275,8 @@ export function rutasPanel(ctx: Contexto) {
     if (!safe) return res.json({ configurada: false })
     try {
       const [e, saldo] = await Promise.all([OP.estado(ctx.cadena, safe), ctx.cadena.llamar('eth_getBalance', [safe.safe, 'latest'])])
-      res.json({ configurada: true, safe: safe.safe, multisend: safe.multisend ?? null, ...e, saldo: BigInt(saldo).toString() })
+      const constitucional = safe.constitucional ? { safe: safe.constitucional, ...(await OP.estado(ctx.cadena, safe.constitucional)) } : null
+      res.json({ configurada: true, safe: safe.safe, multisend: safe.multisend ?? null, ...e, saldo: BigInt(saldo).toString(), constitucional })
     } catch (e) { fallo(res, e) }
   })
 
@@ -299,7 +300,9 @@ export function rutasPanel(ctx: Contexto) {
     try {
       const b = req.body || {}
       const llamadas = b.archivo ? llamadasDeArchivo(b.archivo) : (Array.isArray(b.llamadas) ? b.llamadas : []).map((l: any) => llamada(l))
-      const o = await OP.crear(a, ctx.cadena, safe, quien(req), { tipo: 'contratos', titulo: String(b.titulo || b.archivo?.meta?.name || ''), llamadas })
+      // La operativa (dos de tres) por defecto; la de los tres custodios para roles y registro (§5.3).
+      const enSafe = OP.direccionSafe(safe, b.safe === 'constitucional' ? 'constitucional' : 'operativa')
+      const o = await OP.crear(a, ctx.cadena, safe, quien(req), { tipo: 'contratos', titulo: String(b.titulo || b.archivo?.meta?.name || ''), llamadas, enSafe })
       await a.guardar()
       res.status(201).json(OP.detalle(o))
     } catch (e) { fallo(res, e) }

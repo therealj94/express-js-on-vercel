@@ -25,6 +25,7 @@ async function main() {
   const r = await prepararLotes(ethers, a, token, ethers.provider, contrato as any, { lote: Number(process.env.LOTE || 40), referencia: process.env.REFERENCIA })
   if (!r.desplegado) console.warn(`Aviso: ${token} no tiene contrato en la red ${chainId}; se asume que no hay nada acreditado`)
   if (!r.transacciones.length) { console.log('Todo el archivo ya está acreditado: no hay nada que firmar'); return }
+  if (r.anuncio) console.log(`Es un security con demora: este archivo solo ANUNCIA la ronda. Desde ${new Date(r.anuncio.ejecutableDesde * 1000).toISOString()} (aproximado), vuelve a generarlo con la misma REFERENCIA para abrirla y acreditar.`)
   const salida = ruta.replace(/\.json$/, '') + '.safe.json'
   writeFileSync(salida, JSON.stringify({
     version: '1.0', chainId, createdAt: Date.now(),

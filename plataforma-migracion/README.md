@@ -50,7 +50,8 @@ El servicio está en el `render.yaml` de la raíz, desplegando desde `main`.
 | `MIGRACION_SECRETO` | Secreto de las sesiones del panel, 32 caracteres o más. Cambiarlo cierra todas las sesiones. |
 | `MIGRACION_OPERADORES` | Quién entra al panel: `correo\|roles\|hash;…`. Roles: `operador`, `firmante`, `lectura`. El hash se genera con `npm run clave -- '<clave>'`. |
 | `MIGRACION_UMBRAL` | Firmas para aprobar una liberación **sin** firma múltiple configurada (por defecto 2). Con la Safe, el umbral es el de la Safe. |
-| `SAFE_DIRECCION` | La firma múltiple (Safe 1.4.1). Con ella, aprobar es firmar la transacción de la Safe con la billetera de custodio. |
+| `SAFE_DIRECCION` | La firma múltiple operativa (Safe 1.4.1, dos de tres). Con ella, aprobar es firmar la transacción de la Safe con la billetera de custodio. |
+| `SAFE_CONSTITUCIONAL` | La firma múltiple de los tres custodios: roles y registro de los contratos (SFSP §5.3). Opcional; sin ella esas operaciones no se arman aquí. |
 | `SAFE_MULTISEND` | El `MultiSendCallOnly` desplegado con la Safe: varias llamadas (como una tanda del regalo) van en una sola transacción. |
 | `RPC_ORDEN_URL` | Nodo de la red 5550 (por defecto `https://rpc.ordenglobal-rpc.com/`). |
 | `V2_<CLAVE>` | Contrato v2 de cada moneda, cuando esté desplegado. |
@@ -59,7 +60,7 @@ Reglas del panel sin firma múltiple: quien propone una liberación no puede apr
 
 ## Firma múltiple
 
-La Safe (dos de tres custodios) es la tesorería de ORIGEN y la dueña de los roles de los contratos v2. Se despliega con `contratos-v2/scripts/desplegar-multifirma.ts` y se conecta con `SAFE_DIRECCION` y `SAFE_MULTISEND`. La plataforma no tiene llaves: arma la transacción exacta, recoge las firmas y comprueba lo ejecutado.
+Hay dos Safes con los mismos tres custodios, como pide la tabla de SFSP §5.3. La **operativa** (dos de tres) es la tesorería de ORIGEN y emite, abre la migración, quema, suspende y ratifica pausas. La de **los tres custodios** administra los roles y el registro de los contratos. La pausa de emergencia no pasa por la plataforma: cada custodio la hace con su billetera, directo en el contrato, y vence a las 72 horas si la operativa no la ratifica. Se despliega con `contratos-v2/scripts/desplegar-multifirma.ts` y se conecta con `SAFE_DIRECCION` y `SAFE_MULTISEND`. La plataforma no tiene llaves: arma la transacción exacta, recoge las firmas y comprueba lo ejecutado.
 
 Cada **operación** es una transacción de la Safe con su nonce:
 
@@ -67,7 +68,7 @@ Cada **operación** es una transacción de la Safe con su nonce:
 |---|---|
 | Liberación de ORIGEN | Al proponer una liberación: un envío de la Safe al destino. |
 | Tanda del regalo | «Preparar» en ORIGEN para gas: tandas parejas de hasta 120 usuarios, cada una un lote de envíos (unos 36.700 de gas por usuario: una tanda llena gasta unos 4,4 millones, menos de la mitad de un bloque de la 5550). |
-| Contratos v2 | La pestaña «Firma múltiple»: abrir una migración, fijar el registro, roles. Acepta el archivo de `contratos-v2/scripts/lotes-safe.ts`. |
+| Contratos v2 | La pestaña «Firma múltiple», eligiendo la Safe: en la operativa, abrir una migración, emitir (en un security, anunciar y, siete días después, emitir), quemar, suspender, ratificar o levantar una pausa; en la de los tres custodios, fijar el registro y los roles. Acepta el archivo de `contratos-v2/scripts/lotes-safe.ts`. |
 | Anulación | Al anular cualquier operación pendiente: una transacción vacía con el mismo nonce, que hay que firmar y ejecutar (cómo se rechaza en Safe). Se hace siempre, aunque la plataforma no tenga firmas: alguien pudo firmarla fuera con el archivo descargado. |
 
 El ciclo:
