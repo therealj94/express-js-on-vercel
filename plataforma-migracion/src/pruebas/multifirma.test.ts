@@ -245,6 +245,7 @@ test('HTTP con la Safe: aprobar a la antigua se niega, se firma la operación, y
 
     const estado = await (await fetch(base.replace('/panel', '') + '/estado')).json()
     assert.equal(estado.multifirma.safe, SAFE_DIR)
+    assert.deepEqual(estado.multifirma.quorum, { operativa: { umbral: 2, custodios: 3 }, administracion: null }, 'el quórum que muestra la página es el de la cadena')
     // Sin la lista de usuarios no hay supply que mostrar.
     assert.equal(estado.origen.completa, false)
     // El supply de ORIGEN es solo lo que tienen los usuarios: la Safe no cuenta aunque esté en la lista.

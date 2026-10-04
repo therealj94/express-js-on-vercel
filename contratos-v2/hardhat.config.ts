@@ -9,7 +9,9 @@ const config: HardhatUserConfig = {
     // Red de ensayos: todo se prueba aquí antes de tocar la 5550 (plan de migración, principio 4).
     ensayo: { url: process.env.RPC_ENSAYO_URL || 'http://127.0.0.1:8545', chainId: 5534, accounts: process.env.LLAVE_DESPLIEGUE ? [process.env.LLAVE_DESPLIEGUE] : [] },
     // Producción. Desplegar aquí exige firma múltiple activa, auditoría y acta de la Junta.
-    orden: { url: process.env.RPC_ORDEN_URL || 'https://rpc.ordenglobal-rpc.com/', chainId: 5550, accounts: process.env.LLAVE_DESPLIEGUE ? [process.env.LLAVE_DESPLIEGUE] : [] },
+    // La 5550 informa comisión base 0 pero exige un precio mínimo (93 gwei): con el cálculo automático de
+    // EIP-1559 Hardhat queda por debajo y el nodo rechaza la transacción. Se fija el precio de la red.
+    orden: { url: process.env.RPC_ORDEN_URL || 'https://rpc.ordenglobal-rpc.com/', chainId: 5550, gasPrice: Number(process.env.PRECIO_GAS || 93_000_000_000), accounts: process.env.LLAVE_DESPLIEGUE ? [process.env.LLAVE_DESPLIEGUE] : [] },
   },
 }
 

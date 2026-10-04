@@ -30,6 +30,13 @@
 </main>
 <script>
 const $ = (s) => document.querySelector(s)
+// El quórum que dice la página es el que leyó la plataforma de cada Safe en la cadena.
+function quorum(m) {
+  const q = m.quorum, op = q?.operativa, ad = q?.administracion
+  if (!op) return `La tesorería y las acciones sobre los contratos v2 las firma la firma múltiple <span class="mono">${esc(m.safe)}</span>.`
+  return `Todo lo que sale de la tesorería lo firman ${op.umbral} de los ${op.custodios} custodios de la firma múltiple <span class="mono">${esc(m.safe)}</span>`
+    + (ad && m.constitucional ? `, y la administración de los contratos v2, ${ad.umbral} de ${ad.custodios} (<span class="mono">${esc(m.constitucional)}</span>).` : '.')
+}
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 const unidades = (wei) => {
   if (wei == null) return '—'
@@ -53,7 +60,7 @@ async function estado() {
     if (d.origen?.completa) {
       $('#origen').innerHTML = `<p class="sub" style="margin-top:14px">Supply de ORIGEN (lo que tienen los ${d.origen.usuarios.toLocaleString('es')} usuarios de Veta Wallet): <b>${unidades(d.origen.circulante)}</b>
         · Completar a 1 ORIGEN: ${d.regalo.enviados} de ${d.regalo.total} enviados</p>`
-        + (d.multifirma ? `<p class="sub">Todo lo que sale de la tesorería y toda acción sobre los contratos v2 la firman dos de los tres custodios de la firma múltiple <span class="mono">${esc(d.multifirma.safe)}</span>.
+        + (d.multifirma ? `<p class="sub">${quorum(d.multifirma)}
           ${d.multifirma.ejecutadas.length ? `Ejecutadas: ${d.multifirma.ejecutadas.slice(0, 5).map((o) => `${esc(o.titulo)} (<span class="mono">${esc(o.tx.slice(0, 10))}…</span>)`).join(' · ')}` : 'Todavía no ejecutó ninguna operación.'}</p>` : '')
     }
   } catch { $('#activos').innerHTML = '<div class="error">No se pudo cargar el estado.</div>' }
