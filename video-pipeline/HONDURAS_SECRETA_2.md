@@ -325,3 +325,32 @@ Las imágenes de cada lugar se generan con IA solo si no llegan reales, y se mar
 | Fondo de Caballero Leiva | **Pantalla de TV dentro del paisaje de Santa Bárbara.** El vuelo sobre los cafetales llega a una casa del pueblo con un televisor encendido, y en la pantalla está él. Al decir «…y principalmente su gente», la cámara sale por la ventana hacia la gente del pueblo. |
 
 **Pendiente para cerrar el plan:** los 4 videos que faltan, las imágenes reales de los lugares (o el visto bueno para recrearlas con IA), la confirmación del cenote y los derechos del audio de 2010.
+
+---
+
+## 13. La ruta que conecta los lugares (reemplaza el orden anterior)
+
+**La idea:** los testimonios son **un solo viaje por carretera** de Tegucigalpa hacia el occidente, que sigue el agua. La ruta es real y continua: de la capital se baja al norte hacia el Lago de Yojoa, y Santa Bárbara queda justo al oeste del lago. El mapa de luz dibuja esa misma línea, así que el espectador entiende que es un recorrido y no una lista.
+
+**Orden:** Carlos (Tegucigalpa) → Romeo (Los Naranjos, Lago de Yojoa) → Samira (cenote de San Luis Planes, Santa Bárbara) → Caballero Leiva (Santa Bárbara, su gente). Los 4 videos pendientes se insertan donde caigan en la ruta.
+
+| # | Plano | Qué conecta | Cómo se hace |
+|---|---|---|---|
+| 1 | La luz dibuja el contorno de Carlos, que aparece real dentro (la transición protagonista) | Del mundo de luz al real | Código y su video |
+| 2 | **Carlos** en su carro: «Hay un cariño especial… El Picacho… Juana Laínez» | — | Su video |
+| 3 | Carlos mira hacia arriba, la cámara sube por el parabrisas al cielo y baja al **Cristo del Picacho** con la ciudad al atardecer | Su mirada lleva al lugar | IA: de su último cuadro al Picacho (réplica de la foto real) |
+| 4 | Desde el Picacho la cámara mira la ciudad y sigue la carretera que sale hacia el norte. La línea de luz del mapa marca el camino hasta el lago | Ciudad → carretera → lago | IA, más el trazo de mapa encima |
+| 5 | La cámara baja sobre el **Lago de Yojoa** al amanecer, con lirios, hasta la pasarela de **Los Naranjos** y la pirámide. La línea de Copán se redibuja un instante sobre el montículo | Agua → historia | IA (réplica) y la foto libre del lago con lirios |
+| 6 | **Romeo** con Nando junto al río: «tenemos pirámides… muchas leyendas» | El río continúa el agua del lago | Su video |
+| 7 | La corriente detrás de Romeo se vuelve turquesa y la cámara la sigue hasta el **cenote**, donde se sumerge y sale | Río → cenote | IA: de su último cuadro al cenote |
+| 8 | **Samira** junto al agua: «el cenote de San Luis Planes… pocos cenotes que conocemos del país» | — | Su video |
+| 9 | La cámara sube desde el agua por la ladera de cafetales de **Santa Bárbara** hasta el pueblo y entra por una ventana | Agua → montaña → pueblo | IA |
+| 10 | En la casa, el televisor encendido muestra a **Caballero Leiva**: «…y principalmente su gente». La cámara sale por la ventana hacia la calle del pueblo | El presentador dentro de su tierra | Su video mejorado, puesto en la pantalla |
+| 11 | La gente del pueblo se vuelve línea de luz y empieza el cierre | Vuelta al lenguaje del inicio | Código |
+
+**Sobre las fotos:**
+- No usamos fotos de personas en buses ni calles con tráfico. Todo debe ser de postal turística.
+- Donde hay foto libre bonita (Tegucigalpa panorámica, el lago con lirios, el atardecer del Yojoa, la iglesia de Santa Bárbara), la usamos con crédito al autor.
+- Donde no la hay, hacemos una **réplica** generada a partir de la foto real (el Cristo del Picacho, el cenote desde la foto de Samira y la pasarela de Los Naranjos).
+
+**Cenote:** la referencia sale de las publicaciones fijadas de Samira (poza turquesa ancha con un muro de selva). Hay que confirmar con ella que esa foto es el cenote de San Luis Planes.
