@@ -146,27 +146,25 @@ export async function ejecutada(a: Almacen, cadena: Cadena, cfg: ConfigSafe, id:
 }
 
 /**
- * Anula una operación pendiente. Sin firmas (y sin otras detrás), basta con marcarla. Con alguna
- * firma, se crea en su lugar la operación vacía con el mismo nonce: hay que firmarla y ejecutarla
- * para que la anulada no pueda ejecutarse nunca.
+ * Anula una operación pendiente: se crea en su lugar la operación vacía con el mismo nonce, que hay
+ * que firmar y ejecutar. Marcarla aquí no basta: alguien pudo firmarla fuera de la plataforma (con el
+ * archivo descargado), y con las firmas del umbral se podría ejecutar mientras su nonce siga libre.
+ * Una anulación no se anula: es una transacción vacía, y anularla dejaría libre el nonce otra vez.
  */
-export async function anular(a: Almacen, cadena: Cadena, cfg: ConfigSafe, id: string, actor: string, motivo: string): Promise<{ anulada: Operacion; reemplazo: Operacion | null }> {
+export async function anular(a: Almacen, cadena: Cadena, cfg: ConfigSafe, id: string, actor: string, motivo: string): Promise<{ anulada: Operacion; reemplazo: Operacion }> {
   const o = buscar(a, id)
   if (!PENDIENTE.has(o.estado)) throw new ErrorFirma(`la operación está ${o.estado}`)
+  if (o.tipo === 'anulacion') throw new ErrorFirma('una anulación no se anula: es una transacción vacía que deja sin efecto a la anulada')
   if (!motivo?.trim()) throw new ErrorFirma('falta el motivo')
+  // Primero el reemplazo: si la cadena no responde, nada cambia.
+  const reemplazo = await crear(a, cadena, cfg, actor, {
+    tipo: 'anulacion', titulo: `Anula «${o.titulo}» (nonce ${o.safeTx.nonce})`, nonce: o.safeTx.nonce,
+    llamadas: [{ to: cfg.safe, value: '0', data: '0x' }],
+  })
+  reemplazo.anula = o.id
   o.estado = 'anulada'
   o.anulacion = { actor, motivo: motivo.trim(), fecha: new Date().toISOString() }
-  let reemplazo: Operacion | null = null
-  // También sin firmas si hay operaciones con nonce mayor: sin consumir este, quedarían trabadas.
-  const trabaOtras = a.datos.operaciones.some((x) => PENDIENTE.has(x.estado) && x.safeTx.nonce > o.safeTx.nonce)
-  if (o.firmas.length || trabaOtras) {
-    reemplazo = await crear(a, cadena, cfg, actor, {
-      tipo: 'anulacion', titulo: `Anula «${o.titulo}» (nonce ${o.safeTx.nonce})`, nonce: o.safeTx.nonce,
-      llamadas: [{ to: cfg.safe, value: '0', data: '0x' }],
-    })
-    reemplazo.anula = o.id
-  }
-  registrar(a, actor, 'operacion.anulada', { id, motivo: motivo.trim(), reemplazo: reemplazo?.id ?? null })
+  registrar(a, actor, 'operacion.anulada', { id, motivo: motivo.trim(), reemplazo: reemplazo.id })
   const l = liberacionDe(a, o)
   if (l && l.estado !== 'ejecutada') {
     l.estado = 'rechazada'

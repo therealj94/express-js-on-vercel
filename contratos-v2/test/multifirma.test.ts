@@ -3,6 +3,7 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { comprobarCodigo, crearSafe, desplegarInfraestructura } from '../scripts/safe'
+import { hashDe, llamadasDe } from '../scripts/decodificar'
 import type * as Multifirma from '../../plataforma-migracion/src/multifirma'
 
 // El mismo módulo que usa la plataforma (un paquete ESM): se carga con tsx, que lo transpila a CJS.
@@ -101,6 +102,25 @@ describe('firma múltiple (Safe 1.4.1, 2 de 3)', () => {
     const firmas = [await firmar(c1, safe, chainId, t), await firmar(c2, safe, chainId, t)]
     await ejecutar(quien, safe, t, firmas)
     await expect(ejecutar(quien, safe, t, firmas)).to.be.reverted
+  })
+
+  it('firmar.ts lee de los datos firmados lo que de verdad hace el lote, y se niega a un DELEGATECALL desconocido', async () => {
+    const { safe, chainId, infra, ana, beto } = await preparar()
+    const token = await ethers.deployContract('TokenSFSP', ['X', 'X', 'P', 'S', safe])
+    const llamadas = [
+      M.llamada({ to: ana.address, value: 3n * E }),
+      M.llamada({ to: await token.getAddress(), data: token.interface.encodeFunctionData('pausar') }),
+      M.llamada({ to: beto.address, value: 1n }),
+    ]
+    const t = M.armarSafeTx(llamadas, 7, infra.MultiSendCallOnly)
+    const ty = M.tipado(safe, chainId, t)
+    const leidas = llamadasDe(ty.message, infra.MultiSendCallOnly)
+    expect(leidas.map((l) => [l.to, l.value, l.data])).to.deep.equal(llamadas.map((l) => [l.to, BigInt(l.value), l.data]))
+    expect(hashDe(ty)).to.equal(M.hashSafeTx(safe, chainId, t))
+    expect(() => llamadasDe(ty.message)).to.throw(/MULTISEND/)
+    expect(() => llamadasDe(ty.message, ana.address)).to.throw(/NO FIRMAR/)
+    const directa = M.tipado(safe, chainId, M.armarSafeTx([llamadas[0]], 8))
+    expect(llamadasDe(directa.message)).to.deep.equal([{ to: ana.address, value: 3n * E, data: '0x' }])
   })
 
   it('rechaza firmas que no son EIP-712 y datos mal formados', async () => {

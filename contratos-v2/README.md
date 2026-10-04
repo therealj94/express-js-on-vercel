@@ -36,20 +36,21 @@ La plataforma de migración lleva las firmas y comprueba lo ejecutado (sección 
 
 ```sh
 npm install
-npm run prueba        # 22 pruebas
+npm run prueba        # 23 pruebas
 ```
 
 | Script | Para qué |
 |---|---|
 | `scripts/desplegar-multifirma.ts` | Despliega la Safe (`CUSTODIOS`, `UMBRAL`, por defecto 2) y las piezas que falten, y comprueba su código. En la red 5550 exige `CONFIRMO_PRODUCCION=si`. |
-| `scripts/firmar.ts` | Para el custodio sin MetaMask: firma el archivo que da el panel («Descargar para firmar») con su llave, en su computadora, y devuelve la firma para pegarla. |
+| `scripts/firmar.ts` | Para el custodio sin MetaMask. Primero muestra lo que de verdad hace la operación, sacado de los datos firmados: cada destino, monto y función. Se niega si el lote va a algo que no es su `MULTISEND`, si el archivo no coincide o si el hash no es el del panel. Con `FIRMAR=si` y su llave, firma en su computadora. |
 | `scripts/desplegar.ts` | Despliega el token (y el registro si no hay uno), con todos los roles en `MULTIFIRMA`. En la red 5550 exige `CONFIRMO_PRODUCCION=si`. |
 | `scripts/lotes-safe.ts` | Convierte `acunacion.json` en las transacciones para la firma múltiple (formato Safe Transaction Builder): apertura y lotes. Antes verifica cada prueba y el total, y en rondas siguientes deja fuera lo ya acreditado. |
 | `scripts/ensayo.ts` | Ensayo general: despliega, acuña por lotes y concilia cada moneda. No corre en la 5550. |
 
 ```sh
 CUSTODIOS=0xA…,0xB…,0xC… npx hardhat run scripts/desplegar-multifirma.ts --network ensayo
-TIPADO=operacion-nonce-4.json LLAVE_FIRMANTE=0x… npx hardhat run scripts/firmar.ts
+TIPADO=operacion-nonce-4.json MULTISEND=0x… npx hardhat run scripts/firmar.ts            # revisar
+TIPADO=operacion-nonce-4.json MULTISEND=0x… FIRMAR=si LLAVE_FIRMANTE=0x… npx hardhat run scripts/firmar.ts
 NOMBRE="Gold Kapital" SIMBOLO=AUKA PASAPORTE=COM-OG-0001 SERIE=SFSP-300 MULTIFIRMA=0x… \
   npx hardhat run scripts/desplegar.ts --network ensayo
 ACUNACION=acunacion.json TOKEN=0x… npx hardhat run scripts/lotes-safe.ts --network orden

@@ -68,11 +68,11 @@ Cada **operación** es una transacción de la Safe con su nonce:
 | Liberación de ORIGEN | Al proponer una liberación: un envío de la Safe al destino. |
 | Tanda del regalo | «Preparar» en ORIGEN para gas: tandas parejas de hasta 120 usuarios, cada una un lote de envíos (unos 36.700 de gas por usuario: una tanda llena gasta unos 4,4 millones, menos de la mitad de un bloque de la 5550). |
 | Contratos v2 | La pestaña «Firma múltiple»: abrir una migración, fijar el registro, roles. Acepta el archivo de `contratos-v2/scripts/lotes-safe.ts`. |
-| Anulación | Al anular una operación que ya tiene firmas: una transacción vacía con el mismo nonce (cómo se rechaza en Safe). |
+| Anulación | Al anular cualquier operación pendiente: una transacción vacía con el mismo nonce, que hay que firmar y ejecutar (cómo se rechaza en Safe). Se hace siempre, aunque la plataforma no tenga firmas: alguien pudo firmarla fuera con el archivo descargado. |
 
 El ciclo:
 
-1. Cada custodio firma con su billetera (MetaMask, `eth_signTypedData_v4`). Sin billetera en el navegador: «Descargar para firmar», `contratos-v2/scripts/firmar.ts` y «Pegar firma».
+1. Cada custodio firma con su billetera (MetaMask, `eth_signTypedData_v4`). Sin billetera en el navegador: «Descargar para firmar», `contratos-v2/scripts/firmar.ts` y «Pegar firma». `firmar.ts` saca de los datos firmados cada destino, monto y función, los compara con el archivo y el hash, y solo firma en una segunda corrida con `FIRMAR=si`.
 2. La plataforma comprueba que la firma es de un custodio de la Safe. No acepta que firme quien propuso la operación, que un operador firme dos veces ni que la misma billetera firme dos veces.
 3. Con las firmas del umbral queda **lista**: «Ejecutar con mi billetera», o cualquiera con ORIGEN para el gas manda `execTransaction`.
 4. Al registrar la transacción, la plataforma comprueba que la Safe emitió `ExecutionSuccess` con el hash de lo firmado. Si coincide, coinciden el destino, el monto, los datos y el nonce. La liberación queda ejecutada, y con ella todos los envíos de la tanda.

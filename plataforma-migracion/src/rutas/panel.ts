@@ -169,8 +169,15 @@ export function rutasPanel(ctx: Contexto) {
   r.post('/liberaciones', exige('operador'), async (req, res) => {
     try {
       const l = proponer(a, quien(req), req.body || {})
-      // Con la firma múltiple, la liberación nace con su transacción de la Safe para firmar.
-      const op = safe && l.tipo === 'liberacion' ? await OP.crearDeLiberacion(a, ctx.cadena, safe, l) : null
+      // Con la firma múltiple, la liberación nace con su transacción de la Safe para firmar. Si no se
+      // puede crear (la cadena no responde), la liberación tampoco queda: sin operación quedaría trabada.
+      let op = null
+      try {
+        op = safe && l.tipo === 'liberacion' ? await OP.crearDeLiberacion(a, ctx.cadena, safe, l) : null
+      } catch (e) {
+        a.datos.liberaciones = a.datos.liberaciones.filter((x) => x.id !== l.id)
+        throw e
+      }
       await a.guardar()
       res.status(201).json({ ...l, operacion: op?.id ?? null })
     } catch (e) { fallo(res, e) }
@@ -192,7 +199,7 @@ export function rutasPanel(ctx: Contexto) {
       if (op) {
         const r2 = await OP.anular(a, ctx.cadena, safe!, op.id, quien(req), String(req.body?.motivo || ''))
         await a.guardar()
-        return res.json({ ...a.datos.liberaciones.find((l) => l.id === req.params.id), reemplazo: r2.reemplazo?.id ?? null })
+        return res.json({ ...a.datos.liberaciones.find((l) => l.id === req.params.id), reemplazo: r2.reemplazo.id })
       }
       const l = rechazar(a, req.params.id, quien(req), String(req.body?.motivo || ''))
       await a.guardar()
@@ -217,7 +224,16 @@ export function rutasPanel(ctx: Contexto) {
       const p = await prepararRegalo(a, ctx.cadena, quien(req), safe ? { excluir: [safe.safe], porTanda: OP.POR_TANDA } : {})
       // Con la firma múltiple, cada tanda es una transacción de la Safe: un solo par de firmas por tanda.
       const operaciones = []
-      if (safe) for (const l of p.liberaciones) operaciones.push((await OP.crearDeRegalo(a, ctx.cadena, safe, l)).id)
+      try {
+        if (safe) for (const l of p.liberaciones) operaciones.push((await OP.crearDeRegalo(a, ctx.cadena, safe, l)).id)
+      } catch (e) {
+        // Las tandas que no alcanzaron a tener operación se deshacen, con sus envíos: el próximo «Preparar» las rehace.
+        const sinOp = new Set(p.liberaciones.filter((l) => !a.datos.operaciones.some((o) => o.liberacion === l.id)).map((l) => l.id))
+        a.datos.liberaciones = a.datos.liberaciones.filter((l) => !sinOp.has(l.id))
+        a.datos.regalos = a.datos.regalos.filter((r) => !sinOp.has(r.liberacion))
+        await a.guardar()
+        throw e
+      }
       await a.guardar()
       res.json({ ...p, operaciones })
     } catch (e) { fallo(res, e) }
@@ -312,7 +328,7 @@ export function rutasPanel(ctx: Contexto) {
     try {
       const r2 = await OP.anular(a, ctx.cadena, safe, req.params.id, quien(req), String(req.body?.motivo || ''))
       await a.guardar()
-      res.json({ anulada: r2.anulada.id, reemplazo: r2.reemplazo ? OP.detalle(r2.reemplazo) : null })
+      res.json({ anulada: r2.anulada.id, reemplazo: OP.detalle(r2.reemplazo) })
     } catch (e) { fallo(res, e) }
   })
 

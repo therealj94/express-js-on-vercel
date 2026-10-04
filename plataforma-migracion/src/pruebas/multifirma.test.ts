@@ -167,6 +167,30 @@ test('Anular: con firmas se reemplaza por una vacía con el mismo nonce; un nonc
   assert.equal(dos.estado, 'caducada')
   assert.equal(reemplazo!.estado, 'caducada')
   await assert.rejects(OP.firmar(a, cadena, cfg, dos.id, 'beto@og', await firma(CUSTODIOS[0], OP.detalle(dos))), /caducada/)
+
+  // Sin firmas registradas también se reemplaza: alguien pudo firmarla fuera con el archivo descargado.
+  const tres = await OP.crear(a, cadena, cfg, 'ana@og', { tipo: 'contratos', titulo: 'Sin firmas', llamadas: [{ to: dir(52), value: '0', data: '0x' }] })
+  const r3 = await OP.anular(a, cadena, cfg, tres.id, 'beto@og', 'no va')
+  assert.equal(r3.reemplazo.safeTx.nonce, tres.safeTx.nonce)
+  await assert.rejects(OP.anular(a, cadena, cfg, r3.reemplazo.id, 'caro@og', 'otra vez'), /no se anula/)
+})
+
+test('Si la cadena no responde al crear la operación, no queda una liberación trabada ni una tanda sin operación', async () => {
+  const s = safeSim()
+  let caida = false
+  const base = simulada(s)
+  const cadena = new Cadena(async (c: any) => (caida ? { jsonrpc: '2.0', id: 1, error: { message: 'nodo caído' } } : base(c)))
+  const a = enMemoria()
+  const l = proponer(a, 'ana@og', { monto: E.toString(), destino: dir(7), motivo: 'x', respaldo: 'y' })
+  caida = true
+  await assert.rejects(OP.crearDeLiberacion(a, cadena, cfg, l), /nodo caído/)
+  // anular primero crea el reemplazo: si la cadena no responde, la operación sigue como estaba.
+  caida = false
+  const o = await OP.crearDeLiberacion(a, cadena, cfg, l)
+  caida = true
+  await assert.rejects(OP.anular(a, cadena, cfg, o.id, 'beto@og', 'x'), /nodo caído/)
+  assert.equal(o.estado, 'en-firma')
+  assert.equal(l.estado, 'propuesta')
 })
 
 test('HTTP con la Safe: aprobar a la antigua se niega, se firma la operación, y se importa un archivo de lotes', async () => {
@@ -206,6 +230,15 @@ test('HTTP con la Safe: aprobar a la antigua se niega, se firma la operación, y
     assert.equal(op.titulo, 'Migración v2 ONDK')
     assert.equal(op.safeTx.operation, 1)
     assert.equal(op.safeTx.nonce, 4)
+
+    // La cadena no responde al proponer: la liberación no queda.
+    const antes = almacen.datos.liberaciones.length
+    const nonceReal = s.nonce
+    ;(s as any).nonce = undefined
+    const caida = await pedir(ana, '/liberaciones', { monto: E.toString(), destino: dir(9), motivo: 'Caída', respaldo: 'Acta 2' })
+    assert.notEqual(caida.status, 201)
+    assert.equal(almacen.datos.liberaciones.length, antes, 'sin operación no queda la liberación')
+    s.nonce = nonceReal
 
     const estado = await (await fetch(base.replace('/panel', '') + '/estado')).json()
     assert.equal(estado.multifirma.safe, SAFE_DIR)

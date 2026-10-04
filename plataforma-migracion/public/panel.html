@@ -373,7 +373,7 @@ async function verOperacion(id) {
       ${pendiente ? `<button class="sec" data-bajar="${esc(o.id)}">Descargar para firmar</button>` : ''}
       ${o.ejecutar && (firmante || operador) ? `<button data-ejecutar="${esc(o.id)}">Ejecutar con mi billetera</button><button class="sec" data-registrar="${esc(o.id)}">Registrar ejecución</button>` : ''}
       ${o.estado === 'caducada' && o.firmas.length >= o.umbral && (firmante || operador) ? `<button class="sec" data-registrar="${esc(o.id)}">Registrar ejecución</button>` : ''}
-      ${pendiente && firmante ? `<button class="sec" data-anular="${esc(o.id)}">Anular</button>` : ''}
+      ${pendiente && firmante && o.tipo !== 'anulacion' ? `<button class="sec" data-anular="${esc(o.id)}">Anular</button>` : ''}
     </div>
     ${o.ejecutar ? `<p class="sub">Lista: cualquiera con ORIGEN para el gas la puede mandar. Destino <span class="mono">${esc(o.ejecutar.to)}</span>, datos en «Descargar para firmar».</p>` : ''}</div>`
   return o
@@ -398,7 +398,8 @@ $('#detalleOp').addEventListener('click', intentar(async (e) => {
     await api(`/operaciones/${id}/firmar`, { method: 'POST', body: JSON.stringify({ firma: firma.trim() }) })
     aviso('Firma registrada.')
   } else if (b.dataset.bajar) {
-    const url = URL.createObjectURL(new Blob([JSON.stringify({ titulo: o.titulo, hash: o.hash, tipado: o.tipado, ejecutar: o.ejecutar }, null, 2)], { type: 'application/json' }))
+    // Lleva las llamadas: scripts/firmar.ts las saca de los datos firmados y las compara antes de pedir la llave.
+    const url = URL.createObjectURL(new Blob([JSON.stringify({ titulo: o.titulo, hash: o.hash, llamadas: o.llamadas, tipado: o.tipado, ejecutar: o.ejecutar }, null, 2)], { type: 'application/json' }))
     const a = document.createElement('a'); a.href = url; a.download = `operacion-nonce-${o.safeTx.nonce}.json`; a.click(); URL.revokeObjectURL(url)
     return
   } else if (b.dataset.ejecutar) {
@@ -419,7 +420,7 @@ $('#detalleOp').addEventListener('click', intentar(async (e) => {
   } else if (b.dataset.anular) {
     const motivo = prompt('Motivo de la anulación'); if (!motivo) return
     const r = await api(`/operaciones/${id}/anular`, { method: 'POST', body: JSON.stringify({ motivo }) })
-    aviso(r.reemplazo ? `Anulada. Como ya tenía firmas, se creó la operación vacía con el mismo nonce: hay que firmarla y ejecutarla para que la anulada no pueda ejecutarse nunca.` : 'Anulada.')
+    aviso(`Anulada. Se creó la operación vacía con el mismo nonce (${r.reemplazo.safeTx.nonce}): hay que firmarla y ejecutarla para que la anulada no pueda ejecutarse nunca, aunque alguien la haya firmado fuera de la plataforma.`)
   }
   await cargarMultifirma(); await verOperacion(id)
 }))
