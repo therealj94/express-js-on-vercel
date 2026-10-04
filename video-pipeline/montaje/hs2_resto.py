@@ -177,8 +177,9 @@ def subtitulos(T):
             ("¿Yo?", T["lee"] + 3.25, T["lee"] + 3.95),
             ("Bueno…", T["bueno"] + .05, T["bueno"] + 1.2), ("uno.", T["bueno"] + 1.3, T["bueno"] + 1.85)]
     v1, v2 = T_VO(T)[:2]
-    out += [("Siempre vamos a encontrar algo malo…", v1, v1 + 2.75), ("si es lo único que buscamos.", v1 + 2.85, v1 + 4.5),
-            ("Pero…", v2, v2 + .85), ("¿y si empezamos a ver Honduras", v2 + .9, v2 + 2.6),
+    out += [("Siempre vamos a encontrar", v1, v1 + 1.5), ("algo malo…", v1 + 1.5, v1 + 2.75),
+            ("si es lo único que buscamos.", v1 + 2.85, v1 + 4.5),
+            ("Pero…", v2, v2 + .85), ("¿y si empezamos", v2 + .9, v2 + 1.95), ("a ver Honduras", v2 + 1.95, v2 + 2.6),
             ("con otros ojos?", v2 + 2.6, v2 + 3.55)]
     out.sort(key=lambda x: x[1])
     for j in range(len(out) - 1):  # nunca dos subtítulos a la vez (los J-cuts se solapan)
@@ -201,8 +202,8 @@ def TRAMOS(T):
             ("lenyn", T["lenyn"] - 2.24, 6.1, 7.9), ("leiva", T["leiva_tv"] - LEIVA_SRC, 0.0, 8.7)]
 
 
-GUARA_SUBS = ("¿Una guacamaya con colmillos?", "¿Yo?", "Bueno…", "uno.", "Siempre vamos a encontrar algo malo…",
-              "si es lo único que buscamos.", "Pero…", "¿y si empezamos a ver Honduras", "con otros ojos?")
+GUARA_SUBS = ("¿Una guacamaya con colmillos?", "¿Yo?", "Bueno…", "uno.", "Siempre vamos a encontrar", "algo malo…",
+              "si es lo único que buscamos.", "Pero…", "¿y si empezamos", "a ver Honduras", "con otros ojos?")
 
 
 def capa_sub(fr, subs, ts):
@@ -212,7 +213,9 @@ def capa_sub(fr, subs, ts):
             if img is None:
                 img = palabra(txt, 60, "Bold", (255, 255, 255), 1)
                 sh = Image.new("RGBA", img.size, (0, 0, 0, 0)); sh.putalpha(img.getchannel("A").filter(ImageFilter.GaussianBlur(6)))
-                img = Image.alpha_composite(sh, img); CACHE[("sub", txt)] = img
+                img = Image.alpha_composite(sh, img)
+                if img.width > 1000: img = img.resize((1000, int(img.height * 1000 / img.width)), Image.LANCZOS)
+                CACHE[("sub", txt)] = img
             a = suave((ts - s + .05) / .12) * (1 - suave((ts - e - .1) / .15))
             fr = pega(fr, img, 540, 1640 if txt in GUARA_SUBS else 1470, a, 1.0)
     return fr
@@ -359,7 +362,7 @@ def construir(bg_final):
     e1 = Clip(HN / "p2/E1_ojo_entra.mp4")
     def f_ojo_entra(u):
         fr = a_vertical(e1.cuadro(u * VEL_OJO1))
-        k = suave((u - .8) / .9)
+        k = suave((u - 3.4) / .6)  # antes de esto el sombrero (con letras) está en cuadro
         return pega(fr, pero_frio, 540, 330 + 10 * u, .42 * k, .62 + .015 * u)
     S.append(Seg("ojo_entra", e1.n / e1.fps / VEL_OJO1, f_ojo_entra, trans="fundido", bloom=.1))
     # 6. Parpadea: el «PERO» se deshace en polvo y el reflejo cambia a la Honduras que no miramos.
@@ -409,6 +412,7 @@ def construir(bg_final):
     S.append(seg_clip("utila_sb", "W08_utila_sb.mp4", 1.5, ini=3.0, trans="whip-u",
                       rot=("Santa Bárbara", "Occidente de Honduras", .9)))
     S.append(seg_clip("sb_casa", "W09_sb_casa.mp4", 1.8))
+    S[-1].fn_crudo = S[-1].fn; S[-1].fn = tele_apagada(S[-1].fn)
     S.append(Seg("leiva_tv", LEIVA_DUR, f_leiva_tv(reales["leiva"], S[-1], LEIVA_SRC), usu=("@caballeroleiva", 2.4),
                  tipo=None))
     # 20–21. Gira hacia la ventana → la gente del pueblo → la guara al atardecer
@@ -548,9 +552,27 @@ def pantalla_tv(fr):
     return np.float32([q[np.argmin(s)], q[np.argmin(d)], q[np.argmax(s)], q[np.argmax(d)]])  # tl, tr, br, bl
 
 
+def tele_apagada(fn):
+    """La pantalla del televisor sale blanca en el clip: se pinta apagada (gris oscuro) hasta que se enciende."""
+    def g(u):
+        fr = fn(u).copy()
+        gr = cv2.cvtColor(fr, cv2.COLOR_BGR2GRAY); _, b = cv2.threshold(gr, 215, 255, cv2.THRESH_BINARY)
+        b[:, :W // 3] = 0
+        cs, _ = cv2.findContours(b, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        for c in cs:
+            x, y, w, h = cv2.boundingRect(c)
+            if cv2.contourArea(c) > 1500 and cv2.contourArea(c) > .75 * w * h and 1.3 < w / max(h, 1) < 2.2:
+                m = np.zeros(gr.shape, np.uint8); cv2.drawContours(m, [c], -1, 255, -1)
+                m = cv2.GaussianBlur(cv2.dilate(m, np.ones((5, 5), np.uint8)), (5, 5), 0)[..., None] / 255.
+                apagada = np.full_like(fr, (22, 20, 18)); apagada[:, :] += np.uint8(6)
+                fr = (fr * (1 - m) + apagada * m).astype(np.uint8)
+        return fr
+    return g
+
+
 def f_leiva_tv(real, seg_casa, src0):
     base = seg_casa.fn(seg_casa.dur - 1 / FPS)
-    quad = pantalla_tv(base)
+    quad = pantalla_tv(seg_casa.fn_crudo(seg_casa.dur - 1 / FPS))  # la pantalla blanca, antes de apagarla
     tvw, tvh = 640, 360
     src = np.float32([[0, 0], [tvw, 0], [tvw, tvh], [0, tvh]])
     M = cv2.getPerspectiveTransform(src, quad)
@@ -562,8 +584,11 @@ def f_leiva_tv(real, seg_casa, src0):
     def fn(u):
         # 0–1,3 s: la tele se enciende sin destello (la imagen se abre del centro) y lo vemos en el cuarto;
         # 1,3–2,4 s: la cámara entra a la pantalla; luego su video vertical llena el cuadro hasta «su gente»
-        a_lleno = suave((u - 2.0) / .45)
-        if a_lleno >= 1: return color(real.cuadro(src0 + u))
+        CORTE = 2.1
+        if u >= CORTE:  # dentro de la tele: su video vertical, el empuje radial se disipa
+            q = suave((u - CORTE) / .3); fr = color(real.cuadro(src0 + u))
+            return zoom_radial(fr, 1 + .25 * (1 - q), fuerza=.2 * (1 - q)) if q < 1 else fr
+        a_lleno = 0.0
         f = real.c.cuadro(src0 + u)  # 478x850: plano medio 16:9 de su cara y pecho
         f = color(cv2.resize(f[40:309], (tvw, tvh), interpolation=cv2.INTER_CUBIC))
         if u < .28:
@@ -576,8 +601,8 @@ def f_leiva_tv(real, seg_casa, src0):
         glow = cv2.GaussianBlur((warp * m).astype(np.uint8), (0, 0), 25)
         fr = cv2.add(fr, (glow * .35).astype(np.uint8))
         fr = zoom(fr, 1 + .12 * suave(u / 1.3) + (z_lleno - 1.12) * suave((u - 1.3) / 1.1) ** 2, tvc[0], tvc[1])
-        if a_lleno > 0: fr = cv2.addWeighted(fr, 1 - a_lleno, color(real.cuadro(src0 + u)), a_lleno, 0)
-        return fr
+        q = suave((u - (CORTE - .3)) / .3)
+        return zoom_radial(fr, 1, tvc[0], tvc[1], .22 * q) if q > 0 else fr
     return fn
 
 
