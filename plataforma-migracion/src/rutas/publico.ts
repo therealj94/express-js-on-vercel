@@ -13,10 +13,13 @@ import { activo as buscarActivo } from '../catalogo.js'
 import { nuevoId, registrar } from '../almacen.js'
 import { circulacion } from '../origen.js'
 import { monedas } from '../monedas.js'
+import * as OP from '../operaciones.js'
 
 export function rutasPublicas(ctx: Contexto) {
   const r = Router()
   let cacheCirculacion: { hasta: number; valor: unknown } | null = null
+  // Umbrales leídos de cada Safe: la página no promete un quórum que no es el de la cadena.
+  let cacheQuorum: { hasta: number; valor: unknown } | null = null
 
   const ultimaPublicada = (activo: string) =>
     ctx.almacen.datos.fotos.filter((f) => f.activo === activo && f.estado === 'publicada').at(-1)
@@ -30,6 +33,17 @@ export function rutasPublicas(ctx: Contexto) {
     res.setHeader('Cache-Control', 'public, max-age=60')
     res.json({ red: 5550, actualizado: new Date().toISOString(), monedas: monedas(ctx.entorno) })
   })
+
+  async function quorum() {
+    if (!ctx.safe) return null
+    try {
+      if (!cacheQuorum || cacheQuorum.hasta < Date.now()) {
+        const leer = async (d: string) => { const e = await OP.estado(ctx.cadena, d); return { umbral: e.umbral, custodios: e.duenos.length } }
+        cacheQuorum = { hasta: Date.now() + 60_000, valor: { operativa: await leer(ctx.safe.safe), administracion: ctx.safe.constitucional ? await leer(ctx.safe.constitucional) : null } }
+      }
+      return cacheQuorum.valor
+    } catch { return null }
+  }
 
   r.get('/estado', async (_req, res) => {
     const d = ctx.almacen.datos
@@ -65,6 +79,7 @@ export function rutasPublicas(ctx: Contexto) {
       multifirma: ctx.safe ? {
         safe: ctx.safe.safe,
         constitucional: ctx.safe.constitucional ?? null,
+        quorum: await quorum(),
         ejecutadas: d.operaciones.filter((o) => o.estado === 'ejecutada').map((o) => ({ titulo: o.titulo, tipo: o.tipo, nonce: o.safeTx.nonce, tx: o.tx, fecha: o.ejecutada })).reverse().slice(0, 50),
       } : null,
     })
