@@ -424,3 +424,60 @@ Arranca donde termina la apertura: el «PERO» gigante sobre la gente con teléf
 **Duración total (decisión de José):** apertura 77,5 s + parte 2 de 20 s = 98 s. Faltan Romeo, Samira, Leiva, los 4 videos pendientes y el cierre (unos 55–65 s más), así que el video final saldría de **2:35 a 2:45**.
 - Opción A: acelerar la apertura unos 10 s y bajar los testimonios a 4–5 s cada uno para quedar en unos 2:15.
 - Opción B: aceptar unos 2:40.
+
+---
+
+## 16. Plan completo revisado (4 de octubre, tercera ronda; reemplaza la sección 15)
+
+**Cambios de José:**
+- **La guara deja de ser de luz.** De aquí en adelante es **la misma guara de Honduras Secreta 1**, con su sombrero «HONDURAS Secreta».
+- **El colmillo es real.** En el lipsync de HS1, la boca de la guara muestra algo que parece un diente. El comentario tenía razón y lo usamos como chiste.
+- **Nuevo testimonio: Lenyn Reyes**, IG @lenynreye (2.119 seguidores, «Descubriendo Honduras · viajes | aventuras | drone»; ya lo sigue @honduras.secreta) y TikTok @lenynreyes. Su lugar es **Utila**. Video de 1080x1920 a 60 fps, 18 s, en interior con pared lisa.
+  - Transcripción: «Mi nombre es Lenyn Reyes, creador de contenido y un apasionado por descubrir los lugares que hacen de Honduras un país increíble. Mi lugar favorito de Honduras definitivamente es Utila porque es un destino que tiene una increíble belleza natural, playas paradisíacas, aguas cristalinas, una increíble vida marina y muchas ideas para realizar como el snorkel y el buceo.»
+
+### Parte 2: del «pero» a lo real (unos 18 s)
+| # | Tramo | Dura | Qué pasa | Voz y sonido | Material |
+|---|---|---|---|---|---|
+| 1 | Colmillo | 3 s | Cae sola la tarjeta real «…una guacamaya con colmillos????». Corte al momento real de HS1 donde se ve el diente (zoom lento y círculo de luz). Corte a la guara de HS con sombrero, de pie frente al «PERO»: sonríe enseñando el diente y se encoge de hombros. | Guara (voz de José): «¿Colmillos?… Bueno, uno.» Un «pop» cómico | Clip real de HS1, imagen fija de la guara, H3 Max y lipsync OmniHuman |
+| 2 | Rompe el «PERO» | 2,5 s | Toma impulso y vuela de frente a cámara atravesando el «PERO», que estalla en polvo de luz | Aleteo, *whoosh* y vuelve la música | Clip H3 Max de la guara, recortada, y partículas de código |
+| 3 | Mapa | 3,5 s | El polvo cae sobre el contorno de Honduras y se encienden los lugares de los testimonios: Tegucigalpa, Lago de Yojoa, San Luis Planes, Santa Bárbara y Utila | «Antes del pero… mira otra vez.» Cada punto suena como una nota | Código (contorno de la v1) |
+| 4 | De la luz a lo real | 2 s | La cámara se lanza al punto de Tegucigalpa y la luz dibuja el contorno de Carlos; dentro aparece su video | El ambiente del carro entra antes que la imagen | Quitar el fondo del cuadro 0 y trazo en código |
+| 5 | Carlos | 6 s | «Hay un cariño especial… El Picacho… Juana Laínez» y su @ escrito a mano | Su voz | Su video |
+| 6 | Al Picacho | 3,5 s | Mira arriba (su cuadro final). Subimos por el parabrisas y bajamos al Cristo del Picacho al atardecer | Viento | H3 Max; verificar antes que el Cristo tiene los brazos abiertos |
+
+### Parte 3: la ruta del agua (unos 45 s más los 4 videos pendientes)
+| # | Tramo | Dura | Qué pasa |
+|---|---|---|---|
+| 7 | Picacho → Yojoa | 3,5 s | Desde el cerro, la línea del mapa marca la carretera al norte y la cámara baja sobre el Lago de Yojoa y la pasarela de Los Naranjos. La línea de Copán se redibuja un instante sobre el montículo |
+| 8 | Romeo y Nando | 6 s | «tenemos pirámides… muchas leyendas» |
+| 9 | Río → cenote | 3 s | La corriente detrás de Romeo se vuelve turquesa y lleva al cenote |
+| 10 | Samira | 6 s | «el cenote de San Luis Planes… pocos cenotes que conocemos del país» |
+| 11 | Cenote → Caribe | 3 s | La cámara se hunde en el cenote y **sale del agua en el mar de Utila**: el agua conecta todo (recurso artístico, no ruta real) |
+| 12 | **Lenyn** | 7 s | 2 s a cámara («Mi lugar favorito de Honduras definitivamente es Utila») y luego **su voz sobre imágenes de Utila** («playas paradisíacas, aguas cristalinas, una increíble vida marina»): arrecife, snorkel y tiburón ballena (guiño a HS1). Su pared lisa no rompe la escena porque lo vemos poco y el lugar manda |
+| 13 | Utila → Santa Bárbara | 3,5 s | Atardecer en Utila. La cámara vuela tierra adentro sobre montañas y cafetales hasta una casa del pueblo y entra por la ventana |
+| 14 | Leiva | 6 s | En el televisor de la casa: «…y principalmente su gente». La cámara sale por la ventana hacia la gente del pueblo |
+| 15 | 4 videos pendientes | 2–4 s cada uno | Se insertan en su punto de la ruta |
+
+### Parte 4: cierre (unos 10 s)
+La gente del pueblo se vuelve línea de luz. La guara (con sombrero) cierra el trazo en el punto donde empezó el hook. Voz: «Honduras no necesita que la inventen. Necesita que la volvamos a mirar.» La imagen se sostiene 3 s y entra el logo.
+
+### Duración
+| Versión | Apertura | Partes 2–4 | Total |
+|---|---|---|---|
+| B (todo como está) | 77,5 s | unos 85 s | **unos 2:42** |
+| A (recomendada) | unos 65 s (historia más rápida) | unos 70 s (testimonios de 4–5 s) | **unos 2:15** |
+
+### Material ideal que falta
+- **Lenyn:** sus tomas de dron de Utila. Su bio dice «Drone» y serían reales, mejor que IA.
+- **Samira:** confirmar el cenote y sus fotos o videos.
+- **Romeo:** tomas del lago o del río.
+- **Leiva:** el video original en calidad completa.
+- Los 4 videos pendientes.
+
+### Costo estimado (partes 2 a 4, sin los 4 pendientes)
+- Unas 8 imágenes fijas: 1,40 USD
+- Unos 9 clips H3 Max: 4,30 USD
+- 1 lipsync de la guara: unos 0,60 USD
+- Mejora del video de Leiva: menos de 1 USD
+- Voces, efectos y música: unos 0,50 USD
+- **Total: unos 8 USD**
