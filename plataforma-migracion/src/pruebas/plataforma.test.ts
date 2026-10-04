@@ -232,3 +232,18 @@ test('HTTP: la consulta pública da una prueba que verifica, y el panel exige se
     srv.close()
   }
 })
+
+test('Lista única de monedas: contrato vigente, cambio a v2 por variable y ocultas', async () => {
+  const { monedas } = await import('../monedas.js')
+  const base = monedas({})
+  const auka = base.find((m) => m.simbolo === 'AUKA')!
+  assert.equal(auka.contrato, AUKA); assert.equal(auka.estado, 'heredada'); assert.equal(auka.visible, true)
+  assert.equal(base.find((m) => m.simbolo === 'ORIGEN')!.contrato, null)
+  assert.equal(base.find((m) => m.simbolo === 'MNKA')!.clave, 'MONARKA', 'se busca por el símbolo en cadena')
+  assert.equal(base.find((m) => m.simbolo === 'AUBEX')!.precioFijo, null, 'el precio fijo de AUBEX se retira')
+  assert.equal(base.length, 15)
+  const tras = monedas({ V2_AUKA: V2, MONEDAS_OCULTAS: 'aubex, REST' })
+  const aukaV2 = tras.find((m) => m.simbolo === 'AUKA')!
+  assert.equal(aukaV2.contrato, V2); assert.equal(aukaV2.heredado, AUKA); assert.equal(aukaV2.estado, 'migrada')
+  assert.deepEqual(tras.filter((m) => !m.visible).map((m) => m.simbolo), ['AUBEX', 'REST'])
+})

@@ -12,6 +12,7 @@ import { aAcunar, entradasAcunacion, ErrorReclamo, mensajeReclamo, prepararRecla
 import { activo as buscarActivo } from '../catalogo.js'
 import { nuevoId, registrar } from '../almacen.js'
 import { circulacion } from '../origen.js'
+import { monedas } from '../monedas.js'
 
 export function rutasPublicas(ctx: Contexto) {
   const r = Router()
@@ -19,6 +20,16 @@ export function rutasPublicas(ctx: Contexto) {
 
   const ultimaPublicada = (activo: string) =>
     ctx.almacen.datos.fotos.filter((f) => f.activo === activo && f.estado === 'publicada').at(-1)
+
+  /**
+   * La lista única de monedas. La leen las apps desde sus propios dominios (y la app del teléfono,
+   * que no tiene origen), así que es la única ruta con CORS abierto: es pública y no tiene nada privado.
+   */
+  r.get('/monedas', (_req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Cache-Control', 'public, max-age=60')
+    res.json({ red: 5550, actualizado: new Date().toISOString(), monedas: monedas(ctx.entorno) })
+  })
 
   r.get('/estado', async (_req, res) => {
     const d = ctx.almacen.datos

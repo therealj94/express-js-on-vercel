@@ -25,7 +25,7 @@
 
   <footer>
     Cada foto publica una raíz de Merkle de lo que pasa a la v2. Con tu prueba, cualquiera puede verificar que tu monto está incluido, sin confiar en esta página.
-    ORIGEN es la moneda nativa: no se migra y tu saldo sigue igual; a los usuarios de Veta Wallet se les completa hasta 1 ORIGEN para el gas.
+    ORIGEN es la moneda nativa: no se migra y tu saldo sigue igual. Su supply es lo que está en manos de la gente; lo de tesorería no cuenta hasta que se libera. A los usuarios de Veta Wallet se les completa hasta 1 ORIGEN para el gas.
   </footer>
 </main>
 <script>
@@ -51,7 +51,7 @@ async function estado() {
         ${a.foto ? `<div class="meta" style="margin-top:6px">Foto en el bloque ${a.foto.bloque.toLocaleString('es')} · ${a.foto.tenedores} tenedores</div>` : ''}</div>`
     }).join('')
     if (d.origen?.circulante) {
-      $('#origen').innerHTML = `<p class="sub" style="margin-top:14px">ORIGEN en circulación: <b>${unidades(d.origen.circulante)}</b>
+      $('#origen').innerHTML = `<p class="sub" style="margin-top:14px">Supply de ORIGEN (lo que tiene la gente): <b>${unidades(d.origen.circulante)}</b>
         ${d.origen.completa ? '' : ' (provisional: falta cargar la tesorería)'} · Completar a 1 ORIGEN: ${d.regalo.enviados} de ${d.regalo.total} enviados</p>`
     }
   } catch { $('#activos').innerHTML = '<div class="error">No se pudo cargar el estado.</div>' }

@@ -2,6 +2,7 @@ const { Web3 } = require("web3");
 const web3 = new Web3("https://ordenglobal-rpc.com/");
 import Transaction from "../Models/Transaction";
 import Token from "../Models/TokenTx";
+import axios from "axios";
 
 const ABI = require("../ABI/abi.json");
 import { estadoDeDireccion } from "../lib/genesis";
@@ -139,6 +140,10 @@ export const getTokenData = async (req, res) => {
 // desplegado (AGKA e IBS, por ejemplo); se eligio el que de verdad se usa en
 // las transacciones indexadas, no el primero encontrado. TXT y TKNB se dejan
 // fuera a proposito: contratos de prueba, no activos del ecosistema.
+//
+// Es la copia de respaldo. Manda la lista única que sirve la plataforma de
+// migración (MONEDAS_URL): el día del corte a la v2, el contrato vigente de
+// cada moneda cambia ahí y el explorador lo toma solo.
 const tokenAddresses = {
   ONDK: "0xfb83eEA4B384a4b18E5A1EBa7a4bb4C0b7CA19c1",
   AUKA: "0x6Facc8Df79cEDc6C5065442ce27e915Aa3a26B9B",
@@ -156,9 +161,35 @@ const tokenAddresses = {
   POLITICAL: "0x92496E1848e001428A3495409a9A9f616bB6dD3B",
 };
 
+const MONEDAS_URL = process.env.MONEDAS_URL || "https://migracion-sfsp.onrender.com/api/monedas";
+// Lo que la lista única dice de cada símbolo (contrato heredado y estado), para mostrarlo.
+const detalleMoneda = {};
+let monedasHasta = 0;
+
+// Trae la lista única cada cinco minutos y reemplaza el catálogo en el mismo
+// objeto. Si no responde, se queda lo último que hubo (o el respaldo).
+const refrescarTokens = async () => {
+  if (monedasHasta > Date.now()) return;
+  monedasHasta = Date.now() + 60_000;
+  try {
+    const { data } = await axios.get(MONEDAS_URL, { timeout: 8000 });
+    const lista = (data && data.monedas || []).filter((m) => m && m.contrato && m.visible !== false);
+    if (!lista.length) return;
+    for (const k of Object.keys(tokenAddresses)) delete tokenAddresses[k];
+    for (const m of lista) {
+      tokenAddresses[m.simbolo] = m.contrato;
+      detalleMoneda[m.simbolo] = { heredado: m.heredado || null, estado: m.estado || null };
+    }
+    monedasHasta = Date.now() + 5 * 60_000;
+  } catch (e) {
+    console.error("[monedas] la lista única no respondió; sigo con la anterior:", e.message);
+  }
+};
+
 // Catalogo publico de tokens: el frontend ya no necesita llevar la lista
 // escrita a mano ni quedarse desactualizado cuando se despliegue uno nuevo.
 export const listaTokens = async (req, res) => {
+  await refrescarTokens();
   const entradas = await Promise.all(
     Object.entries(tokenAddresses).map(async ([symbol, address]) => {
       try {
@@ -169,7 +200,7 @@ export const listaTokens = async (req, res) => {
           c.methods.totalSupply().call(),
         ]);
         return { symbol, contrato: address, nombre: String(name),
-                 decimales: String(decimals), suministro: String(totalSupply) };
+                 decimales: String(decimals), suministro: String(totalSupply), ...(detalleMoneda[symbol] || {}) };
       } catch (e) {
         return { symbol, contrato: address, nombre: symbol, error: true };
       }
@@ -183,6 +214,7 @@ export const listaTokens = async (req, res) => {
 const PRINCIPALES = ["ONDK", "AUKA", "AGKA"];
 
 const getTokenBalances = async (walletAddress, simbolosRelevantes) => {
+  await refrescarTokens();
   // Consultar los 16 tokens serian 32 llamadas al nodo por cada ficha de
   // direccion. Se consultan los principales mas los que esa direccion ha
   // movido de verdad, que es lo unico que puede tener saldo interesante.
