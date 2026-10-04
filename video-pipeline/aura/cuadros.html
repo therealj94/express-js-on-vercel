@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<title>AU-RA FP · cuadros clave</title>
+<style>
+@font-face{font-family:Manrope;src:url(assets/manrope-normal-latin.woff2) format('woff2');font-weight:200 800}
+:root{--noche:#050B17;--noche2:#0A1426;--cian:#3FE6FA;--cian2:#12C2F2;--hielo:#A6FBFF;--blanco:#F2F7FA;--gris:#9AA7B8;--oro:#E3C77E;--naranja:#FF9A4D;--hormiga:#45C9DE}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:var(--noche);font-family:Manrope,system-ui,sans-serif;color:var(--blanco);-webkit-font-smoothing:antialiased}
+.esc{position:absolute;inset:0;display:none;overflow:hidden}
+.esc.on{display:block}
+.placa{position:absolute;inset:0;background-size:cover;background-position:center}
+.vel{position:absolute;inset:0}
+.vidrio{background:linear-gradient(160deg,rgba(28,44,70,.62),rgba(8,16,32,.58));backdrop-filter:blur(34px) saturate(150%);-webkit-backdrop-filter:blur(34px) saturate(150%);border:1.5px solid rgba(255,255,255,.14);box-shadow:0 40px 120px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.18);border-radius:46px}
+.super{position:absolute;left:0;right:0;bottom:250px;text-align:center;font-weight:800;font-size:92px;letter-spacing:-3px;line-height:1.02;text-shadow:0 8px 40px rgba(0,0,0,.6)}
+.super small{display:block;font-size:44px;letter-spacing:-.5px;font-weight:600;color:var(--gris);margin-top:22px}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.btn{display:flex;align-items:center;justify-content:center;height:112px;border-radius:56px;font-weight:700;font-size:40px}
+.chip{display:inline-flex;align-items:center;gap:14px;padding:16px 26px;border-radius:40px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);font-size:30px;font-weight:600;color:#d8e3ee}
+.av{width:120px;height:120px;border-radius:60px;background:#000 center/cover;border:2px solid rgba(255,255,255,.18);flex:none}
+.fila{display:flex;align-items:center;gap:26px}
+.etq{font-size:26px;letter-spacing:4px;font-weight:700;color:var(--gris);text-transform:uppercase}
+.punto{position:absolute;width:44px;height:44px;border-radius:50%;left:518px;top:938px;background:radial-gradient(circle at 40% 35%,#e9ffff,#3fe6fa 45%,#12c2f2 70%);box-shadow:0 0 40px 14px rgba(63,230,250,.55),0 0 160px 60px rgba(18,194,242,.25)}
+.verif{display:flex;align-items:center;gap:18px;color:#8ff0c4;font-weight:700;font-size:32px}
+.verif i{width:46px;height:46px;border-radius:23px;background:#1f8f63;display:flex;align-items:center;justify-content:center;font-style:normal;color:#eafff5;font-size:28px}
+</style></head><body>
+
+<!-- F01 · la oscuridad: un punto que escucha -->
+<section class="esc" id="f1">
+  <div class="punto"></div>
+  <div style="position:absolute;left:0;right:0;top:1060px;text-align:center;font-size:34px;color:#5e6f86;font-weight:600;letter-spacing:6px">«AU-RA.»</div>
+</section>
+
+<!-- F02 · la «A» de vidrio (render 3D) con la marca -->
+<section class="esc" id="f2">
+  <div class="placa" style="background-image:url(assets/F02_a_vidrio.png)"></div>
+  <div style="position:absolute;left:0;right:0;bottom:330px;text-align:center">
+    <div style="font-weight:800;font-size:104px;letter-spacing:6px">AU-RA <span style="color:var(--cian)">FP</span></div>
+  </div>
+</section>
+
+<!-- F03 · AU-RA: el orbe dice «Hola» -->
+<section class="esc" id="f3">
+  <div class="placa" style="background-image:url(assets/F03b_hola_1.png);transform:scale(1.25);transform-origin:50% 40%"></div>
+  <div class="super" style="bottom:170px">Conoce a AU-RA.</div>
+</section>
+
+<!-- F04 · 6:00 a. m.: AU-RA te llama -->
+<section class="esc" id="f4">
+  <div class="placa" style="background-image:url(assets/P1_cuarto_a.png)"></div>
+  <div class="vel" style="background:linear-gradient(180deg,rgba(5,11,23,.15),rgba(5,11,23,.0) 40%,rgba(5,11,23,.65))"></div>
+  <div class="vidrio" style="position:absolute;left:70px;right:70px;top:200px;padding:56px 56px 50px">
+    <div class="etq">Llamada entrante · 6:00</div>
+    <div class="fila" style="margin-top:34px">
+      <div class="av" style="background-image:url(assets/orbe.webp);width:150px;height:150px;border-radius:75px;box-shadow:0 0 50px rgba(63,230,250,.45)"></div>
+      <div><div style="font-size:66px;font-weight:800;letter-spacing:-1.5px">AU-RA</div><div style="font-size:34px;color:var(--gris);margin-top:6px">te está llamando…</div></div>
+    </div>
+    <div class="fila" style="margin-top:46px;gap:30px">
+      <div class="btn" style="flex:1;background:rgba(255,80,80,.18);color:#ff8a8a;border:1px solid rgba(255,120,120,.3)">Rechazar</div>
+      <div class="btn" style="flex:1;background:#2fd17d;color:#04140b">Contestar</div>
+    </div>
+  </div>
+  <div class="super">Te despierta.<small>Te recuerda. Te llama.</small></div>
+</section>
+
+<!-- F05 · tu día en tarjetas (las partículas forman la agenda) -->
+<section class="esc" id="f5">
+  <div class="placa" style="background-image:url(assets/P1_cuarto_a.png);filter:brightness(.55) blur(6px);transform:scale(1.08)"></div>
+  <div style="position:absolute;left:90px;right:90px;top:330px;display:flex;flex-direction:column;gap:34px">
+    <div class="etq" style="text-align:center">Tu día · sábado</div>
+    <div class="vidrio fila" style="padding:40px 46px;border-radius:40px"><div class="mono" style="font-size:40px;color:var(--cian);width:170px">09:00</div><div style="font-size:44px;font-weight:700">Reunión de junta</div></div>
+    <div class="vidrio fila" style="padding:40px 46px;border-radius:40px"><div class="mono" style="font-size:40px;color:var(--cian);width:170px">12:30</div><div style="font-size:44px;font-weight:700">Almuerzo con Carlos</div></div>
+    <div class="vidrio fila" style="padding:46px 46px;border-radius:40px;border-color:rgba(227,199,126,.5);box-shadow:0 0 80px rgba(227,199,126,.22),0 40px 120px rgba(0,0,0,.5)"><div style="font-size:64px;width:170px">🎂</div><div><div style="font-size:48px;font-weight:800">Cumpleaños de mamá</div><div style="font-size:32px;color:var(--gris);margin-top:8px">AU-RA te lo recuerda hoy</div></div></div>
+  </div>
+  <div style="position:absolute;left:0;right:0;bottom:300px;text-align:center;font-size:42px;color:#cfe9f2;font-weight:600;font-style:italic">«Buenos días. Hoy es el cumpleaños de tu mamá.»</div>
+</section>
+
+<!-- F06 · Claudio: tres posts listos -->
+<section class="esc" id="f6">
+  <div class="placa" style="background-image:url(assets/P2_claudio_a.png)"></div>
+  <div class="vel" style="background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,0) 35%,rgba(0,0,0,.0) 60%,rgba(0,0,0,.55))"></div>
+  <div style="position:absolute;top:40px;left:0;right:0;height:560px;transform:scale(.86);transform-origin:50% 0">
+    <div class="post" style="position:absolute;left:120px;top:70px;transform:rotate(-11deg)"></div>
+    <div class="post" style="position:absolute;left:640px;top:70px;transform:rotate(11deg)"></div>
+    <div class="post sel" style="position:absolute;left:380px;top:20px;transform:scale(1.12)"></div>
+  </div>
+  <div class="vidrio" style="position:absolute;right:70px;top:760px;padding:30px 40px;border-radius:38px;border-color:rgba(255,154,77,.45)">
+    <div style="font-size:40px;font-weight:700">¿Qué tal este? <span style="color:var(--naranja)">¿Lo publico?</span></div>
+  </div>
+  <div class="btn" style="position:absolute;right:70px;top:900px;width:260px;background:var(--naranja);color:#1c0e03">Sí</div>
+  <div class="super" style="bottom:200px">Ideas,<small>listas para usar.</small></div>
+</section>
+
+<!-- F07 · ANT-ONIO: cuatro brazos ordenan la bandeja -->
+<section class="esc" id="f7">
+  <div class="placa" style="background-image:url(assets/P3_antonio_b.png)"></div>
+  <div class="tarj" style="left:70px;top:700px;transform:rotate(-8deg)"><b style="color:#ff8a8a">Urgente</b><span>Contrato · firma hoy</span></div>
+  <div class="tarj" style="left:700px;top:760px;transform:rotate(7deg)"><b style="color:#ff8a8a">Urgente</b><span>Banco · confirmar</span></div>
+  <div class="tarj" style="left:60px;top:1130px;transform:rotate(-5deg)"><b style="color:var(--hormiga)">Responder</b><span>Borrador listo ✓</span></div>
+  <div class="tarj" style="left:710px;top:1170px;transform:rotate(6deg)"><b style="color:var(--gris)">Después</b><span>Boletín semanal</span></div>
+  <div style="position:absolute;left:0;right:0;top:180px;text-align:center;font-size:42px;color:#cfeff6;font-weight:600;font-style:italic">«Tres urgentes. Te dejé la respuesta lista.»</div>
+  <div class="super" style="bottom:170px">Ordena tu día.</div>
+</section>
+
+<!-- F08 · Enviar 110 ORIGEN a mamá: la fórmula -->
+<section class="esc" id="f8">
+  <div class="vel" style="background:radial-gradient(1200px 900px at 50% 30%,#10284a,#050B17 70%)"></div>
+  <div class="vidrio" style="position:absolute;left:70px;right:70px;top:170px;padding:56px">
+    <div class="fila" style="justify-content:space-between"><img src="assets/veta-mark.png" style="height:70px"><div class="etq">Enviar</div></div>
+    <div class="fila" style="margin-top:46px"><div class="av" style="background:linear-gradient(135deg,#c98a6b,#7a4a3a);display:flex;align-items:center;justify-content:center;font-size:52px;font-weight:800">M</div><div><div style="font-size:30px;color:var(--gris)">Para</div><div style="font-size:54px;font-weight:800">Mamá</div></div></div>
+    <div style="margin-top:56px;text-align:center"><div class="mono" style="font-size:150px;font-weight:700;letter-spacing:-4px">110</div>
+      <div class="fila" style="justify-content:center;gap:18px;margin-top:6px"><img src="assets/origen.jpg" style="height:66px;border-radius:33px"><span style="font-size:48px;font-weight:800;letter-spacing:2px">ORIGEN</span></div></div>
+    <div style="margin-top:56px;padding:34px;border-radius:30px;background:rgba(227,199,126,.08);border:1px solid rgba(227,199,126,.35);text-align:center">
+      <div class="mono" style="font-size:38px;color:#e8d8a8">110 × <span style="color:var(--oro)">1/55 g</span> de oro</div>
+      <div class="mono" style="font-size:84px;font-weight:700;color:var(--oro);margin-top:12px">= 2 g de oro</div>
+    </div>
+    <div class="btn" style="margin-top:50px;background:var(--cian);color:#032029">Firmar con tu huella</div>
+    <div style="text-align:center;margin-top:24px;font-size:28px;color:var(--gris)">AU-RA lo prepara. La firma es tuya.</div>
+  </div>
+  <div class="super" style="bottom:160px">Cada ORIGEN<small>es oro.</small></div>
+</section>
+
+<!-- F09 · el lingote vuela -->
+<section class="esc" id="f9">
+  <div class="placa" style="background-image:url(assets/P4_oro_b.png)"></div>
+  <div class="mono" style="position:absolute;left:0;right:0;top:300px;text-align:center;font-size:56px;color:var(--oro);font-weight:700;text-shadow:0 0 40px rgba(227,199,126,.5)">2 g de oro</div>
+  <div class="super" style="bottom:240px">Y solo tú<small>firmas.</small></div>
+</section>
+
+<!-- F10 · llega a mamá -->
+<section class="esc" id="f10">
+  <div class="placa" style="background-image:url(assets/P5_mama_b.png)"></div>
+  <div class="vel" style="background:linear-gradient(180deg,rgba(0,0,0,.0) 40%,rgba(0,0,0,.6))"></div>
+  <div class="vidrio" style="position:absolute;left:70px;right:70px;top:1300px;padding:44px 50px">
+    <div class="fila" style="justify-content:space-between"><div class="etq">Recibiste</div><img src="assets/veta-mark.png" style="height:56px"></div>
+    <div class="fila" style="margin-top:22px;gap:20px"><span class="mono" style="font-size:86px;font-weight:700">+110</span><span style="font-size:42px;font-weight:800">ORIGEN</span></div>
+    <div class="mono" style="font-size:34px;color:var(--oro);margin-top:6px">≈ 2 g de oro</div>
+    <div class="verif" style="margin-top:30px"><i>✓</i>Verificado en la cadena de Orden Global</div>
+  </div>
+</section>
+
+<!-- F11 · la tarjeta Visa de Veta Wallet -->
+<section class="esc" id="f11">
+  <div class="vel" style="background:radial-gradient(1100px 900px at 50% 40%,#132848,#050B17 70%)"></div>
+  <div style="position:absolute;left:140px;top:420px;width:800px;height:504px;perspective:1600px">
+    <div style="position:absolute;inset:0;border-radius:44px;transform:rotateX(14deg) rotateY(-18deg) rotateZ(3deg);background:linear-gradient(135deg,#1b1b1f,#050506 55%,#141418);border:2px solid rgba(201,169,97,.45);box-shadow:0 60px 140px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.04) inset;overflow:hidden">
+      <div style="position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.13) 45%,transparent 60%)"></div>
+      <img src="assets/veta-mark.png" style="position:absolute;left:48px;top:44px;height:92px">
+      <div style="position:absolute;left:50px;top:200px;width:110px;height:84px;border-radius:16px;background:linear-gradient(135deg,#e9d18f,#a8873e);box-shadow:inset 0 0 0 2px rgba(0,0,0,.2)"></div>
+      <div class="mono" style="position:absolute;left:50px;bottom:60px;font-size:34px;letter-spacing:4px;color:#d9d3c2">•••• •••• •••• 4821</div>
+      <div style="position:absolute;right:52px;bottom:48px;font-size:68px;font-weight:800;font-style:italic;letter-spacing:-1px;color:#f3f3f3">VISA</div>
+    </div>
+  </div>
+  <div style="position:absolute;left:110px;right:110px;top:1080px;display:flex;gap:26px">
+    <div class="vidrio fila" style="flex:1;padding:34px;border-radius:34px;justify-content:center;font-size:36px;font-weight:700">❄︎ Congelar</div>
+    <div class="vidrio fila" style="flex:1;padding:34px;border-radius:34px;justify-content:center;font-size:36px;font-weight:700">＋ Recargar</div>
+  </div>
+  <div class="super" style="bottom:300px">Tu tarjeta Visa.<small>Dentro de tu wallet.</small></div>
+</section>
+
+<!-- F12 · del teléfono a la computadora: el notch de Windows -->
+<section class="esc" id="f12">
+  <div class="placa" style="background-image:url(assets/P6_oficina_b.png)"></div>
+  <div style="position:absolute;left:470px;top:1196px;width:138px;height:208px;background:url(assets/claudio_pie.webp) center/contain no-repeat;transform:rotate(-12deg);filter:drop-shadow(0 18px 20px rgba(0,0,0,.5))"></div>
+  <svg style="position:absolute;left:0;top:0" width="1080" height="1920"><path d="M560 1210 C 520 1000, 470 860, 520 708" stroke="url(#estela)" stroke-width="6" fill="none" stroke-dasharray="2 18" stroke-linecap="round"/><defs><linearGradient id="estela" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#FF9A4D" stop-opacity=".1"/><stop offset="1" stop-color="#FF9A4D"/></linearGradient></defs></svg>
+  <div style="position:absolute;left:330px;top:684px;width:300px;height:46px;border-radius:0 0 26px 26px;background:#05070c;box-shadow:0 0 30px rgba(63,230,250,.35);display:flex;align-items:center;justify-content:center;gap:14px;transform:skewX(-6deg) rotate(-8deg)"><span style="width:16px;height:16px;border-radius:8px;background:var(--cian);box-shadow:0 0 12px var(--cian)"></span><span style="font-size:20px;font-weight:700;letter-spacing:3px;color:#cfe">AURA</span></div>
+  <div style="position:absolute;left:0;right:0;top:190px;text-align:center;font-size:44px;color:#20262d;font-weight:700;font-style:italic">«Me hago chiquito…»</div>
+  <div class="super" style="bottom:120px;color:#fff">Del teléfono<small style="color:#e0e6ee">a tu computadora.</small></div>
+</section>
+
+<!-- F13 · el notch desplegado: tu día en Windows -->
+<section class="esc" id="f13">
+  <div class="vel" style="background:linear-gradient(180deg,#0b1424,#050B17)"></div>
+  <div style="position:absolute;left:40px;right:40px;top:110px;height:1100px;border-radius:30px;background:radial-gradient(900px 700px at 70% 80%,#0e3a66,#0a1730 60%,#070e1d);border:1px solid rgba(255,255,255,.06);overflow:hidden">
+    <div style="position:absolute;left:50%;top:0;transform:translateX(-50%);width:820px;padding:30px 40px 40px;border-radius:0 0 48px 48px;background:#04060b;box-shadow:0 20px 60px rgba(0,0,0,.6),0 0 40px rgba(63,230,250,.15)">
+      <div class="fila" style="justify-content:space-between"><div class="fila" style="gap:14px"><span style="width:18px;height:18px;border-radius:9px;background:var(--cian);box-shadow:0 0 14px var(--cian)"></span><span style="font-weight:800;letter-spacing:4px;font-size:24px">AURA</span></div><span class="mono" style="color:var(--gris);font-size:24px">09:41</span></div>
+      <div style="font-size:44px;font-weight:800;margin-top:26px">Tu día</div>
+      <div style="display:flex;flex-direction:column;gap:16px;margin-top:20px;font-size:30px">
+        <div class="fila" style="gap:20px"><span class="mono" style="color:var(--cian);width:110px">10:00</span>Reunión de junta <span class="chip" style="margin-left:auto;font-size:22px;padding:8px 16px">Calendar</span></div>
+        <div class="fila" style="gap:20px"><span class="mono" style="color:var(--cian);width:110px">13:00</span>Llamada con inversionistas <span class="chip" style="margin-left:auto;font-size:22px;padding:8px 16px">Outlook</span></div>
+        <div class="fila" style="gap:20px"><span class="mono" style="color:var(--cian);width:110px">16:30</span>Revisión de producto <span class="chip" style="margin-left:auto;font-size:22px;padding:8px 16px">Teams</span></div>
+      </div>
+      <div class="fila" style="margin-top:26px;gap:16px"><span class="chip">WhatsApp · 3 nuevos</span><span class="chip">♪ Spotify</span></div>
+    </div>
+    <div style="position:absolute;left:0;right:0;bottom:60px;text-align:center;font-size:40px;color:#bfe9f5;font-style:italic;font-weight:600">«Oye AURA, pon música.»</div>
+  </div>
+  <div class="super" style="bottom:300px">Tu día.<small>En tu computadora.</small></div>
+</section>
+
+<!-- F14 · su propia computadora en la nube -->
+<section class="esc" id="f14">
+  <div class="vel" style="background:radial-gradient(1200px 900px at 50% 35%,#0f2747,#050B17 70%)"></div>
+  <div class="vidrio" style="position:absolute;left:60px;right:60px;top:170px;padding:0;overflow:hidden;border-radius:36px">
+    <div class="fila" style="padding:24px 30px;gap:12px;background:rgba(0,0,0,.25)"><i style="width:18px;height:18px;border-radius:9px;background:#ff5f57"></i><i style="width:18px;height:18px;border-radius:9px;background:#febc2e"></i><i style="width:18px;height:18px;border-radius:9px;background:#28c840"></i><span class="chip" style="margin-left:26px;font-size:22px;padding:8px 18px">● EN VIVO · su computadora</span></div>
+    <div style="height:520px;background:linear-gradient(180deg,#f3f5f8,#e6eaf0);position:relative">
+      <div style="position:absolute;left:40px;top:40px;right:40px;height:60px;border-radius:30px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.08)"></div>
+      <div style="position:absolute;left:44px;top:128px;font-size:40px;font-weight:800;color:#0b1220">Proveedora Andina S.A.</div><div style="position:absolute;left:44px;top:182px;font-size:22px;color:#5a6676">Insumos industriales · Centroamérica · ★ 4,6 (312 reseñas)</div>
+      
+      <div style="position:absolute;left:40px;top:290px;width:400px;height:190px;border-radius:20px;background:#d5dbe3"></div>
+      <div style="position:absolute;left:470px;top:290px;width:450px;height:190px;border-radius:20px;background:#d5dbe3"></div>
+      <div style="position:absolute;left:600px;top:230px;width:40px;height:40px;border-radius:20px;border:4px solid var(--cian2);box-shadow:0 0 0 10px rgba(18,194,242,.2)"></div>
+    </div>
+    <div style="padding:34px 40px 40px;display:flex;flex-direction:column;gap:18px;font-size:32px">
+      <div class="fila" style="gap:18px"><span style="color:#2fd17d">✓</span>Abrí el sitio del proveedor</div>
+      <div class="fila" style="gap:18px"><span style="color:#2fd17d">✓</span>Revisé reseñas y registro</div>
+      <div class="fila" style="gap:18px"><span style="color:var(--cian)">●</span>Comparando precios…</div>
+    </div>
+  </div>
+  <div style="position:absolute;left:0;right:0;top:1340px;text-align:center;font-size:30px;color:var(--gris)">Nunca compra ni paga por ti. Te pide el sí.</div>
+  <div class="super" style="bottom:200px">Tiene su propia<small>computadora.</small></div>
+</section>
+
+<!-- F15 · noche -->
+<section class="esc" id="f15">
+  <div class="placa" style="background-image:url(assets/P7_noche_a.png)"></div>
+  <div style="position:absolute;left:0;right:0;top:330px;text-align:center;font-size:46px;color:#d6e6f2;font-style:italic;font-weight:600">«¿Algo más por hoy?»</div>
+  <div style="position:absolute;left:0;right:0;top:420px;text-align:center;font-size:38px;color:#8aa0b8;font-style:italic">— Gracias, AU-RA.</div>
+  <div style="position:absolute;left:0;right:0;top:500px;text-align:center;font-size:46px;color:#d6e6f2;font-style:italic;font-weight:600">«Para eso estoy.»</div>
+</section>
+
+<!-- F16 · todo el ecosistema orbita el punto -->
+<section class="esc" id="f16">
+  <div class="vel" style="background:radial-gradient(900px 900px at 50% 46%,#0c2140,#050B17 65%)"></div>
+  <svg style="position:absolute;left:0;top:0" width="1080" height="1920">
+    <g stroke="rgba(63,230,250,.35)" stroke-width="2.5" fill="none">
+      <line x1="540" y1="880" x2="540" y2="520"/><line x1="540" y1="880" x2="852" y2="700"/><line x1="540" y1="880" x2="852" y2="1060"/>
+      <line x1="540" y1="880" x2="540" y2="1240"/><line x1="540" y1="880" x2="228" y2="1060"/><line x1="540" y1="880" x2="228" y2="700"/>
+      <line x1="540" y1="880" x2="760" y2="1300"/><line x1="540" y1="880" x2="320" y2="1300"/>
+    </g>
+    <ellipse cx="540" cy="880" rx="360" ry="360" stroke="rgba(166,251,255,.12)" stroke-width="2" fill="none"/>
+  </svg>
+  <div class="punto" style="left:510px;top:850px;width:60px;height:60px"></div>
+  <div class="ico" data-n="Veta Wallet" style="left:540px;top:520px"><img src="assets/veta-mark.png" style="width:120px"></div>
+  <div class="ico" data-n="ORIGEN" style="left:852px;top:700px"><img src="assets/origen.jpg"></div>
+  <div class="ico" data-n="AUKA" style="left:852px;top:1060px"><img src="assets/auka.jpg"></div>
+  <div class="ico" data-n="AGKA" style="left:540px;top:1240px"><img src="assets/agka.jpg"></div>
+  <div class="ico" data-n="Tarjeta" style="left:228px;top:1060px"><svg width="74" height="74" viewBox="0 0 24 24" fill="none" stroke="#A6FBFF" stroke-width="1.4"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 9.5h19M6 15h4"/></svg></div>
+  <div class="ico" data-n="PULSE2CHAT" style="left:228px;top:700px"><svg width="74" height="74" viewBox="0 0 24 24" fill="none" stroke="#A6FBFF" stroke-width="1.4"><path d="M4 5h16v10H9l-5 4z" stroke-linejoin="round"/><path d="M8 9h8M8 12h5"/></svg></div>
+  <div class="ico" data-n="Correo" style="left:760px;top:1300px"><svg width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="#A6FBFF" stroke-width="1.4"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></svg></div>
+  <div class="ico" data-n="Calendario" style="left:320px;top:1300px"><svg width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="#A6FBFF" stroke-width="1.4"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><circle cx="12" cy="15" r="1.4" fill="#A6FBFF" stroke="none"/></svg></div>
+  <div class="super" style="bottom:300px">Todo tu ecosistema.<small>En un solo lugar.</small></div>
+</section>
+
+<!-- F17 · cierre: la «A» y los tres -->
+<section class="esc" id="f17">
+  <div class="placa" style="background-image:url(assets/F02_a_vidrio.png);transform:scale(.8) translateY(-140px);-webkit-mask-image:radial-gradient(closest-side,#000 70%,transparent);mask-image:radial-gradient(closest-side,#000 70%,transparent)"></div>
+  <div style="position:absolute;left:40px;top:1060px;width:300px;height:450px;background:url(assets/claudio_pie.webp) center/contain no-repeat;filter:drop-shadow(0 20px 30px rgba(0,0,0,.6))"></div>
+  <div style="position:absolute;right:40px;top:1060px;width:300px;height:450px;background:url(assets/antonio_pie.webp) center/contain no-repeat;filter:drop-shadow(0 20px 30px rgba(0,0,0,.6))"></div>
+  <div style="position:absolute;left:390px;top:1150px;width:300px;height:300px;border-radius:150px;background:url(assets/orbe.webp) center/cover;mix-blend-mode:screen;box-shadow:0 0 120px rgba(63,230,250,.25)"></div>
+  <div style="position:absolute;left:0;right:0;bottom:250px;text-align:center">
+    <div style="font-weight:800;font-size:100px;letter-spacing:6px">AU-RA <span style="color:var(--cian)">FP</span></div>
+    <div style="margin-top:22px;font-size:28px;letter-spacing:10px;color:var(--gris);font-weight:700">POWERED BY ORDEN GLOBAL</div>
+  </div>
+</section>
+
+<style>
+.post{width:320px;height:420px;border-radius:30px;background:#fff;box-shadow:0 30px 80px rgba(0,0,0,.45);overflow:hidden;position:relative}
+.post::before{content:'';position:absolute;left:0;right:0;top:0;height:250px;background:radial-gradient(160px 160px at 50% 55%,#3fe6fa,#0a2a4a 70%)}
+.post::after{content:'Lanzamiento AU-RA FP';position:absolute;left:24px;right:24px;top:270px;font-weight:800;font-size:30px;color:#0b1220;line-height:1.15}
+.post.sel{box-shadow:0 0 0 5px var(--naranja),0 30px 90px rgba(0,0,0,.5)}
+.tarj{position:absolute;width:320px;padding:26px 28px;border-radius:26px;background:rgba(12,22,40,.72);backdrop-filter:blur(20px);border:1px solid rgba(69,201,222,.45);box-shadow:0 20px 60px rgba(0,0,0,.5),0 0 30px rgba(69,201,222,.15);display:flex;flex-direction:column;gap:10px}
+.tarj b{font-size:26px;letter-spacing:3px;text-transform:uppercase}
+.tarj span{font-size:32px;font-weight:700}
+.ico{position:absolute;width:150px;height:150px;margin:-75px 0 0 -75px;border-radius:75px;background:rgba(12,24,44,.85);border:1.5px solid rgba(166,251,255,.25);display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 0 40px rgba(63,230,250,.18)}
+.ico img{width:150px;height:150px;object-fit:cover}
+.ico::after{content:attr(data-n);position:absolute;top:160px;white-space:nowrap;font-size:24px;letter-spacing:3px;font-weight:700;color:#8fb4c8}
+.ico{overflow:visible}
+</style>
+<script>
+const f = new URLSearchParams(location.search).get('f') || '1';
+document.getElementById('f' + f).classList.add('on');
+document.fonts.ready.then(() => setTimeout(() => window.LISTO = true, 300));
+</script>
+</body></html>

@@ -1,59 +1,71 @@
-# AU-RA FP · tráiler para inversionistas: borrador 4
+# AU-RA FP · tráiler para inversionistas: borrador 5 («Un día con AU-RA»)
 
-**Formato:** 9:16, unos 70 s.
+**Formato:** 9:16, unos 80 s.
 
-**Idea:** «Lo pides. Lo hacen.» Hay una voz extra, la de la persona usuaria, que les pide cosas a los avatares. Ellos las hacen en pantalla, con animación exagerada y precisa. Cada encargo termina con un resultado visible.
-
-**Logo:** la «A» cian con el orbe (`montaje/marca/logo_A.svg`).
+**Idea:** un día completo, de las 6:00 a la noche: primero en el teléfono, después **salta a la computadora con Windows**. El cierre es «todo el ecosistema en un solo lugar».
 
 **Voces:**
 
-| Personaje | Voz |
+| Quién | Voz |
 |---|---|
+| Narrador de tráiler | **Hugo DeepSound** `zHRr9GkjqXG8YdNdzt2V` (latino neutro, grave, para tráilers) |
+| Usuario | José (clon `5rpOswWClIYBLr0xKelj`): la voz del fundador, que les pide cosas |
 | AU-RA | `AoT6sxPBYB0OGpSnIiwc` |
 | Claudio | `5hNQxGboC72zatTcGoJN` |
-| ANT-ONIO | «Leo», `wXojZ3FhzsE0AumH6Oym` |
-| Usuario | por definir: **la voz clonada de José** (`5rpOswWClIYBLr0xKelj`) o una voz neutra |
+| ANT-ONIO | `wXojZ3FhzsE0AumH6Oym` |
 
-**La fórmula** (src/05-cerebro-og/conocimiento.ts): **1 ORIGEN = 1/55 g de oro**, y 55 ORIGEN = 1 g. Enviar 110 ORIGEN equivale a enviar 2 g de oro.
+## Lo que se puede mostrar (verificado en el código el 4 de octubre)
+
+| Función | Estado | Fuente |
+|---|---|---|
+| Llamada de AU-RA y despertador como llamada («despiértame a las 6») | ✅ | lib/manos-app.ts, docs/PUSH.md |
+| Recordatorios con llamada | ✅ | |
+| Correo de cualquier proveedor: revisar, leer, contestar con su «sí» | ✅ | docs/CORREO.md |
+| Posts e ideas (Claudio) | ✅ | |
+| Enviar ORIGEN: AURA prepara, **tú firmas** en Veta Wallet, «Verificado en la cadena de Orden Global» | ✅ en la web; la app de la wallet todavía no atiende el enlace directo | docs/CARTERA.md |
+| 1 ORIGEN = 1/55 g de oro | ✅ | conocimiento.ts |
+| **Tarjeta Visa virtual** dentro de Veta Wallet y de AU-RA: congelar, ver número y PIN, recargar | ✅ (real, emitida con CryptoMate) | veta-wallet-app/src/screens/Card.js, mobile/src/cartera/veta/SeccionTarjeta.tsx |
+| Llamadas y videollamadas de PULSE2CHAT | ✅ | |
+| Su computadora en la nube con vista en vivo | ✅ | |
+| Windows: notch, «Oye AURA», tu día con Google Calendar u Outlook (solo lectura), Spotify, avisos de WhatsApp, Teams y Outlook | ✅ | windows/README.md |
+
+**Fuera del tráiler:**
+- Que **AURA compra o paga sola.** La regla es «Pagar o comprar: nunca».
+- Pagar con NFC o Google Wallet: falta la aprobación de Google.
+- Comprar ORIGEN o hacer swap: está apagado.
+- MyTokenPay: está simulado.
+- iPhone: sin verificar.
 
 ## Guion
 
-| Tiempo | Imagen | Sonido / voz / texto |
+| Tiempo | Imagen | Audio |
 |---|---|---|
-| **0–3 · Silencio** | Negro absoluto `#050B17`. Nada. | La voz del usuario, cerca y en voz baja: **«AU-RA.»** |
-| **3–7 · Responde** | En el centro se enciende **un punto de luz cian**: el punto de la «A». Late una vez, como quien escucha. | Un tono cristalino, suave. |
-| **7–12 · La «A»** | Del punto se dibujan en el aire las líneas de la «A». Se vuelve **vidrio 3D** que gira despacio en macro (reflejos, refracción, bordes que brillan) y se asienta con un golpe seco. Debajo: **AU-RA FP**. | Golpe grave. Un compás de silencio. |
-| **12–17 · Ella** | El punto de la «A» se despega, sube hacia cámara y **estalla en miles de partículas**: es AU-RA, el orbe real. Las partículas forman la palabra **«Hola»**. | AU-RA: «Aquí estoy.» |
-| **17–25 · Encargo 1, AU-RA** | Usuario: «Recuérdame el cumpleaños de mamá.» Las partículas de AU-RA forman una tarjeta de calendario que vuela y se clava en el día. Corte a la mañana: el teléfono vibra en la mesa con **«AU-RA te está llamando»**. Se contesta. | AU-RA: «Hoy es el cumpleaños de tu mamá. ¿Le escribimos?» · **Se acuerda. Te llama.** |
-| **25–33 · Encargo 2, Claudio** | Usuario: «Claudio, un post para el lanzamiento.» Las partículas se condensan en **el brillo de unos lentes amarillos**: Claudio. Chasquea los dedos y de sus lentes salen tres posts terminados en abanico; elige uno con el dedo y lo deja flotando. | Claudio: «¿Qué tal este? ¿Lo publico?» · Usuario: «Sí.» · El botón **Sí** se toca y suena un clic de cristal. · **Ideas listas para usar.** |
-| **33–48 · Encargo 3, ANT-ONIO (el momento wow)** | Usuario: «ANT-ONIO, envíale 110 ORIGEN a Karla.» El post vuela a un costado y ANT-ONIO lo atrapa. **Sus cuatro brazos trabajan a la vez**: uno prepara el pago, otro abre Veta Wallet, otro muestra a Karla y el cuarto te señala a ti: «La firma es tuya.» El usuario pone el dedo: firma. **La fórmula aparece y se resuelve en pantalla**: 110 ORIGEN × 1/55 g se convierte en **2 g de oro**. **Un lingote de oro diminuto, en 3D real, se materializa**, cruza la pantalla con estela dorada y aterriza en la mano de Karla. Sello: **Verificado en la cadena de Orden Global**. | ANT-ONIO: «¡Listo! Llegó.» · Rótulos: **Tu dinero no se mueve sin tu firma.** · **Cada ORIGEN es oro.** |
-| **48–56 · Ráfaga** | Cortes rápidos al ritmo, un pedido por golpe de música, cada uno con su resultado: «Revisa mi correo» (los correos se ordenan solos) · «Investiga a este proveedor» (su computadora en la nube abre pestañas y apila capturas) · «Oye AURA» (el notch de Windows se despliega en una laptop) · «¿Qué ves?» (la cámara describe la mesa). | Música en subida. **Un cerebro. Tres especialistas.** |
-| **56–64 · Todo en un lugar (el final)** | Los íconos del ecosistema llegan desde los bordes y **orbitan alrededor del punto de la «A»**: Veta Wallet, Genesis ID, PULSE2CHAT, ORIGEN, AUKA, AGKA, MyTokenPay, OrdenEx y la cadena 5550. Cada uno deja un hilo de luz. Los hilos se tensan, todo colapsa en el punto, **silencio de medio segundo**, y luego **un estallido de luz**: la «A» de vidrio entera, con AU-RA, Claudio y ANT-ONIO a su alrededor. | **Todo tu ecosistema.** · **Un solo lugar.** |
-| **64–70 · Firma** | Los tres se despiden (el gesto `despide`) y la cámara se aleja. Quedan la «A», **AU-RA FP** y **POWERED BY ORDEN GLOBAL**. | Usuario: «Gracias, AU-RA.» · AU-RA: «Para eso estoy.» · Acorde final y silencio. |
+| **0–4 · Oscuridad** | Negro `#050B17`. | José, en voz baja: «AU-RA.» |
+| **4–9 · La «A»** | Se enciende un punto cian (el punto de la «A»). Las líneas de la «A» se dibujan desde él, se vuelve **vidrio 3D** que gira en macro y se asienta con un golpe. | Tono de cristal y golpe grave. |
+| **9–13 · Ella** | El punto se despega y **estalla en partículas**: el orbe de AU-RA forma «Hola». | AU-RA: «Aquí estoy.» · Narrador: **«Conoce a AU-RA.»** |
+| **13–21 · 6:00 a. m.** | Cuarto en penumbra azul. En la mesa de noche, el teléfono se ilumina a pantalla completa con **«AU-RA te está llamando»**. Una mano contesta. Las partículas del orbe salen de la pantalla y forman tres tarjetas en el aire: 9:00 reunión · 12:30 almuerzo · **cumpleaños de mamá 🎂**. | AU-RA: «Buenos días. Hoy es el cumpleaños de tu mamá.» · Narrador: **«Te despierta. Te recuerda. Te llama.»** |
+| **21–28 · Desayuno · Claudio** | Las partículas se condensan en **el brillo de unos lentes amarillos**: Claudio, junto a la taza de café. Chasquea los dedos y salen tres posts listos en abanico. Elige uno. | José: «Claudio, el post del lanzamiento.» · Claudio: «¿Qué tal este? ¿Lo publico?» · José: «Sí.» · Clic de cristal · Narrador: **«Ideas, listas para usar.»** |
+| **28–34 · Camino · ANT-ONIO** | ANT-ONIO entra rodando el post. **Sus cuatro brazos ordenan la bandeja**: los correos vuelan a tres pilas (urgente, responder, después) y un borrador queda listo. | José: «ANT-ONIO, mis correos.» · ANT-ONIO: «Tres urgentes. Te dejé la respuesta lista.» · Narrador: **«Ordena tu día.»** |
+| **34–46 · El oro (momento wow)** | José: «Mándale 110 ORIGEN a mi mamá.» Uno de los brazos de ANT-ONIO prepara el pago, otro trae la ficha de mamá y otro te señala: «La firma es tuya.» El dedo firma en Veta Wallet. **La fórmula se resuelve**: 110 ORIGEN × 1/55 g se convierte en **2 g de oro**. Un **lingote de oro diminuto en 3D** se materializa, cruza la ciudad con estela dorada y llega al teléfono de mamá, que sonríe. Sello: **Verificado en la cadena de Orden Global**. | Narrador: **«Cada ORIGEN es oro. Y solo tú firmas.»** |
+| **46–51 · La tarjeta** | La **tarjeta Visa de Veta Wallet** gira en 3D (flip), muestra las opciones «Congelar» y «Recargar» y se congela con un efecto de escarcha. | Narrador: **«Tu tarjeta Visa. Dentro de tu wallet.»** |
+| **51–60 · El salto a la computadora** | Oficina, de día. El teléfono está sobre el escritorio junto a una laptop con Windows. Claudio en el teléfono: «Me hago chiquito…» Se encoge, **salta del teléfono a la pantalla de la laptop** y se mete en el **notch**. El notch se despliega con «Tu día»: tres reuniones (desde el calendario) y avisos de WhatsApp, Teams y Outlook. | José: «Oye AURA, pon música.» · Spotify suena · Narrador: **«Del teléfono a tu computadora.»** |
+| **60–66 · Su computadora** | José: «Investiga a este proveedor.» En el notch se abre la vista en vivo de **su propia computadora en la nube**: pestañas que se abren y capturas que se apilan; al final, una tarjeta de resultado. | Narrador: **«Y tiene su propia computadora.»** |
+| **66–71 · Noche** | Cuarto, luz tenue. El orbe de AU-RA respira despacio. | AU-RA: «¿Algo más por hoy?» · José: «Gracias, AU-RA.» · AU-RA: «Para eso estoy.» |
+| **71–80 · Todo en un solo lugar** | Los íconos del ecosistema (Veta Wallet, la tarjeta, PULSE2CHAT, el correo, el calendario, ORIGEN, AUKA, AGKA y Genesis ID) orbitan el punto de la «A». Los hilos se tensan, todo colapsa en el punto, medio segundo de silencio y **estallido**: la «A» de vidrio entera con AU-RA, Claudio y ANT-ONIO a su alrededor. Debajo: **AU-RA FP** · **POWERED BY ORDEN GLOBAL**. | Narrador: **«Tu wallet. Tu tarjeta. Tus chats. Tu día. Todo tu ecosistema… en un solo lugar.»** · Golpe final y silencio. |
 
-## Lo que lo hace «Apple» y no un tráiler barato
+## Producción por etapas
 
-- **El arranque es casi nada.** Una palabra en la oscuridad y un punto de luz que responde. Primero la marca, después la emoción; la explicación viene al final.
-- **El diálogo es la interfaz.** Los pedidos los dice el usuario y el resultado se ve, nunca se explica. No hay locutor.
-- **Todo es 3D y por código:**
-  - la «A» de vidrio;
-  - el lingote de oro, con material metálico real;
-  - los avatares desde sus GLB, con 30 animaciones cada uno;
-  - las interfaces redibujadas en vector.
-- **La luz manda.** Cada transición sale de una luz que ya estaba en pantalla: el punto, las partículas, el brillo de los lentes, la estela del oro y los hilos del ecosistema.
-- **El sonido:**
-  - silencios antes de los momentos clave (el punto, el «Sí», el colapso final);
-  - foley de cristal y de metal;
-  - música original que crece hasta el estallido.
-- **La honestidad dentro del espectáculo:**
-  - la firma siempre la pone el usuario;
-  - «Verificado en la cadena»;
-  - ninguna promesa de algo que la app no hace (no compra sola ni mueve dinero);
-  - los datos de ejemplo (Karla, el correo) son claramente ficticios.
+Hay que aprobar cada etapa antes de pasar a la siguiente.
 
-## Lo que falta
+**1. Imágenes clave:** un cuadro por escena, en 1080×1920.
+- **Por código:** la «A» de vidrio en 3D (three.js con material de transmisión), el orbe de AU-RA (el real de la app, src/14-orbe), la interfaz (llamada, wallet, tarjeta, notch, correo) en vector y el final del ecosistema.
+- **Placas fotográficas con IA (gpt-image-2):** el cuarto a las 6:00, la mesa del desayuno, la oficina con la laptop y el lingote de oro en macro.
+  - Los avatares salen de sus fotos de referencia.
+  - **Sin texto ni logos generados por IA:** las pantallas salen en blanco y se rellenan por código.
+- **Costo estimado:** de 5 a 8 imágenes, unos 2 USD.
 
-1. Los logos de Genesis ID, PULSE2CHAT, MyTokenPay y OrdenEx. Hoy tengo Veta Wallet, OG y el símbolo de ORIGEN; para AUKA, AGKA y la cadena 5550 puedo hacer monogramas por código si no existen.
-2. La voz del usuario: la de José o una neutra.
-3. La prueba de estilo de 10 s (del 0 al 17 del guion: «AU-RA.», el punto, la «A» de vidrio y el orbe que dice «Hola»), para aprobarla antes de producir lo demás.
+**2. Audio:** narrador, José, los tres personajes, foley y música, con una mezcla de prueba sobre las imágenes fijas (animatic).
+
+**3. Video (lo caro):**
+- Los planos de los avatares en movimiento se generan con MiniMax H3 Max, tomando las imágenes clave como primer y último cuadro.
+- El motion graphics, la «A», el oro, la interfaz y las transiciones van por código.

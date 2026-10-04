@@ -1,0 +1,89 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;background:#050B17;overflow:hidden}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}</script>
+</head><body>
+<script type="module">
+// La «A» de AU-RA en vidrio 3D: extruida desde el SVG vectorizado, con el orbe como luz propia.
+// ?t=segundos fija el momento (para sacar cuadros), ?ang=grados el giro.
+import * as THREE from 'three';
+import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const q = new URLSearchParams(location.search);
+const W = 1080, H = 1920, t = parseFloat(q.get('t') || '3.0');
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.85;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#050B17');
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 0.45;
+
+const cam = new THREE.PerspectiveCamera(30, W / H, 0.1, 100);
+
+// luz de estudio: borde frío arriba, relleno suave, contraluz cian
+const key = new THREE.SpotLight('#dff9ff', 35, 30, 0.5, 0.6); key.position.set(-4, 6, 6); scene.add(key);
+const rim = new THREE.PointLight('#3fe6fa', 40, 20); rim.position.set(3, 1, -3); scene.add(rim);
+scene.add(new THREE.AmbientLight('#0a1830', 0.6));
+
+const svg = await (await fetch('./logo_A_solo.svg')).text();
+const data = new SVGLoader().parse(svg);
+const shapes = data.paths.flatMap(p => SVGLoader.createShapes(p));
+// el contorno exterior es la «A»; el círculo (orbe) se dibuja aparte como esfera de luz
+shapes.sort((a, b) => Math.abs(THREE.ShapeUtils.area(b.getPoints())) - Math.abs(THREE.ShapeUtils.area(a.getPoints())));
+const geo = new THREE.ExtrudeGeometry(shapes[0], { depth: 70, bevelEnabled: true, bevelThickness: 26, bevelSize: 20, bevelSegments: 14, curveSegments: 64 });
+geo.computeBoundingBox(); const bb = geo.boundingBox; const c = new THREE.Vector3(); bb.getCenter(c);
+geo.translate(-c.x, -c.y, -c.z);
+const s = 2.4 / (bb.max.y - bb.min.y); geo.scale(s, -s, s); geo.computeVertexNormals();
+
+const vidrio = new THREE.MeshPhysicalMaterial({
+  color: '#9ff6ff', metalness: 0, roughness: 0.05, transmission: 0.93, thickness: 1.3, ior: 1.5,
+  clearcoat: 1, clearcoatRoughness: 0.03, emissive: '#12c2f2', emissiveIntensity: 0.09, attenuationColor: '#0d9ad8', attenuationDistance: 0.6,
+  iridescence: 0.25, iridescenceIOR: 1.3, specularIntensity: 1,
+  side: THREE.DoubleSide,
+});
+const A = new THREE.Mesh(geo, vidrio); scene.add(A);
+
+// fondo: halos suaves de luz detrás de la «A» (lo que el vidrio refracta)
+function halo(col, x, y, z, r, a) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256; const g = cv.getContext('2d');
+  const gr = g.createRadialGradient(128, 128, 0, 128, 128, 128); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(r, r), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, opacity: a, depthWrite: false, blending: THREE.AdditiveBlending }));
+  m.position.set(x, y, z); scene.add(m); return m;
+}
+halo('#1ad3ff', -1.0, 0.7, -3, 6.5, 0.42); halo('#0b4fa8', 1.3, -0.7, -3.5, 7.5, 0.45); halo('#a6fbff', 0.2, 1.5, -2.5, 2.8, 0.25);
+// el orbe: centro del círculo del SVG
+const orbeShape = shapes[1]; const pts = orbeShape.getPoints(); const oc = new THREE.Vector2();
+pts.forEach(p => oc.add(p)); oc.divideScalar(pts.length);
+let rad = 0; pts.forEach(p => rad = Math.max(rad, p.distanceTo(oc)));
+const orbe = new THREE.Mesh(new THREE.SphereGeometry(rad * s, 64, 64),
+  new THREE.MeshStandardMaterial({ color: '#bffcff', emissive: '#3fe6fa', emissiveIntensity: 0.8, roughness: 0.2 }));
+orbe.position.set((oc.x - c.x) * s, -(oc.y - c.y) * s, 0.0); A.add(orbe);
+const luzOrbe = new THREE.PointLight('#5ff0ff', 6, 3); luzOrbe.position.copy(orbe.position).add(new THREE.Vector3(0, 0, 0.4)); A.add(luzOrbe);
+
+// piso de reflejo apenas sugerido
+const piso = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ color: '#02050c', roughness: 0.18, metalness: 0.9 }));
+piso.rotation.x = -Math.PI / 2; piso.position.y = -1.32; /* sin piso */
+
+const comp = new EffectComposer(renderer);
+comp.addPass(new RenderPass(scene, cam));
+comp.addPass(new UnrealBloomPass(new THREE.Vector2(W, H), 0.35, 0.5, 0.92));
+comp.addPass(new OutputPass());
+
+function pose(t) {
+  const ang = q.has('ang') ? parseFloat(q.get('ang')) : (-28 + 28 * Math.min(1, t / 3)) ;
+  A.rotation.y = THREE.MathUtils.degToRad(ang);
+  const d = 11.5 - 0.8 * Math.min(1, t / 3);
+  cam.position.set(Math.sin(0.1) * d, 0.35, d); cam.lookAt(0, 0.05, 0);
+  key.position.x = -4 + 3 * Math.min(1, t / 3);  // el reflejo barre la cara de la «A»
+}
+pose(t); comp.render();
+window.LISTO = true;
+</script></body></html>
