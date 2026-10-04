@@ -2,7 +2,7 @@
 // generado por la plataforma de migración (test/acunacion-ejemplo.json).
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers'
+import { loadFixture, time } from '@nomicfoundation/hardhat-toolbox/network-helpers'
 import acunacion from './acunacion-ejemplo.json'
 
 const E = 10n ** 18n
@@ -10,11 +10,13 @@ const motivo = ethers.encodeBytes32String('prueba')
 const HABILITADA = 1
 const BLOQUEADA = 2
 
+// En la mayoría de las pruebas la misma cuenta hace de firma múltiple de tres (admin) y de dos de tres
+// (operativa); el reparto de roles entre las dos se prueba aparte.
 async function desplegar() {
-  const [multifirma, a1, a2, a3, tesoreria, a5, ajeno] = await ethers.getSigners()
-  const token = await ethers.deployContract('TokenSFSP', ['Gold Kapital', 'AUKA', 'COM-OG-0001', 'SFSP-300', multifirma.address])
+  const [multifirma, a1, a2, a3, tesoreria, a5, ajeno, custodio, admin3] = await ethers.getSigners()
+  const token = await ethers.deployContract('TokenSFSP', ['Gold Kapital', 'AUKA', 'COM-OG-0001', 'SFSP-300', multifirma.address, multifirma.address, [custodio.address], 0])
   const registro = await ethers.deployContract('RegistroElegibilidad', [multifirma.address])
-  return { token, registro, multifirma, a1, a2, a3, tesoreria, a5, ajeno }
+  return { token, registro, multifirma, a1, a2, a3, tesoreria, a5, ajeno, custodio, admin3 }
 }
 
 async function conMigracionAbierta() {
@@ -23,8 +25,15 @@ async function conMigracionAbierta() {
   return d
 }
 
+async function acreditadosFix() {
+  const d = await conMigracionAbierta()
+  const ts = acunacion.tenedores
+  await d.token.acreditarLote(acunacion.raiz, ts.map((t) => t.direccion), ts.map((t) => t.acunar), ts.map((t) => t.prueba))
+  return d
+}
+
 describe('TokenSFSP', () => {
-  it('nace con los roles en la firma múltiple y sin supply', async () => {
+  it('nace con los roles en las firmas múltiples y sin supply', async () => {
     const { token, multifirma, ajeno } = await loadFixture(desplegar)
     expect(await token.totalSupply()).to.equal(0n)
     expect(await token.pasaporte()).to.equal('COM-OG-0001')
@@ -32,7 +41,97 @@ describe('TokenSFSP', () => {
       expect(await token.hasRole(rol, multifirma.address)).to.equal(true)
       expect(await token.hasRole(rol, ajeno.address)).to.equal(false)
     }
-    await expect(ethers.deployContract('TokenSFSP', ['x', 'x', 'x', 'x', ethers.ZeroAddress])).to.be.revertedWithCustomError(token, 'DireccionCero')
+    await expect(ethers.deployContract('TokenSFSP', ['x', 'x', 'x', 'x', ethers.ZeroAddress, multifirma.address, [], 0])).to.be.revertedWithCustomError(token, 'DireccionCero')
+    await expect(ethers.deployContract('TokenSFSP', ['x', 'x', 'x', 'x', multifirma.address, ethers.ZeroAddress, [], 0])).to.be.revertedWithCustomError(token, 'DireccionCero')
+  })
+
+  it('reparte los roles como §5.3: administración en la de tres, operación en la de dos de tres, pausa en cada custodio', async () => {
+    const [operativa, admin3, custodio, otro] = await ethers.getSigners()
+    const token = await ethers.deployContract('TokenSFSP', ['x', 'x', 'x', 'SFSP-300', admin3.address, operativa.address, [custodio.address, otro.address], 0])
+    expect(await token.hasRole(await token.DEFAULT_ADMIN_ROLE(), admin3.address)).to.equal(true)
+    expect(await token.hasRole(await token.DEFAULT_ADMIN_ROLE(), operativa.address)).to.equal(false)
+    for (const rol of [await token.EMISOR_ROLE(), await token.SUSPENSION_ROLE(), await token.QUEMA_ROLE()]) {
+      expect(await token.hasRole(rol, operativa.address)).to.equal(true)
+      expect(await token.hasRole(rol, admin3.address)).to.equal(false)
+    }
+    expect(await token.hasRole(await token.PAUSA_ROLE(), custodio.address)).to.equal(true)
+    expect(await token.hasRole(await token.PAUSA_ROLE(), otro.address)).to.equal(true)
+    // La operativa no toca el registro ni los roles: eso es de los tres custodios.
+    await expect(token.connect(operativa).fijarRegistro(otro.address)).to.be.revertedWithCustomError(token, 'AccessControlUnauthorizedAccount')
+    await token.connect(admin3).fijarRegistro(otro.address)
+  })
+
+  describe('pausa de emergencia (§5.3)', () => {
+    it('un custodio solo pausa al instante, y vence a las 72 horas si dos custodios no la ratifican', async () => {
+      const { token, custodio, a1, a2 } = await loadFixture(acreditadosFix)
+      await token.connect(custodio).pausar()
+      expect(await token.paused()).to.equal(true)
+      await expect(token.connect(a1).transfer(a2.address, E)).to.be.revertedWithCustomError(token, 'EnforcedPause')
+      await time.increase(72 * 3600 - 10)
+      expect(await token.paused()).to.equal(true)
+      await time.increase(20)
+      expect(await token.paused()).to.equal(false, 'venció sin ratificar')
+      await token.connect(a1).transfer(a2.address, E)
+    })
+
+    it('ratificada por la de dos de tres, sigue hasta que la levante', async () => {
+      const { token, multifirma, custodio, ajeno } = await loadFixture(acreditadosFix)
+      await token.connect(custodio).pausar()
+      await expect(token.connect(custodio).ratificarPausa()).to.be.revertedWithCustomError(token, 'AccessControlUnauthorizedAccount')
+      await expect(token.connect(multifirma).ratificarPausa()).to.emit(token, 'PausaRatificada')
+      await time.increase(30 * 86400)
+      expect(await token.paused()).to.equal(true)
+      await expect(token.connect(custodio).reanudar()).to.be.revertedWithCustomError(token, 'AccessControlUnauthorizedAccount')
+      await token.connect(multifirma).reanudar()
+      expect(await token.paused()).to.equal(false)
+      await expect(token.connect(ajeno).pausar()).to.be.revertedWithCustomError(token, 'AccessControlUnauthorizedAccount')
+    })
+
+    it('desde la firma múltiple de dos de tres nace ratificada', async () => {
+      const { token, multifirma } = await loadFixture(acreditadosFix)
+      await token.connect(multifirma).pausar()
+      expect(await token.pausaRatificada()).to.equal(true)
+      await time.increase(5 * 86400)
+      expect(await token.paused()).to.equal(true)
+    })
+  })
+
+  describe('ampliación de supply con demora (security, §5.3)', () => {
+    async function security() {
+      const [operativa, admin3, beneficiario] = await ethers.getSigners()
+      const token = await ethers.deployContract('TokenSFSP', ['Orden Kapital', 'ONDK', 'SEC-OG-0001', 'SFSP-200', admin3.address, operativa.address, [], 7 * 86400])
+      return { token, operativa, beneficiario }
+    }
+
+    it('sin anunciar no se emite; anunciada, solo pasados siete días y una sola vez', async () => {
+      const { token, beneficiario } = await loadFixture(security)
+      await expect(token.emitir(beneficiario.address, E, motivo)).to.be.revertedWithCustomError(token, 'EmisionNoAnunciada')
+      await expect(token.anunciarEmision(beneficiario.address, E, motivo)).to.emit(token, 'EmisionAnunciada')
+      await expect(token.anunciarEmision(beneficiario.address, E, motivo)).to.be.revertedWithCustomError(token, 'EmisionYaAnunciada')
+      await time.increase(7 * 86400 - 10)
+      await expect(token.emitir(beneficiario.address, E, motivo)).to.be.revertedWithCustomError(token, 'EmisionEnDemora')
+      await time.increase(20)
+      await expect(token.emitir(beneficiario.address, 2n * E, motivo)).to.be.revertedWithCustomError(token, 'EmisionNoAnunciada')
+      await token.emitir(beneficiario.address, E, motivo)
+      expect(await token.balanceOf(beneficiario.address)).to.equal(E)
+      await expect(token.emitir(beneficiario.address, E, motivo)).to.be.revertedWithCustomError(token, 'EmisionNoAnunciada')
+    })
+
+    it('una emisión anunciada se puede cancelar antes de ejecutarla', async () => {
+      const { token, beneficiario } = await loadFixture(security)
+      await token.anunciarEmision(beneficiario.address, E, motivo)
+      await expect(token.cancelarEmision(beneficiario.address, E, motivo)).to.emit(token, 'EmisionCancelada')
+      await time.increase(8 * 86400)
+      await expect(token.emitir(beneficiario.address, E, motivo)).to.be.revertedWithCustomError(token, 'EmisionNoAnunciada')
+    })
+
+    it('la migración no es ampliación: abrir y acreditar no esperan', async () => {
+      const { token } = await loadFixture(security)
+      await token.abrirMigracion(acunacion.raiz, acunacion.totalAcunar, motivo)
+      const t = acunacion.tenedores[0]
+      await token.acreditar(acunacion.raiz, t.direccion, t.acunar, t.prueba)
+      expect(await token.balanceOf(t.direccion)).to.equal(BigInt(t.acunar))
+    })
   })
 
   describe('migración por Merkle', () => {

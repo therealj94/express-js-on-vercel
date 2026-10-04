@@ -24,7 +24,7 @@ async function ejecutar(multifirma: any, transacciones: { to: string; data: stri
 describe('lotes para la firma múltiple', () => {
   it('primera ronda: abre por el total y acredita todo', async () => {
     const [multifirma] = await ethers.getSigners()
-    const token = await ethers.deployContract('TokenSFSP', ['AUKA', 'AUKA', 'P', 'SFSP-300', multifirma.address])
+    const token = await ethers.deployContract('TokenSFSP', ['AUKA', 'AUKA', 'P', 'SFSP-300', multifirma.address, multifirma.address, [], 0])
     const dir = await token.getAddress()
     const r = await prepararLotes(ethers, acunacion as Archivo, dir, ethers.provider, token as any, { lote: 2 })
     expect(r.transacciones.length).to.equal(1 + Math.ceil(acunacion.tenedores.length / 2))
@@ -34,7 +34,7 @@ describe('lotes para la firma múltiple', () => {
 
   it('ronda de reclamos: el archivo trae lo viejo y lo nuevo, y solo se abre y acredita lo nuevo', async () => {
     const [multifirma, a1, a2, a3] = await ethers.getSigners()
-    const token = await ethers.deployContract('TokenSFSP', ['ONDK', 'ONDK', 'P', 'SFSP-200', multifirma.address])
+    const token = await ethers.deployContract('TokenSFSP', ['ONDK', 'ONDK', 'P', 'SFSP-200', multifirma.address, multifirma.address, [], 0])
     const dir = await token.getAddress()
     const foto = archivo([[a1.address, 10n * E], [a2.address, 5n * E]])
     await ejecutar(multifirma, (await prepararLotes(ethers, foto, dir, ethers.provider, token as any)).transacciones)
@@ -55,7 +55,7 @@ describe('lotes para la firma múltiple', () => {
 
   it('rechaza un LOTE inválido, una prueba rota y un total que no suma', async () => {
     const [multifirma] = await ethers.getSigners()
-    const token = await ethers.deployContract('TokenSFSP', ['X', 'X', 'P', 'S', multifirma.address])
+    const token = await ethers.deployContract('TokenSFSP', ['X', 'X', 'P', 'S', multifirma.address, multifirma.address, [], 0])
     const dir = await token.getAddress()
     const a = acunacion as Archivo
     for (const lote of [0, -1, Number.NaN, 1.5, 1000]) {

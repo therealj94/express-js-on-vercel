@@ -20,13 +20,26 @@ import { nuevoId, registrar } from './almacen.js'
 import type { Cadena } from './cadena.js'
 import { ErrorFirma, armarSafeTx, comprobarEjecucion, datosEjecucion, estadoSafe, firmanteDe, hashSafeTx, llamada, normalizarFirma, tipado, type Llamada } from './multifirma.js'
 
-export interface ConfigSafe { safe: string; multisend?: string }
+/**
+ * Las dos firmas múltiples de SFSP §5.3: `safe`, la operativa (dos de tres: tesorería, emitir, abrir la
+ * migración, suspender, ratificar pausas), y `constitucional`, la de los tres custodios (roles y
+ * registro de los contratos). Sin la de tres, solo se arman operaciones de la operativa.
+ */
+export interface ConfigSafe { safe: string; constitucional?: string; multisend?: string }
+export type CualSafe = 'operativa' | 'constitucional'
+
+const dir = (v: unknown) => { const d = String(v || '').trim(); return /^0x[0-9a-fA-F]{40}$/.test(d) ? d.toLowerCase() : undefined }
 
 export function configSafe(entorno: NodeJS.ProcessEnv): ConfigSafe | null {
-  const safe = String(entorno.SAFE_DIRECCION || '').trim()
-  if (!/^0x[0-9a-fA-F]{40}$/.test(safe)) return null
-  const multisend = String(entorno.SAFE_MULTISEND || '').trim()
-  return { safe: safe.toLowerCase(), multisend: /^0x[0-9a-fA-F]{40}$/.test(multisend) ? multisend.toLowerCase() : undefined }
+  const safe = dir(entorno.SAFE_DIRECCION)
+  if (!safe) return null
+  return { safe, constitucional: dir(entorno.SAFE_CONSTITUCIONAL), multisend: dir(entorno.SAFE_MULTISEND) }
+}
+
+export function direccionSafe(cfg: ConfigSafe, cual: CualSafe = 'operativa'): string {
+  if (cual === 'operativa') return cfg.safe
+  if (!cfg.constitucional) throw new ErrorFirma('Falta SAFE_CONSTITUCIONAL: la firma múltiple de los tres custodios no está configurada')
+  return cfg.constitucional
 }
 
 /** Un envío del regalo es una llamada; 120 por tanda caben holgados en un bloque de la 5550 (10 M de gas). */
@@ -36,8 +49,8 @@ const PENDIENTE = new Set<Operacion['estado']>(['en-firma', 'lista'])
 
 const llamar = (cadena: Cadena) => (m: string, p: unknown[]) => cadena.llamar(m, p)
 
-export function estado(cadena: Cadena, cfg: ConfigSafe) {
-  return estadoSafe(llamar(cadena), cfg.safe)
+export function estado(cadena: Cadena, cfg: ConfigSafe | string) {
+  return estadoSafe(llamar(cadena), typeof cfg === 'string' ? cfg : cfg.safe)
 }
 
 function buscar(a: Almacen, id: string): Operacion {
@@ -54,10 +67,12 @@ function buscar(a: Almacen, id: string): Operacion {
 export async function refrescar(a: Almacen, cadena: Cadena, cfg: ConfigSafe): Promise<number> {
   const pendientes = a.datos.operaciones.filter((o) => PENDIENTE.has(o.estado))
   if (!pendientes.length) return 0
-  const { nonce } = await estado(cadena, cfg)
+  // Cada Safe lleva sus propios nonces.
+  const nonces = new Map<string, number>()
+  for (const s of new Set(pendientes.map((o) => o.safe))) nonces.set(s, (await estado(cadena, s)).nonce)
   let n = 0
   for (const o of pendientes) {
-    if (o.safeTx.nonce < nonce) {
+    if (o.safeTx.nonce < nonces.get(o.safe)!) {
       o.estado = 'caducada'
       n++
       registrar(a, 'plataforma', 'operacion.caducada', { id: o.id, nonce: o.safeTx.nonce })
@@ -66,17 +81,18 @@ export async function refrescar(a: Almacen, cadena: Cadena, cfg: ConfigSafe): Pr
   return n
 }
 
-export async function crear(a: Almacen, cadena: Cadena, cfg: ConfigSafe, autor: string, p: { tipo: Operacion['tipo']; titulo: string; llamadas: Llamada[]; liberacion?: string; nonce?: number }): Promise<Operacion> {
+export async function crear(a: Almacen, cadena: Cadena, cfg: ConfigSafe, autor: string, p: { tipo: Operacion['tipo']; titulo: string; llamadas: Llamada[]; liberacion?: string; nonce?: number; enSafe?: string }): Promise<Operacion> {
   if (!p.titulo?.trim()) throw new ErrorFirma('falta el título de la operación')
   const llamadas = p.llamadas.map((l) => llamada(l))
-  const e = await estado(cadena, cfg)
-  // El siguiente nonce libre: ni uno ya usado en la Safe ni uno de otra operación pendiente.
-  const ocupados = a.datos.operaciones.filter((o) => PENDIENTE.has(o.estado)).map((o) => o.safeTx.nonce)
+  const safe = p.enSafe ?? cfg.safe
+  const e = await estado(cadena, safe)
+  // El siguiente nonce libre de esa Safe: ni uno ya usado en ella ni uno de otra operación pendiente suya.
+  const ocupados = a.datos.operaciones.filter((o) => PENDIENTE.has(o.estado) && o.safe === safe).map((o) => o.safeTx.nonce)
   const nonce = p.nonce ?? Math.max(e.nonce, ...ocupados.map((x) => x + 1))
   const safeTx = armarSafeTx(llamadas, nonce, cfg.multisend)
   const o: Operacion = {
     id: nuevoId('op'), tipo: p.tipo, titulo: p.titulo.trim(), llamadas, safeTx,
-    hash: hashSafeTx(cfg.safe, e.chainId, safeTx), chainId: e.chainId, safe: cfg.safe,
+    hash: hashSafeTx(safe, e.chainId, safeTx), chainId: e.chainId, safe,
     firmas: [], umbral: e.umbral, estado: 'en-firma', autor, creada: new Date().toISOString(),
     ...(p.liberacion ? { liberacion: p.liberacion } : {}),
   }
@@ -101,7 +117,7 @@ export async function firmar(a: Almacen, cadena: Cadena, cfg: ConfigSafe, id: st
   if (o.firmas.some((f) => f.operador === operador)) throw new ErrorFirma('ya firmaste esta operación')
   const limpia = normalizarFirma(firma)
   const firmante = firmanteDe(o.hash, limpia).toLowerCase()
-  const e = await estado(cadena, cfg)
+  const e = await estado(cadena, o.safe)
   if (o.safeTx.nonce < e.nonce) {
     o.estado = 'caducada'
     throw new ErrorFirma('el nonce de esta operación ya se usó en la Safe: quedó caducada')
@@ -129,7 +145,7 @@ export async function ejecutada(a: Almacen, cadena: Cadena, cfg: ConfigSafe, id:
   if (o.estado !== 'lista' && o.estado !== 'caducada') throw new ErrorFirma(`solo se registra una operación con todas sus firmas (está ${o.estado})`)
   const h = String(tx || '').toLowerCase()
   if (a.datos.operaciones.some((x) => x.tx === h)) throw new ErrorFirma('esa transacción ya se usó')
-  const falla = await comprobarEjecucion(llamar(cadena), h, cfg.safe, o.hash)
+  const falla = await comprobarEjecucion(llamar(cadena), h, o.safe, o.hash)
   if (falla) throw new ErrorFirma(falla)
   o.estado = 'ejecutada'
   o.tx = h
@@ -158,8 +174,8 @@ export async function anular(a: Almacen, cadena: Cadena, cfg: ConfigSafe, id: st
   if (!motivo?.trim()) throw new ErrorFirma('falta el motivo')
   // Primero el reemplazo: si la cadena no responde, nada cambia.
   const reemplazo = await crear(a, cadena, cfg, actor, {
-    tipo: 'anulacion', titulo: `Anula «${o.titulo}» (nonce ${o.safeTx.nonce})`, nonce: o.safeTx.nonce,
-    llamadas: [{ to: cfg.safe, value: '0', data: '0x' }],
+    tipo: 'anulacion', titulo: `Anula «${o.titulo}» (nonce ${o.safeTx.nonce})`, nonce: o.safeTx.nonce, enSafe: o.safe,
+    llamadas: [{ to: o.safe, value: '0', data: '0x' }],
   })
   reemplazo.anula = o.id
   o.estado = 'anulada'

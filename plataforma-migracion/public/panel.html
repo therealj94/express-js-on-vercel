@@ -107,7 +107,10 @@
       <div id="formOperacion" class="tarjeta oculto">
         <h2 style="margin-top:0">Operación sobre los contratos</h2>
         <p class="sub">Abrir una migración, fijar el registro, dar o quitar un rol. Pega el archivo que genera <span class="mono">contratos-v2/scripts/lotes-safe.ts</span>, o una lista JSON de llamadas <span class="mono">[{"to":"0x…","value":"0","data":"0x…"}]</span>. Varias llamadas van en un solo lote.</p>
-        <input id="opTitulo" class="largo" placeholder="Título (qué hace y por qué)" style="margin-bottom:8px">
+        <div class="fila" style="margin-bottom:8px">
+          <input id="opTitulo" class="largo" placeholder="Título (qué hace y por qué)">
+          <select id="opSafe" aria-label="Firma múltiple"><option value="operativa">Operativa (2 de 3): migración, emisión, quema, suspensión, pausas</option><option value="constitucional">De los tres custodios: roles y registro</option></select>
+        </div>
         <textarea id="opLlamadas" placeholder='{"transactions":[…]}  o  [{"to":"0x…","value":"0","data":"0x…"}]'></textarea>
         <button id="crearOperacion" style="margin-top:8px">Crear operación</button>
       </div>
@@ -139,6 +142,7 @@ let token = ''
 try { token = sessionStorage.getItem('migracion') || '' } catch {}
 let yo = null
 let multifirmaActiva = false
+let safeNombre = {}
 
 async function api(ruta, opciones = {}) {
   const r = await fetch('/api/panel' + ruta, { ...opciones, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, ...(opciones.headers || {}) } })
@@ -331,12 +335,15 @@ const cargarMultifirma = intentar(async () => {
     $('#estadoSafe').innerHTML = '<b>La firma múltiple no está configurada.</b><p class="sub">Cuando la Junta tenga sus tres custodios, se despliega la Safe con <span class="mono">contratos-v2/scripts/desplegar-multifirma.ts</span> y se pone <span class="mono">SAFE_DIRECCION</span> y <span class="mono">SAFE_MULTISEND</span> en Render. Hasta entonces, las liberaciones se aprueban en ORIGEN.</p>'
     $('#tablaOps').innerHTML = ''; $('#formOperacion').classList.add('oculto'); return
   }
-  $('#estadoSafe').innerHTML = `<b>Safe</b> <span class="mono">${esc(m.safe)}</span> · ${m.umbral} de ${m.duenos.length} · próximo nonce ${m.nonce} · tiene ${unidades(m.saldo)} ORIGEN
-    <div class="meta">Custodios: ${m.duenos.map((d) => `<span class="mono">${esc(d)}</span>`).join(' · ')}</div>`
+  $('#estadoSafe').innerHTML = `<b>Operativa</b> <span class="mono">${esc(m.safe)}</span> · ${m.umbral} de ${m.duenos.length} · próximo nonce ${m.nonce} · tiene ${unidades(m.saldo)} ORIGEN
+    <div class="meta">Custodios: ${m.duenos.map((d) => `<span class="mono">${esc(d)}</span>`).join(' · ')}</div>
+    ${m.constitucional ? `<div style="margin-top:6px"><b>De los tres custodios</b> <span class="mono">${esc(m.constitucional.safe)}</span> · ${m.constitucional.umbral} de ${m.constitucional.duenos.length} · próximo nonce ${m.constitucional.nonce}</div>` : '<div class="meta">Sin la firma múltiple de los tres custodios (SAFE_CONSTITUCIONAL): los roles y el registro de los contratos no se pueden operar desde aquí.</div>'}`
+  safeNombre = { [m.safe]: 'operativa', ...(m.constitucional ? { [m.constitucional.safe]: 'tres custodios' } : {}) }
+  $('#opSafe').disabled = !m.constitucional
   $('#formOperacion').classList.toggle('oculto', !yo.roles.includes('operador'))
   const ops = await api('/operaciones')
   $('#tablaOps').innerHTML = '<tr><th>Nonce</th><th>Operación</th><th>Firmas</th><th>Estado</th><th></th></tr>' +
-    ops.map((o) => `<tr><td>${o.safeTx.nonce}</td><td>${esc(o.titulo)}<div class="meta">${esc(o.tipo)} · ${o.totalLlamadas} llamada${o.totalLlamadas === 1 ? '' : 's'} · propuso ${esc(o.autor)}</div></td>
+    ops.map((o) => `<tr><td>${o.safeTx.nonce}</td><td>${esc(o.titulo)}<div class="meta">${esc(safeNombre[o.safe] || o.safe)} · ${esc(o.tipo)} · ${o.totalLlamadas} llamada${o.totalLlamadas === 1 ? '' : 's'} · propuso ${esc(o.autor)}</div></td>
       <td>${o.firmas.length} de ${o.umbral}<div class="meta">${o.firmas.map((f) => `${esc(f.operador)} <span class="mono">${esc(corta(f.firmante))}</span>`).join('<br>')}</div></td>
       <td><span class="chip ${ESTADO_OP[o.estado]}">${esc(o.estado)}</span>${o.tx ? `<div class="mono">${esc(corta(o.tx))}</div>` : ''}</td>
       <td><button class="sec" data-ver="${esc(o.id)}">Ver</button></td></tr>`).join('')
@@ -428,7 +435,8 @@ $('#detalleOp').addEventListener('click', intentar(async (e) => {
 $('#crearOperacion').addEventListener('click', intentar(async () => {
   const txt = $('#opLlamadas').value.trim()
   let j; try { j = JSON.parse(txt) } catch { throw new Error('No es JSON válido') }
-  const cuerpo = Array.isArray(j) ? { titulo: $('#opTitulo').value, llamadas: j } : { titulo: $('#opTitulo').value, archivo: j }
+  const base = { titulo: $('#opTitulo').value, safe: $('#opSafe').value }
+  const cuerpo = Array.isArray(j) ? { ...base, llamadas: j } : { ...base, archivo: j }
   const o = await api('/operaciones', { method: 'POST', body: JSON.stringify(cuerpo) })
   $('#opTitulo').value = ''; $('#opLlamadas').value = ''
   aviso(`Operación creada con el nonce ${o.safeTx.nonce}. Falta que la firmen los custodios.`)

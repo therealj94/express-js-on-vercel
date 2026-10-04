@@ -87,12 +87,29 @@ describe('firma múltiple (Safe 1.4.1, 2 de 3)', () => {
 
   it('los roles del token v2 son de la Safe: abrir la migración pasa por las dos firmas', async () => {
     const { quien, c2, c3, ana, safe, chainId } = await preparar()
-    const token = await ethers.deployContract('TokenSFSP', ['ONDK', 'ONDK', 'P', 'SFSP-200', safe])
+    const token = await ethers.deployContract('TokenSFSP', ['ONDK', 'ONDK', 'P', 'SFSP-200', safe, safe, [], 0])
     await expect(token.connect(ana).abrirMigracion(ethers.id('x'), E, ethers.ZeroHash)).to.be.reverted
     const raiz = ethers.keccak256(ethers.toUtf8Bytes('raiz'))
     const t = M.armarSafeTx([M.llamada({ to: await token.getAddress(), data: token.interface.encodeFunctionData('abrirMigracion', [raiz, 7n * E, ethers.ZeroHash]) })], 0)
     await ejecutar(quien, safe, t, [await firmar(c2, safe, chainId, t), await firmar(c3, safe, chainId, t)])
     expect(await token.restante(raiz)).to.equal(7n * E)
+  })
+
+  it('la administración del token es de la Safe de los tres custodios: con dos firmas no alcanza', async () => {
+    const { quien, c1, c2, c3, infra, safe, chainId } = await preparar()
+    const tres = await crearSafe(quien, infra, [c1.address, c2.address, c3.address], 3, 1n)
+    const token = await ethers.deployContract('TokenSFSP', ['ONDK', 'ONDK', 'P', 'SFSP-200', tres, safe, [c1.address], 7 * 86400])
+    const t = M.armarSafeTx([M.llamada({ to: await token.getAddress(), data: token.interface.encodeFunctionData('fijarRegistro', [c3.address]) })], 0)
+    const ty = (w: any) => firmar(w, tres, chainId, t)
+    await expect(ejecutar(quien, tres, t, [await ty(c1), await ty(c2)])).to.be.reverted
+    await ejecutar(quien, tres, t, [await ty(c1), await ty(c2), await ty(c3)])
+    expect(await token.registro()).to.equal(c3.address)
+    // La operativa (dos de tres) no puede: no tiene el rol de administración.
+    const t2 = M.armarSafeTx([M.llamada({ to: await token.getAddress(), data: token.interface.encodeFunctionData('fijarRegistro', [c1.address]) })], 0)
+    await expect(ejecutar(quien, safe, t2, [await firmar(c1, safe, chainId, t2), await firmar(c2, safe, chainId, t2)])).to.be.reverted
+    // Un custodio solo pausa en emergencia, sin la Safe.
+    await token.connect(c1).pausar()
+    expect(await token.paused()).to.equal(true)
   })
 
   it('el nonce protege: la misma transacción firmada no se ejecuta dos veces', async () => {
@@ -106,7 +123,7 @@ describe('firma múltiple (Safe 1.4.1, 2 de 3)', () => {
 
   it('firmar.ts lee de los datos firmados lo que de verdad hace el lote, y se niega a un DELEGATECALL desconocido', async () => {
     const { safe, chainId, infra, ana, beto } = await preparar()
-    const token = await ethers.deployContract('TokenSFSP', ['X', 'X', 'P', 'S', safe])
+    const token = await ethers.deployContract('TokenSFSP', ['X', 'X', 'P', 'S', safe, safe, [], 0])
     const llamadas = [
       M.llamada({ to: ana.address, value: 3n * E }),
       M.llamada({ to: await token.getAddress(), data: token.interface.encodeFunctionData('pausar') }),

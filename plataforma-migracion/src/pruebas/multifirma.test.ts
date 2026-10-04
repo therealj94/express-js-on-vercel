@@ -16,10 +16,11 @@ const E = 10n ** 18n
 const dir = (n: number) => '0x' + n.toString(16).padStart(40, '0')
 const SAFE_DIR = '0x' + '5a'.repeat(20)
 const MULTISEND = '0x' + '3c'.repeat(20)
+const SAFE_TRES = '0x' + '7b'.repeat(20)
 const CUSTODIOS = [Wallet.createRandom(), Wallet.createRandom(), Wallet.createRandom()]
 const cfg: OP.ConfigSafe = { safe: SAFE_DIR, multisend: MULTISEND }
 
-interface SafeSim { nonce: number; umbral: number; saldos: Record<string, bigint>; recibos: Record<string, { ok: boolean; eventos: { tipo: 'exito' | 'fracaso'; hash: string }[] }> }
+interface SafeSim { nonce: number; nonceTres?: number; umbral: number; saldos: Record<string, bigint>; recibos: Record<string, { ok: boolean; eventos: { tipo: 'exito' | 'fracaso'; hash: string }[] }> }
 
 function simulada(s: SafeSim): Transporte {
   const responder = ({ id, method, params }: any) => {
@@ -29,9 +30,11 @@ function simulada(s: SafeSim): Transporte {
       case 'eth_blockNumber': return r('0x10')
       case 'eth_getBalance': return r('0x' + (s.saldos[params[0].toLowerCase()] ?? 0n).toString(16))
       case 'eth_call': {
-        if (params[0].to.toLowerCase() !== SAFE_DIR) return { jsonrpc: '2.0', id, error: { message: 'execution reverted' } }
+        const a = params[0].to.toLowerCase()
+        if (a !== SAFE_DIR && a !== SAFE_TRES) return { jsonrpc: '2.0', id, error: { message: 'execution reverted' } }
         const f = SAFE.parseTransaction({ data: params[0].data })!.name
-        const v = f === 'getOwners' ? [CUSTODIOS.map((c) => c.address)] : f === 'getThreshold' ? [s.umbral] : [s.nonce]
+        const [umbral, nonce] = a === SAFE_DIR ? [s.umbral, s.nonce] : [3, s.nonceTres ?? 0]
+        const v = f === 'getOwners' ? [CUSTODIOS.map((c) => c.address)] : f === 'getThreshold' ? [umbral] : [nonce]
         return r(SAFE.encodeFunctionResult(f, v))
       }
       case 'eth_getTransactionReceipt': {
@@ -259,8 +262,35 @@ test('HTTP con la Safe: aprobar a la antigua se niega, se firma la operación, y
   }
 })
 
+test('La firma múltiple de los tres custodios: sus propios nonces y las tres firmas', async () => {
+  const s = safeSim()
+  const cadena = new Cadena(simulada(s))
+  const a = enMemoria()
+  const cfg3: OP.ConfigSafe = { ...cfg, constitucional: SAFE_TRES }
+  assert.throws(() => OP.direccionSafe(cfg, 'constitucional'), /SAFE_CONSTITUCIONAL/)
+  const op = await OP.crear(a, cadena, cfg3, 'ana@og', { tipo: 'contratos', titulo: 'Fijar registro', llamadas: [{ to: dir(70), value: '0', data: '0x01' }] })
+  const ad = await OP.crear(a, cadena, cfg3, 'ana@og', { tipo: 'contratos', titulo: 'Fijar registro (admin)', llamadas: [{ to: dir(70), value: '0', data: '0x02' }], enSafe: OP.direccionSafe(cfg3, 'constitucional') })
+  assert.equal(op.safeTx.nonce, 3, 'la operativa sigue su nonce')
+  assert.equal(ad.safeTx.nonce, 0, 'la de tres tiene el suyo')
+  assert.equal(ad.safe, SAFE_TRES)
+  const d = OP.detalle(ad)
+  assert.equal(d.tipado.domain.verifyingContract, getAddress(SAFE_TRES))
+  await OP.firmar(a, cadena, cfg3, ad.id, 'beto@og', await firma(CUSTODIOS[0], d))
+  await OP.firmar(a, cadena, cfg3, ad.id, 'caro@og', await firma(CUSTODIOS[1], d))
+  assert.equal(ad.estado, 'en-firma', 'con dos de tres no está lista')
+  await OP.firmar(a, cadena, cfg3, ad.id, 'dani@og', await firma(CUSTODIOS[2], d))
+  assert.equal(ad.estado, 'lista')
+  // Su anulación va en la misma Safe y con el mismo nonce.
+  const { reemplazo } = await OP.anular(a, cadena, cfg3, op.id, 'beto@og', 'no va')
+  assert.equal(reemplazo.safe, SAFE_DIR)
+  s.nonceTres = 1
+  await OP.refrescar(a, cadena, cfg3)
+  assert.equal(ad.estado, 'caducada', 'se usó su nonce en la de tres')
+  assert.equal(reemplazo.estado, 'en-firma', 'la operativa no se toca')
+})
+
 test('Sin SAFE_DIRECCION la plataforma sigue como antes', async () => {
   assert.equal(OP.configSafe({}), null)
   assert.equal(OP.configSafe({ SAFE_DIRECCION: 'no' }), null)
-  assert.deepEqual(OP.configSafe({ SAFE_DIRECCION: SAFE_DIR.toUpperCase().replace('0X', '0x') }), { safe: SAFE_DIR, multisend: undefined })
+  assert.deepEqual(OP.configSafe({ SAFE_DIRECCION: SAFE_DIR.toUpperCase().replace('0X', '0x') }), { safe: SAFE_DIR, constitucional: undefined, multisend: undefined })
 })
