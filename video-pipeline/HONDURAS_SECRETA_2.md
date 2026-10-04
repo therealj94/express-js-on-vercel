@@ -4,6 +4,21 @@ Plan para revisar antes de producir nada. Vertical 9:16, unos 105 s, voz clonada
 
 ---
 
+## ✅ Decisiones de José (4 de octubre)
+
+| Tema | Decisión | Qué cambia en el plan |
+|---|---|---|
+| **Hook** | **El comentario primero** | Abre en negro con una notificación y un comentario real de un hondureño. Voz: «Esto lo escribió un hondureño. Antes de creerle… mira lo que no te contaron.» El comentario se rompe en el punto de luz que empieza la historia. En el conflicto (después de 2010) **vuelve ese mismo comentario**, ahora acompañado de muchos más, y así el hook se paga. |
+| **Cierre** | **«Honduras no necesita que la inventen. Necesita que la volvamos a mirar.»** | Responde directamente al comentario del hook. La última imagen se sostiene 3 s y luego entra el logo. |
+| **Guara** | **Mitad y mitad** | En la historia es una guacamaya elegante sin sombrero, como el ave real de Copán. Cuando la luz dibuja a la primera persona real, el trazo le dibuja el sombrero con el parche: se vuelve la guara de la marca justo cuando empieza el presente. |
+| **Comentarios** | **Los atraviesa** | Choca, cae, se levanta y los atraviesa. Las letras se vuelven polvo que cae sobre los lugares del mapa. |
+| **Material de comentarios** | **Capturas que manda José** | Les oculto los nombres y no invento ninguno. |
+| **Duración** | **2 minutos** | Gancho 5 s, historia unos 40 s, conflicto 10 s, cambio y transición 6 s, testimonios unos 50 s (8 personas) y cierre 10 s. |
+
+La sección 4 (guion) se reajusta a 2 minutos con estas decisiones cuando lleguen la narración de 2010, las capturas y los 4 videos pendientes.
+
+---
+
 ## 0. Crítica del prompt de ChatGPT (y cómo lo resuelvo)
 
 El prompt es bueno en intención: pide historia, conflicto, cambio de mirada y prohíbe lo genérico. Tiene seis problemas:
