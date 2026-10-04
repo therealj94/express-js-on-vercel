@@ -254,3 +254,64 @@ Entre testimonios hay enlaces por forma o movimiento, uno distinto en cada caso:
 ## Prompt corregido (corto, por si lo quieres reutilizar)
 
 > Película vertical de 100–110 s, «Honduras Secreta 2». Técnica: un punto de luz dibuja figuras 3D que quedan colgadas sobre un piso negro mojado con neblina, y la cámara avanza en profundidad (referencia de @benkaluza.lab, hecha con código). La guara de la marca, redibujada como línea de luz, es la única con color y su estela dibuja el mundo. Hilo emocional: las manos hondureñas a través de 1.600 años (Copán 426 → 1502 → Lempira → 1821 → Morazán → enclave bananero → 1982 → 2010), un gesto de manos por época, sin clase de fechas. Conflicto: comentarios reales (sin nombres) que cortan los trazos, «lo que más nos hiere viene de nosotros mismos». Cambio: las palabras se vuelven puntos del mapa y la luz dibuja el contorno de la primera persona real. Testimonios reales con voz original, un momento propio por persona y usuario escrito en luz. Cierre sin pedir nada al espectador, con una imagen que se sostiene. Solo hechos verificados. Prueba de 6–8 s antes de producir todo.
+
+---
+
+## 12. Material recibido (4 de octubre) y ajustes al plan
+
+### Comentarios reales (se muestran sin nombres y sin modificar el texto)
+1. «ROATAN ES DEMADIADO PELIGROSO»
+2. «Honduras es hermoso. Lástima la delincuencia.»
+3. «Nuestro país es lindo, lastimosamente es más barato salir del país que hacer turismo interno»
+4. «nuestro país es precioso .. lo malo son los exagerados de los precios .. sale mas barato ir a otros paises muchas veces»
+5. «De que sirve si es muy peligroso»
+6. «Es que hay muchas cosas bonitas, pero mucha inseguridad»
+7. «perame perame perameeeeee! una guacamaya con colmillos???? no saben hacer ni anuncios y quiere que uno les apoye! estos gobiernos van de mal en peor»
+
+**Lectura:** casi todos dicen lo mismo: «es bonito, **pero**…». Esa palabra es el conflicto real. No es odio, es resignación: el país es lindo, pero el miedo o el precio lo tapan. El comentario 7 es distinto, porque critica nuestro anuncio y asume que es del gobierno.
+
+**Ajuste del conflicto:** en vez de «lo que más nos hiere viene de nosotros mismos», que suena a regaño ante problemas reales, el eje pasa a ser **el «pero»**.
+- En pantalla, cada comentario se corta justo en la palabra «pero», «lástima» o «lastimosamente», y esa palabra queda sola en blanco, gigante.
+- Voz: «Siempre hay un "pero"… Y es cierto: hay mucho por cambiar. Pero cuando solo miramos el "pero"… dejamos de ver lo que vale la pena cuidar.»
+- Luego la guara atraviesa la palabra «pero» y las letras se vuelven el polvo que cae sobre el mapa.
+
+Así se respeta lo que dijo la gente, no se le regaña, y conecta con el cierre «Necesita que la volvamos a mirar».
+
+### Hook (decisión: el comentario primero)
+- No sabemos quién escribió cada comentario, así que **no se dice «lo escribió un hondureño»**.
+- Propuesta: negro, una notificación y aparece «Honduras es hermoso. Lástima la delincuencia.» Se borra todo menos «Honduras es hermoso», que se rompe en el punto de luz.
+- Voz: «Nos dijeron que Honduras es hermoso… pero. Antes del "pero"… mira de dónde venimos.»
+- Alternativa más seca, con «De que sirve si es muy peligroso» como hook (pendiente de elegir).
+
+### Mundial 2010 (narración de José)
+- **Audio:** 12 s de la narración original del gol de Estados Unidos a Costa Rica (2–2, 14 de octubre de 2009), que junto con el 1–0 de Honduras en El Salvador dio la clasificación a Sudáfrica 2010.
+- **Escena:** en vez de un estadio, la luz dibuja **una sala, una calle y un bus con gente alrededor de una radio y un televisor**. La narración avanza, la línea dibuja el tiro de esquina, «¡se queda el guardameta!» queda en suspenso y con el primer «¡Gol!» todas las figuras saltan a la vez. La cadena de «¡Gol!» se usa completa: las figuras se multiplican hacia el fondo, como un país entero.
+- **Enlace al conflicto:** la luz de la celebración se queda en los rostros, que bajan la mirada a la luz de un teléfono. Del grito de gol pasamos al sonido de notificaciones.
+- Hay que confirmar si el audio tiene derechos de uso o si es de un canal de YouTube. Lo marco como pendiente.
+
+### Testimonios como una sola escena (estilo Sam Kolder)
+Cada testimonio se une con el siguiente mediante un clip de IA (MiniMax con imagen de inicio y de fin) que empieza en el **último cuadro real** de una persona y termina en el **primer cuadro real** de la siguiente, pasando por su lugar. El **motivo que las une es el agua**, que corre de una a otra.
+
+| Enlace | Sale de | Movimiento de cámara (IA) | Entra a | Sonido que anticipa |
+|---|---|---|---|---|
+| Luz → Carlos | El contorno de luz | La transición protagonista (sección 7) | Carlos en el carro | El ambiente del carro llega antes |
+| Carlos → Picacho | Carlos mira hacia arriba | La cámara sube por el parabrisas al cielo y baja sobre el Cristo del Picacho con Tegucigalpa abajo | El mirador de El Picacho | Viento de altura |
+| Picacho → Samira | La ciudad desde el cerro | Picada hacia un punto turquesa: el cenote. La cámara entra al agua y sale por la corriente del río | Samira junto al río | Zambullida, agua corriendo y su voz |
+| Samira → Romeo | La corriente detrás de Samira | Seguimos el agua río abajo hasta otro río con árboles grandes | Romeo con Nando junto al río | El agua continúa sin corte |
+| Romeo → Los Naranjos | Su plano del lago | La cámara se eleva sobre el bosque y aparecen los montículos de Los Naranjos; la línea de luz de Copán se redibuja un instante sobre la pirámide | La pasarela del humedal | Aves del humedal |
+| Los Naranjos → (4 pendientes) | Se definen al recibir los videos | | | |
+| → Caballero Leiva | Ríos y cafetales de Santa Bárbara | Vuelo sobre cafetales hasta que el paisaje se vuelve el fondo detrás de él | Leiva | Pájaros y la música que baja |
+
+Las imágenes de cada lugar se generan con IA solo si no llegan reales, y se marcan internamente como recreación.
+
+### Caballero Leiva: mejorar el video
+- **Problema:** 478x850 por WhatsApp, con compresión fuerte.
+- **Plan:**
+  1. Escalado con IA a 1080x1920 (Topaz Video Upscale en ElevenLabs) y limpieza de compresión.
+  2. Corrección de color: bajar el magenta del set.
+  3. Nitidez suave en la cara.
+- **Costo:** se estima antes de correrlo. Son 10 s de video, así que debería ser bajo.
+- **Fondo (decisión pendiente):** su set rosa con logos rompe la «sola escena». Opciones:
+  - quitarle el fondo y ponerlo delante de Santa Bárbara (es una recreación, porque no grabó ahí);
+  - dejar el set y entrar por el color;
+  - enmarcarlo como pantalla de televisión dentro del paisaje, que es honesto con que es un presentador de TV.
