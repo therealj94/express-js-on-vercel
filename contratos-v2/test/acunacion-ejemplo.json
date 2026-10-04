@@ -1,0 +1,39 @@
+{
+ "nota": "Generado con plataforma-migracion/src/merkle.ts: mismo formato que /api/panel/fotos/:id/acunacion.json",
+ "raiz": "0xb0b9f6c048eee8a1fa9bc68c221e21ee38c748af23378d6eb3cb7a53c556cd06",
+ "totalAcunar": "66000000000000000123",
+ "tenedores": [
+  {
+   "direccion": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+   "acunar": "10000000000000000000",
+   "prueba": [
+    "0xd0e6c489caa27287c07075157f6effe488ed79cfa83f8f927529ebd620a17942",
+    "0x0a577c5d01b6ff831ee197cadbe9ff3329de22bcfbff8857fccad89ffd329169"
+   ]
+  },
+  {
+   "direccion": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+   "acunar": "5000000000000000000",
+   "prueba": [
+    "0xdfceaf8670aefb2799f6b4ae8c338c2ba77518f8100e9f5b8aa61d46f622eae8",
+    "0x0a577c5d01b6ff831ee197cadbe9ff3329de22bcfbff8857fccad89ffd329169"
+   ]
+  },
+  {
+   "direccion": "0x90f79bf6eb2c4f870365e785982e1f101e93b906",
+   "acunar": "1000000000000000123",
+   "prueba": [
+    "0xbd493d6189641cfa4ab3e6a27fdc658be234f5c6e0f7442701763d043df02a26",
+    "0x35097d7dc2198ea5f38c59af2c17aeee40c36247e1d6df6b8a7e84f95c34c86a"
+   ]
+  },
+  {
+   "direccion": "0x9965507d1a55bcc2695c58ba16fb37d819b0a4dc",
+   "acunar": "50000000000000000000",
+   "prueba": [
+    "0xca47399a8201ac04190bec94e0904c4c60d547e91d77b065dd572df3ad3b6d39",
+    "0x35097d7dc2198ea5f38c59af2c17aeee40c36247e1d6df6b8a7e84f95c34c86a"
+   ]
+  }
+ ]
+}

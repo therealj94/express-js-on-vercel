@@ -1,0 +1,20 @@
+{
+  "name": "contratos-v2",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Contratos conformes a SFSP de la migración v2: token con roles, suspensión, elegibilidad y acreditación por Merkle",
+  "scripts": {
+    "compilar": "hardhat compile",
+    "prueba": "hardhat test",
+    "desplegar": "hardhat run scripts/desplegar.ts",
+    "lotes": "hardhat run scripts/lotes-safe.ts"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^5.1.0",
+    "@openzeppelin/merkle-tree": "^1.0.7",
+    "hardhat": "^2.22.17",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
+  }
+}
