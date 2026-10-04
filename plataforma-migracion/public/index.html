@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Migración v2 · Orden Global</title>
+<link rel="stylesheet" href="/estilo.css">
+</head>
+<body>
+<main>
+  <h1>Migración a la v2</h1>
+  <p class="sub">Las monedas de la red Orden Global pasan a contratos conformes a SFSP. Todos los saldos pasan completos, a la misma dirección. Aquí puedes comprobar el tuyo.</p>
+
+  <section class="tarjeta">
+    <form class="fila" id="consulta">
+      <input class="largo" id="direccion" placeholder="Tu dirección (0x…)" autocomplete="off" spellcheck="false" aria-label="Dirección">
+      <button>Comprobar</button>
+    </form>
+    <div id="resultado"></div>
+  </section>
+
+  <h2>Estado de la migración</h2>
+  <div class="rejilla" id="activos"><div class="tarjeta">Cargando…</div></div>
+  <div id="origen"></div>
+
+  <footer>
+    Cada foto de saldos publica una raíz de Merkle. Con tu prueba, cualquiera puede verificar que tu saldo está incluido, sin confiar en esta página.
+    ORIGEN es la moneda nativa: no se migra y tu saldo sigue igual.
+  </footer>
+</main>
+<script>
+const $ = (s) => document.querySelector(s)
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+const unidades = (wei) => {
+  if (wei == null) return '—'
+  const v = BigInt(wei), entero = v / 10n ** 18n, frac = (v % 10n ** 18n).toString().padStart(18, '0').slice(0, 4).replace(/0+$/, '')
+  return entero.toLocaleString('es') + (frac ? ',' + frac : '')
+}
+const FASES = {
+  nativo: ['Nativa, no se migra', ''], preparacion: ['En preparación', 'aviso'], 'foto-publicada': ['Foto de saldos publicada', ''],
+  acunando: ['Acuñando la v2', 'aviso'], conciliada: ['Migrada y conciliada', 'bien'],
+}
+
+async function estado() {
+  try {
+    const r = await fetch('/api/estado'), d = await r.json()
+    $('#activos').innerHTML = d.activos.map((a) => {
+      const [txt, cls] = FASES[a.fase] || [a.fase, '']
+      return `<div class="tarjeta activo"><div class="nombre">${esc(a.nombre)} <span class="meta">${esc(a.simbolo)}</span></div>
+        <div class="meta">${esc(a.serie)}</div><div style="margin-top:8px"><span class="chip ${cls}">${esc(txt)}</span></div>
+        ${a.foto ? `<div class="meta" style="margin-top:6px">Foto en el bloque ${a.foto.bloque.toLocaleString('es')} · ${a.foto.tenedores} tenedores</div>` : ''}</div>`
+    }).join('')
+    if (d.origen?.circulante) {
+      $('#origen').innerHTML = `<p class="sub" style="margin-top:14px">ORIGEN en circulación: <b>${unidades(d.origen.circulante)}</b>
+        ${d.origen.completa ? '' : ' (provisional: falta cargar la tesorería)'} · Regalo de gas: ${d.regalo.enviados} de ${d.regalo.total} enviados</p>`
+    }
+  } catch { $('#activos').innerHTML = '<div class="error">No se pudo cargar el estado.</div>' }
+}
+
+$('#consulta').addEventListener('submit', async (e) => {
+  e.preventDefault()
+  const dir = $('#direccion').value.trim()
+  const out = $('#resultado')
+  if (!/^0x[0-9a-fA-F]{40}$/.test(dir)) { out.innerHTML = '<div class="error">Esa no es una dirección válida.</div>'; return }
+  out.innerHTML = '<p class="sub">Consultando…</p>'
+  try {
+    const r = await fetch('/api/tenedor/' + dir), d = await r.json()
+    if (!r.ok) throw new Error(d.error)
+    const filas = d.activos.filter((a) => a.saldoEnFoto && a.saldoEnFoto !== '0' || a.saldoV2 && a.saldoV2 !== '0')
+    const sinFoto = d.activos.filter((a) => !a.foto).map((a) => a.simbolo)
+    out.innerHTML = `<h2>Tu dirección</h2>
+      ${filas.length ? `<div class="tabla-scroll"><table><tr><th>Activo</th><th class="num">En la foto</th><th class="num">En la v2</th><th>Estado</th></tr>
+      ${filas.map((a) => `<tr><td>${esc(a.simbolo)}</td><td class="num">${unidades(a.saldoEnFoto)}</td><td class="num">${unidades(a.saldoV2)}</td>
+        <td>${a.completo === true ? '<span class="chip bien">Completo</span>' : a.completo === false ? '<span class="chip mal">Revisar</span>' : '<span class="chip aviso">Pendiente de acuñar</span>'}
+        ${a.prueba ? `<details><summary>Prueba de Merkle</summary><div class="mono">Raíz: ${esc(a.foto.raiz)}<br>${a.prueba.map(esc).join('<br>')}</div></details>` : ''}</td></tr>`).join('')}
+      </table></div>` : '<p>No encontramos saldos de las monedas que se migran en esta dirección.</p>'}
+      ${sinFoto.length ? `<p class="sub">Todavía sin foto publicada: ${sinFoto.map(esc).join(', ')}. Vuelve a consultar más adelante.</p>` : ''}
+      ${d.regaloGas ? `<p>Regalo de 1 ORIGEN para gas: <span class="chip ${d.regaloGas.estado === 'enviado' ? 'bien' : 'aviso'}">${d.regaloGas.estado === 'enviado' ? 'Enviado' : 'Pendiente'}</span></p>` : ''}`
+  } catch (err) { out.innerHTML = `<div class="error">${esc(err.message || 'No se pudo consultar.')}</div>` }
+})
+
+estado()
+</script>
+</body>
+</html>

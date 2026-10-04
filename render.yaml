@@ -62,3 +62,37 @@ services:
       #   value: "30"
       # - key: GENESIS_SESION_HORAS        # duración de la sesión del panel
       #   value: "8"
+
+  # Plataforma de la migración SFSP-700: foto de saldos, pruebas de Merkle,
+  # conciliación de la v2, liberaciones de ORIGEN y regalo de gas.
+  # Despliega desde main: lo que no está revisado no sale a producción.
+  - type: web
+    name: migracion-sfsp
+    runtime: node
+    rootDir: plataforma-migracion
+    branch: main
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # Obligatoria: sin ella las fotos y aprobaciones se pierden en cada despliegue.
+      - key: MIGRACION_MONGO_URL
+        sync: false
+      - key: MIGRACION_MONGO_DB
+        value: migracion
+      - key: MIGRACION_SECRETO
+        generateValue: true
+      # correo|roles|hash;… — el hash se genera con `npm run clave -- '<clave>'`.
+      - key: MIGRACION_OPERADORES
+        sync: false
+      - key: MIGRACION_UMBRAL
+        value: "2"
+      - key: RPC_ORDEN_URL
+        value: https://rpc.ordenglobal-rpc.com/
+      # Contratos v2, cuando se desplieguen:
+      # - key: V2_AUKA
+      #   value: "0x…"
