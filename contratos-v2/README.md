@@ -46,6 +46,25 @@ La plataforma de migración lleva las firmas y comprueba lo ejecutado (sección 
 - el regalo de 1 ORIGEN sale en un solo lote;
 - abrir la migración de un token solo pasa por la Safe.
 
+## Desplegado en la red 5550
+
+**4 de octubre de 2026.** Las cuatro piezas de Safe 1.4.1, con su código comprobado contra el canónico (`despliegues/orden-safe-infra.json`):
+
+| Pieza | Dirección |
+|---|---|
+| SafeL2 | `0x60AE3FFab0dfF2193Af504AD62970B13aB76c991` |
+| SafeProxyFactory | `0x34f640D5FD95c124215a5797BB65bfC8669c95e1` |
+| CompatibilityFallbackHandler | `0x80C635A83527Bf86D1CC7F08D253132712FE07Fb` |
+| MultiSendCallOnly | `0x330b7A7A756324CfA7A8aAbA69f0C5Df674307DF` |
+
+Las desplegó una billetera de un solo uso, que solo pagó el gas y no tiene ningún poder sobre ellas. Las dos Safes se crean con esas piezas cuando la Junta nombre a los tres custodios:
+
+```sh
+SAFE_L2=0x60AE3FFab0dfF2193Af504AD62970B13aB76c991 SAFE_FABRICA=0x34f640D5FD95c124215a5797BB65bfC8669c95e1 \
+SAFE_RESPALDO=0x80C635A83527Bf86D1CC7F08D253132712FE07Fb SAFE_MULTISEND=0x330b7A7A756324CfA7A8aAbA69f0C5Df674307DF \
+CUSTODIOS=0xA…,0xB…,0xC… CONFIRMO_PRODUCCION=si npx hardhat run scripts/desplegar-multifirma.ts --network orden
+```
+
 ## Comandos
 
 ```sh
@@ -55,7 +74,7 @@ npm run prueba        # 33 pruebas
 
 | Script | Para qué |
 |---|---|
-| `scripts/desplegar-multifirma.ts` | Despliega las dos Safes (`CUSTODIOS`; la operativa con `UMBRAL`, por defecto 2, y la de los tres custodios) y las piezas que falten, y comprueba su código. En la red 5550 exige `CONFIRMO_PRODUCCION=si`. |
+| `scripts/desplegar-multifirma.ts` | Con `SOLO_INFRA=si`, solo las cuatro piezas de Safe. Si no, despliega las dos Safes (`CUSTODIOS`; la operativa con `UMBRAL`, por defecto 2, y la de los tres custodios) y las piezas que falten, y comprueba su código. En la red 5550 exige `CONFIRMO_PRODUCCION=si`. |
 | `scripts/firmar.ts` | Para el custodio sin MetaMask. Primero muestra lo que de verdad hace la operación, sacado de los datos firmados: cada destino, monto y función. Se niega si el lote va a algo que no es su `MULTISEND`, si el archivo no coincide o si el hash no es el del panel. Con `FIRMAR=si` y su llave, firma en su computadora. |
 | `scripts/desplegar.ts` | Despliega el token (y el registro si no hay uno) con `ADMIN`, `MULTIFIRMA` y `PAUSADORES`. La demora de emisión sale de la serie (siete días en la 200). En la red 5550 exige `CONFIRMO_PRODUCCION=si`. |
 | `scripts/lotes-safe.ts` | Convierte `acunacion.json` en las transacciones para la firma múltiple (formato Safe Transaction Builder): apertura y lotes. Antes verifica cada prueba y el total, y en rondas siguientes deja fuera lo ya acreditado. |
