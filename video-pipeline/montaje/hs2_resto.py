@@ -863,7 +863,7 @@ def mezcla(S, T, total, video, sal):
         if r.returncode: raise SystemExit(r.stderr[:2000])
         return out
     w = {k: stem(k) for k in grupos}
-    g = (f"[1:a]asplit=2[v1][vsc];[3:a][vsc]sidechaincompress=threshold=0.04:ratio=5:attack=25:release=400[musd];"
+    g = (f"[1:a]asplit=2[v1][vsc];[3:a][vsc]sidechaincompress=threshold=0.02:ratio=10:attack=15:release=450[musd];"
          f"[v1][2:a][musd][4:a]amix=inputs=4:normalize=0:duration=longest,apad=whole_dur={total},asetpts=N/SR/TB,atrim=0:{total},"
          f"alimiter=limit=0.89,afade=t=out:st={total - .8:.2f}:d=0.8[a]")
     r = subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(video), "-i", w["voz"], "-i", w["sfx"], "-i", w["mus"],
