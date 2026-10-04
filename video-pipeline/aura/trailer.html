@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>AU-RA FP · Introducing</title>
+<style>
+@font-face{font-family:Manrope;src:url(assets/manrope-normal-latin.woff2) format('woff2');font-weight:200 800}
+:root{--noche:#03060d;--cian:#3FE6FA;--cian2:#12C2F2;--hielo:#A6FBFF;--blanco:#F4F8FB;--gris:#8E9AAB;--oro:#E9C46A;--naranja:#FF9A4D;--hormiga:#45C9DE}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:var(--noche);font-family:Manrope,system-ui,sans-serif;color:var(--blanco);-webkit-font-smoothing:antialiased}
+#gl{position:absolute;inset:0}
+#dom{position:absolute;inset:0;pointer-events:none}
+.capa{position:absolute;inset:0;opacity:0}
+.t{position:absolute;left:0;right:0;text-align:center;font-weight:800;letter-spacing:-3px;line-height:1.02}
+.vid{background:linear-gradient(160deg,rgba(30,46,72,.72),rgba(10,18,34,.70));border:1.5px solid rgba(255,255,255,.13);box-shadow:0 40px 120px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.16);border-radius:44px}
+.mono{font-family:ui-monospace,'SF Mono',Menlo,monospace}
+.fila{display:flex;align-items:center;gap:22px}
+.etq{font-size:24px;letter-spacing:4px;font-weight:700;color:var(--gris);text-transform:uppercase}
+/* teléfono */
+#tel{position:absolute;left:190px;top:330px;width:700px;height:1440px;border-radius:110px;background:#0a0c10;box-shadow:0 0 0 3px #2a2f38,0 0 0 9px #0b0d12,0 80px 160px rgba(0,0,0,.75),0 0 120px rgba(63,230,250,.08);overflow:hidden;opacity:0;transform-origin:50% 50%}
+#tel .isla{position:absolute;left:50%;top:26px;width:200px;height:58px;margin-left:-100px;border-radius:30px;background:#000;z-index:5}
+#tel .pant{position:absolute;inset:14px;border-radius:96px;overflow:hidden;background:radial-gradient(900px 900px at 50% 20%,#0f2747,#050B17 70%)}
+.vista{position:absolute;inset:0;opacity:0;padding:150px 44px 60px}
+.btn{display:flex;align-items:center;justify-content:center;height:104px;border-radius:52px;font-weight:700;font-size:38px}
+.chip{display:inline-flex;align-items:center;gap:12px;padding:14px 24px;border-radius:36px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);font-size:26px;font-weight:600;color:#d8e3ee}
+.verif{display:flex;align-items:center;gap:16px;color:#8ff0c4;font-weight:700;font-size:30px}
+.verif i{width:44px;height:44px;border-radius:22px;background:#1f8f63;display:flex;align-items:center;justify-content:center;font-style:normal;color:#eafff5;font-size:26px}
+.opc{display:flex;align-items:center;gap:22px;padding:22px 0;border-top:1px solid rgba(255,255,255,.08)}
+.opc b{display:block;font-size:32px}.opc i{display:block;font-style:normal;font-size:22px;color:var(--gris);margin-top:4px}
+.sw{margin-left:auto;width:96px;height:54px;border-radius:27px;background:rgba(255,255,255,.18);position:relative}
+.sw::after{content:'';position:absolute;left:6px;top:6px;width:42px;height:42px;border-radius:21px;background:#fff;transform:translateX(var(--x,0px))}
+/* objetos (cuadrícula) */
+.obj{position:absolute;width:170px;height:170px;margin:-85px 0 0 -85px;background-size:contain;background-position:center;background-repeat:no-repeat;filter:drop-shadow(0 20px 30px rgba(0,0,0,.55))}
+/* íconos del ecosistema (carrusel) */
+.app{position:absolute;width:250px;height:250px;margin:-125px 0 0 -125px;border-radius:52px;background:linear-gradient(160deg,#2b3140,#0d1018);box-shadow:0 30px 60px rgba(0,0,0,.6),inset 0 2px 0 rgba(255,255,255,.18),inset 0 -2px 0 rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.app img{width:176px;height:176px;object-fit:contain}
+.app.redondo img{border-radius:0;width:250px;height:250px;object-fit:cover}
+.app::after{content:'';position:absolute;inset:0;border-radius:52px;background:linear-gradient(170deg,rgba(255,255,255,.22),transparent 40%)}
+.rot{position:absolute;left:0;right:0;text-align:center;font-size:26px;letter-spacing:6px;font-weight:700;color:var(--gris)}
+/* laptop */
+#lap{position:absolute;left:40px;top:560px;width:1000px;height:640px;opacity:0}
+#lap .tapa{position:absolute;left:0;top:0;width:1000px;height:620px;border-radius:30px 30px 8px 8px;background:#0b0d12;box-shadow:0 0 0 3px #2c313b,0 60px 120px rgba(0,0,0,.7);overflow:hidden}
+#lap .esc{position:absolute;inset:18px 18px 18px 18px;border-radius:14px;background:radial-gradient(900px 600px at 70% 90%,#0e3a66,#0a1730 60%,#070e1d)}
+#lap .base{position:absolute;left:-60px;top:618px;width:1120px;height:30px;border-radius:0 0 30px 30px;background:linear-gradient(#3a404c,#1a1d24)}
+#notch{position:absolute;left:50%;top:0;transform:translateX(-50%);background:#03050a;border-radius:0 0 34px 34px;box-shadow:0 18px 50px rgba(0,0,0,.6),0 0 30px rgba(63,230,250,.18);overflow:hidden}
+</style></head><body>
+<canvas id="gl" width="1080" height="1920"></canvas>
+<div id="dom">
+
+  <!-- S1 intro -->
+  <div class="capa" id="introducing"><div class="t" style="top:1450px;font-size:52px;font-weight:600;letter-spacing:1px;color:#c9d6e4">Introducing</div></div>
+  <div class="capa" id="marca"><div class="t" style="top:1440px;font-size:120px;letter-spacing:4px">AU-RA <span style="color:var(--cian)">FP</span></div></div>
+
+  <!-- S2 cuadrícula de objetos -->
+  <div class="capa" id="grid"></div>
+  <div class="capa" id="t_dia"><div class="t" style="top:1580px;font-size:72px">Your day is full of<br><span style="color:var(--hielo)">little things.</span></div></div>
+
+  <!-- S3/S4 nombres del equipo -->
+  <div class="capa" id="n_aura"><div class="rot" style="top:880px;color:var(--hielo)">AURA · TAKES CARE OF YOU</div></div>
+  <div class="capa" id="n_claudio"><div class="rot" style="top:1790px;left:-500px;color:var(--naranja)">CLAUDIO · CREATES</div></div>
+  <div class="capa" id="n_antonio"><div class="rot" style="top:1790px;left:500px;color:var(--hormiga)">ANT-ONIO · GETS IT DONE</div></div>
+  <div class="capa" id="t_mente"><div class="t" style="top:120px;font-size:80px">One mind.<br><span style="color:var(--hielo)">Three ways to help.</span></div></div>
+
+  <!-- S5–S7 teléfono -->
+  <div id="tel"><div class="isla"></div><div class="pant">
+    <div class="vista" id="v_llamada">
+      <div class="etq" style="text-align:center;margin-top:60px">6:00 AM</div>
+      <div style="margin:70px auto 0;width:300px;height:300px;border-radius:150px;background:url(assets/orbe.webp) center/cover;box-shadow:0 0 90px rgba(63,230,250,.35)"></div>
+      <div style="text-align:center;font-size:76px;font-weight:800;margin-top:60px">AURA</div>
+      <div style="text-align:center;font-size:36px;color:var(--gris);margin-top:8px">is calling…</div>
+      <div class="fila" style="position:absolute;left:60px;right:60px;bottom:120px;justify-content:space-between">
+        <div style="width:150px;height:150px;border-radius:75px;background:#ff453a;display:flex;align-items:center;justify-content:center;font-size:60px">✕</div>
+        <div style="width:150px;height:150px;border-radius:75px;background:#30d158;display:flex;align-items:center;justify-content:center;font-size:56px">✆</div>
+      </div>
+    </div>
+    <div class="vista" id="v_memoria">
+      <div class="etq">Today</div>
+      <div style="display:flex;flex-direction:column;gap:26px;margin-top:30px">
+        <div class="vid fila" style="padding:36px 40px;border-radius:36px"><span class="mono" style="font-size:34px;color:var(--cian);width:140px">09:00</span><b style="font-size:38px">Board meeting</b></div>
+        <div class="vid fila" style="padding:36px 40px;border-radius:36px"><span class="mono" style="font-size:34px;color:var(--cian);width:140px">12:30</span><b style="font-size:38px">Lunch with Carlos</b></div>
+        <div class="vid fila" id="c_mama" style="padding:42px 40px;border-radius:36px;border-color:rgba(233,196,106,.6);box-shadow:0 0 70px rgba(233,196,106,.25),0 30px 80px rgba(0,0,0,.5)"><span style="font-size:58px;width:140px">🎂</span><div><b style="font-size:42px;display:block">Mom’s birthday</b><span style="font-size:26px;color:var(--gris)">I’ll remind you at 10:00</span></div></div>
+      </div>
+    </div>
+    <div class="vista" id="v_correo">
+      <div class="etq">Inbox · sorted by ANT-ONIO</div>
+      <div id="correos" style="position:relative;margin-top:30px;height:900px"></div>
+    </div>
+    <div class="vista" id="v_post">
+      <div class="etq">Claudio · 3 drafts</div>
+      <div id="posts" style="position:relative;margin-top:40px;height:900px"></div>
+    </div>
+    <div class="vista" id="v_compu" style="padding:150px 30px 40px">
+      <div class="fila" style="gap:12px"><span class="chip" style="font-size:22px">● LIVE · AURA’s computer</span></div>
+      <div style="margin-top:24px;border-radius:30px;overflow:hidden;background:#eef1f5;height:560px;position:relative">
+        <div style="position:absolute;left:30px;right:30px;top:30px;height:54px;border-radius:27px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.08);font-size:22px;color:#667;padding:14px 26px" class="mono">andina-supply.com</div>
+        <div style="position:absolute;left:34px;top:120px;font-size:38px;font-weight:800;color:#0b1220">Andina Supply Co.</div>
+        <div style="position:absolute;left:34px;top:172px;font-size:22px;color:#5a6676">Industrial parts · ★ 4.6 (312 reviews)</div>
+        <div style="position:absolute;left:34px;top:230px;width:290px;height:280px;border-radius:20px;background:#d7dde5"></div>
+        <div style="position:absolute;left:346px;top:230px;width:260px;height:130px;border-radius:20px;background:#d7dde5"></div>
+        <div style="position:absolute;left:346px;top:380px;width:260px;height:130px;border-radius:20px;background:#d7dde5"></div>
+        <div id="cursor" style="position:absolute;width:36px;height:36px;border-radius:18px;border:4px solid var(--cian2);box-shadow:0 0 0 10px rgba(18,194,242,.2)"></div>
+      </div>
+      <div id="pasos" style="margin-top:26px;display:flex;flex-direction:column;gap:16px;font-size:30px"></div>
+      <div class="vid" id="pago_listo" style="margin-top:24px;padding:30px 34px;border-radius:34px;border-color:rgba(63,230,250,.45);opacity:0">
+        <div class="etq">Payment ready</div>
+        <div class="fila" style="justify-content:space-between;margin-top:10px"><b style="font-size:34px">Andina Supply</b><span><span class="mono" style="font-size:40px;font-weight:700">1,250</span> <b style="font-size:24px">ORIGEN</b></span></div>
+        <div class="fila" style="gap:18px;margin-top:22px"><div class="btn" style="flex:1;height:88px;background:rgba(255,255,255,.08);font-size:30px">Later</div><div class="btn" style="flex:1.5;height:88px;background:var(--cian);color:#032029;font-size:30px">Accept & sign</div></div>
+      </div>
+    </div>
+    <div class="vista" id="v_chat" style="padding:150px 40px 60px">
+      <div class="etq">AURA</div>
+      <div id="burbuja" style="position:absolute;right:40px;top:250px;max-width:560px;padding:30px 36px;border-radius:40px 40px 10px 40px;background:var(--cian2);color:#03141c;font-size:40px;font-weight:700"></div>
+      <div class="vid" id="hoja" style="position:absolute;left:30px;right:30px;top:470px;padding:44px 40px;opacity:0">
+        <div class="fila" style="justify-content:space-between"><img src="assets/veta-mark.png" style="height:64px"><div class="etq">Send</div></div>
+        <div class="fila" style="margin-top:32px"><div style="width:100px;height:100px;border-radius:50px;background:linear-gradient(135deg,#c98a6b,#7a4a3a);display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:800">M</div><div><div style="font-size:26px;color:var(--gris)">To</div><div style="font-size:46px;font-weight:800">Mom</div></div></div>
+        <div style="text-align:center;margin-top:36px"><span class="mono" style="font-size:130px;font-weight:700;letter-spacing:-4px">110</span><div class="fila" style="justify-content:center;gap:14px"><img src="assets/origen.jpg" style="height:58px;border-radius:29px"><b style="font-size:40px;letter-spacing:2px">ORIGEN</b></div></div>
+        <div id="formula" style="margin-top:34px;padding:28px;border-radius:28px;background:rgba(233,196,106,.08);border:1px solid rgba(233,196,106,.4);text-align:center">
+          <div class="mono" style="font-size:32px;color:#eadcb0">110 × <span style="color:var(--oro)">1/55 g</span> of gold</div>
+          <div class="mono" id="f_res" style="white-space:nowrap;font-size:58px;font-weight:700;color:var(--oro);margin-top:8px">= 2 g of gold</div>
+        </div>
+        <div class="btn" id="firmar" style="margin-top:34px;background:var(--cian);color:#032029">Sign with fingerprint</div>
+        <div style="text-align:center;margin-top:18px;font-size:24px;color:var(--gris)">AURA prepares it. You sign it.</div>
+      </div>
+      <div class="vid" id="recibo" style="position:absolute;left:30px;right:30px;top:470px;padding:44px 40px;opacity:0">
+        <div class="fila" style="justify-content:space-between"><div class="etq">Sent to Mom</div><img src="assets/veta-mark.png" style="height:52px"></div>
+        <div class="fila" style="margin-top:20px;gap:18px"><span class="mono" style="font-size:84px;font-weight:700">110</span><b style="font-size:40px">ORIGEN</b></div>
+        <div class="mono" style="font-size:32px;color:var(--oro)">≈ 2 g of gold</div>
+        <div class="verif" style="margin-top:30px"><i>✓</i>Verified on the Orden Global chain</div>
+      </div>
+    </div>
+    <div class="vista" id="v_tarjeta" style="padding:150px 36px 40px">
+      <div style="position:relative;height:420px;perspective:1600px">
+        <div id="visa" style="position:absolute;left:10px;right:10px;top:10px;height:390px;border-radius:36px;background:linear-gradient(135deg,#1b1b1f,#050506 55%,#141418);border:2px solid rgba(201,169,97,.45);box-shadow:0 50px 120px rgba(0,0,0,.7);overflow:hidden">
+          <div id="brillo" style="position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.14) 45%,transparent 60%)"></div>
+          <img src="assets/veta-mark.png" style="position:absolute;left:38px;top:34px;height:76px">
+          <div style="position:absolute;left:40px;top:150px;width:92px;height:70px;border-radius:14px;background:linear-gradient(135deg,#e9d18f,#a8873e)"></div>
+          <div class="mono" style="position:absolute;left:40px;bottom:46px;font-size:28px;letter-spacing:3px;color:#d9d3c2">•••• •••• •••• 4821</div>
+          <div style="position:absolute;right:40px;bottom:36px;font-size:56px;font-weight:800;font-style:italic;color:#f3f3f3">VISA</div>
+          <div id="escarcha" style="position:absolute;inset:0;background:radial-gradient(circle at 30% 30%,rgba(200,240,255,.55),rgba(160,220,255,.25) 60%,rgba(255,255,255,.1));opacity:0;backdrop-filter:blur(2px)"></div>
+        </div>
+      </div>
+      <div class="vid" style="margin-top:30px;padding:34px 40px;border-radius:38px">
+        <div class="fila" style="justify-content:space-between"><div class="etq">Available balance</div><b id="estado" style="color:#3ED9A0;letter-spacing:2px;font-size:24px">● ACTIVE</b></div>
+        <div class="fila" style="margin-top:10px;gap:16px"><span class="mono" style="font-size:70px;font-weight:700">2,480</span><b style="font-size:34px">ORIGEN</b></div>
+        <div class="opc" style="margin-top:20px"><div><b>Freeze card</b><i>Instant temporary block</i></div><em class="sw" id="sw"></em></div>
+        <div class="opc"><div><b>Show full number</b><i>With your password or fingerprint</i></div></div>
+        <div class="opc"><div><b>Top up</b><i>From your ORIGEN balance</i></div></div>
+      </div>
+    </div>
+  </div></div>
+
+  <!-- palabras grandes del montaje -->
+  <div class="capa" id="palabra"><div class="t" id="palabra_t" style="top:120px;font-size:110px"></div></div>
+  <div class="capa" id="t_oro"><div class="t" style="top:150px;font-size:96px">Every ORIGEN<br><span style="color:var(--oro)">is gold.</span></div></div>
+  <div class="capa" id="t_gramos"><div class="t mono" style="top:1330px;font-size:50px;letter-spacing:0;font-weight:700;color:#eadcb0">110 ORIGEN × 1/55 g</div><div class="t mono" style="top:1410px;font-size:116px;letter-spacing:-2px;font-weight:700;color:var(--oro)">= 2 g of gold</div></div>
+  <div class="capa" id="t_firma"><div class="t" style="top:150px;font-size:96px">You sign it.<br><span style="color:var(--hielo)">Always.</span></div></div>
+  <div class="capa" id="t_visa"><div class="t" style="top:120px;font-size:88px">Your Visa card.<br><span style="color:var(--hielo)">Right here.</span></div></div>
+
+  <!-- S7 laptop + notch -->
+  <div id="lap"><div class="tapa"><div class="esc"></div>
+    <div id="notch"><div id="notch_c" style="padding:26px 34px 30px;opacity:0;width:740px">
+      <div class="fila" style="justify-content:space-between"><div class="fila" style="gap:12px"><span style="width:16px;height:16px;border-radius:8px;background:var(--cian);box-shadow:0 0 12px var(--cian)"></span><b style="letter-spacing:4px;font-size:22px">AURA</b></div><span class="mono" style="color:var(--gris);font-size:22px">9:41</span></div>
+      <div style="font-size:38px;font-weight:800;margin-top:18px">Your day</div>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-top:14px;font-size:26px">
+        <div class="fila" style="gap:16px"><span class="mono" style="color:var(--cian);width:100px">10:00</span>Board meeting <span class="chip" style="margin-left:auto;font-size:18px;padding:6px 14px">Calendar</span></div>
+        <div class="fila" style="gap:16px"><span class="mono" style="color:var(--cian);width:100px">13:00</span>Investor call <span class="chip" style="margin-left:auto;font-size:18px;padding:6px 14px">Outlook</span></div>
+      </div>
+      <div class="fila" style="margin-top:18px;gap:12px"><span class="chip" style="font-size:20px">WhatsApp · 3 new</span><span class="chip" style="font-size:20px">♪ Spotify</span></div>
+    </div></div>
+  </div><div class="base"></div></div>
+  <div class="capa" id="t_desk"><div class="t" style="top:240px;font-size:92px">From your phone<br><span style="color:var(--hielo)">to your desktop.</span></div></div>
+
+  <!-- S8 ecosistema (carrusel estilo Creator Studio) -->
+  <div class="capa" id="eco"></div>
+  <div class="capa" id="eco_n"><div class="rot" id="eco_n_t" style="top:1310px;font-size:30px;color:var(--hielo)"></div></div>
+  <div class="capa" id="t_eco"><div class="t" id="t_eco_t" style="top:300px;font-size:96px"></div></div>
+
+  <!-- S9 firma -->
+  <div class="capa" id="firma_final"><div class="t" style="top:1440px;font-size:124px;letter-spacing:4px">AU-RA <span style="color:var(--cian)">FP</span></div>
+    <div class="rot" style="top:1610px;letter-spacing:12px;font-size:28px">POWERED BY ORDEN GLOBAL</div></div>
+</div>
+
+<script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const T = await (await fetch('./tiempos.json')).json();   // el guion con segundos (lo arma montar.py)
+const W = 1080, H = 1920;
+const $ = id => document.getElementById(id);
+const cl = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const ss = x => { x = cl(x); return x * x * (3 - 2 * x); };
+const eo = x => 1 - Math.pow(1 - cl(x), 3);                         // salida suave
+const ex = x => { x = cl(x); return x === 1 ? 1 : 1 - Math.pow(2, -10 * x); }; // salida exponencial (Apple)
+const vent = (t, a, b, fi = .4, fo = .4) => ss((t - a) / fi) * (1 - ss((t - (b - fo)) / fo));
+const op = (id, v) => { $(id).style.opacity = v; };
+
+/* ---------------- 3D ---------------- */
+const R = new THREE.WebGLRenderer({ canvas: $('gl'), antialias: true, preserveDrawingBuffer: true, alpha: false });
+R.setSize(W, H, false); R.setPixelRatio(1); R.toneMapping = THREE.ACESFilmicToneMapping; R.outputColorSpace = THREE.SRGBColorSpace;
+R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
+const escena = new THREE.Scene(); escena.background = new THREE.Color('#03060d');
+const pm = new THREE.PMREMGenerator(R);
+const envSala = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+// estudio de producto para el oro y el vidrio
+const est = new THREE.Scene();
+const panel = (w, h, x, y, z, i, col = '#ffffff') => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(col).multiplyScalar(i), side: THREE.DoubleSide })); m.position.set(x, y, z); m.lookAt(0, 0, 0); est.add(m); };
+panel(6, 1.2, 0, 4, 2, 6); panel(9, 6, -1, 7, -2, 2.2, '#fff4dc'); panel(3, 3, 3, 5, 4, 4); panel(1.2, 5, -5, 1, 1, 3); panel(1.2, 5, 5, .5, -1, 2, '#bfefff'); panel(8, .6, 0, -3, 3, 1.2, '#ffe2a8');
+const envEst = pm.fromScene(est, 0.01).texture;
+escena.environment = envSala;
+const cam = new THREE.PerspectiveCamera(30, W / H, 0.05, 100);
+const comp = new EffectComposer(R); comp.addPass(new RenderPass(escena, cam));
+const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), .4, .5, .9); comp.addPass(bloom); comp.addPass(new OutputPass());
+
+// grupos por escena
+const G = { A: new THREE.Group(), orbe: new THREE.Group(), equipo: new THREE.Group(), oro: new THREE.Group() };
+Object.values(G).forEach(g => { g.visible = false; escena.add(g); });
+
+// la «A» de vidrio
+const svg = await (await fetch('./logo_A_solo.svg')).text();
+const shapes = new SVGLoader().parse(svg).paths.flatMap(p => SVGLoader.createShapes(p));
+shapes.sort((a, b) => Math.abs(THREE.ShapeUtils.area(b.getPoints())) - Math.abs(THREE.ShapeUtils.area(a.getPoints())));
+const geoA = new THREE.ExtrudeGeometry(shapes[0], { depth: 70, bevelEnabled: true, bevelThickness: 26, bevelSize: 20, bevelSegments: 14, curveSegments: 64 });
+geoA.computeBoundingBox(); const bbA = geoA.boundingBox, cA = new THREE.Vector3(); bbA.getCenter(cA);
+geoA.translate(-cA.x, -cA.y, -cA.z); const sA = 2.4 / (bbA.max.y - bbA.min.y); geoA.scale(sA, -sA, sA); geoA.computeVertexNormals();
+const vidrio = new THREE.MeshPhysicalMaterial({ color: '#9ff6ff', roughness: .05, transmission: .93, thickness: 1.3, ior: 1.5, clearcoat: 1, clearcoatRoughness: .03,
+  emissive: '#12c2f2', emissiveIntensity: .09, attenuationColor: '#0d9ad8', attenuationDistance: .6, iridescence: .25, iridescenceIOR: 1.3, side: THREE.DoubleSide, transparent: true });
+const mA = new THREE.Mesh(geoA, vidrio); G.A.add(mA);
+const ptsO = shapes[1].getPoints(); const oc = new THREE.Vector2(); ptsO.forEach(p => oc.add(p)); oc.divideScalar(ptsO.length);
+let radO = 0; ptsO.forEach(p => radO = Math.max(radO, p.distanceTo(oc)));
+const puntoA = new THREE.Mesh(new THREE.SphereGeometry(radO * sA, 64, 64), new THREE.MeshStandardMaterial({ color: '#bffcff', emissive: '#3fe6fa', emissiveIntensity: .8 }));
+puntoA.position.set((oc.x - cA.x) * sA, -(oc.y - cA.y) * sA, 0); mA.add(puntoA);
+const luzA = new THREE.PointLight('#5ff0ff', 6, 3); luzA.position.copy(puntoA.position).add(new THREE.Vector3(0, 0, .4)); mA.add(luzA);
+function halo(col, x, y, z, r, a) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256; const g = cv.getContext('2d');
+  const gr = g.createRadialGradient(128, 128, 0, 128, 128, 128); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(r, r), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, opacity: a, depthWrite: false, blending: THREE.AdditiveBlending }));
+  m.position.set(x, y, z); return m;
+}
+const halos = [halo('#1ad3ff', -1, .7, -3, 6.5, .42), halo('#0b4fa8', 1.3, -.7, -3.5, 7.5, .45), halo('#a6fbff', .2, 1.5, -2.5, 2.8, .25)];
+halos.forEach(h => G.A.add(h));
+const haloP = halo('#7ff4ff', 0, 0, .25, 1.5, 0); puntoA.add(haloP); const haloP2 = halo('#ffffff', 0, 0, .3, .45, 0); puntoA.add(haloP2);
+const posPunto = new THREE.Vector3(); // dónde queda el punto de la «A» en el mundo (para que de ahí nazca el orbe)
+
+// el orbe de AU-RA (partículas, determinista): cáscara + núcleo, y forma la palabra «Hi.»
+const NP = 9000;
+const base = new Float32Array(NP * 3), palabra = new Float32Array(NP * 3), sem = new Float32Array(NP);
+for (let i = 0; i < NP; i++) {
+  const u = Math.random(), v = Math.random(); const th = 2 * Math.PI * u, ph = Math.acos(2 * v - 1);
+  const r = i < NP * .72 ? 1 + (Math.random() - .5) * .07 : Math.pow(Math.random(), 2.2) * .8;
+  base[i * 3] = r * Math.sin(ph) * Math.cos(th); base[i * 3 + 1] = r * Math.cos(ph); base[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th); sem[i] = Math.random();
+}
+{ // puntos de la palabra «Hi.» sacados de un lienzo
+  const cv = document.createElement('canvas'); cv.width = 600; cv.height = 300; const g = cv.getContext('2d');
+  g.fillStyle = '#fff'; g.font = '800 230px Manrope'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('Hi.', 300, 160);
+  const d = g.getImageData(0, 0, 600, 300).data, pts = [];
+  for (let y = 0; y < 300; y += 2) for (let x = 0; x < 600; x += 2) if (d[(y * 600 + x) * 4 + 3] > 128) pts.push([x, y]);
+  for (let i = 0; i < NP; i++) { const p = pts[Math.floor(Math.random() * pts.length)]; palabra[i * 3] = (p[0] - 300) / 150; palabra[i * 3 + 1] = -(p[1] - 150) / 150; palabra[i * 3 + 2] = (Math.random() - .5) * .08; }
+}
+const geoO = new THREE.BufferGeometry(); const posO = new Float32Array(NP * 3); geoO.setAttribute('position', new THREE.BufferAttribute(posO, 3));
+const colO = new Float32Array(NP * 3); for (let i = 0; i < NP; i++) { const k = i < NP * .72; const c = new THREE.Color(k ? (sem[i] < .5 ? '#dbe9ff' : '#9fd8ff') : '#ffe2a8'); colO.set([c.r, c.g, c.b], i * 3); }
+geoO.setAttribute('color', new THREE.BufferAttribute(colO, 3));
+const orbePts = new THREE.Points(geoO, new THREE.PointsMaterial({ size: .022, vertexColors: true, transparent: true, opacity: .95, blending: THREE.AdditiveBlending, depthWrite: false }));
+G.orbe.add(orbePts); const nucleo = halo('#ffe8b8', 0, 0, 0, 1.4, .9); G.orbe.add(nucleo);
+
+// Claudio y ANT-ONIO: los GLB de la app con sus animaciones
+const L = new GLTFLoader(); L.setMeshoptDecoder(MeshoptDecoder);
+async function personaje(nombre, anim, x, col) {
+  const g = await L.loadAsync(`./assets/${nombre}.glb`); const m = g.scene;
+  m.traverse(o => { if (o.isMesh) { o.castShadow = true; } });
+  const b = new THREE.Box3().setFromObject(m), s = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
+  const k = 1.12 / s.y; m.scale.setScalar(k); m.position.set(x - c.x * k, -c.y * k + s.y * k / 2 - 1.36, -c.z * k);
+  const mix = new THREE.AnimationMixer(m); const clip = g.animations.find(a => a.name === anim) || g.animations[0];
+  const act = mix.clipAction(clip); act.play();
+  const borde = new THREE.DirectionalLight(col, 3.2); borde.position.set(x + (x < 0 ? -1.5 : 1.5), 1.5, -2); G.equipo.add(borde);
+  G.equipo.add(m); return { m, mix, dur: clip.duration, x, cx: c.x * k };
+}
+const claudio = await personaje('claudio', 'saludar', -0.47, '#ff9a4d');
+const antonio = await personaje('antonio', 'celebrar', 0.47, '#45c9de');
+const llave = new THREE.DirectionalLight('#fff2e2', 2.4); llave.position.set(-1.5, 3, 3); llave.castShadow = true; llave.shadow.mapSize.set(2048, 2048); G.equipo.add(llave);
+G.equipo.add(new THREE.HemisphereLight('#7fa6d8', '#03060d', .5));
+const piso = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), new THREE.ShadowMaterial({ opacity: .45 })); piso.rotation.x = -Math.PI / 2; piso.position.y = -1.36; piso.receiveShadow = true; G.equipo.add(piso);
+
+// el gramo de oro
+const lingote = new THREE.Mesh(new RoundedBoxGeometry(1, .16, .56, 8, .06), new THREE.MeshPhysicalMaterial({ color: '#e8b04a', metalness: 1, roughness: .2, clearcoat: .4, clearcoatRoughness: .15 }));
+G.oro.add(lingote);
+const NE = 1400, posE = new Float32Array(NE * 3), semE = new Float32Array(NE * 3); for (let i = 0; i < NE * 3; i++) semE[i] = Math.random();
+const geoE = new THREE.BufferGeometry(); geoE.setAttribute('position', new THREE.BufferAttribute(posE, 3));
+const estela = new THREE.Points(geoE, new THREE.PointsMaterial({ color: '#ffd889', size: .016, transparent: true, opacity: .9, blending: THREE.AdditiveBlending, depthWrite: false })); G.oro.add(estela);
+const luzOro = new THREE.DirectionalLight('#fff6e0', 1.6); luzOro.position.set(-2, 3, 2); G.oro.add(luzOro);
+
+/* ---------------- DOM armado ---------------- */
+// cuadrícula de objetos (recortados de la hoja por montar.py)
+const OBJ = T.objetos || []; const grid = $('grid');
+OBJ.forEach((src, i) => { const d = document.createElement('div'); d.className = 'obj'; d.style.backgroundImage = `url(${src})`; grid.appendChild(d); });
+// correos
+const CORREOS = [['URGENT', '#ff8a8a', 'Contract · sign today'], ['URGENT', '#ff8a8a', 'Bank · confirm transfer'], ['URGENT', '#ff8a8a', 'Board · agenda'], ['REPLY', '#45C9DE', 'Draft ready ✓'], ['LATER', '#8E9AAB', 'Weekly newsletter']];
+CORREOS.forEach(([e, c, s]) => { const d = document.createElement('div'); d.className = 'vid'; d.style.cssText = 'position:absolute;left:0;right:0;padding:28px 34px;border-radius:30px'; d.innerHTML = `<div style="font-size:22px;letter-spacing:3px;font-weight:800;color:${c}">${e}</div><div style="font-size:32px;font-weight:700;margin-top:6px">${s}</div>`; $('correos').appendChild(d); });
+// posts de Claudio
+['Launch day.', 'Meet AURA.', 'One mind.'].forEach((s, i) => { const d = document.createElement('div'); d.style.cssText = 'position:absolute;width:330px;height:430px;border-radius:30px;background:#fff;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5)'; d.innerHTML = `<div style="height:260px;background:radial-gradient(160px 160px at 50% 55%,#3fe6fa,#0a2a4a 70%)"></div><div style="padding:22px 24px;color:#0b1220;font-weight:800;font-size:34px">${s}</div><div style="padding:0 24px;color:#667;font-size:20px">by Claudio · ready to post</div>`; $('posts').appendChild(d); });
+// pasos de su computadora
+['Opened the supplier site', 'Checked reviews & registry', 'Compared 3 prices'].forEach(s => { const d = document.createElement('div'); d.className = 'fila'; d.style.gap = '16px'; d.innerHTML = `<span style="color:#30d158">✓</span>${s}`; $('pasos').appendChild(d); });
+// ecosistema: íconos oficiales + glifos dibujados
+const ECO = [['assets/veta-mark.png', 'Veta Wallet'], ['card', 'Visa'], ['chat', 'PULSE2CHAT'], ['cal', 'Calendar'], ['mail', 'Mail'], ['assets/origen.jpg', 'ORIGEN', 1], ['assets/auka.jpg', 'AUKA', 1], ['assets/agka.jpg', 'AGKA', 1], ['assets/ondk.jpg', 'ONDK', 1]];
+const GLIFO = { card: '<svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="#A6FBFF" stroke-width="1.3"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 9.5h19M6 15h4"/></svg>',
+  chat: '<svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="#A6FBFF" stroke-width="1.3"><path d="M4 5h16v10H9l-5 4z" stroke-linejoin="round"/><path d="M8 9h8M8 12h5"/></svg>',
+  mail: '<svg width="116" height="116" viewBox="0 0 24 24" fill="none" stroke="#A6FBFF" stroke-width="1.3"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></svg>',
+  cal: '<svg width="116" height="116" viewBox="0 0 24 24" fill="none" stroke="#A6FBFF" stroke-width="1.3"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><circle cx="12" cy="15" r="1.4" fill="#A6FBFF" stroke="none"/></svg>' };
+ECO.forEach(([src, n, red]) => { const d = document.createElement('div'); d.className = 'app' + (red ? ' redondo' : ''); d.innerHTML = GLIFO[src] || `<img src="${src}">`; d.dataset.n = n; $('eco').appendChild(d); });
+
+/* ---------------- la línea de tiempo ---------------- */
+const S = T.s; // segundos clave del guion
+function cuadro(t) {
+  // por defecto todo apagado
+  document.querySelectorAll('.capa').forEach(c => c.style.opacity = 0);
+  Object.values(G).forEach(g => g.visible = false);
+  $('tel').style.opacity = 0; $('lap').style.opacity = 0;
+  escena.environment = envSala; escena.environmentIntensity = 1; R.toneMappingExposure = 1; bloom.strength = .4; bloom.threshold = .9; vidrio.visible = true;
+
+  /* S1 · punto → «A» de vidrio → marca */
+  if (t < S.grid + .8) {
+    G.A.visible = true; escena.environmentIntensity = .45; R.toneMappingExposure = .85; bloom.strength = .12; bloom.threshold = .95;
+    haloP.material.opacity = .55 * ss((t - S.punto) / .6) * (1 - .4 * ss((t - S.a0) / 1)); haloP2.material.opacity = .8 * ss((t - S.punto) / .6) * (1 - .5 * ss((t - S.a0) / 1));
+    const a = ss((t - S.a0) / 1.6);                              // la «A» aparece alrededor del punto
+    vidrio.opacity = a; vidrio.transmission = .93 * a; halos.forEach((h, i) => h.material.opacity = [.42, .45, .25][i] * a);
+    mA.scale.setScalar(.6 + .4 * ex((t - S.a0) / 1.8));
+    mA.rotation.y = THREE.MathUtils.degToRad(-35 * (1 - ex((t - S.a0) / 2.4)) + 4 * Math.sin(t * .6));
+    puntoA.material.emissiveIntensity = .8 + 1.2 * (1 - ss((t - S.a0) / .8));
+    const d = 11.5 - .9 * ss((t - S.a0) / 4);
+    cam.position.set(Math.sin(.1) * d, .35, d); cam.lookAt(0, .05, 0);
+    if (t < S.a0) { mA.scale.setScalar(.6); vidrio.visible = false; halos.forEach(h => h.material.opacity = 0); puntoA.material.emissiveIntensity = 1.2 * ss((t - S.punto) / .6); }
+    // al terminar, la «A» se aleja y el punto queda (de él salen los objetos)
+    const sal = ss((t - S.grid + .3) / 1.1); haloP.material.opacity *= 1 - sal; haloP2.material.opacity *= 1 - sal; if (sal > 0) { vidrio.opacity = a * (1 - sal); halos.forEach(h => h.material.opacity *= 1 - sal); mA.scale.multiplyScalar(1 - .25 * sal); }
+    op('introducing', vent(t, S.punto + .5, S.a0 + .9, .6, .5));
+    op('marca', vent(t, S.a0 + 1.5, S.grid + .2, .7, .5));
+    puntoA.getWorldPosition(posPunto);
+  }
+
+  /* S2 · cuadrícula de objetos de la vida diaria → todo cae al punto */
+  if (t >= S.grid - .2 && t < S.hola + .6) {
+    op('grid', 1); const kids = $('grid').children; const n = kids.length, cols = 4;
+    const caida = ss((t - S.caida) / 1.4);
+    for (let i = 0; i < n; i++) {
+      const c = i % cols, r = Math.floor(i / cols);
+      let x = 160 + c * 253, y = 260 + r * 255 + (c % 2) * 40 - 60 * ss((t - S.grid) / 8);
+      const ent = eo((t - S.grid - .05 * i) / .7), luz = vent(t, S.dia + .1 * i, S.dia + .1 * i + .8, .2, .4);
+      x = x + (540 - x) * caida * caida; y = y + (960 - y) * caida * caida;
+      kids[i].style.left = x + 'px'; kids[i].style.top = y + 'px';
+      kids[i].style.opacity = ent * (1 - ss((caida - .85) / .15));
+      kids[i].style.transform = `scale(${(.6 + .4 * ent) * (1 - .8 * caida) * (1 + .12 * luz)}) rotate(${(i % 3 - 1) * 6 * (1 - ent)}deg)`;
+      kids[i].style.filter = `drop-shadow(0 20px 30px rgba(0,0,0,.55)) brightness(${1 + .6 * luz})`;
+    }
+    op('t_dia', vent(t, S.dia, S.caida + .3, .5, .4));
+  }
+
+  /* S3 · el orbe nace del punto y dice «Hi.» */
+  if (t >= S.caida + 1.0 && t < S.montaje + .4) {
+    G.orbe.visible = true; bloom.strength = .9;
+    cam.position.set(0, 0, 6.2); cam.lookAt(0, 0, 0);
+    const nace = ex((t - S.caida - 1.0) / 1.2);                  // explota desde el centro
+    const habla = ss((t - S.hola) / .5) * (1 - ss((t - S.hola - 2.0) / .6));
+    const sube = ss((t - S.equipo + .2) / 1.0);                  // en el equipo, el orbe sube y se achica
+    const pos = geoO.attributes.position.array;
+    for (let i = 0; i < NP; i++) {
+      const s = sem[i], w = .02 * Math.sin(t * 1.3 + s * 40);
+      const bx = base[i * 3] * (1 + w), by = base[i * 3 + 1] * (1 + w), bz = base[i * 3 + 2] * (1 + w);
+      const rot = t * .25 + s * .2; const cx = bx * Math.cos(rot) - bz * Math.sin(rot), cz = bx * Math.sin(rot) + bz * Math.cos(rot);
+      const h = cl(habla * 1.2 - s * .2) ;
+      let x = cx * nace, y = by * nace, z = cz * nace;
+      x += (palabra[i * 3] * .55 - x) * h; y += (palabra[i * 3 + 1] * .55 - y) * h; z += (palabra[i * 3 + 2] - z) * h;
+      const k = 1 - .66 * sube; pos[i * 3] = x * k; pos[i * 3 + 1] = y * k + .62 * sube; pos[i * 3 + 2] = z * k;
+    }
+    geoO.attributes.position.needsUpdate = true;
+    nucleo.material.opacity = .9 * nace * (1 - .7 * habla); nucleo.position.y = .62 * sube; nucleo.scale.setScalar(1 - .66 * sube);
+    orbePts.material.opacity = .95 * ss((t - S.caida - 1.0) / .3) * (1 - .55 * habla) * (1 - ss((t - S.montaje + .3) / .5)); bloom.strength = (.9 - .55 * habla) * (1 - .7 * ss((t - S.equipo) / .6));
+  }
+
+  /* S4 · Claudio y ANT-ONIO (GLB) a los lados del orbe */
+  if (t >= S.equipo && t < S.montaje + .5) {
+    G.equipo.visible = true; escena.environment = envSala;
+    const e = ex((t - S.equipo) / 1.2);
+    claudio.m.position.x = claudio.x - claudio.cx - 1.2 * (1 - e); antonio.m.position.x = antonio.x - antonio.cx + 1.2 * (1 - e);
+    claudio.mix.setTime(cl(t - S.equipo, 0, claudio.dur - .01) % claudio.dur); antonio.mix.setTime((t - S.equipo + .3) % antonio.dur);
+    op('t_mente', vent(t, S.equipo + .3, S.montaje, .6, .4));
+    op('n_claudio', vent(t, S.claudio, S.montaje, .4, .4)); op('n_antonio', vent(t, S.antonio, S.montaje, .4, .4)); op('n_aura', vent(t, S.cuida, S.montaje, .4, .4));
+    const fin = ss((t - S.montaje + .5) / .5); G.equipo.position.y = -2 * fin * fin;
+  }
+
+  /* S5 · montaje en el teléfono */
+  const telIn = ex((t - S.montaje) / .9), telOut = ss((t - S.escritorio - .2) / .9);
+  if (t >= S.montaje && t < S.escritorio + 1.2) {
+    const heroe = vent(t, S.formula + .45, S.firma - .05, .35, .35);
+    const tel = $('tel'); tel.style.opacity = telIn * (1 - telOut) * (1 - heroe);
+    const rx = 8 * (1 - telIn), ry = -12 * (1 - telIn) + 3 * Math.sin(t * .5);
+    tel.style.transform = `perspective(2400px) translateY(${120 * (1 - telIn)}px) rotateX(${rx}deg) rotateY(${ry}deg) scale(${.9 + .1 * telIn - .45 * telOut}) translateX(${-520 * telOut}px)`;
+    const V = ['v_llamada', 'v_memoria', 'v_correo', 'v_post', 'v_compu', 'v_chat', 'v_tarjeta'];
+    const ini = [S.montaje, S.f_mem, S.f_correo, S.f_post, S.f_compu, S.oro0, S.visa, S.escritorio + 3];
+    V.forEach((v, i) => { const a = ini[i], b = ini[i + 1]; const k = vent(t, a, b, .25, .25); $(v).style.opacity = k; $(v).style.transform = `translateY(${30 * (1 - ss((t - a) / .35))}px) scale(${.98 + .02 * ss((t - a) / .35)})`; });
+    // palabra grande del montaje
+    const PAL = [[S.montaje + .3, S.f_mem, 'Calls.'], [S.f_mem, S.f_correo, 'Remembers.'], [S.f_correo, S.f_post, 'Organizes.'], [S.f_post, S.f_compu, 'Creates.'], [S.f_compu, S.oro0, 'Works.']];
+    for (const [a, b, w] of PAL) if (t >= a && t < b) { $('palabra_t').textContent = w; op('palabra', vent(t, a, b, .2, .2)); }
+    // llamada: vibra
+    if (t < S.f_mem) tel.style.transform += ` rotate(${Math.sin(t * 60) * .6 * vent(t, S.montaje + .8, S.montaje + 2, .1, .1)}deg)`;
+    // memoria: el cumpleaños se ilumina
+    $('c_mama').style.transform = `scale(${1 + .04 * vent(t, S.f_mem + .8, S.f_correo, .3, .3)})`;
+    // correos: ANT-ONIO los manda a su pila
+    [...$('correos').children].forEach((d, i) => { const k = eo((t - S.f_correo - .2 - .18 * i) / .45); const pila = i < 3 ? 0 : i < 4 ? 1 : 2; const y = 40 + i * 150; const yp = [40, 560, 740][pila] + (i < 3 ? i * 16 : 0); d.style.top = (y + (yp - y) * ss((t - S.f_correo - 1.4) / .8)) + 'px'; d.style.opacity = k; d.style.transform = `translateX(${(1 - k) * 200}px) scale(${1 - (i < 3 ? .03 * (2 - i) : 0) * ss((t - S.f_correo - 1.4) / .8)})`; });
+    // posts: abanico y elección
+    [...$('posts').children].forEach((d, i) => { const k = eo((t - S.f_post - .15 * i) / .5); const ang = (i - 1) * 12 * k; const elegido = i === 1 ? ss((t - S.f_post - 1.3) / .4) : 0; d.style.left = (150 + (i - 1) * 170 * k) + 'px'; d.style.top = (60 + Math.abs(i - 1) * 40 * k - 30 * elegido) + 'px'; d.style.transform = `rotate(${ang * (1 - elegido)}deg) scale(${.7 + .3 * k + .1 * elegido})`; d.style.zIndex = i === 1 ? 3 : 1; d.style.opacity = k * (i !== 1 ? 1 - .6 * elegido : 1); d.style.boxShadow = elegido > 0 ? `0 0 0 ${5 * elegido}px #FF9A4D,0 30px 80px rgba(0,0,0,.5)` : ''; });
+    // su computadora: cursor, pasos y pago listo
+    const cu = $('cursor'); const pt = (t - S.f_compu) / 2.4; cu.style.left = (80 + 420 * ss(pt) + 60 * Math.sin(pt * 6)) + 'px'; cu.style.top = (150 + 260 * ss(pt * 1.3)) + 'px';
+    [...$('pasos').children].forEach((d, i) => d.style.opacity = ss((t - S.f_compu - .5 - .55 * i) / .3));
+    $('pago_listo').style.opacity = ss((t - S.f_compu - 2.3) / .4); $('pago_listo').style.transform = `translateY(${30 * (1 - eo((t - S.f_compu - 2.3) / .5))}px)`;
+    // chat → hoja de envío → fórmula → firma → recibo
+    const txt = 'Send 110 ORIGEN to Mom'; $('burbuja').textContent = txt.slice(0, Math.round(txt.length * cl((t - S.oro0 - .2) / 1.0)));
+    $('burbuja').style.opacity = ss((t - S.oro0) / .2);
+    $('hoja').style.opacity = ss((t - S.oro0 - 1.3) / .35) * (1 - ss((t - S.recibo) / .3)); $('hoja').style.transform = `translateY(${60 * (1 - eo((t - S.oro0 - 1.3) / .5))}px)`;
+    $('f_res').style.opacity = ss((t - S.formula) / .3); $('f_res').style.transform = `scale(${1 + .12 * (1 - eo((t - S.formula) / .4))})`;
+    $('firmar').style.background = t > S.firma ? '#30d158' : '#3FE6FA'; $('firmar').textContent = t > S.firma ? '✓ Signed' : 'Sign with fingerprint';
+    $('recibo').style.opacity = ss((t - S.recibo) / .3); $('recibo').style.transform = `scale(${.96 + .04 * eo((t - S.recibo) / .4)})`;
+    // la tarjeta Visa: gira y se congela
+    const gv = eo((t - S.visa) / 1.0); $('visa').style.transform = `rotateY(${-160 * (1 - gv) + 6 * Math.sin(t)}deg) rotateX(${8 * (1 - gv)}deg)`;
+    $('brillo').style.transform = `translateX(${-400 + 900 * cl((t - S.visa - .6) / 1.2)}px)`;
+    const fr = ss((t - S.congela) / .5); $('escarcha').style.opacity = fr * .9; $('sw').style.setProperty('--x', `${42 * fr}px`); $('sw').style.background = fr > .5 ? '#3FE6FA' : 'rgba(255,255,255,.18)';
+    $('estado').textContent = fr > .5 ? '● FROZEN' : '● ACTIVE'; $('estado').style.color = fr > .5 ? '#9fdcff' : '#3ED9A0';
+    op('t_oro', vent(t, S.formula + .2, S.firma - .2, .4, .3)); op('t_gramos', vent(t, S.formula + .9, S.firma - .1, .4, .3)); op('t_firma', vent(t, S.firma, S.visa, .3, .3)); op('t_visa', vent(t, S.visa + .4, S.escritorio, .4, .3));
+  }
+
+  /* el oro en 3D: cuando la fórmula se resuelve, el gramo cruza la pantalla */
+  if (t >= S.formula + .4 && t < S.firma + .2) {
+    G.oro.visible = true; escena.environment = envEst; R.toneMappingExposure = .72; bloom.strength = .12; bloom.threshold = .98;
+    const u = cl((t - S.formula - .4) / (S.firma - S.formula - .3));
+    cam.position.set(0, .3, 6.5); cam.lookAt(0, 0, 0);
+    const w1 = 2 * u - 1; lingote.position.set(2.2 * w1 * w1 * w1, -.05 - .25 * w1 * w1, .6 * Math.sin(u * Math.PI));
+    lingote.rotation.set(.42 + .25 * u, -1.1 + 1.9 * u, .12 - .1 * u);
+    lingote.scale.setScalar(.75 + .4 * Math.sin(u * Math.PI));
+    const pe = geoE.attributes.position.array;
+    for (let i = 0; i < NE; i++) { const k = semE[i * 3]; const uu = cl(ss(u) - k * .25); const w2 = 2 * uu - 1; pe[i * 3] = 2.2 * w2 * w2 * w2 - .1; pe[i * 3 + 1] = -.05 - .25 * w2 * w2 + (semE[i * 3 + 1] - .5) * .25 * k; pe[i * 3 + 2] = .6 * Math.sin(uu * Math.PI) + (semE[i * 3 + 2] - .5) * .25; }
+    geoE.attributes.position.needsUpdate = true; estela.material.opacity = .9 * (1 - ss((u - .9) / .1));
+  }
+
+  /* S7 · del teléfono a la laptop: el notch se despliega */
+  if (t >= S.escritorio && t < S.eco + .6) {
+    const li = ex((t - S.escritorio - .3) / 1.0), lo = ss((t - S.eco + .2) / .6);
+    $('lap').style.opacity = li * (1 - lo); $('lap').style.transform = `perspective(2600px) translateY(${200 * (1 - li)}px) rotateX(${10 * (1 - li)}deg) scale(${.92 + .08 * li})`;
+    const nx = ss((t - S.notch) / .7); const n = $('notch'); n.style.width = (220 + 580 * nx) + 'px'; n.style.height = (38 + 330 * nx) + 'px';
+    $('notch_c').style.opacity = ss((t - S.notch - .4) / .4);
+    op('t_desk', vent(t, S.escritorio + .2, S.eco, .5, .4));
+  }
+
+  /* S8 · el ecosistema en carrusel curvo (estilo Creator Studio) → todo a la «A» */
+  if (t >= S.eco - .2) {
+    op('eco', 1); const apps = [...$('eco').children]; const n = apps.length, mid = (n - 1) / 2;
+    const junta = ss((t - S.unlugar) / 1.0);
+    apps.forEach((d, i) => {
+      const foc = ss((t - S.e2 + .3) / .55) + ss((t - S.e3 + .3) / .55) + ss((t - S.e4 + .3) / .55) + .15 * ss((t - S.unlugar + .3) / 1);
+      let rel = ((i - foc) % n + n) % n; if (rel > n / 2) rel -= n;
+      const ent = eo((t - S.eco - .08 * Math.abs(rel)) / .7);
+      const ang = rel * .55;
+      let x = 540 + Math.sin(ang) * 600, y = 1060 - (1 - Math.cos(ang)) * 120, z = Math.cos(ang);
+      x += (540 - x) * junta; y += (900 - y) * junta;
+      const s = (.2 + 1.15 * z * z * z) * (.8 + .2 * ent) * (1 - .7 * junta);
+      d.style.left = x + 'px'; d.style.top = (y + 160 * (1 - ent)) + 'px'; d.style.transform = `scale(${s}) rotateY(${-Math.sin(ang) * 35}deg)`;
+      d.style.opacity = ent * (1 - ss((junta - .7) / .3)) * (1 - ss((Math.abs(rel) - 2.2) / .5)); d.style.zIndex = Math.round(z * 10) + 20; d.style.filter = `brightness(${.35 + .65 * (z + 1) / 2})`;
+    });
+    const P = [[S.e1, 'Your wallet.'], [S.e2, 'Your card.'], [S.e3, 'Your chats.'], [S.e4, 'Your day.'], [S.unlugar, 'All in one place.']];
+    { const fi = Math.round(ss((t - S.e2 + .3) / .55) + ss((t - S.e3 + .3) / .55) + ss((t - S.e4 + .3) / .55)); $('eco_n_t').textContent = ECO[fi][1].toUpperCase(); op('eco_n', vent(t, S.eco + .5, S.unlugar, .3, .3)); }
+    let w = ''; for (const [a, s] of P) if (t >= a) w = s; $('t_eco_t').textContent = w; op('t_eco', vent(t, S.eco + .2, S.firmaF - .2, .3, .4));
+    // la «A» regresa con el punto encendido, gigante
+    if (t >= S.unlugar + .6) {
+      G.A.visible = true; escena.environmentIntensity = .45; R.toneMappingExposure = .85; bloom.threshold = .92; const v = ex((t - S.unlugar - .6) / 1.4);
+      vidrio.opacity = v; vidrio.transmission = .93; halos.forEach((h, i) => h.material.opacity = [.42, .45, .25][i] * v);
+      mA.scale.setScalar(.7 + .3 * v); mA.rotation.y = THREE.MathUtils.degToRad(20 * (1 - v) + 3 * Math.sin(t * .5));
+      puntoA.material.emissiveIntensity = .8 + 1.6 * (1 - ss((t - S.unlugar - .6) / .8));
+      const dd = 10.9 + .5 * ss((t - S.firmaF) / 3); cam.position.set(Math.sin(.1) * dd, .35, dd); cam.lookAt(0, .05, 0);
+      bloom.strength = .12; haloP.material.opacity = .35 + .5 * (1 - ss((t - S.unlugar - .6) / .9)); haloP2.material.opacity = .45 + .4 * (1 - ss((t - S.unlugar - .6) / .9));
+    }
+    op('firma_final', vent(t, S.firmaF, 999, .7, .1));
+  }
+  // fundido final
+  const fin = ss((t - T.total + .8) / .8);
+  if (window.ANTES) window.ANTES();
+  comp.render();
+  document.body.style.filter = fin > 0 ? `brightness(${1 - fin})` : '';
+}
+window.DBG = { puntoA, bloom, halos, mA, G, vidrio, R };
+window.setT = t => new Promise(res => { cuadro(t); requestAnimationFrame(() => requestAnimationFrame(() => res(true))); });
+await document.fonts.ready; window.LISTO = true;
+</script></body></html>
