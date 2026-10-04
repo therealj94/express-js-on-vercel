@@ -25,9 +25,11 @@
 #
 #   python3 tenedores.py                                   # solo datos públicos
 #   python3 tenedores.py --veta veta.json --internas internas.json \
-#           --inventario inventario-8532.json --bloque 312000
+#           --apps apps.json --inventario inventario-8532.json --bloque 312000
 #
 # veta.json e internas.json: lista JSON de direcciones (ver direcciones-veta.js).
+# apps.json: {app: {campo: [direcciones]}} con lo que guardan las demás apps
+# (ver direcciones-app.cjs). Cada saldo informa de qué app y campo salió.
 # No subir esos archivos al repositorio.
 
 import argparse, json, os, sys, time, urllib.request
@@ -150,7 +152,7 @@ def leer_inventario(ruta):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--veta'); ap.add_argument('--internas'); ap.add_argument('--inventario')
+    ap.add_argument('--veta'); ap.add_argument('--internas'); ap.add_argument('--inventario'); ap.add_argument('--apps')
     ap.add_argument('--bloque', type=int, help='bloque de la foto (por defecto, el último)')
     ap.add_argument('--salida', default='tenedores-5550.json')
     ap.add_argument('--sin-nativas', action='store_true', help='no barrer transacciones (más rápido)')
@@ -161,7 +163,13 @@ def main():
     veta, internas = leer_lista(a.veta), leer_lista(a.internas)
     print(f'Foto en el bloque {bloque:,}', file=sys.stderr)
 
-    candidatas = set(CONOCIDAS) | veta | internas | leer_inventario(a.inventario)
+    # Fuentes de cada dirección en las demás apps: «app.campo».
+    fuentes = {}
+    for app, campos in (json.load(open(a.apps)) if a.apps else {}).items():
+        for campo, dirs in campos.items():
+            for d in dirs:
+                fuentes.setdefault(d.lower(), []).append(f'{app}:{campo}')
+    candidatas = set(CONOCIDAS) | veta | internas | set(fuentes) | leer_inventario(a.inventario)
     print('Barriendo eventos de tokens…', file=sys.stderr)
     candidatas |= direcciones_de_eventos(bloque)
     if not a.sin_nativas:
@@ -175,11 +183,12 @@ def main():
         if d in veta: return 'veta'
         if d in internas: return 'interna'
         if d in CONOCIDAS: return 'sistema'
+        if d in fuentes: return 'app'
         return 'otra'
 
     activos = {'ORIGEN': None, **CATALOGO}
     informe = {'bloque': bloque, 'rpc': RPC, 'fuentes': {
-        'veta': len(veta), 'internas': len(internas), 'inventario': bool(a.inventario),
+        'veta': len(veta), 'internas': len(internas), 'apps': len(fuentes), 'inventario': bool(a.inventario),
         'nativas': not a.sin_nativas}, 'activos': {}}
 
     for nombre, contrato in activos.items():
@@ -191,26 +200,26 @@ def main():
             supply = ORIGEN_SUPPLY
             res = lote([('eth_getBalance', [d, etiqueta]) for d in candidatas])
         saldos = {d: int(r, 16) for d, r in zip(candidatas, res) if r and int(r, 16) > 0}
-        sumas = {'veta': 0, 'interna': 0, 'sistema': 0, 'otra': 0}
+        sumas = {'veta': 0, 'interna': 0, 'sistema': 0, 'app': 0, 'otra': 0}
         for d, s in saldos.items():
             sumas[clase(d)] += s
         ubicado = sum(sumas.values())
         informe['activos'][nombre] = {
             'contrato': contrato, 'supply': str(supply),
             'veta': str(sumas['veta']), 'internas': str(sumas['interna']),
-            'sistema': str(sumas['sistema']), 'otras': str(sumas['otra']),
+            'sistema': str(sumas['sistema']), 'apps': str(sumas['app']), 'otras': str(sumas['otra']),
             'sin_ubicar': str(supply - ubicado),
-            'tenedores': {d: {'saldo': str(s), 'clase': clase(d)}
+            'tenedores': {d: {'saldo': str(s), 'clase': clase(d), 'fuentes': fuentes.get(d, [])}
                           for d, s in sorted(saldos.items(), key=lambda x: -x[1])},
         }
 
     json.dump(informe, open(a.salida, 'w'), indent=1)
 
     f = lambda x: f'{int(x) / 1e18:,.2f}'
-    print(f'\n{"ACTIVO":9} {"SUPPLY":>22} {"VETA WALLET":>20} {"INTERNAS":>20} {"OTRAS+SIST.":>20} {"SIN UBICAR":>22}')
+    print(f'\n{"ACTIVO":9} {"SUPPLY":>22} {"VETA WALLET":>22} {"INTERNAS":>14} {"OTRAS APPS":>14} {"SIN APP+SIST.":>14} {"SIN UBICAR":>16}')
     for n, d in informe['activos'].items():
-        print(f'{n:9} {f(d["supply"]):>22} {f(d["veta"]):>20} {f(d["internas"]):>20} '
-              f'{f(int(d["otras"]) + int(d["sistema"])):>20} {f(d["sin_ubicar"]):>22}')
+        print(f'{n:9} {f(d["supply"]):>22} {f(d["veta"]):>22} {f(d["internas"]):>14} {f(d["apps"]):>14} '
+              f'{f(int(d["otras"]) + int(d["sistema"])):>14} {f(d["sin_ubicar"]):>16}')
     print(f'\nDetalle por dirección en {a.salida}')
 
 

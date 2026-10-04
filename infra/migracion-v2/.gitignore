@@ -7,3 +7,5 @@ inventario-*.json
 __pycache__/
 tenedores.out
 tenedores.err
+salida-*.txt
+apps.json
