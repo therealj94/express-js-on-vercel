@@ -1,0 +1,204 @@
+<title>Cuentas y plazos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --papel:#EDEFEE; --tarjeta:#FFFFFF; --tinta:#14181A; --suave:#59646A;
+  --linea:#D3D9D7; --rosa:#A32438; --mineral:#8A6A2F; --hueco:#E4E8E6;
+  --verde:#2F6B4F;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --papel:#0E1112; --tarjeta:#161A1B; --tinta:#E7EBE9; --suave:#8E9899;
+    --linea:#242A2B; --rosa:#E8788B; --mineral:#C9A24B; --hueco:#1D2223;
+    --verde:#6FBF95;
+  }
+}
+:root[data-theme="dark"]{
+  --papel:#0E1112; --tarjeta:#161A1B; --tinta:#E7EBE9; --suave:#8E9899;
+  --linea:#242A2B; --rosa:#E8788B; --mineral:#C9A24B; --hueco:#1D2223;
+  --verde:#6FBF95;
+}
+*{box-sizing:border-box}
+body{background:var(--papel);color:var(--tinta);
+  font:400 17px/1.6 "Source Serif 4",Georgia,serif;-webkit-text-size-adjust:100%}
+.hoja{max-width:760px;margin:0 auto;padding:28px 20px 72px}
+header{border-bottom:2px solid var(--tinta);padding-bottom:20px}
+.eyebrow{font:600 11px/1 "IBM Plex Mono",ui-monospace,monospace;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--mineral)}
+h1{font:800 clamp(30px,8vw,46px)/1.02 "Bricolage Grotesque",system-ui,sans-serif;
+  letter-spacing:-.02em;margin:10px 0 6px;text-wrap:balance}
+h1 span{color:var(--rosa)}
+.sub{color:var(--suave);font-size:15px;margin:0}
+h2{font:800 22px/1.15 "Bricolage Grotesque",system-ui,sans-serif;
+  margin:42px 0 4px;letter-spacing:-.01em;text-wrap:balance}
+h2+.nota{color:var(--suave);font-size:15px;margin:0 0 16px}
+p{margin:0 0 14px}
+.saldo{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:22px 0 4px}
+.saldo div{background:var(--tarjeta);border:1px solid var(--linea);
+  border-radius:12px;padding:14px}
+.saldo .et{display:block;font:600 10px/1 "IBM Plex Mono",monospace;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--suave);margin-bottom:7px}
+.saldo b{font:800 27px/1 "Bricolage Grotesque",system-ui,sans-serif;
+  font-variant-numeric:tabular-nums}
+.saldo .g{color:var(--rosa)}
+.saldo .v{color:var(--verde)}
+.env{overflow-x:auto;margin:6px 0 4px}
+table{border-collapse:collapse;width:100%;font-size:15.5px}
+th{font:600 10px/1.4 "IBM Plex Mono",monospace;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--suave);text-align:right;
+  padding:0 0 8px 14px;border-bottom:1px solid var(--linea);white-space:nowrap}
+th:first-child{text-align:left;padding-left:0}
+td{padding:11px 0 11px 14px;border-bottom:1px solid var(--linea);
+  text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td:first-child{text-align:left;padding-left:0;white-space:normal}
+tr:last-child td{border-bottom:0}
+tr.suma td{font-weight:600;border-top:2px solid var(--tinta);border-bottom:0}
+.mal{color:var(--rosa)}
+.bien{color:var(--verde)}
+.mono{font-family:"IBM Plex Mono",monospace;font-size:14px}
+.caja{background:var(--tarjeta);border:1px solid var(--linea);
+  border-radius:12px;padding:18px 20px;margin:18px 0}
+.caja h3{font:800 17px/1.25 "Bricolage Grotesque",system-ui,sans-serif;margin:0 0 10px}
+.caja ul{margin:0;padding-left:20px}
+.caja li{margin-bottom:9px;font-size:15.5px}
+.destaca{background:var(--hueco);border-left:3px solid var(--rosa);
+  border-radius:0 10px 10px 0;padding:15px 17px;margin:20px 0;font-size:16px}
+.destaca b{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:800}
+.regla{display:grid;grid-template-columns:30px 1fr;gap:14px;padding:14px 0;
+  border-top:1px solid var(--linea)}
+.regla .n{font:800 20px/1.1 "Bricolage Grotesque",system-ui,sans-serif;
+  color:var(--mineral)}
+.regla b{display:block;font:800 16px/1.3 "Bricolage Grotesque",system-ui,sans-serif;
+  margin-bottom:4px}
+.regla p{margin:0;font-size:15.5px}
+footer{margin-top:36px;border-top:1px solid var(--linea);padding-top:18px;
+  color:var(--suave);font-size:14.5px}
+</style>
+<div class="hoja">
+<header>
+  <div class="eyebrow">Orden Global · vídeo · cuentas reales</div>
+  <h1>Qué costó<span>,</span> y cuánto falta</h1>
+  <p class="sub">Tres días, quince clips, un anuncio montado. Todo medido con
+  cronómetro, nada estimado salvo donde lo diga.</p>
+  <div class="saldo">
+    <div><span class="et">Empezaste</span><b>$52.03</b></div>
+    <div><span class="et">Gastado</span><b class="g">$17.00</b></div>
+    <div><span class="et">Te queda</span><b class="v">$35.03</b></div>
+  </div>
+</header>
+<h2>A dónde se fue el dinero</h2>
+<p class="nota">Por día, con lo que produjo cada uno.</p>
+<div class="env"><table>
+<tr><th>Día</th><th>Qué pasó</th><th>Gasto</th><th>Clips</th><th>$/clip</th></tr>
+<tr><td>29 ago</td><td>Montar la infraestructura</td><td class="mal">$7.91</td><td>0</td><td>—</td></tr>
+<tr><td>30 ago</td><td>Primera generación real</td><td>$2.71</td><td>9</td><td>$0.30</td></tr>
+<tr><td>31 ago</td><td>El anuncio, montaje y voz</td><td>$6.38</td><td>6</td><td>$1.06</td></tr>
+<tr class="suma"><td>Total</td><td></td><td>$17.00</td><td>15</td><td>$1.13</td></tr>
+</table></div>
+
+<div class="destaca"><b>El 47% del gasto no produjo ni un clip.</b> El primer día
+se fue entero en seis instancias, tres hosts rotos y cinco fallos de código. Ese
+dinero compró el sistema que hoy funciona, pero conviene llamarlo por su nombre:
+no compró vídeo.</div>
+
+<p>Descontando ese día de arranque, el coste real por clip es <b>$0.61</b>. Y la
+última tanda, ya con todo rodado, salió a <b>$0.25 por clip</b>: $1.49 por seis
+planos de diez segundos. Ese es el número que cuenta de ahora en adelante.</p>
+
+<h2>Cuánto tarda cada cosa</h2>
+<p class="nota">Quince clips cronometrados en dos tandas. Esto no es estimación.</p>
+
+<div class="env"><table>
+<tr><th>Tanda</th><th>Resolución</th><th>Por clip</th><th>Desviación</th></tr>
+<tr><td>9 planos, 3-9 s</td><td class="mono">768×1344</td><td>516 s de media</td><td>—</td></tr>
+<tr><td>6 planos, 10 s</td><td class="mono">720×1280</td><td><b>534 s</b></td><td class="bien">±3 s</td></tr>
+</table></div>
+
+<div class="destaca"><b>±3 segundos en seis clips seguidos.</b> La generación es
+la parte más predecible de todo el sistema. Un plano de diez segundos tarda nueve
+minutos, y va a seguir tardando nueve minutos.</div>
+
+<p>Y un hallazgo que cambia el presupuesto: ayer un plano de <b>8 s a 768×1344</b>
+tardó 682 s; hoy uno de <b>10 s a 720×1280</b> tardó 534 s. Más largo y aun así un
+22% más rápido. <b>Manda la resolución, no la duración.</b> Bajar de 768 a 720
+sale gratis en calidad —el máster sube a 1080 con otro modelo igualmente— y
+descuenta un cuarto del tiempo.</p>
+
+<h2>Lo que no se puede predecir</h2>
+<p class="nota">Y por eso las esperas se sienten eternas.</p>
+
+<div class="env"><table>
+<tr><th>Fase</th><th>Tiempo</th><th>¿Fiable?</th></tr>
+<tr><td>Arrancar la instancia</td><td>3 min</td><td class="bien">sí</td></tr>
+<tr><td>Instalar (42 GB + ComfyUI)</td><td>12-22 min</td><td class="mal">depende del host</td></tr>
+<tr><td>Generar, por plano de 10 s</td><td>9 min</td><td class="bien">±3 s</td></tr>
+<tr><td>Subir cada clip</td><td>4 s</td><td class="bien">sí</td></tr>
+<tr><td>Montaje, voz, sonido</td><td>minutos</td><td class="bien">sin GPU, gratis</td></tr>
+</table></div>
+
+<p>Toda la incertidumbre está en una sola casilla: <b>la instalación</b>. Y se
+paga entera cada vez que enciendo una máquina, aunque solo quieras repetir un
+plano de diez segundos. Por eso repetir un plano cuesta $0.60 y no $0.18.</p>
+<h2>Las tres reglas que hacen esto predecible</h2>
+<p class="nota">No son teoría: cada una sale de un error que ya pagamos.</p>
+
+<div class="regla"><div class="n">1</div><div>
+  <b>Una instalación por sesión, no por intento</b>
+  <p>Dejar la máquina viva mientras trabajamos. Instalas una vez y a partir de
+  ahí repetir un plano son <b>9 minutos y $0.18</b> en vez de 30 minutos y $0.60.
+  Cuesta $1.21/h de reloj, y el guardián la mata sola si se pasa del plazo o el
+  saldo baja del piso.</p></div></div>
+
+<div class="regla"><div class="n">2</div><div>
+  <b>Tres semillas de una vez, no una y a ver</b>
+  <p>Si un plano no convence, pedir tres versiones cuesta lo mismo de
+  instalación y te deja elegir. Una sola semilla es apostar a que sale bien al
+  primer intento — y no sale.</p></div></div>
+
+<div class="regla"><div class="n">3</div><div>
+  <b>Todo lo que no sea generar, se hace con la máquina apagada</b>
+  <p>Guion, voz, sonido, montaje, rótulos, color. Nada de eso necesita GPU y
+  todo es instantáneo. Pensar con una máquina encendida es la forma más cara de
+  trabajar: se paga por hora mientras se decide.</p></div></div>
+
+<h2>Lo que falta para tenerlo terminado</h2>
+<p class="nota">Con la máquina viva en una sola sesión.</p>
+
+<div class="env"><table>
+<tr><th>Paso</th><th>Tiempo</th><th>Coste</th></tr>
+<tr><td>Elegir voz y decidir si va música</td><td>minutos</td><td class="bien">$0</td></tr>
+<tr><td>Marcar qué planos no te gustan</td><td>tuyo</td><td class="bien">$0</td></tr>
+<tr><td>Repetir 2 planos con 3 versiones cada uno</td><td>54 min</td><td>$1.08</td></tr>
+<tr><td>Instalación de esa única sesión</td><td>15-25 min</td><td>$0.40</td></tr>
+<tr><td>Subir el máster a 1080×1920</td><td class="mal">sin medir</td><td class="mal">~$0.50</td></tr>
+<tr><td>Color, grano, mezcla y máster final</td><td>minutos</td><td class="bien">$0</td></tr>
+<tr class="suma"><td>Para dar el anuncio por cerrado</td><td>~1 h 45</td><td>~$2.00</td></tr>
+</table></div>
+
+<div class="caja">
+  <h3>Lo único que no puedo prometerte</h3>
+  <ul>
+    <li><b>La subida a 1080×1920</b> no la he cronometrado nunca. Es el único
+      número de esta página que es una suposición, y por eso está marcado en
+      rojo. La primera vez que la corramos te doy el dato real.</li>
+    <li><b>Cuántos planos vas a querer repetir.</b> Presupuesté dos. Si son
+      cuatro, súmale otros $1 y una hora.</li>
+    <li><b>Un host malo.</b> Sigue pasando: si el log no avanza en 10-12
+      minutos cambio de máquina y se pierden esos minutos. Ocurrió tres veces
+      en tres días.</li>
+  </ul>
+</div>
+
+<div class="destaca"><b>Con $35 no tienes problema de dinero.</b> Son 23 anuncios
+completos como éste, o 140 planos sueltos. El cuello de botella nunca fue el
+saldo: es decidir qué plano no te gusta.</div>
+
+<footer>
+Todos los tiempos de generación salen de cronometrar quince clips reales.
+El predictor está en <span class="mono">tools/plan.py</span>: le dijo 54 minutos
+a la última tanda y tardó 53. Los precios son de las ofertas reales de estos
+días para una RTX PRO 6000 WS de 95 GB, a $1.21/h.
+</footer>
+</div>

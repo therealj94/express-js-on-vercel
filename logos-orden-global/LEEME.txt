@@ -1,0 +1,20 @@
+LOGOS DEL ECOSISTEMA ORDEN GLOBAL
+Sacados del repositorio el 1 de septiembre de 2026.
+
+  orden-global/   la casa: logo, alterno, iconos de app (Android e iOS)
+  veta-wallet/    la billetera: logo e icono
+  pulse2chat/     el chat: logo
+  genesis-id/     la identidad: iconos de app
+  mytokenpay/     los cobros: iconos y pantalla de arranque
+  monedas/        ORIGEN, AUKA, AGKA, ONDK
+
+DOS AVISOS PARA QUIEN HAGA PIEZAS CON ESTO
+
+1. NO HAY VERSIÓN VECTORIAL. Todos son PNG o JPG de mapa de bits. Para vídeo
+   en alta o para impresión grande van a pixelar. Los únicos SVG del
+   repositorio son logos de BANCOS ajenos (Ficohsa, BAC, Atlántida...), que
+   son de ellos y no se usan como si fueran nuestros.
+
+2. LAS MONEDAS SON PEQUEÑAS: entre 2 y 3 KB cada una, pensadas para una lista
+   dentro de la app. En pantalla de vídeo se ven mal. Hacen falta de nuevo, en
+   grande, si van a aparecer.
