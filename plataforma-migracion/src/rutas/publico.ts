@@ -52,7 +52,7 @@ export function rutasPublicas(ctx: Contexto) {
     let origen: unknown = null
     try {
       if (!cacheCirculacion || cacheCirculacion.hasta < Date.now()) {
-        const c = await circulacion(ctx.cadena, d.listas.tesoreria.direcciones)
+        const c = await circulacion(ctx.cadena, d.listas.tesoreria.direcciones, ctx.safe ? [ctx.safe.safe] : [])
         cacheCirculacion = { hasta: Date.now() + 60_000, valor: { bloque: c.bloque, circulante: c.circulante, completa: c.completa } }
       }
       origen = cacheCirculacion.valor
@@ -61,6 +61,11 @@ export function rutasPublicas(ctx: Contexto) {
     res.json({
       activos, origen,
       regalo: { total: regalos.length, enviados: regalos.filter((x) => x.estado === 'enviado').length },
+      // Transparencia: la firma múltiple y lo que ejecutó (sin las firmas).
+      multifirma: ctx.safe ? {
+        safe: ctx.safe.safe,
+        ejecutadas: d.operaciones.filter((o) => o.estado === 'ejecutada').map((o) => ({ titulo: o.titulo, tipo: o.tipo, nonce: o.safeTx.nonce, tx: o.tx, fecha: o.ejecutada })).reverse().slice(0, 50),
+      } : null,
     })
   })
 

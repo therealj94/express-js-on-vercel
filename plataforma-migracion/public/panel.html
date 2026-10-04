@@ -27,6 +27,7 @@
       <button data-p="origen">ORIGEN</button>
       <button data-p="reclamos">Reclamos</button>
       <button data-p="regalo">ORIGEN para gas</button>
+      <button data-p="multifirma">Firma múltiple</button>
       <button data-p="bitacora">Bitácora</button>
       <button data-p="salir" class="sec">Salir</button>
     </nav>
@@ -90,12 +91,29 @@
       <div class="tarjeta">
         <p>A cada usuario de Veta Wallet con menos de 1 ORIGEN se le completa lo que le falta, una sola vez. Preparar lee los saldos, crea la lista y una liberación por el total, que hay que aprobar antes de enviar.</p>
         <button id="prepararRegalo">Preparar</button>
+        <p class="sub oculto" id="regaloMultifirma">Con la firma múltiple, el regalo sale en tandas de hasta 120 usuarios: cada tanda es una operación (un lote de envíos) que firman dos custodios en «Firma múltiple». Al registrar su ejecución, todos los envíos de la tanda quedan enviados.</p>
+        <div id="enviosManual">
         <h2>Registrar envíos</h2>
         <p class="sub">Una línea por envío: «dirección hash». Cada envío se comprueba en la cadena por el monto exacto que le faltaba.</p>
         <textarea id="textoEnvios" placeholder="0xdirección 0xhash"></textarea>
         <button id="registrarEnvios" style="margin-top:8px">Registrar</button>
+        </div>
       </div>
       <div class="tabla-scroll"><table id="tablaRegalo"></table></div>
+    </section>
+
+    <section data-v="multifirma" class="oculto">
+      <div id="estadoSafe" class="tarjeta"></div>
+      <div id="formOperacion" class="tarjeta oculto">
+        <h2 style="margin-top:0">Operación sobre los contratos</h2>
+        <p class="sub">Abrir una migración, fijar el registro, dar o quitar un rol. Pega el archivo que genera <span class="mono">contratos-v2/scripts/lotes-safe.ts</span>, o una lista JSON de llamadas <span class="mono">[{"to":"0x…","value":"0","data":"0x…"}]</span>. Varias llamadas van en un solo lote.</p>
+        <input id="opTitulo" class="largo" placeholder="Título (qué hace y por qué)" style="margin-bottom:8px">
+        <textarea id="opLlamadas" placeholder='{"transactions":[…]}  o  [{"to":"0x…","value":"0","data":"0x…"}]'></textarea>
+        <button id="crearOperacion" style="margin-top:8px">Crear operación</button>
+      </div>
+      <h2>Operaciones</h2>
+      <div class="tabla-scroll"><table id="tablaOps"></table></div>
+      <div id="detalleOp"></div>
     </section>
 
     <section data-v="bitacora" class="oculto">
@@ -120,6 +138,7 @@ const aWei = (txt) => {
 let token = ''
 try { token = sessionStorage.getItem('migracion') || '' } catch {}
 let yo = null
+let multifirmaActiva = false
 
 async function api(ruta, opciones = {}) {
   const r = await fetch('/api/panel' + ruta, { ...opciones, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, ...(opciones.headers || {}) } })
@@ -146,6 +165,7 @@ async function iniciar() {
   try { yo = await api('/yo') } catch { return }
   $('#login').classList.add('oculto'); $('#app').classList.remove('oculto')
   $('#quien').textContent = `${yo.correo} · ${yo.roles.join(', ')}`
+  try { multifirmaActiva = !!(await api('/multifirma')).configurada } catch {}
   const est = await fetch('/api/estado').then((r) => r.json())
   $('#fotoActivo').innerHTML = est.activos.map((a) => `<option value="${esc(a.clave)}">${esc(a.nombre)} (${esc(a.simbolo)})</option>`).join('')
   ver('fotos')
@@ -156,7 +176,7 @@ function ver(p) {
   document.querySelectorAll('nav.pestanas button').forEach((b) => b.classList.toggle('activa', b.dataset.p === p))
   document.querySelectorAll('section[data-v]').forEach((s) => s.classList.toggle('oculto', s.dataset.v !== p))
   aviso('')
-  ;({ fotos: cargarFotos, listas: cargarListas, origen: cargarOrigen, reclamos: cargarReclamos, regalo: cargarRegalo, bitacora: cargarBitacora })[p]?.()
+  ;({ fotos: cargarFotos, listas: cargarListas, origen: cargarOrigen, reclamos: cargarReclamos, regalo: cargarRegalo, multifirma: cargarMultifirma, bitacora: cargarBitacora })[p]?.()
 }
 
 // ─── Fotos ───
@@ -234,16 +254,20 @@ const cargarOrigen = intentar(async () => {
   const o = await api('/origen')
   $('#circulacion').innerHTML = `<b>Supply de ORIGEN (en manos de la gente): ${unidades(o.circulante)}</b> · en tesorería, sin contar: ${unidades(o.enTesoreria)} · bloque ${o.bloque.toLocaleString('es')}
     ${o.completa ? '' : '<div class="aviso">Falta cargar la lista de tesorería: sin ella todo cuenta como circulante.</div>'}
-    <p class="sub" style="margin:6px 0 0">Una liberación necesita ${o.umbral} firmas de firmantes distintos de quien la propone.</p>`
+    <p class="sub" style="margin:6px 0 0">${o.multifirma ? `Cada liberación sale de la firma múltiple: ${o.umbral} custodios la firman con su billetera en «Firma múltiple».` : `Una liberación necesita ${o.umbral} firmas de firmantes distintos de quien la propone.`}</p>`
+  multifirmaActiva = o.multifirma
   $('#tablaLib').innerHTML = '<tr><th>Tipo</th><th class="num">Monto</th><th>Destino</th><th>Motivo / respaldo</th><th>Estado</th><th></th></tr>' +
     o.liberaciones.map((l) => `<tr><td>${esc(l.tipo)}</td><td class="num">${unidades(l.monto)}</td><td class="mono">${esc(l.destino || 'varios')}</td>
       <td>${esc(l.motivo)}<div class="meta">${esc(l.respaldo)}</div><div class="meta">propuso ${esc(l.autor)}</div></td>
       <td><span class="chip ${ESTADO_LIB[l.estado]}">${esc(l.estado)}</span><div class="meta">${l.aprobaciones.map((x) => esc(x.firmante)).join(', ')}</div>${l.tx ? `<div class="mono">${esc(l.tx)}</div>` : ''}</td>
-      <td>${l.estado === 'propuesta' && yo.roles.includes('firmante') ? `<button data-aprobar="${esc(l.id)}">Aprobar</button> <button class="sec" data-rechazar="${esc(l.id)}">Rechazar</button>` : ''}
-        ${l.estado === 'aprobada' && l.tipo === 'liberacion' && yo.roles.includes('operador') ? `<button data-ejecutar="${esc(l.id)}">Registrar ejecución</button>` : ''}</td></tr>`).join('')
+      <td>${o.multifirma
+        ? (['propuesta', 'aprobada'].includes(l.estado) ? `<button class="sec" data-irfirma="1">Ver en firma múltiple</button>${l.estado === 'propuesta' && yo.roles.includes('firmante') ? ` <button class="sec" data-rechazar="${esc(l.id)}">Rechazar</button>` : ''}` : '')
+        : `${l.estado === 'propuesta' && yo.roles.includes('firmante') ? `<button data-aprobar="${esc(l.id)}">Aprobar</button> <button class="sec" data-rechazar="${esc(l.id)}">Rechazar</button>` : ''}
+        ${l.estado === 'aprobada' && l.tipo === 'liberacion' && yo.roles.includes('operador') ? `<button data-ejecutar="${esc(l.id)}">Registrar ejecución</button>` : ''}`}</td></tr>`).join('')
 })
 $('#tablaLib').addEventListener('click', intentar(async (e) => {
   const b = e.target.closest('button'); if (!b) return
+  if (b.dataset.irfirma) return ver('multifirma')
   if (b.dataset.aprobar) await api(`/liberaciones/${b.dataset.aprobar}/aprobar`, { method: 'POST' })
   if (b.dataset.rechazar) await api(`/liberaciones/${b.dataset.rechazar}/rechazar`, { method: 'POST', body: JSON.stringify({ motivo: prompt('Motivo del rechazo') || '' }) })
   if (b.dataset.ejecutar) {
@@ -256,7 +280,7 @@ $('#tablaLib').addEventListener('click', intentar(async (e) => {
 $('#formLib').addEventListener('submit', intentar(async (e) => {
   e.preventDefault()
   await api('/liberaciones', { method: 'POST', body: JSON.stringify({ monto: aWei($('#libMonto').value), destino: $('#libDestino').value.trim(), motivo: $('#libMotivo').value, respaldo: $('#libRespaldo').value }) })
-  e.target.reset(); aviso('Liberación propuesta. Falta que la aprueben los firmantes.'); cargarOrigen()
+  e.target.reset(); aviso(multifirmaActiva ? 'Liberación propuesta: su operación espera las firmas de los custodios en «Firma múltiple».' : 'Liberación propuesta. Falta que la aprueben los firmantes.'); cargarOrigen()
 }))
 
 // ─── Reclamos ───
@@ -277,13 +301,18 @@ $('#tablaReclamos').addEventListener('click', intentar(async (e) => {
 
 // ─── Regalo ───
 const cargarRegalo = intentar(async () => {
+  $('#enviosManual').classList.toggle('oculto', multifirmaActiva)
+  $('#regaloMultifirma').classList.toggle('oculto', !multifirmaActiva)
   const r = await api('/regalo')
   $('#tablaRegalo').innerHTML = `<tr><th>Dirección (${r.length})</th><th class="num">Monto</th><th>Estado</th><th>Transacción</th></tr>` +
     r.map((x) => `<tr><td class="mono">${esc(x.direccion)}</td><td class="num">${unidades(x.monto)}</td><td><span class="chip ${x.estado === 'enviado' ? 'bien' : 'aviso'}">${esc(x.estado)}</span></td><td class="mono">${esc(x.tx || '')}</td></tr>`).join('')
 })
 $('#prepararRegalo').addEventListener('click', intentar(async () => {
   const r = await api('/regalo/preparar', { method: 'POST' })
-  aviso(r.nuevos ? `Preparado para ${r.nuevos} usuarios (total ${unidades(r.liberacion.monto)} ORIGEN). Ahora hay que aprobar la liberación en ORIGEN.` : 'Ningún usuario necesita que se le complete ORIGEN.'); cargarRegalo()
+  const total = (r.liberaciones || []).reduce((s, l) => s + BigInt(l.monto), 0n)
+  aviso(!r.nuevos ? 'Ningún usuario necesita que se le complete ORIGEN.'
+    : r.operaciones?.length ? `Preparado para ${r.nuevos} usuarios (total ${unidades(total)} ORIGEN) en ${r.operaciones.length} tandas. Cada tanda es una operación de la firma múltiple: un par de firmas y sale todo el lote.`
+    : `Preparado para ${r.nuevos} usuarios (total ${unidades(total)} ORIGEN). Ahora hay que aprobar la liberación en ORIGEN.`); cargarRegalo()
 }))
 $('#registrarEnvios').addEventListener('click', intentar(async () => {
   const envios = $('#textoEnvios').value.split('\n').map((l) => l.trim().split(/\s+/)).filter((p) => p.length === 2).map(([direccion, tx]) => ({ direccion, tx }))
@@ -291,6 +320,118 @@ $('#registrarEnvios').addEventListener('click', intentar(async () => {
   const malos = r.filter((x) => !x.ok)
   aviso(`${r.length - malos.length} envíos comprobados.${malos.length ? ' Rechazados: ' + malos.map((x) => `${x.direccion} (${x.error})`).join('; ') : ''}`, malos.length > 0)
   cargarRegalo()
+}))
+
+// ─── Firma múltiple ───
+const ESTADO_OP = { 'en-firma': 'aviso', lista: '', ejecutada: 'bien', anulada: 'mal', caducada: 'mal' }
+const corta = (d) => d ? d.slice(0, 8) + '…' + d.slice(-6) : '—'
+const cargarMultifirma = intentar(async () => {
+  const m = await api('/multifirma')
+  if (!m.configurada) {
+    $('#estadoSafe').innerHTML = '<b>La firma múltiple no está configurada.</b><p class="sub">Cuando la Junta tenga sus tres custodios, se despliega la Safe con <span class="mono">contratos-v2/scripts/desplegar-multifirma.ts</span> y se pone <span class="mono">SAFE_DIRECCION</span> y <span class="mono">SAFE_MULTISEND</span> en Render. Hasta entonces, las liberaciones se aprueban en ORIGEN.</p>'
+    $('#tablaOps').innerHTML = ''; $('#formOperacion').classList.add('oculto'); return
+  }
+  $('#estadoSafe').innerHTML = `<b>Safe</b> <span class="mono">${esc(m.safe)}</span> · ${m.umbral} de ${m.duenos.length} · próximo nonce ${m.nonce} · tiene ${unidades(m.saldo)} ORIGEN
+    <div class="meta">Custodios: ${m.duenos.map((d) => `<span class="mono">${esc(d)}</span>`).join(' · ')}</div>`
+  $('#formOperacion').classList.toggle('oculto', !yo.roles.includes('operador'))
+  const ops = await api('/operaciones')
+  $('#tablaOps').innerHTML = '<tr><th>Nonce</th><th>Operación</th><th>Firmas</th><th>Estado</th><th></th></tr>' +
+    ops.map((o) => `<tr><td>${o.safeTx.nonce}</td><td>${esc(o.titulo)}<div class="meta">${esc(o.tipo)} · ${o.totalLlamadas} llamada${o.totalLlamadas === 1 ? '' : 's'} · propuso ${esc(o.autor)}</div></td>
+      <td>${o.firmas.length} de ${o.umbral}<div class="meta">${o.firmas.map((f) => `${esc(f.operador)} <span class="mono">${esc(corta(f.firmante))}</span>`).join('<br>')}</div></td>
+      <td><span class="chip ${ESTADO_OP[o.estado]}">${esc(o.estado)}</span>${o.tx ? `<div class="mono">${esc(corta(o.tx))}</div>` : ''}</td>
+      <td><button class="sec" data-ver="${esc(o.id)}">Ver</button></td></tr>`).join('')
+})
+
+async function billetera(chainId) {
+  if (!window.ethereum) throw new Error('Este navegador no tiene billetera (MetaMask). Usa «Descargar para firmar» y «Pegar firma».')
+  const [cuenta] = await ethereum.request({ method: 'eth_requestAccounts' })
+  const hex = '0x' + Number(chainId).toString(16)
+  if (parseInt(await ethereum.request({ method: 'eth_chainId' }), 16) !== Number(chainId)) {
+    try { await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hex }] }) } catch (e) {
+      if (e.code !== 4902) throw e
+      await ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: hex, chainName: 'Orden Global', nativeCurrency: { name: 'ORIGEN', symbol: 'ORIGEN', decimals: 18 }, rpcUrls: ['https://rpc.ordenglobal-rpc.com/'] }] })
+    }
+  }
+  return cuenta
+}
+
+async function verOperacion(id) {
+  const o = await api('/operaciones/' + id)
+  const m = o.tipado.message
+  const firmante = yo.roles.includes('firmante'), operador = yo.roles.includes('operador')
+  const pendiente = o.estado === 'en-firma' || o.estado === 'lista'
+  const puedoFirmar = firmante && o.estado === 'en-firma' && o.autor !== yo.correo && !o.firmas.some((f) => f.operador === yo.correo)
+  $('#detalleOp').innerHTML = `<div class="tarjeta"><h2 style="margin-top:0">${esc(o.titulo)}</h2>
+    <p>Nonce <b>${m.nonce}</b> · ${m.operation == 1 ? 'lote (MultiSendCallOnly)' : 'llamada directa'} · hash <span class="mono">${esc(o.hash)}</span></p>
+    <div class="tabla-scroll"><table><tr><th>#</th><th>Destino</th><th class="num">ORIGEN</th><th>Datos</th></tr>
+      ${o.llamadas.map((l, i) => `<tr><td>${i + 1}</td><td class="mono">${esc(l.to)}</td><td class="num">${unidades(l.value)}</td><td class="mono">${esc(l.data.length > 74 ? l.data.slice(0, 74) + '…' : l.data)}</td></tr>`).join('')}</table></div>
+    ${firmante && o.estado === 'en-firma' && !puedoFirmar ? `<p class="sub">${o.autor === yo.correo ? 'La propusiste tú: la firman otros custodios.' : 'Ya la firmaste: falta la firma de otro custodio.'}</p>` : ''}
+    ${o.estado === 'caducada' ? '<p class="sub">Su nonce ya se usó en la Safe. Si fue esta operación la que se ejecutó, registra su transacción; si no, ya no se puede ejecutar.</p>' : ''}
+    ${o.anulacion ? `<p class="error">Anulada por ${esc(o.anulacion.actor)}: ${esc(o.anulacion.motivo)}</p>` : ''}
+    <div class="fila" style="margin-top:10px">
+      ${puedoFirmar ? `<button data-firmar="${esc(o.id)}">Firmar con mi billetera</button><button class="sec" data-pegar="${esc(o.id)}">Pegar firma</button>` : ''}
+      ${pendiente ? `<button class="sec" data-bajar="${esc(o.id)}">Descargar para firmar</button>` : ''}
+      ${o.ejecutar && (firmante || operador) ? `<button data-ejecutar="${esc(o.id)}">Ejecutar con mi billetera</button><button class="sec" data-registrar="${esc(o.id)}">Registrar ejecución</button>` : ''}
+      ${o.estado === 'caducada' && o.firmas.length >= o.umbral && (firmante || operador) ? `<button class="sec" data-registrar="${esc(o.id)}">Registrar ejecución</button>` : ''}
+      ${pendiente && firmante ? `<button class="sec" data-anular="${esc(o.id)}">Anular</button>` : ''}
+    </div>
+    ${o.ejecutar ? `<p class="sub">Lista: cualquiera con ORIGEN para el gas la puede mandar. Destino <span class="mono">${esc(o.ejecutar.to)}</span>, datos en «Descargar para firmar».</p>` : ''}</div>`
+  return o
+}
+
+$('#tablaOps').addEventListener('click', intentar(async (e) => {
+  const b = e.target.closest('button'); if (b?.dataset.ver) await verOperacion(b.dataset.ver)
+}))
+
+$('#detalleOp').addEventListener('click', intentar(async (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  const id = b.dataset.firmar || b.dataset.pegar || b.dataset.bajar || b.dataset.ejecutar || b.dataset.registrar || b.dataset.anular
+  const o = await api('/operaciones/' + id)
+  if (b.dataset.firmar) {
+    const cuenta = await billetera(o.chainId)
+    const datos = { ...o.tipado, types: { EIP712Domain: [{ name: 'chainId', type: 'uint256' }, { name: 'verifyingContract', type: 'address' }], ...o.tipado.types } }
+    const firma = await ethereum.request({ method: 'eth_signTypedData_v4', params: [cuenta, JSON.stringify(datos)] })
+    await api(`/operaciones/${id}/firmar`, { method: 'POST', body: JSON.stringify({ firma }) })
+    aviso('Firma registrada.')
+  } else if (b.dataset.pegar) {
+    const firma = prompt('Firma (0x…, 65 bytes) que dio scripts/firmar.ts o la billetera'); if (!firma) return
+    await api(`/operaciones/${id}/firmar`, { method: 'POST', body: JSON.stringify({ firma: firma.trim() }) })
+    aviso('Firma registrada.')
+  } else if (b.dataset.bajar) {
+    const url = URL.createObjectURL(new Blob([JSON.stringify({ titulo: o.titulo, hash: o.hash, tipado: o.tipado, ejecutar: o.ejecutar }, null, 2)], { type: 'application/json' }))
+    const a = document.createElement('a'); a.href = url; a.download = `operacion-nonce-${o.safeTx.nonce}.json`; a.click(); URL.revokeObjectURL(url)
+    return
+  } else if (b.dataset.ejecutar) {
+    const cuenta = await billetera(o.chainId)
+    const tx = await ethereum.request({ method: 'eth_sendTransaction', params: [{ from: cuenta, to: o.ejecutar.to, data: o.ejecutar.data }] })
+    aviso('Transacción enviada: esperando que entre en un bloque…')
+    let ultimo
+    for (let i = 0; i < 20; i++) {
+      await new Promise((ok) => setTimeout(ok, 3000))
+      try { await api(`/operaciones/${id}/ejecutada`, { method: 'POST', body: JSON.stringify({ tx }) }); ultimo = null; break } catch (err) { ultimo = err; if (!/no está en la cadena/.test(err.message)) break }
+    }
+    if (ultimo) throw new Error(`${ultimo.message}. Transacción ${tx}: cuando entre, regístrala con «Registrar ejecución».`)
+    aviso('Ejecutada y comprobada en la cadena.')
+  } else if (b.dataset.registrar) {
+    const tx = prompt('Hash de la transacción que ejecutó la operación'); if (!tx) return
+    await api(`/operaciones/${id}/ejecutada`, { method: 'POST', body: JSON.stringify({ tx: tx.trim() }) })
+    aviso('Ejecución comprobada en la cadena.')
+  } else if (b.dataset.anular) {
+    const motivo = prompt('Motivo de la anulación'); if (!motivo) return
+    const r = await api(`/operaciones/${id}/anular`, { method: 'POST', body: JSON.stringify({ motivo }) })
+    aviso(r.reemplazo ? `Anulada. Como ya tenía firmas, se creó la operación vacía con el mismo nonce: hay que firmarla y ejecutarla para que la anulada no pueda ejecutarse nunca.` : 'Anulada.')
+  }
+  await cargarMultifirma(); await verOperacion(id)
+}))
+
+$('#crearOperacion').addEventListener('click', intentar(async () => {
+  const txt = $('#opLlamadas').value.trim()
+  let j; try { j = JSON.parse(txt) } catch { throw new Error('No es JSON válido') }
+  const cuerpo = Array.isArray(j) ? { titulo: $('#opTitulo').value, llamadas: j } : { titulo: $('#opTitulo').value, archivo: j }
+  const o = await api('/operaciones', { method: 'POST', body: JSON.stringify(cuerpo) })
+  $('#opTitulo').value = ''; $('#opLlamadas').value = ''
+  aviso(`Operación creada con el nonce ${o.safeTx.nonce}. Falta que la firmen los custodios.`)
+  await cargarMultifirma(); await verOperacion(o.id)
 }))
 
 // ─── Bitácora ───

@@ -53,6 +53,8 @@ async function estado() {
     if (d.origen?.circulante) {
       $('#origen').innerHTML = `<p class="sub" style="margin-top:14px">Supply de ORIGEN (lo que tiene la gente): <b>${unidades(d.origen.circulante)}</b>
         ${d.origen.completa ? '' : ' (provisional: falta cargar la tesorería)'} · Completar a 1 ORIGEN: ${d.regalo.enviados} de ${d.regalo.total} enviados</p>`
+        + (d.multifirma ? `<p class="sub">Todo lo que sale de la tesorería y toda acción sobre los contratos v2 la firman dos de los tres custodios de la firma múltiple <span class="mono">${esc(d.multifirma.safe)}</span>.
+          ${d.multifirma.ejecutadas.length ? `Ejecutadas: ${d.multifirma.ejecutadas.slice(0, 5).map((o) => `${esc(o.titulo)} (<span class="mono">${esc(o.tx.slice(0, 10))}…</span>)`).join(' · ')}` : 'Todavía no ejecutó ninguna operación.'}</p>` : '')
     }
   } catch { $('#activos').innerHTML = '<div class="error">No se pudo cargar el estado.</div>' }
 }

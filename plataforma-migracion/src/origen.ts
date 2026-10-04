@@ -20,7 +20,12 @@ import { nuevoId, registrar } from './almacen.js'
 
 export const UN_ORIGEN = 10n ** 18n
 
-export async function circulacion(cadena: Cadena, tesoreria: string[]) {
+/**
+ * `tesoreria`: la lista cargada; `ademas`: otras direcciones que también son tesorería (la Safe).
+ * La cuenta solo está completa con la lista cargada: la Safe sola no es toda la tesorería.
+ */
+export async function circulacion(cadena: Cadena, lista: string[], ademas: string[] = []) {
+  const tesoreria = [...new Set([...lista, ...ademas.map((d) => d.toLowerCase())])]
   const bloque = await cadena.ultimoBloque()
   const saldos = tesoreria.length ? await cadena.saldos(null, tesoreria, bloque) : []
   const enTesoreria = saldos.reduce((s, v) => s + v, 0n)
@@ -31,7 +36,7 @@ export async function circulacion(cadena: Cadena, tesoreria: string[]) {
     circulante: (SUPPLY_ORIGEN - enTesoreria).toString(),
     tesoreria: tesoreria.map((d, i) => ({ direccion: d, saldo: saldos[i].toString() })),
     /** Sin direcciones de tesorería cargadas, todo cuenta como circulante: se avisa. */
-    completa: tesoreria.length > 0,
+    completa: lista.length > 0,
   }
 }
 
@@ -107,21 +112,33 @@ export async function ejecutar(a: Almacen, cadena: Cadena, id: string, hash: str
  * que tenga menos de 1 ORIGEN y no lo haya recibido ya, lo que le falta para
  * llegar a 1. Crea una liberación por el total, que hay que aprobar antes de enviar.
  */
-export async function prepararRegalo(a: Almacen, cadena: Cadena, autor: string): Promise<{ liberacion: Liberacion | null; nuevos: number }> {
-  const excluidas = new Set([...a.datos.listas.tesoreria.direcciones, ...a.datos.listas.sistema.direcciones])
+export async function prepararRegalo(a: Almacen, cadena: Cadena, autor: string, o: { excluir?: string[]; porTanda?: number } = {}): Promise<{ liberacion: Liberacion | null; liberaciones: Liberacion[]; nuevos: number }> {
+  const excluidas = new Set([...a.datos.listas.tesoreria.direcciones, ...a.datos.listas.sistema.direcciones, ...(o.excluir || []).map((d) => d.toLowerCase())])
+  // Quien quedó en una tanda rechazada (anulada) vuelve a entrar en el siguiente «Preparar».
+  const rechazadas = new Set(a.datos.liberaciones.filter((l) => l.estado === 'rechazada').map((l) => l.id))
+  a.datos.regalos = a.datos.regalos.filter((r) => !(rechazadas.has(r.liberacion) && r.estado === 'pendiente'))
   const ya = new Set(a.datos.regalos.map((r) => r.direccion))
   const destinos = a.datos.listas.usuarios.direcciones.filter((d) => !excluidas.has(d) && !ya.has(d)).sort()
   const saldos = destinos.length ? await cadena.saldos(null, destinos, await cadena.ultimoBloque()) : []
   const faltan = destinos.map((d, i) => ({ direccion: d, monto: UN_ORIGEN - saldos[i] })).filter((x) => x.monto > 0n)
-  if (!faltan.length) return { liberacion: null, nuevos: 0 }
-  const total = faltan.reduce((s, x) => s + x.monto, 0n)
-  const l = proponer(a, autor, {
-    tipo: 'regalo-gas', monto: total.toString(), destino: '',
-    motivo: `Regalo de gas: completar hasta 1 ORIGEN a ${faltan.length} usuarios de Veta Wallet`,
-    respaldo: 'Programa de regalo de gas de la migración v2',
-  })
-  faltan.forEach((x) => a.datos.regalos.push({ direccion: x.direccion, monto: x.monto.toString(), estado: 'pendiente', liberacion: l.id }))
-  return { liberacion: l, nuevos: faltan.length }
+  if (!faltan.length) return { liberacion: null, liberaciones: [], nuevos: 0 }
+  // Con la firma múltiple, cada tanda es una transacción de la Safe (un lote de envíos que cabe en un
+  // bloque): las tandas salen parejas. Sin ella, una sola liberación por todo.
+  const tandas = o.porTanda ? Math.ceil(faltan.length / o.porTanda) : 1
+  const tamano = Math.ceil(faltan.length / tandas)
+  const liberaciones: Liberacion[] = []
+  for (let t = 0; t < tandas; t++) {
+    const grupo = faltan.slice(t * tamano, (t + 1) * tamano)
+    const total = grupo.reduce((s, x) => s + x.monto, 0n)
+    const l = proponer(a, autor, {
+      tipo: 'regalo-gas', monto: total.toString(), destino: '',
+      motivo: `Regalo de gas: completar hasta 1 ORIGEN a ${grupo.length} usuarios de Veta Wallet${tandas > 1 ? ` (tanda ${t + 1} de ${tandas})` : ''}`,
+      respaldo: 'Programa de regalo de gas de la migración v2',
+    })
+    grupo.forEach((x) => a.datos.regalos.push({ direccion: x.direccion, monto: x.monto.toString(), estado: 'pendiente', liberacion: l.id }))
+    liberaciones.push(l)
+  }
+  return { liberacion: liberaciones[0], liberaciones, nuevos: faltan.length }
 }
 
 export async function registrarEnvioRegalo(a: Almacen, cadena: Cadena, direccion: string, hash: string, actor: string) {
