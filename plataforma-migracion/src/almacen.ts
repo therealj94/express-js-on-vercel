@@ -113,6 +113,39 @@ export interface Regalo {
   fecha?: string
 }
 
+export interface FirmaSafe {
+  /** La billetera del custodio que firmó (recuperada de la firma). */
+  firmante: string
+  /** El operador de la plataforma que entregó la firma. */
+  operador: string
+  firma: string
+  fecha: string
+}
+
+/** Una transacción de la firma múltiple (operaciones.ts). */
+export interface Operacion {
+  id: string
+  tipo: 'liberacion' | 'regalo-gas' | 'contratos' | 'anulacion'
+  titulo: string
+  liberacion?: string
+  llamadas: { to: string; value: string; data: string }[]
+  safeTx: { to: string; value: string; data: string; operation: 0 | 1; nonce: number }
+  /** Hash EIP-712 de la transacción: lo que firman los custodios. */
+  hash: string
+  chainId: number
+  safe: string
+  firmas: FirmaSafe[]
+  umbral: number
+  estado: 'en-firma' | 'lista' | 'ejecutada' | 'anulada' | 'caducada'
+  autor: string
+  creada: string
+  tx?: string
+  ejecutada?: string
+  anulacion?: { actor: string; motivo: string; fecha: string }
+  /** En una anulación: la operación que deja sin efecto. */
+  anula?: string
+}
+
 export interface Evento { fecha: string; actor: string; accion: string; detalle: Record<string, unknown> }
 
 export interface Datos {
@@ -122,6 +155,7 @@ export interface Datos {
   reclamos: Reclamo[]
   liberaciones: Liberacion[]
   regalos: Regalo[]
+  operaciones: Operacion[]
   bitacora: Evento[]
 }
 
@@ -129,7 +163,7 @@ export function vacio(): Datos {
   const lista = () => ({ direcciones: [] as string[], actualizada: null, autor: null })
   return {
     listas: { usuarios: lista(), tesoreria: lista(), sistema: lista(), inventario: lista() },
-    fotos: [], conciliaciones: [], reclamos: [], liberaciones: [], regalos: [], bitacora: [],
+    fotos: [], conciliaciones: [], reclamos: [], liberaciones: [], regalos: [], operaciones: [], bitacora: [],
   }
 }
 

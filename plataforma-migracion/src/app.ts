@@ -8,6 +8,7 @@ import type { Cadena } from './cadena.js'
 import type { Arbol } from './merkle.js'
 import { rutasPublicas } from './rutas/publico.js'
 import { rutasPanel } from './rutas/panel.js'
+import { configSafe, type ConfigSafe } from './operaciones.js'
 
 const PUBLICO = join(dirname(fileURLToPath(import.meta.url)), '..', 'public')
 
@@ -15,8 +16,10 @@ export interface Contexto {
   almacen: Almacen
   cadena: Cadena
   entorno: NodeJS.ProcessEnv
-  /** Firmas necesarias para aprobar una liberación de ORIGEN (dos de los tres custodios). */
+  /** Firmas necesarias para aprobar una liberación de ORIGEN sin firma múltiple configurada. */
   umbral: number
+  /** La firma múltiple (SAFE_DIRECCION): con ella, aprobar es firmar la transacción de la Safe y el umbral es el de la Safe. */
+  safe: ConfigSafe | null
   /** Árboles de Merkle ya construidos, por foto. */
   arbol(fotoId: string, construir: () => Arbol): Arbol
   /** Barridos de la cadena ya hechos, por bloque: varias fotos del mismo bloque no lo repiten. */
@@ -29,6 +32,7 @@ export function crearContexto(almacen: Almacen, cadena: Cadena, entorno = proces
   return {
     almacen, cadena, entorno,
     umbral: Math.max(1, Number(entorno.MIGRACION_UMBRAL) || 2),
+    safe: configSafe(entorno),
     arbol(id, construir) {
       if (!arboles.has(id)) arboles.set(id, construir())
       return arboles.get(id)!

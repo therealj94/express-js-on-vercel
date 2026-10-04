@@ -81,9 +81,6 @@ export function aplicarPolitica(a: Activo, direccion: string, saldo: bigint): { 
   return { acunar: saldo }
 }
 
-/** ORIGEN tiene supply fijo declarado: un billón de unidades (SFSP §10.1). */
-export const SUPPLY_ORIGEN = 10n ** 12n * 10n ** 18n
-
 export function activo(clave: string): Activo | undefined {
   return CATALOGO.find((a) => a.clave === clave.toUpperCase())
 }

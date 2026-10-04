@@ -12,6 +12,8 @@ import { aAcunar, barrido, candidatas, conciliar, entradasAcunacion, puedePublic
 import { construir, prueba } from '../merkle.js'
 import { ErrorRegla, aprobar, circulacion, ejecutar, prepararRegalo, proponer, rechazar, registrarEnvioRegalo } from '../origen.js'
 import { entrar, exige } from '../sesion.js'
+import { ErrorFirma, llamada, llamadasDeArchivo } from '../multifirma.js'
+import * as OP from '../operaciones.js'
 import { nuevoId, registrar, type Foto, type TipoLista } from '../almacen.js'
 
 const TIPOS: TipoLista[] = ['usuarios', 'tesoreria', 'sistema', 'inventario']
@@ -22,8 +24,12 @@ export function rutasPanel(ctx: Contexto) {
   const intentos = new Map<string, { n: number; hasta: number }>()
 
   const quien = (req: Request) => req.operador!.correo
+  const safe = ctx.safe
+  // La Safe también es tesorería: lo que tiene no circula y no recibe el regalo.
+  const sinSafe = (res: Response) => (res.status(409).json({ error: 'La firma múltiple no está configurada (SAFE_DIRECCION)' }), null)
+  const conSafe = (res: Response, que: string) => (res.status(409).json({ error: `Con la firma múltiple activa, ${que}` }), null)
   const fallo = (res: Response, e: unknown) =>
-    e instanceof ErrorRegla ? res.status(409).json({ error: e.message })
+    e instanceof ErrorRegla || e instanceof ErrorFirma ? res.status(409).json({ error: e.message })
       : res.status(502).json({ error: String((e as any)?.message || e).slice(0, 300) })
 
   r.post('/entrar', (req, res) => {
@@ -154,19 +160,31 @@ export function rutasPanel(ctx: Contexto) {
   // ─── ORIGEN ──────────────────────────────────────────────────────────────
   r.get('/origen', exige(), async (_req, res) => {
     try {
-      res.json({ ...(await circulacion(ctx.cadena, a.datos.listas.tesoreria.direcciones)), umbral: ctx.umbral, liberaciones: [...a.datos.liberaciones].reverse() })
+      const umbral = safe ? (await OP.estado(ctx.cadena, safe)).umbral : ctx.umbral
+      const noGente = [...a.datos.listas.tesoreria.direcciones, ...a.datos.listas.sistema.direcciones, ...(safe ? [safe.safe] : [])]
+      res.json({ ...(await circulacion(ctx.cadena, a.datos.listas.usuarios.direcciones, noGente)), umbral, multifirma: !!safe, liberaciones: [...a.datos.liberaciones].reverse() })
     } catch (e) { fallo(res, e) }
   })
 
   r.post('/liberaciones', exige('operador'), async (req, res) => {
     try {
       const l = proponer(a, quien(req), req.body || {})
+      // Con la firma múltiple, la liberación nace con su transacción de la Safe para firmar. Si no se
+      // puede crear (la cadena no responde), la liberación tampoco queda: sin operación quedaría trabada.
+      let op = null
+      try {
+        op = safe && l.tipo === 'liberacion' ? await OP.crearDeLiberacion(a, ctx.cadena, safe, l) : null
+      } catch (e) {
+        a.datos.liberaciones = a.datos.liberaciones.filter((x) => x.id !== l.id)
+        throw e
+      }
       await a.guardar()
-      res.status(201).json(l)
+      res.status(201).json({ ...l, operacion: op?.id ?? null })
     } catch (e) { fallo(res, e) }
   })
 
   r.post('/liberaciones/:id/aprobar', exige('firmante'), async (req, res) => {
+    if (safe) return conSafe(res, 'se aprueba firmando su operación con la billetera de custodio (Firma múltiple)')
     try {
       const l = aprobar(a, req.params.id, quien(req), ctx.umbral)
       await a.guardar()
@@ -176,6 +194,13 @@ export function rutasPanel(ctx: Contexto) {
 
   r.post('/liberaciones/:id/rechazar', exige('firmante'), async (req, res) => {
     try {
+      // Con la firma múltiple, rechazar es anular su operación (y, si ya tenía firmas, reemplazarla).
+      const op = safe && a.datos.operaciones.find((o) => o.liberacion === req.params.id && (o.estado === 'en-firma' || o.estado === 'lista'))
+      if (op) {
+        const r2 = await OP.anular(a, ctx.cadena, safe!, op.id, quien(req), String(req.body?.motivo || ''))
+        await a.guardar()
+        return res.json({ ...a.datos.liberaciones.find((l) => l.id === req.params.id), reemplazo: r2.reemplazo.id })
+      }
       const l = rechazar(a, req.params.id, quien(req), String(req.body?.motivo || ''))
       await a.guardar()
       res.json(l)
@@ -183,6 +208,7 @@ export function rutasPanel(ctx: Contexto) {
   })
 
   r.post('/liberaciones/:id/ejecutar', exige('operador'), async (req, res) => {
+    if (safe) return conSafe(res, 'la ejecución se registra en su operación (Firma múltiple)')
     try {
       const l = await ejecutar(a, ctx.cadena, req.params.id, String(req.body?.tx || ''), quien(req))
       await a.guardar()
@@ -195,9 +221,21 @@ export function rutasPanel(ctx: Contexto) {
 
   r.post('/regalo/preparar', exige('operador'), async (req, res) => {
     try {
-      const p = await prepararRegalo(a, ctx.cadena, quien(req))
+      const p = await prepararRegalo(a, ctx.cadena, quien(req), safe ? { excluir: [safe.safe], porTanda: OP.POR_TANDA } : {})
+      // Con la firma múltiple, cada tanda es una transacción de la Safe: un solo par de firmas por tanda.
+      const operaciones = []
+      try {
+        if (safe) for (const l of p.liberaciones) operaciones.push((await OP.crearDeRegalo(a, ctx.cadena, safe, l)).id)
+      } catch (e) {
+        // Las tandas que no alcanzaron a tener operación se deshacen, con sus envíos: el próximo «Preparar» las rehace.
+        const sinOp = new Set(p.liberaciones.filter((l) => !a.datos.operaciones.some((o) => o.liberacion === l.id)).map((l) => l.id))
+        a.datos.liberaciones = a.datos.liberaciones.filter((l) => !sinOp.has(l.id))
+        a.datos.regalos = a.datos.regalos.filter((r) => !sinOp.has(r.liberacion))
+        await a.guardar()
+        throw e
+      }
       await a.guardar()
-      res.json(p)
+      res.json({ ...p, operaciones })
     } catch (e) { fallo(res, e) }
   })
 
@@ -217,6 +255,7 @@ export function rutasPanel(ctx: Contexto) {
   r.post('/reclamos/:id/rechazar', exige('operador'), revisar('rechazado'))
 
   r.post('/regalo/envios', exige('operador'), async (req, res) => {
+    if (safe) return conSafe(res, 'el regalo sale por tandas: se registra la ejecución de cada operación')
     const envios: { direccion: string; tx: string }[] = Array.isArray(req.body?.envios) ? req.body.envios : []
     const resultado = []
     for (const e of envios) {
@@ -229,6 +268,68 @@ export function rutasPanel(ctx: Contexto) {
     }
     await a.guardar()
     res.json(resultado)
+  })
+
+  // ─── Firma múltiple ──────────────────────────────────────────────────────
+  r.get('/multifirma', exige(), async (_req, res) => {
+    if (!safe) return res.json({ configurada: false })
+    try {
+      const [e, saldo] = await Promise.all([OP.estado(ctx.cadena, safe), ctx.cadena.llamar('eth_getBalance', [safe.safe, 'latest'])])
+      res.json({ configurada: true, safe: safe.safe, multisend: safe.multisend ?? null, ...e, saldo: BigInt(saldo).toString() })
+    } catch (e) { fallo(res, e) }
+  })
+
+  r.get('/operaciones', exige(), async (_req, res) => {
+    if (!safe) return sinSafe(res)
+    try {
+      if (await OP.refrescar(a, ctx.cadena, safe)) await a.guardar()
+      res.json([...a.datos.operaciones].reverse().map((o) => ({ ...o, llamadas: undefined, totalLlamadas: o.llamadas.length })))
+    } catch (e) { fallo(res, e) }
+  })
+
+  r.get('/operaciones/:id', exige(), (req, res) => {
+    const o = a.datos.operaciones.find((x) => x.id === req.params.id)
+    if (!o) return res.status(404).json({ error: 'No existe esa operación' })
+    res.json(OP.detalle(o))
+  })
+
+  /** Llamadas a los contratos (abrir una migración, fijar el registro, roles), o un archivo de lotes-safe.ts. */
+  r.post('/operaciones', exige('operador'), async (req, res) => {
+    if (!safe) return sinSafe(res)
+    try {
+      const b = req.body || {}
+      const llamadas = b.archivo ? llamadasDeArchivo(b.archivo) : (Array.isArray(b.llamadas) ? b.llamadas : []).map((l: any) => llamada(l))
+      const o = await OP.crear(a, ctx.cadena, safe, quien(req), { tipo: 'contratos', titulo: String(b.titulo || b.archivo?.meta?.name || ''), llamadas })
+      await a.guardar()
+      res.status(201).json(OP.detalle(o))
+    } catch (e) { fallo(res, e) }
+  })
+
+  r.post('/operaciones/:id/firmar', exige('firmante'), async (req, res) => {
+    if (!safe) return sinSafe(res)
+    try {
+      const o = await OP.firmar(a, ctx.cadena, safe, req.params.id, quien(req), String(req.body?.firma || ''))
+      await a.guardar()
+      res.json(OP.detalle(o))
+    } catch (e) { await a.guardar(); fallo(res, e) }
+  })
+
+  r.post('/operaciones/:id/ejecutada', exige('operador', 'firmante'), async (req, res) => {
+    if (!safe) return sinSafe(res)
+    try {
+      const o = await OP.ejecutada(a, ctx.cadena, safe, req.params.id, String(req.body?.tx || ''), quien(req))
+      await a.guardar()
+      res.json(OP.detalle(o))
+    } catch (e) { fallo(res, e) }
+  })
+
+  r.post('/operaciones/:id/anular', exige('firmante'), async (req, res) => {
+    if (!safe) return sinSafe(res)
+    try {
+      const r2 = await OP.anular(a, ctx.cadena, safe, req.params.id, quien(req), String(req.body?.motivo || ''))
+      await a.guardar()
+      res.json({ anulada: r2.anulada.id, reemplazo: OP.detalle(r2.reemplazo) })
+    } catch (e) { fallo(res, e) }
   })
 
   r.get('/bitacora', exige(), (_req, res) => res.json([...a.datos.bitacora].reverse().slice(0, 500)))

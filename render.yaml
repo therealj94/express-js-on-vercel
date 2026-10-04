@@ -93,6 +93,11 @@ services:
         value: "2"
       - key: RPC_ORDEN_URL
         value: https://rpc.ordenglobal-rpc.com/
+      # La firma múltiple (Safe 1.4.1), cuando se despliegue con contratos-v2/scripts/desplegar-multifirma.ts:
+      # - key: SAFE_DIRECCION
+      #   value: "0x…"
+      # - key: SAFE_MULTISEND
+      #   value: "0x…"
       # Contratos v2, cuando se desplieguen:
       # - key: V2_AUKA
       #   value: "0x…"

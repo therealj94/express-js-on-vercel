@@ -24,7 +24,7 @@ La plataforma donde se hace y se comprueba el paso de las monedas de la red 5550
 
 La política vive en `src/catalogo.ts` (`POLITICA`). Cada exclusión queda en la foto con su motivo (`umbral` o `tope`).
 
-- **ORIGEN** queda nativo. Su supply visible es lo que circula fuera de tesorería. El «mint» de ORIGEN es una **liberación de tesorería**, que solo procede contra lo asegurado (con su referencia documental) y con las firmas del umbral.
+- **ORIGEN** queda nativo. Su supply es solo lo que tienen los usuarios de Veta Wallet (la suma de sus saldos): no hay un supply fijo del que se reste nada, y lo que no está en manos de un usuario no cuenta. El «mint» de ORIGEN es una **liberación de tesorería**, que solo procede contra lo asegurado (con su referencia documental) y con las firmas de dos de los tres custodios de la firma múltiple.
 - **ORIGEN para gas**: a cada usuario de Veta Wallet con menos de 1 ORIGEN se le completa lo que le falta, una sola vez, para que pueda pagar el gas fee al operar sus activos v2.
 - **Reclamos**: lo que la foto no ubicó se publica con un plazo. Quien tenía saldo en una dirección no encontrada la reclama firmando un mensaje con esa misma billetera (no mueve fondos ni cuesta gas). Se le aplica la misma política, un operador lo revisa, y lo aprobado entra a la acuñación. Pasado el plazo, lo no reclamado desaparece.
 
@@ -49,11 +49,37 @@ El servicio está en el `render.yaml` de la raíz, desplegando desde `main`.
 | `MIGRACION_MONGO_DB` | Base de datos (por defecto `migracion`). |
 | `MIGRACION_SECRETO` | Secreto de las sesiones del panel, 32 caracteres o más. Cambiarlo cierra todas las sesiones. |
 | `MIGRACION_OPERADORES` | Quién entra al panel: `correo\|roles\|hash;…`. Roles: `operador`, `firmante`, `lectura`. El hash se genera con `npm run clave -- '<clave>'`. |
-| `MIGRACION_UMBRAL` | Firmas para aprobar una liberación (por defecto 2, dos de los tres custodios). |
+| `MIGRACION_UMBRAL` | Firmas para aprobar una liberación **sin** firma múltiple configurada (por defecto 2). Con la Safe, el umbral es el de la Safe. |
+| `SAFE_DIRECCION` | La firma múltiple (Safe 1.4.1). Con ella, aprobar es firmar la transacción de la Safe con la billetera de custodio. |
+| `SAFE_MULTISEND` | El `MultiSendCallOnly` desplegado con la Safe: varias llamadas (como una tanda del regalo) van en una sola transacción. |
 | `RPC_ORDEN_URL` | Nodo de la red 5550 (por defecto `https://rpc.ordenglobal-rpc.com/`). |
 | `V2_<CLAVE>` | Contrato v2 de cada moneda, cuando esté desplegado. |
 
-Reglas del panel: quien propone una liberación no puede aprobarla, un firmante no aprueba dos veces, y una ejecución solo se acepta si la transacción salió de una dirección de tesorería, al destino aprobado, por el monto exacto y confirmada.
+Reglas del panel sin firma múltiple: quien propone una liberación no puede aprobarla, un firmante no aprueba dos veces, y una ejecución solo se acepta si la transacción salió de una dirección de tesorería, al destino aprobado, por el monto exacto y confirmada.
+
+## Firma múltiple
+
+La Safe (dos de tres custodios) es la tesorería de ORIGEN y la dueña de los roles de los contratos v2. Se despliega con `contratos-v2/scripts/desplegar-multifirma.ts` y se conecta con `SAFE_DIRECCION` y `SAFE_MULTISEND`. La plataforma no tiene llaves: arma la transacción exacta, recoge las firmas y comprueba lo ejecutado.
+
+Cada **operación** es una transacción de la Safe con su nonce:
+
+| Operación | De dónde sale |
+|---|---|
+| Liberación de ORIGEN | Al proponer una liberación: un envío de la Safe al destino. |
+| Tanda del regalo | «Preparar» en ORIGEN para gas: tandas parejas de hasta 120 usuarios, cada una un lote de envíos (unos 36.700 de gas por usuario: una tanda llena gasta unos 4,4 millones, menos de la mitad de un bloque de la 5550). |
+| Contratos v2 | La pestaña «Firma múltiple»: abrir una migración, fijar el registro, roles. Acepta el archivo de `contratos-v2/scripts/lotes-safe.ts`. |
+| Anulación | Al anular cualquier operación pendiente: una transacción vacía con el mismo nonce, que hay que firmar y ejecutar (cómo se rechaza en Safe). Se hace siempre, aunque la plataforma no tenga firmas: alguien pudo firmarla fuera con el archivo descargado. |
+
+El ciclo:
+
+1. Cada custodio firma con su billetera (MetaMask, `eth_signTypedData_v4`). Sin billetera en el navegador: «Descargar para firmar», `contratos-v2/scripts/firmar.ts` y «Pegar firma». `firmar.ts` saca de los datos firmados cada destino, monto y función, los compara con el archivo y el hash, y solo firma en una segunda corrida con `FIRMAR=si`.
+2. La plataforma comprueba que la firma es de un custodio de la Safe. No acepta que firme quien propuso la operación, que un operador firme dos veces ni que la misma billetera firme dos veces.
+3. Con las firmas del umbral queda **lista**: «Ejecutar con mi billetera», o cualquiera con ORIGEN para el gas manda `execTransaction`.
+4. Al registrar la transacción, la plataforma comprueba que la Safe emitió `ExecutionSuccess` con el hash de lo firmado. Si coincide, coinciden el destino, el monto, los datos y el nonce. La liberación queda ejecutada, y con ella todos los envíos de la tanda.
+
+Si la Safe ejecuta algo con un nonce fuera de la plataforma, las operaciones pendientes con ese nonce quedan **caducadas**.
+
+La Safe cuenta como tesorería: lo que tiene no circula y no recibe el regalo. Todo lo ejecutado se ve en la página pública (sin las firmas).
 
 ## Desarrollo
 
