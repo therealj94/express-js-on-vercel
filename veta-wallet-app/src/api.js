@@ -743,9 +743,14 @@ export const ONCHAIN_TOKENS = [
 // cambia ahí con una variable y la app lo toma sin publicar una versión nueva.
 // Si no responde, se queda la copia de respaldo de ONCHAIN_TOKENS.
 const MONEDAS_URL = process.env.EXPO_PUBLIC_MONEDAS_URL || 'https://migracion-sfsp.onrender.com/api/monedas';
+// Se vuelve a pedir cada cinco minutos (como Genesis ID, el explorador y AURA), para que el
+// corte llegue también a la app abierta; si falla, se reintenta en la siguiente carga.
+const MONEDAS_TTL = 5 * 60 * 1000;
 let monedasCargadas = null;
+let monedasHasta = 0;
 export function cargarMonedas() {
-  if (monedasCargadas) return monedasCargadas;
+  if (monedasCargadas && Date.now() < monedasHasta) return monedasCargadas;
+  monedasHasta = Infinity; // mientras la petición está en curso
   monedasCargadas = (async () => {
     const ctrl = new AbortController();
     const id = setTimeout(() => ctrl.abort(), 5000);
@@ -753,16 +758,17 @@ export function cargarMonedas() {
       const r = await fetch(MONEDAS_URL, { signal: ctrl.signal });
       const d = await r.json();
       const lista = (d?.monedas || []).filter((m) => m?.simbolo && m.visible !== false);
-      if (!lista.length) return;
+      if (!lista.length) { monedasHasta = 0; return; }
       // En el mismo arreglo: las pantallas importan ONCHAIN_TOKENS por referencia.
       ONCHAIN_TOKENS.splice(0, ONCHAIN_TOKENS.length, ...lista.map((m) => (m.contrato
         ? { symbol: m.simbolo, contract: m.contrato, decimals: m.decimales || 18 }
         : { symbol: m.simbolo, native: true, decimals: m.decimales || 18 })));
       for (const k of Object.keys(FIXED_PRICES)) delete FIXED_PRICES[k];
       for (const m of lista) if (m.precioFijo > 0) FIXED_PRICES[m.simbolo] = m.precioFijo;
+      monedasHasta = Date.now() + MONEDAS_TTL;
     } catch (e) {
       // Sin lista única se sigue con la copia de respaldo.
-      monedasCargadas = null;
+      monedasHasta = 0;
     } finally { clearTimeout(id); }
   })();
   return monedasCargadas;

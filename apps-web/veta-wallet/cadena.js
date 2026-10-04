@@ -151,11 +151,16 @@ const CADENA = (() => {
 
   // ── lista unica ───────────────────────────────────────────────────────────
 
-  // Se pide una vez por carga. Si llega, reemplaza la copia de respaldo en el
-  // mismo arreglo (app.js guarda la referencia a TOKENS) y manda en los precios.
+  // Si llega, reemplaza la copia de respaldo en el mismo arreglo (app.js guarda
+  // la referencia a TOKENS) y manda en los precios. Se vuelve a pedir cada cinco
+  // minutos, para que el corte llegue a la pestana abierta; si falla, se
+  // reintenta en la siguiente carga del portafolio.
+  const REGISTRO_TTL = 5 * 60 * 1000;
   let registroCargado = null;
+  let registroHasta = 0;
   function cargarMonedas() {
-    if (registroCargado) return registroCargado;
+    if (registroCargado && Date.now() < registroHasta) return registroCargado;
+    registroHasta = Infinity; // mientras la peticion esta en curso
     registroCargado = (async () => {
       const ctrl = new AbortController();
       const id = setTimeout(() => ctrl.abort(), 5000);
@@ -163,13 +168,15 @@ const CADENA = (() => {
         const r = await fetch(REGISTRO, { signal: ctrl.signal });
         const d = await r.json();
         const lista = (d && d.monedas || []).filter(m => m && m.simbolo && m.visible !== false);
-        if (!lista.length) return;
+        if (!lista.length) { registroHasta = 0; return; }
         TOKENS.splice(0, TOKENS.length, ...lista.map(m => m.contrato
           ? { s: m.simbolo, contrato: m.contrato, estado: m.estado }
           : { s: m.simbolo, nativo: true, estado: m.estado }));
         for (const k of Object.keys(FIJOS)) delete FIJOS[k];
         for (const m of lista) if (m.precioFijo > 0) FIJOS[m.simbolo] = m.precioFijo;
+        registroHasta = Date.now() + REGISTRO_TTL;
       } catch {
+        registroHasta = 0;
         // Sin lista unica se sigue con la copia de respaldo: mejor un contrato
         // conocido que una pantalla vacia.
       } finally { clearTimeout(id); }
