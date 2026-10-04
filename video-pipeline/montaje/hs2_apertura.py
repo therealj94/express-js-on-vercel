@@ -2,7 +2,7 @@
 
     python3 montaje/hs2_apertura.py --dir HN/ap --fuentes FUENTES --sal apertura.mp4 [--hasta SEG] [--desde SEG]
 
-Material en --dir: V01…V10.mp4 (MiniMax H3 Max, imagen de inicio/fin encadenadas S1…S10, así que los clips
+Material en --dir: V01…V09, V09D (Dubón), V10D.mp4 (MiniMax H3 Max, imagen de inicio/fin encadenadas S1…S10, así que los clips
 se pegan sin corte), vo_*_b.mp3, hs2_copan_b.mp3, narr2010.m4a, musica_b.mp3 y sfx_*.mp3.
 Todo el texto en pantalla (comentarios reales, fechas, «recreación artística») se dibuja aquí, no con IA.
 """
@@ -20,7 +20,8 @@ PUNTO = (540, 883)  # el punto de luz de luz_inicio.png (576, 942 sobre 1152x204
 # (clip, velocidad). Cada clip termina en la imagen con la que empieza el siguiente.
 HOOK = 7.8
 CLIPS = [("V01", 1.5), ("V02", 1.5), ("V03", 1.4), ("V04", 1.4), ("V05", 1.4), ("V06", 1.4),
-         ("V07", 1.1), ("V08", 1.1), ("V09", 0.9), ("V10", 1.0)]
+         ("V07", 1.1), ("V08", 1.1), ("V09", 0.9), ("V09D", 1.0), ("V10D", 1.0)]
+ULTIMO = CLIPS[-1][0]  # su último cuadro es el fondo del conflicto
 CONFLICTO = 10.6
 RECORTE = {"V01": (0.30, 0), "V04": (0, 0.5), "V09": (0, 0.3)}  # quietos de MiniMax al inicio/fin
 
@@ -85,7 +86,8 @@ def a_vertical(fr):
 
 # Tramos donde MiniMax se fue a césped y jugadores fotorrealistas: se vuelven líneas de luz.
 # (cuadro inicial, cuadro final, rampa en cuadros, color BGR de la línea)
-A_LINEAS = {"V05": (80, 138, 12, (150, 215, 255)), "V08": (58, 110, 10, (150, 215, 255)), "V09": (28, 100, 10, (255, 200, 140))}
+A_LINEAS = {"V05": (80, 138, 12, (150, 215, 255)), "V08": (58, 110, 10, (150, 215, 255)), "V09": (28, 100, 10, (255, 200, 140)),
+            "V09D": (36, 122, 10, (255, 200, 140)), "V10D": (46, 100, 10, (255, 200, 140))}
 
 
 def lineas(f, col):
@@ -295,6 +297,7 @@ ROTULOS = [  # cada uno entra cuando su escena ya está dibujada
     ("Costa norte", "siglo XX", "V07", 2.0, 3.2),
     ("España", "1982", "V08", 2.2, 3.0),
     ("14 de octubre", "2009", "V09", 1.3, 3.0),
+    ("Mauricio Dubón", "San Pedro Sula · campeón de la Serie Mundial 2022", "V09D", 3.6, 2.8),
 ]
 
 
@@ -382,7 +385,7 @@ def render(sal, desde=0.0, hasta=None):
             fr = capa_textos(fr, t, T0)
         else:
             if conf is None:
-                c = Clip(DIR / "V10.mp4"); conf = Conflicto(acabado(a_vertical(c.cuadro(c.n / c.fps)), fin))
+                c = Clip(DIR / f"{ULTIMO}.mp4"); conf = Conflicto(acabado(a_vertical(c.cuadro(c.n / c.fps)), fin))
             fr = conf.cuadro(t - fin)
         p.stdin.write(fr.tobytes())
     p.stdin.close(); p.wait()
@@ -394,7 +397,7 @@ def mezcla(T, fin, total, video, sal):
     T0 = {n: t for n, t, _ in T}; tc = fin
     def at(s): return int(s * 1000)
     vo = [("vo_hook_b.mp3", VO_HOOK), ("hs2_copan_b.mp3", T0["V01"] + .35), ("vo_1502_b.mp3", T0["V03"] + .2),
-          ("vo_1821_b.mp3", T0["V05"] + .45), ("vo_banano_b.mp3", T0["V07"] + .3), ("vo_1982_b.mp3", T0["V08"] + .3),
+          ("vo_1821_b.mp3", T0["V05"] + .45), ("vo_banano_b.mp3", T0["V07"] + .3), ("vo_1982_b.mp3", T0["V08"] + .3), ("vo_dubon_c.mp3", T0["V09D"] + DUBON_VO),
           ("vo_pero_b.mp3", tc + VO_PERO)]
     # (archivo, inicio, volumen, desde, duración)
     sfx = [("sfx_pings_b.mp3", .33, .9, 0, .7),                       # la notificación del hook
@@ -407,7 +410,8 @@ def mezcla(T, fin, total, video, sal):
            ("sfx_tren_b.mp3", T0["V07"], .55, 0, 6),
            ("sfx_estadio_b.mp3", T0["V08"] + .8, .55, 0, 6),
            ("sfx_estadio_a.mp3", T0["V09"] + 3.6, .45, 1.5, 4.5),
-           ("sfx_pings_a.mp3", T0["V10"] + 2.6, .75, 0, 6)]
+           ("sfx_bate_b.mp3", T0["V09D"] + BATE, .8, 0, 5),
+           ("sfx_pings_a.mp3", T0["V10D"] + 2.6, .75, 0, 6)]
     sfx += [("sfx_pings_b.mp3", tc + c[3], .55, 0, .6) for c in CAIDA]  # un aviso por tarjeta que cae
     entradas, filtros, mixv, mixs = [], [], [], []
     idx = 1
@@ -417,14 +421,14 @@ def mezcla(T, fin, total, video, sal):
         mixv.append(f"[v{idx}]"); idx += 1
     # narración real de 2009: «¡GOL!» en 2,42 s, cae cuando el remate entra
     entradas += ["-i", str(DIR / "narr2010.m4a")]; t_n = T0["V09"] + NARR_OFF
-    filtros.append(f"[{idx}:a]loudnorm=I=-15:TP=-1.5,aresample=48000,afade=t=out:st=10.6:d=1.6,adelay={at(t_n)}|{at(t_n)}[v{idx}]")
+    filtros.append(f"[{idx}:a]loudnorm=I=-15:TP=-1.5,aresample=48000,afade=t=out:st={T0['V09D'] + DUBON_VO - 1.2 - t_n:.2f}:d=1.2,adelay={at(t_n)}|{at(t_n)}[v{idx}]")
     mixv.append(f"[v{idx}]"); idx += 1
     for f, t0, vol, ss, d in sfx:
         entradas += ["-ss", str(ss), "-t", str(d), "-i", str(DIR / f)]
         filtros.append(f"[{idx}:a]aresample=48000,volume={vol},afade=t=out:st={max(0, d - .5):.2f}:d=0.5,adelay={at(t0)}|{at(t0)}[s{idx}]")
         mixs.append(f"[s{idx}]"); idx += 1
     # música: entra suave con el hook, sube con el punto de luz y se corta en seco en el último «gol»
-    corte = T0["V10"] + 1.2
+    corte = T0["V10D"] + 1.2
     entradas += ["-i", str(DIR / "musica_b.mp3")]
     vol = (f"volume='if(lt(t,{HOOK - .3}),0.35,1)':eval=frame")
     filtros.append(f"[{idx}:a]aresample=48000,atrim=0:{corte},{vol},afade=t=in:d=1.2,afade=t=out:st={corte - .9}:d=0.9,"
@@ -445,6 +449,8 @@ def mezcla(T, fin, total, video, sal):
     if r.returncode: raise SystemExit(r.stderr[:1500])
 
 
+DUBON_VO = 2.2  # «Y un sampedrano, Mauricio Dubón…» entra cuando aparece el estadio de béisbol
+BATE = 4.18     # el chasquido del bate (0,40 s dentro del efecto) cae en el destello del contacto, cuadro ~110
 NARR_OFF = 1.5  # «¡GOL!» (2,42 s de la narración) cae cuando el remate de V09 entra (cuadro ~85 a x0,9)
 
 

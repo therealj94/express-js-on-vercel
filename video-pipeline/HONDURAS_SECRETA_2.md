@@ -382,3 +382,16 @@ Editor: `montaje/hs2_apertura.py`. Usa 10 clips MiniMax H3 Max encadenados. Cada
   - 10 imágenes fijas × 2 variantes: 3,40
   - 12 clips H3 Max (incluye 2 reintentos): 5,76
   - Música, 7 efectos de sonido × 2 y 6 voces × 2: unos 0,65
+
+### Apertura v2: Mauricio Dubón (77,5 s)
+- Después de 2009 entra un bloque nuevo. La calle que celebra se vuelve un estadio de béisbol de noche, y Dubón, visto de espaldas con «DUBÓN 14», batea un jonrón. El estallido de luz del contacto coincide con el sonido del bate. Luego la cámara baja a la gente con teléfonos (V10D reemplaza a V10).
+- Voz: «Y un sampedrano, Mauricio Dubón, llegó a lo más alto del béisbol: campeón de la Serie Mundial.»
+- Rótulo: «Mauricio Dubón · San Pedro Sula · campeón de la Serie Mundial 2022».
+- **Datos verificados** (Wikipedia, ESPN y FanGraphs, 4 de octubre de 2026):
+  - Nació en San Pedro Sula el 19/07/1994.
+  - Es el segundo hondureño en Grandes Ligas, después de Gerald Young.
+  - Fue el primer hondureño en jugar playoffs y en ganar la Serie Mundial (Astros, 2022).
+  - Ganó el Guante de Oro como utility en 2023 y 2025.
+  - En 2026 juega con los Atlanta Braves con el número 14. Llegó el 19/11/2025, cambiado por Nick Allen.
+- No aparecen logos de equipos. El jonrón es una recreación, no una jugada concreta. No decimos «el mejor deportista de Honduras» porque es una opinión que no se puede verificar.
+- Costo: unos 2,20 USD (3 imágenes fijas, 2 clips H3 Max, 3 voces y efecto del bate).
