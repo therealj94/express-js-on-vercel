@@ -198,7 +198,7 @@ def TRAMOS(T):
     """(persona, inicio en la salida, inicio en su video, duración) de cada tramo de voz real."""
     return [("carlos", T["carlos"], 0.0, 6.5), ("romeo", T["romeo"] - 1.0, 0.0, 6.6),
             ("romeo", T["romeo"] + 5.6, 11.70, 1.05), ("samira", T["samira"] - 1.0, 1.35, 5.0),
-            ("lenyn", T["lenyn"] - 2.24, 6.1, 7.9), ("leiva", T["leiva_tv"] - 3.3, 0.0, 8.6)]
+            ("lenyn", T["lenyn"] - 2.24, 6.1, 7.9), ("leiva", T["leiva_tv"] - LEIVA_SRC, 0.0, 8.7)]
 
 
 GUARA_SUBS = ("¿Una guacamaya con colmillos?", "¿Yo?", "Bueno…", "uno.", "Siempre vamos a encontrar algo malo…",
@@ -289,10 +289,12 @@ def telefono(pantalla, ancho=700):
     return Image.fromarray(img, "RGBA")
 
 
-VEL_OJO1, VEL_OJO2 = 1.15, 1.3   # velocidad de los clips del ojo
-PARPADEO = 1.0                   # s de salida en que el párpado cierra (medido en E2)
-PUPILA = (.5, .45)               # centro de la pupila al final de E2 (proporción del cuadro)
-MAPA_EXTRA = 1.2                 # el mapa se sostiene más para leer la pregunta
+VEL_OJO1, VEL_OJO2 = 1.3, 1.15  # velocidad de los clips del ojo
+E2_FIN = 5.3                     # en 5,6 s el clip regresa a un plano abierto: se corta antes
+PARPADEO = 1.7 / VEL_OJO2        # s de salida en que el párpado queda cerrado (cuadro 1,7 s de E2)
+PUPILA = (.5, .55)               # centro del reflejo al final del empuje de E2 (proporción del cuadro)
+MAPA_EXTRA = 1.2
+LEIVA_SRC, LEIVA_DUR = 1.0, 7.25  # la tele se enciende en «…de Honduras» y lo vemos hasta «principalmente su»                 # el mapa se sostiene más para leer la pregunta
 
 
 def construir(bg_final):
@@ -364,7 +366,7 @@ def construir(bg_final):
     #    Al final la cámara cae dentro de la pupila y de su negro nace el mapa.
     e2 = Clip(HN / "p2/E2_ojo_parpadeo.mp4")
     polvo_pero = ha.Polvo(pero_frio, 540, 380, 6000, 21, deriva=(0, -380))
-    dur_e2 = e2.n / e2.fps / VEL_OJO2
+    dur_e2 = E2_FIN / VEL_OJO2
     def f_ojo_parpadeo(u):
         fr = a_vertical(e2.cuadro(u * VEL_OJO2))
         if u < PARPADEO: fr = pega(fr, pero_frio, 540, 380, .42, .7)
@@ -407,7 +409,8 @@ def construir(bg_final):
     S.append(seg_clip("utila_sb", "W08_utila_sb.mp4", 1.5, ini=3.0, trans="whip-u",
                       rot=("Santa Bárbara", "Occidente de Honduras", .9)))
     S.append(seg_clip("sb_casa", "W09_sb_casa.mp4", 1.8))
-    S.append(Seg("leiva_tv", 3.7, f_leiva_tv(reales["leiva"], S[-1], 3.3), usu=("@caballeroleiva", .5), tipo=None))
+    S.append(Seg("leiva_tv", LEIVA_DUR, f_leiva_tv(reales["leiva"], S[-1], LEIVA_SRC), usu=("@caballeroleiva", 2.4),
+                 tipo=None))
     # 20–21. Gira hacia la ventana → la gente del pueblo → la guara al atardecer
     S.append(seg_clip("gente", "W10_casa_gente.mp4", 1.3, ini=1.6, trans="whip-l"))
     S.append(Seg("cierre", 6.59, f_cierre()))
@@ -551,24 +554,30 @@ def f_leiva_tv(real, seg_casa, src0):
     tvw, tvh = 640, 360
     src = np.float32([[0, 0], [tvw, 0], [tvw, tvh], [0, tvh]])
     M = cv2.getPerspectiveTransform(src, quad)
-    tvc = quad.mean(0)
-    def fn(u):
-        f = real.c.cuadro(src0 + u)  # 478x850: plano medio 16:9 de su cara y pecho
-        f = cv2.resize(f[40:309], (tvw, tvh), interpolation=cv2.INTER_CUBIC)
+    tvc = quad.mean(0); ancho_tv = quad[:, 0].max() - quad[:, 0].min()
+    z_lleno = W / ancho_tv * 1.15  # zoom con el que la tele llena el cuadro
+    def color(f):
         f = grado(f, "real"); fh = cv2.cvtColor(f, cv2.COLOR_BGR2HSV)
-        fh[..., 1] = (fh[..., 1] * .75).astype(np.uint8); f = cv2.cvtColor(fh, cv2.COLOR_HSV2BGR)  # menos magenta del set
-        # encendido de televisor: negro → línea blanca → la imagen se abre en vertical
-        if u < .12: f = np.full_like(f, 8)
-        elif u < .4:
-            e = sale((u - .12) / .28); h = max(2, int(tvh * e)); g = np.full_like(f, 8)
-            y0 = (tvh - h) // 2; g[y0:y0 + h] = cv2.resize(f, (tvw, h)); f = cv2.addWeighted(g, 1, np.full_like(g, 255), .5 * (1 - e), 0)
-        f[::3] = (f[::3] * .9).astype(np.uint8)  # líneas de televisor
+        fh[..., 1] = (fh[..., 1] * .75).astype(np.uint8); return cv2.cvtColor(fh, cv2.COLOR_HSV2BGR)  # menos magenta del set
+    def fn(u):
+        # 0–1,3 s: la tele se enciende sin destello (la imagen se abre del centro) y lo vemos en el cuarto;
+        # 1,3–2,4 s: la cámara entra a la pantalla; luego su video vertical llena el cuadro hasta «su gente»
+        a_lleno = suave((u - 2.0) / .45)
+        if a_lleno >= 1: return color(real.cuadro(src0 + u))
+        f = real.c.cuadro(src0 + u)  # 478x850: plano medio 16:9 de su cara y pecho
+        f = color(cv2.resize(f[40:309], (tvw, tvh), interpolation=cv2.INTER_CUBIC))
+        if u < .28:
+            e = sale(u / .28); h = max(2, int(tvh * e)); g = np.full_like(f, 8)
+            y0 = (tvh - h) // 2; g[y0:y0 + h] = cv2.resize(f, (tvw, h)); f = g
+        f[::3] = (f[::3] * (.9 + .1 * a_lleno)).astype(np.uint8)  # líneas de televisor
         warp = cv2.warpPerspective(f, M, (W, H)); mask = cv2.warpPerspective(np.full((tvh, tvw), 255, np.uint8), M, (W, H))
         m = cv2.GaussianBlur(mask, (3, 3), 0)[..., None] / 255.
         fr = (base * (1 - m) + warp * m).astype(np.uint8)
         glow = cv2.GaussianBlur((warp * m).astype(np.uint8), (0, 0), 25)
         fr = cv2.add(fr, (glow * .35).astype(np.uint8))
-        return zoom(fr, 1 + .28 * suave(u / 3.7), tvc[0], tvc[1])
+        fr = zoom(fr, 1 + .12 * suave(u / 1.3) + (z_lleno - 1.12) * suave((u - 1.3) / 1.1) ** 2, tvc[0], tvc[1])
+        if a_lleno > 0: fr = cv2.addWeighted(fr, 1 - a_lleno, color(real.cuadro(src0 + u)), a_lleno, 0)
+        return fr
     return fn
 
 
