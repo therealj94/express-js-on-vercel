@@ -395,3 +395,32 @@ Editor: `montaje/hs2_apertura.py`. Usa 10 clips MiniMax H3 Max encadenados. Cada
   - En 2026 juega con los Atlanta Braves con el número 14. Llegó el 19/11/2025, cambiado por Nick Allen.
 - No aparecen logos de equipos. El jonrón es una recreación, no una jugada concreta. No decimos «el mejor deportista de Honduras» porque es una opinión que no se puede verificar.
 - Costo: unos 2,20 USD (3 imágenes fijas, 2 clips H3 Max, 3 voces y efecto del bate).
+
+---
+
+## 15. Plan de la parte 2: del «pero» a lo real (pendiente de aprobar)
+
+Arranca donde termina la apertura: el «PERO» gigante sobre la gente con teléfonos (77,5 s). Esta parte dura unos 20 s.
+
+| # | Tramo | Dura | Qué se ve | Voz y sonido | Cómo se hace |
+|---|---|---|---|---|---|
+| B1 | «Colmillos» | 2,5 s | Cae sola la última tarjeta real: «perame perame perameeeeee! una guacamaya con colmillos????…». Entra la guara de luz (con color, sin sombrero), la lee, se toca el pico con el ala y mira a cámara: «¿colmillos?». | Silencio y un «pop» cómico suave | Clip H3 Max de la guara sobre negro, compuesto en modo *screen* encima de la tarjeta de código |
+| B2 | La guara atraviesa el «PERO» | 2,5 s | Toma impulso y vuela de frente a través del «PERO». Las letras estallan en polvo de luz. | Aleteo, un *whoosh* y el polvo cristalino. La música vuelve con un acorde que se abre | Clip de la guara volando hacia la cámara y partículas de código (las mismas del hook) |
+| B3 | Las palabras se vuelven mapa | 4 s | El polvo cae sobre el contorno de luz de Honduras. Cada partícula se posa en un lugar real (Copán, Tegucigalpa, Lago de Yojoa, Santa Bárbara, Roatán, Amapala, La Mosquitia…) y cada punto se enciende. La cámara pasa de 3D a cenital. | Voz: «Antes del pero… mira otra vez.» Puntos que suenan como notas | Código: el contorno de la v1 y las partículas con destino |
+| B4 | De la luz a lo real | 2 s | La cámara se lanza al punto de Tegucigalpa. La línea dibuja el contorno exacto de Carlos (su primer cuadro, mirando arriba). Dentro aparece su video real y el trazo queda como luz de borde que se apaga. | Respiración y el ambiente del carro, que entra antes | Quitar el fondo del cuadro 0 (BiRefNet), contorno con `trazos.py` y dibujo en código |
+| B5 | Carlos | 6–7 s | «Hay un cariño especial… El Picacho… Juana Laínez». Recorte vertical sin perder la cara. Su usuario se escribe a mano con el trazo de la guara. | Su voz original y subtítulos | Su video (2560x1440, 6,6 s) |
+| B6 | Mira arriba, al Picacho | 3,5 s | En su último cuadro Carlos mira hacia arriba (cuadro 392). La cámara sube por el parabrisas al cielo y baja sobre el Cristo del Picacho al atardecer, con Tegucigalpa abajo. | Viento de altura y la música que sube | Clip H3 Max con su último cuadro como inicio y la réplica del Picacho como fin |
+
+**Total:** unos 20 s, así que el video llega a unos 98 s.
+
+**Antes de producir hay que verificar:** la estatua real del Cristo del Picacho tiene los **brazos abiertos**. Las réplicas `L_picacho_real_a/b` tienen los brazos abajo y la `L_picacho_a` los tiene abiertos. Lo confirmo con fotos reales antes de elegir el cuadro final.
+
+**Costo estimado:** unos 3 USD.
+- 2 imágenes fijas de la guara: 0,70
+- 3 clips H3 Max (colmillos, vuelo y Picacho): 1,44
+- Quitar el fondo y la voz: unos 0,10
+- Efectos de sonido: 0,20
+
+**Duración total (decisión de José):** apertura 77,5 s + parte 2 de 20 s = 98 s. Faltan Romeo, Samira, Leiva, los 4 videos pendientes y el cierre (unos 55–65 s más), así que el video final saldría de **2:35 a 2:45**.
+- Opción A: acelerar la apertura unos 10 s y bajar los testimonios a 4–5 s cada uno para quedar en unos 2:15.
+- Opción B: aceptar unos 2:40.
