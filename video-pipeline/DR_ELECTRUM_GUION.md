@@ -106,3 +106,50 @@ Las fuentes son el código de la rama `claude/ultron-fp-premium-s46jxx` y las he
 | Voces | incluidas en el plan |
 | Música | ≈ 0,5 USD |
 | **Total** | **≈ 5–7 USD** |
+
+## Producción v1 (5 de octubre)
+
+**Decisiones de José:**
+- AURA es el cerebro de Orden Global funcionando dentro de Dr Electrum.
+- Los nombres van anónimos.
+- Formato 16:9.
+- Prospector mejorado.
+- La versión en inglés se hace al final.
+
+**Imágenes:**
+- **10 imágenes clave** con gpt-image-2. Las referencias son el personaje y el logo reales, publicados en `electrum/ref/`.
+- **10 tomas** animadas con MiniMax H3 Max:
+  - martillazo y vista aérea de la sierra;
+  - papeleo;
+  - Dr Electrum como héroe;
+  - mapa en holograma;
+  - ingeniera en el campo;
+  - núcleos de perforación;
+  - sala de gobierno;
+  - reporte impreso;
+  - «aprende».
+
+**Voces:** el elenco real de la app.
+- Dr Electrum: «Jorge».
+- Ing. Tatiana: `irla3teuChAApguKnzms`.
+- Don Chema: `wfTWLJ20rcMqvU8gIiAB`.
+- Narrador: `sDh3eviBhiuHKi0MjTNq`.
+- Llevan etiquetas de audio.
+- «JICA» se cambió por «la cooperación japonesa» para que se pronuncie bien.
+
+**Composición por código** (`electrum/electrum.html`, 1920×1080):
+- mapa con el contorno real de Honduras (Natural Earth, del repo), con las 1.076 concesiones como visualización estilizada;
+- GPS, semáforo, geología con satélite, expedientes con cita, la cuenta honesta, tablero para fiscalizar, entregables y «aprende»;
+- rótulos de personajes, subtítulos y la marca **ANTES / AHORA** en cada herramienta.
+
+**Errores encontrados en Dr Electrum:** `catastro_contar` con filtro de departamento devuelve 0 (Olancho, Choluteca), aunque el resumen sí da cifras por departamento. El filtro `clase` parece ignorarse.
+
+**Costo:**
+
+| Concepto | Costo |
+|---|---|
+| Imágenes | ≈ 0,7 USD |
+| Tomas | 4,0 USD |
+| Música | ≈ 0,5 USD |
+| Efectos | ≈ 0,03 USD |
+| **Total** | **≈ 5,2 USD** |

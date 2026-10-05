@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<title>Dr Electrum FP · tráiler</title>
+<link rel="stylesheet" href="fonts.css">
+<style>
+:root{--fondo:#0E0B08;--papel:#F6F0E2;--ambar:#FFAE3B;--oro:#E2B84E;--rojo:#FF4D3D;--verde:#5BD68A;--agua:#4FB3FF;--gris:#9C8F7A}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:var(--fondo);color:var(--papel);font-family:'Alegreya Sans',sans-serif}
+#lienzo{position:absolute;inset:0}
+.capa{position:absolute;inset:0;opacity:0}
+.slab{font-family:'Zilla Slab',serif}
+.mono{font-family:'IBM Plex Mono',monospace}
+#clip{position:absolute;inset:0;opacity:0;overflow:hidden;background:#000}
+#clip img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#clip .vin{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.55)),linear-gradient(transparent 70%,rgba(0,0,0,.55))}
+/* subtítulos */
+#sub{position:absolute;left:0;right:0;bottom:64px;text-align:center;font-size:40px;font-weight:500;text-shadow:0 2px 14px #000,0 0 3px #000;opacity:0;padding:0 220px;line-height:1.25}
+#sub b{color:var(--ambar);font-weight:700;font-size:26px;letter-spacing:3px;display:block;margin-bottom:6px}
+/* rótulo de personaje */
+.rotulo{position:absolute;left:96px;bottom:200px;opacity:0;border-left:4px solid var(--ambar);padding:8px 0 8px 22px}
+.rotulo .n{font-family:'Zilla Slab',serif;font-weight:700;font-size:46px;letter-spacing:1px}
+.rotulo .q{font-size:26px;color:#e8dcc2;margin-top:2px}
+/* antes / ahora */
+#antes{position:absolute;right:72px;top:64px;opacity:0;background:rgba(14,11,8,.78);border:1px solid rgba(255,174,59,.35);border-radius:14px;padding:18px 26px;min-width:420px;backdrop-filter:blur(4px)}
+#antes .l{display:flex;justify-content:space-between;gap:30px;font-size:26px;align-items:baseline}
+#antes .l+.l{margin-top:8px}
+#antes .e{letter-spacing:3px;font-size:18px;color:var(--gris);font-weight:700}
+#antes .v1{color:#b9ab93;text-decoration:line-through;text-decoration-color:var(--rojo);text-decoration-thickness:3px}
+#antes .v2{color:var(--ambar);font-weight:700;font-size:34px}
+.panel{position:absolute;background:rgba(18,14,10,.86);border:1px solid rgba(255,174,59,.28);border-radius:20px;padding:30px 34px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.etq{font-size:20px;letter-spacing:4px;color:var(--gris);font-weight:700;text-transform:uppercase}
+.big{font-family:'Zilla Slab',serif;font-weight:700}
+.chip{display:inline-flex;align-items:center;gap:10px;padding:8px 16px;border-radius:30px;border:1px solid rgba(255,174,59,.4);background:rgba(255,174,59,.08);font-size:22px}
+.burbuja{position:absolute;padding:18px 26px;border-radius:26px;font-size:30px;background:rgba(246,240,226,.95);color:#1d160d;font-weight:500;box-shadow:0 20px 50px rgba(0,0,0,.45)}
+.burbuja.r{background:rgba(255,174,59,.95);color:#1d1305}
+.kpi{position:absolute;width:400px;height:220px}
+.kpi .n{font-family:'Zilla Slab',serif;font-weight:700;font-size:96px;line-height:1;color:var(--ambar)}
+.kpi .t{font-size:26px;margin-top:10px;color:#eadfc8}
+.tile{position:absolute;width:520px;height:300px;border-radius:22px;background:rgba(24,19,13,.92);border:1px solid rgba(255,174,59,.3);overflow:hidden;box-shadow:0 30px 70px rgba(0,0,0,.5)}
+.tile .h{position:absolute;left:28px;bottom:22px;font-family:'Zilla Slab',serif;font-weight:700;font-size:36px}
+.tile .s{position:absolute;left:28px;bottom:66px;font-size:20px;letter-spacing:3px;color:var(--gris);font-weight:700}
+.doc{position:absolute;width:150px;height:200px;border-radius:6px;background:linear-gradient(#f4ecd9,#e3d6b8);box-shadow:0 10px 30px rgba(0,0,0,.5);overflow:hidden}
+.doc i{display:block;height:6px;margin:10px 14px 0;background:#c9b994;border-radius:3px}
+</style></head><body>
+<canvas id="lienzo" width="1920" height="1080"></canvas>
+<div id="clip"><img id="clipA"><div class="vin"></div></div>
+
+<!-- contador de días (papeleo) -->
+<div class="capa" id="dias"><div class="mono" id="dias_t" style="position:absolute;right:90px;top:70px;font-size:64px;font-weight:600;color:#f2e6cc;text-shadow:0 4px 20px #000"></div>
+  <div class="etq" style="position:absolute;right:92px;top:150px">de escritorio</div></div>
+
+<!-- título -->
+<div class="capa" id="titulo"><div style="position:absolute;left:110px;top:90px;text-shadow:0 6px 30px rgba(0,0,0,.7)">
+  <div class="etq" style="color:var(--ambar)">Estación de trabajo minera</div>
+  <div class="big" style="font-size:150px;line-height:1;letter-spacing:2px;margin-top:10px">DR ELECTRUM <span style="color:var(--ambar)">FP</span></div>
+  <div style="font-size:30px;margin-top:14px;color:#efe3c9">Impulsado por <b style="color:var(--ambar)">AU-RA</b>, el cerebro de Orden Global</div></div></div>
+
+<!-- mapa: paneles y burbujas -->
+<div class="capa" id="m_panel"><div class="panel" style="left:90px;top:300px;width:470px">
+  <div class="etq">Catastro minero · junio 2026</div>
+  <div class="big mono" id="m_n" style="font-size:110px;color:var(--ambar);margin-top:8px">0</div>
+  <div style="font-size:30px">concesiones</div>
+  <div class="mono" id="m_ha" style="font-size:44px;margin-top:18px">0 ha</div>
+  <div id="m_176" style="margin-top:26px;opacity:0;border-top:1px solid rgba(255,174,59,.3);padding-top:20px">
+    <div class="big" style="font-size:80px;color:#fff3d6">176</div><div style="font-size:28px">en exploración · <span class="mono">82.823 ha</span></div></div>
+</div></div>
+<div class="capa" id="m_preg"><div class="burbuja" style="left:620px;top:90px">🎙 ¿Cuántas concesiones están en exploración?</div></div>
+
+<!-- gps -->
+<div class="capa" id="g_panel"><div class="panel" style="right:90px;bottom:180px;width:560px">
+  <div class="etq">📍 Su ubicación (GPS)</div>
+  <div class="big" style="font-size:52px;margin-top:10px">Sin concesión aquí</div>
+  <div style="font-size:30px;margin-top:12px">La más cercana: <b class="mono" style="color:var(--ambar)">1,8 km</b></div>
+  <div class="chip" style="margin-top:18px">Radio de búsqueda · 5 km</div></div></div>
+
+<!-- semáforo -->
+<div class="capa" id="s_panel"><div class="panel" style="right:80px;top:210px;width:640px">
+  <div class="etq">Ficha · Concesión A-17</div>
+  <div style="display:flex;gap:26px;align-items:center;margin-top:16px">
+    <div style="display:flex;flex-direction:column;gap:12px;background:#0b0907;padding:14px;border-radius:40px">
+      <i id="sem_r" style="display:block;width:60px;height:60px;border-radius:30px;background:#3a1612"></i>
+      <i id="sem_a" style="display:block;width:60px;height:60px;border-radius:30px;background:#3a2c12"></i>
+      <i id="sem_v" style="display:block;width:60px;height:60px;border-radius:30px;background:#12301d"></i></div>
+    <div><div class="big" id="sem_t" style="font-size:64px">Revisando…</div><div style="font-size:24px;color:var(--gris)">Semáforo de restricciones</div></div></div>
+  <div id="s_filas" style="margin-top:22px;font-size:27px;line-height:1.55"></div>
+  <div style="margin-top:16px;font-size:22px;color:#cbbd9f">Art. 48 a) Ley General de Minería · Decreto 238-2012</div>
+  <div style="margin-top:8px;font-size:20px;color:var(--gris)">Guía para priorizar, no un dictamen · se confirma con ICF e INHGEOMIN</div></div></div>
+
+<!-- geología -->
+<div class="capa" id="geo_panel"><div class="panel" style="right:80px;top:210px;width:600px">
+  <div class="etq">Geología de la zona · 10 km</div>
+  <div id="geo_filas" style="margin-top:14px;font-size:27px;line-height:1.6"></div>
+  <div class="etq" style="margin-top:20px">Satélite Sentinel-2 · 2018 → 2026</div>
+  <div id="sat" style="display:flex;gap:8px;margin-top:12px"></div>
+  <div style="margin-top:14px;font-size:24px">Alteración: <b style="color:#e7c26a">arcillas</b> · <b style="color:#d8774a">óxidos de hierro</b></div></div></div>
+<div class="capa" id="indicio"><div class="big" style="position:absolute;left:0;right:0;top:420px;text-align:center;font-size:120px;letter-spacing:2px;text-shadow:0 10px 40px #000">UN INDICIO <span style="color:var(--ambar)">NO ES</span> UN RECURSO.</div></div>
+
+<!-- expedientes -->
+<div class="capa" id="docs"></div>
+<div class="capa" id="d_panel">
+  <div class="panel" style="left:90px;top:90px;width:520px"><div class="etq">Biblioteca del cliente</div>
+    <div class="big mono" id="d_n" style="font-size:96px;color:var(--ambar)">0</div><div style="font-size:28px">documentos</div>
+    <div class="mono" id="d_f" style="font-size:40px;margin-top:12px">0</div><div style="font-size:26px">fragmentos citables</div></div>
+  <div class="panel" id="d_res" style="left:700px;top:330px;width:1120px;opacity:0">
+    <div class="mono" style="font-size:26px;color:var(--gris)">🔎 estudios antiguos de la zona</div>
+    <div style="font-size:36px;margin-top:20px;line-height:1.4">«Se tomaron muestras de la ocurrencia… <mark id="d_mark" style="background:transparent;color:inherit;padding:0 6px;border-radius:6px">Au 340 ppb, Ag 70 ppm</mark>…»</div>
+    <div style="display:flex;gap:14px;margin-top:22px;align-items:center"><span class="chip" id="d_cita">JICA-MMAJ 2003 · Fase III · p. 47</span><span class="chip mono">[D297-p47]</span><span class="chip" style="border-color:rgba(156,143,122,.5)">HISTÓRICO</span></div></div>
+</div>
+
+<!-- cuenta -->
+<div class="capa" id="cuenta"><div style="position:absolute;left:160px;top:200px;right:160px">
+  <div class="etq">Cuenta de mina · hecha por la herramienta, no de memoria</div>
+  <div id="c_l" class="mono" style="margin-top:26px;font-size:46px;line-height:1.9"></div></div>
+  <div id="sello" class="big" style="position:absolute;right:220px;top:620px;font-size:110px;color:var(--rojo);border:10px solid var(--rojo);padding:4px 34px;border-radius:14px;opacity:0;letter-spacing:4px">VALOR BRUTO</div>
+  <div id="sello2" style="position:absolute;right:240px;top:800px;font-size:34px;opacity:0;color:#f0e2c6">≠ ganancia · falta la mina, la planta y el tiempo</div></div>
+
+<!-- tablero -->
+<div class="capa" id="tablero"><div class="etq" style="position:absolute;left:110px;top:90px;color:var(--ambar)">Tablero nacional · para fiscalizar</div>
+  <div class="big" style="position:absolute;left:110px;top:130px;font-size:64px">Todo el país, en una pantalla</div></div>
+
+<!-- entregables -->
+<div class="capa" id="entreg"></div>
+<div class="capa" id="semanas"><div class="big" style="position:absolute;left:0;right:0;top:400px;text-align:center;font-size:150px;text-shadow:0 10px 40px #000"><span style="color:#b9ab93;text-decoration:line-through;text-decoration-color:var(--rojo);text-decoration-thickness:8px">SEMANAS</span> → <span style="color:var(--ambar)">MINUTOS</span></div></div>
+
+<!-- aprende -->
+<div class="capa" id="aprende"><div class="panel" style="left:90px;bottom:200px;width:560px">
+  <div class="etq">Aprende todos los días</div>
+  <div style="display:flex;justify-content:space-between;margin-top:14px;font-size:28px"><span>Documentos</span><b class="mono" id="a_d" style="color:var(--ambar)">446</b></div>
+  <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:28px"><span>Capas del mapa</span><b class="mono" id="a_c" style="color:var(--ambar)">208</b></div>
+  <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:28px"><span>Correcciones del equipo</span><b class="mono" id="a_e" style="color:var(--ambar)">✓</b></div></div></div>
+
+<!-- cierre -->
+<div class="capa" id="cierre">
+  <img src="logo.png" id="c_logo" style="position:absolute;left:50%;top:150px;width:330px;height:330px;margin-left:-165px;border-radius:50%;box-shadow:0 0 80px rgba(226,184,78,.35)">
+  <div class="big" style="position:absolute;left:0;right:0;top:520px;text-align:center;font-size:130px;letter-spacing:3px">DR ELECTRUM <span style="color:var(--ambar)">FP</span></div>
+  <div style="position:absolute;left:0;right:0;top:680px;text-align:center;font-size:36px;color:#efe3c9">Estación de trabajo minera · para empresas e instituciones</div>
+  <div style="position:absolute;left:0;right:0;top:760px;text-align:center;font-size:32px">Impulsado por <b style="color:var(--ambar)">AU-RA</b>, el cerebro de Orden Global</div>
+  <div style="position:absolute;left:0;right:0;top:900px;display:flex;justify-content:center;align-items:center;gap:22px"><span class="etq">Powered by</span><img src="orden-global-oro.svg" style="height:70px"></div></div>
+
+<div class="rotulo" id="r_el"><div class="n">DR ELECTRUM</div><div class="q">Geólogo · 40 años de campo</div></div>
+<div class="rotulo" id="r_ta"><div class="n">ING. TATIANA</div><div class="q">Ingeniera civil y ambiental</div></div>
+<div class="rotulo" id="r_ch"><div class="n">DON CHEMA</div><div class="q">Metalurgista · Olancho</div></div>
+<div id="antes"><div class="l"><span class="e">ANTES</span><span class="v1" id="an1"></span></div><div class="l"><span class="e">AHORA</span><span class="v2" id="an2"></span></div></div>
+<div id="sub"></div>
+
+<script>
+(async () => {
+const T = await (await fetch('tiempos.json')).json();
+const GEO = await (await fetch('geo.json')).json();
+const S = T.s, V = T.voces;
+const $ = id => document.getElementById(id);
+const cl = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const ss = x => { x = cl(x); return x * x * (3 - 2 * x); };
+const eo = x => 1 - Math.pow(1 - cl(x), 3);
+const vent = (t, a, b, fi = .4, fo = .4) => ss((t - a) / fi) * (1 - ss((t - (b - fo)) / fo));
+const op = (id, v) => { $(id).style.opacity = v; };
+const fmt = n => Math.round(n).toLocaleString('es-ES').replace(/,/g, '.');
+const cv = $('lienzo'), g = cv.getContext('2d');
+
+/* subtítulos (texto limpio de cada línea) */
+const SUB = {
+  E01: ['DR ELECTRUM', 'En minería, la mentira que arruina gente casi nunca es un número inventado. Es un número mal entendido.'],
+  T01: ['ING. TATIANA', 'Tres semanas de escritorio… para saber si se puede pedir una zona.'],
+  E02: ['DR ELECTRUM', 'Buenas. Soy Dr Electrum. Cuarenta años de campo… y el catastro minero de Honduras, entero, aquí.'],
+  T02: ['ING. TATIANA', 'Doctor, ¿cuántas concesiones están en exploración?'],
+  E03: ['DR ELECTRUM', 'Ciento setenta y seis. Ochenta y dos mil hectáreas. Se las marco en el mapa.'],
+  T03: ['ING. TATIANA', 'Estoy parada aquí… ¿de quién es esto?'],
+  E04: ['DR ELECTRUM', 'De nadie. La concesión más cercana está a un kilómetro ochocientos.'],
+  E05: ['DR ELECTRUM', 'Esta otra pisa una microcuenca que le da agua a 2.700 personas. Semáforo rojo.'],
+  T04: ['ING. TATIANA', 'Y es lo primero que va a preguntar MiAmbiente.'],
+  E06: ['DR ELECTRUM', 'Roca intrusiva, una falla a dos kilómetros, alteración vista desde el satélite… Eso es un indicio. No es un recurso.'],
+  C01: ['DON CHEMA', 'Doctor, ¿y qué dicen los estudios viejos de esta zona?'],
+  E07: ['DR ELECTRUM', 'La cooperación japonesa la muestreó en 2003. Página 47: oro, 340 partes por billón.'],
+  C02: ['DON CHEMA', '250.000 toneladas a 3,4… ¡son cien millones, doctor!'],
+  E08: ['DR ELECTRUM', 'Valor bruto, Chema. Falta la mina, la planta… y el tiempo.'],
+  E09: ['DR ELECTRUM', 'Para quien fiscaliza: cada traslape, cada área protegida, cada caserío. A verificar… no a adivinar.'],
+  E10: ['DR ELECTRUM', 'Mapas geológicos, fichas en PDF, planos, capas para su SIG… Lo que tomaba semanas, ahora toma minutos.'],
+  E11: ['DR ELECTRUM', 'Y cada documento que suben, cada corrección de su equipo, me enseña algo nuevo. Aprendo todos los días.'],
+  E12: ['DR ELECTRUM', 'Estamos a sus órdenes. Pregúntenos lo que quiera.'],
+};
+const DUR = {}; for (const k in T.archivos) DUR[k] = T.dur ? T.dur[k] : 0;
+
+/* proyección del mapa */
+const LON0 = -89.5, LON1 = -83.0, LAT0 = 12.9, LAT1 = 16.6;
+let cam = { x: 960, y: 560, s: 1 };
+function P(lon, lat) {
+  const k = 1500 / (LON1 - LON0); const x = (lon - (LON0 + LON1) / 2) * k, y = -(lat - (LAT0 + LAT1) / 2) * k * 1.03;
+  return [cam.x + x * cam.s, cam.y + y * cam.s];
+}
+const ORD = GEO.con.map((c, i) => [Math.sin(i * 12.9898) * 43758.5453 % 1, i]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
+const RANK = new Array(GEO.con.length); ORD.forEach((i, r) => RANK[i] = r / ORD.length);
+function fondo(a = 1) {
+  const gr = g.createRadialGradient(960, 520, 100, 960, 540, 1200); gr.addColorStop(0, '#1b150e'); gr.addColorStop(1, '#070504');
+  g.globalAlpha = a; g.fillStyle = gr; g.fillRect(0, 0, 1920, 1080); g.globalAlpha = 1;
+  // curvas de nivel sutiles
+  g.strokeStyle = 'rgba(255,174,59,0.045)'; g.lineWidth = 1.2;
+  for (let i = 0; i < 14; i++) { g.beginPath(); for (let x = 0; x <= 1920; x += 40) { const y = 80 + i * 70 + 26 * Math.sin(x / 210 + i) + 14 * Math.sin(x / 90 + i * 2); x ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke(); }
+}
+function mapa(t, o) {
+  const { dibujo = 1, tex = 1, con = 0, expl = 0, alfa = 1 } = o;
+  g.save(); g.globalAlpha = alfa;
+  // textura de poblados y ríos
+  g.fillStyle = 'rgba(246,240,226,0.22)';
+  const nt = Math.floor(GEO.tex.length * tex);
+  for (let i = 0; i < nt; i++) { const [x, y] = P(GEO.tex[i][0], GEO.tex[i][1]); g.fillRect(x, y, 1.6, 1.6); }
+  // contorno que se dibuja
+  g.strokeStyle = '#FFAE3B'; g.lineWidth = 2.4; g.shadowColor = 'rgba(255,174,59,.8)'; g.shadowBlur = 14;
+  for (const an of GEO.anillos) { const n = Math.floor(an.length * dibujo); if (n < 2) continue; g.beginPath(); for (let i = 0; i < n; i++) { const [x, y] = P(an[i][0], an[i][1]); i ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke(); }
+  g.shadowBlur = 0;
+  // concesiones (visualización)
+  for (let i = 0; i < GEO.con.length; i++) {
+    const r = RANK[i]; if (r > con) continue; const c = GEO.con[i]; const [x, y] = P(c[0], c[1]); const w = Math.min(22, Math.max(3, c[2] * 150 * Math.sqrt(cam.s)));
+    const ex = c[3] === 1;
+    const k = expl > 0 ? (ex ? 1 : 1 - .75 * expl) : 1;
+    g.fillStyle = ex && expl > 0 ? `rgba(255,214,120,${.85 * k})` : `rgba(255,174,59,${.55 * k})`;
+    g.fillRect(x - w / 2, y - w / 2, w, w);
+    if (ex && expl > 0) { g.strokeStyle = `rgba(255,240,200,${.9 * expl})`; g.lineWidth = 1.5; g.strokeRect(x - w / 2 - 3, y - w / 2 - 3, w + 6, w + 6); }
+  }
+  g.restore();
+}
+/* tarjetas de documentos */
+const DOCN = 60; for (let i = 0; i < DOCN; i++) { const d = document.createElement('div'); d.className = 'doc'; d.innerHTML = '<i></i><i style="width:60%"></i><i></i><i></i><i style="width:40%"></i><i></i><i></i>'; $('docs').appendChild(d); }
+/* satélite */
+for (let i = 0; i < 9; i++) { const d = document.createElement('div'); d.style.cssText = 'width:52px;height:52px;border-radius:6px;position:relative;overflow:hidden'; d.innerHTML = `<div style="position:absolute;inset:0;background:#2f6b35"></div><div class="mancha" style="position:absolute;left:30%;top:35%;width:${8 + i * 4}px;height:${6 + i * 3}px;border-radius:40%;background:#b58a55"></div><div style="position:absolute;bottom:2px;left:3px;font-size:11px;color:#fff" class="mono">${2018 + i}</div>`; $('sat').appendChild(d); }
+/* entregables */
+const TI = [['FICHA', 'Ficha en PDF'], ['GEOLOGÍA', 'Mapa geológico'], ['PLANO', 'Plano con cuadrícula UTM'], ['SIG', 'KML · GeoJSON · DXF'], ['SATÉLITE', 'Timelapse 2018–2026'], ['DONDE SEA', 'Web · App · Telegram']];
+TI.forEach(([s, h], i) => { const d = document.createElement('div'); d.className = 'tile'; d.innerHTML = `<canvas width="520" height="300" style="position:absolute;inset:0"></canvas><div class="s">${s}</div><div class="h">${h}</div>`; $('entreg').appendChild(d); });
+function dibujaTile(i, c, t) {
+  const x = c.getContext('2d'); x.clearRect(0, 0, 520, 300); x.save(); x.globalAlpha = .9;
+  if (i === 0) { x.fillStyle = '#efe6d2'; x.fillRect(150, 20, 220, 170); x.fillStyle = '#FFAE3B'; x.fillRect(150, 20, 220, 26); x.fillStyle = '#cdbf9f'; for (let k = 0; k < 6; k++) x.fillRect(166, 60 + k * 20, 150 + 30 * Math.sin(k), 8); }
+  if (i === 1) { const col = ['#b65e3c', '#d9a441', '#6e8f4a', '#8a5a9e', '#c77c4b']; for (let k = 0; k < 18; k++) { x.fillStyle = col[k % 5]; x.beginPath(); x.ellipse(60 + (k * 97) % 420, 40 + (k * 53) % 150, 50, 28, k, 0, 7); x.fill(); } x.strokeStyle = '#ff4d3d'; x.setLineDash([10, 8]); x.lineWidth = 3; x.beginPath(); x.moveTo(20, 170); x.lineTo(500, 40); x.stroke(); }
+  if (i === 2) { x.strokeStyle = 'rgba(255,174,59,.35)'; for (let k = 0; k < 520; k += 40) { x.beginPath(); x.moveTo(k, 0); x.lineTo(k, 300); x.stroke(); x.beginPath(); x.moveTo(0, k); x.lineTo(520, k); x.stroke(); } x.strokeStyle = '#FFAE3B'; x.lineWidth = 4; x.strokeRect(150, 50, 220, 130); }
+  if (i === 3) { x.font = '600 40px IBM Plex Mono'; x.fillStyle = '#FFAE3B'; x.fillText('.kml', 60, 90); x.fillText('.geojson', 200, 150); x.fillText('.dxf', 90, 200); }
+  if (i === 4) { for (let k = 0; k < 6; k++) { x.fillStyle = '#2f6b35'; x.fillRect(30 + k * 80, 60, 70, 110); x.fillStyle = '#b58a55'; x.beginPath(); x.ellipse(65 + k * 80, 115, 6 + k * 5, 5 + k * 4, 0, 0, 7); x.fill(); } }
+  if (i === 5) { x.strokeStyle = '#FFAE3B'; x.lineWidth = 4; x.strokeRect(70, 50, 200, 130); x.strokeRect(310, 40, 80, 150); x.beginPath(); x.arc(440, 110, 34, 0, 7); x.stroke(); }
+  x.restore();
+}
+/* tomas de video */
+const CL = T.clips;
+function tomaEn(t) { let m = null, mv = 0; for (const c of CL) { const v = vent(t, c.a, c.b, c.fi ?? .3, c.fo ?? .3); if (v > mv) { mv = v; m = c; } } return [m, mv]; }
+async function ponToma(t) {
+  const [c, k] = tomaEn(t); const el = $('clip');
+  if (!c) { el.style.opacity = 0; return 0; }
+  const n = Math.min(c.n, Math.max(1, Math.round((t - c.a + (c.off || 0)) * 30) + 1));
+  const src = `clips/${c.k}/${String(n).padStart(5, '0')}.jpg`; const img = $('clipA');
+  if (!img.src.endsWith(src)) { img.src = src; await img.decode().catch(() => {}); }
+  img.style.transform = `scale(${1.02 + .04 * cl((t - c.a) / (c.b - c.a))})`; el.style.opacity = k; return k;
+}
+function antes(t, a, b, v1, v2) { if (t >= a && t < b) { $('an1').textContent = v1; $('an2').textContent = v2; return vent(t, a, b, .4, .4); } return 0; }
+
+function cuadro(t, tk) {
+  g.clearRect(0, 0, 1920, 1080); document.querySelectorAll('.capa').forEach(c => c.style.opacity = 0);
+  fondo(1);
+  /* papeleo: contador de días */
+  if (t > S.papeles && t < S.heroe) { op('dias', vent(t, S.papeles + .3, S.heroe, .3, .3)); $('dias_t').textContent = 'DÍA ' + Math.max(1, Math.round(1 + 20 * eo((t - S.papeles - .3) / 5.2))); }
+  /* título */
+  op('titulo', vent(t, S.titulo + .4, S.mapa - .2, .8, .5));
+  /* MAPA */
+  if (t > S.mapa && t < S.semaforo + .5) {
+    let cx = 960, cy = 560, sc = 1;
+    const gpsK = ss((t - S.gps) / 1.8); const tgt = [-86.85, 14.62];
+    cam = { x: 1120, y: 560, s: 1.12 + .05 * cl((t - S.mapa_cod) / 10) };
+    if (gpsK > 0) { const s = 1.12 + 4.4 * gpsK; cam.s = s; const [px, py] = (() => { const k = 1500 / (LON1 - LON0); return [(tgt[0] - (LON0 + LON1) / 2) * k, -(tgt[1] - (LAT0 + LAT1) / 2) * k * 1.03]; })(); cam.x = 1080 - px * s * gpsK + 0; cam.y = 560 - py * s * gpsK; }
+    const a = ss((t - S.mapa_cod + .5) / .8) * (1 - ss((t - S.semaforo) / .5));
+    mapa(t, { dibujo: ss((t - S.mapa_cod + .4) / 1.6), tex: ss((t - S.mapa_cod) / 1.5), con: ss((t - S.mapa_cod - .6) / 2.4), expl: ss((t - S.n176) / .6) * (1 - gpsK), alfa: a });
+    op('m_panel', vent(t, S.mapa_cod + .2, S.campo, .5, .4)); $('m_n').textContent = fmt(1076 * ss((t - S.mapa_cod - .6) / 2.4)); $('m_ha').textContent = fmt(163580 * ss((t - S.mapa_cod - .6) / 2.4)) + ' ha';
+    $('m_176').style.opacity = ss((t - S.n176) / .5);
+    op('m_preg', vent(t, V.T02 - .1, V.E03 + 1, .3, .3));
+    if (gpsK > 0 && t > S.gps) {
+      const [ux, uy] = P(tgt[0], tgt[1]); const pulso = (t * 1.2) % 1;
+      g.save(); g.globalAlpha = a; g.strokeStyle = 'rgba(79,179,255,.85)'; g.lineWidth = 3; const r5 = 5 / 111 * 1500 / (LON1 - LON0) * cam.s;
+      g.setLineDash([12, 10]); g.beginPath(); g.arc(ux, uy, r5 * ss((t - S.gps - .6) / .8), 0, 7); g.stroke(); g.setLineDash([]);
+      g.fillStyle = '#4FB3FF'; g.beginPath(); g.arc(ux, uy, 12, 0, 7); g.fill(); g.strokeStyle = `rgba(79,179,255,${1 - pulso})`; g.beginPath(); g.arc(ux, uy, 12 + 50 * pulso, 0, 7); g.stroke();
+      const nx = ux + r5 * .36 * 1.4, ny = uy - r5 * .36 * .9; const k2 = ss((t - V.E04 - 1.2) / .6);
+      g.strokeStyle = `rgba(255,174,59,${k2})`; g.setLineDash([8, 8]); g.beginPath(); g.moveTo(ux, uy); g.lineTo(ux + (nx - ux) * k2, uy + (ny - uy) * k2); g.stroke(); g.setLineDash([]);
+      g.fillStyle = `rgba(255,174,59,${.8 * k2})`; g.fillRect(nx - 30, ny - 30, 60, 60); g.font = '600 30px IBM Plex Mono'; g.fillStyle = `rgba(255,240,210,${k2})`; g.fillText('1,8 km', (ux + nx) / 2 + 14, (uy + ny) / 2 - 10);
+      g.restore(); op('g_panel', vent(t, V.E04 + .6, S.semaforo, .4, .4));
+    }
+  }
+  /* SEMÁFORO */
+  if (t > S.semaforo - .2 && t < S.geo + .5) {
+    const a = vent(t, S.semaforo, S.geo + .4, .5, .5); g.save(); g.globalAlpha = a;
+    const z = 1 + .05 * cl((t - S.semaforo) / 10); g.translate(620, 560); g.scale(z, z);
+    g.strokeStyle = 'rgba(255,174,59,.08)'; g.lineWidth = 1.5; for (let i = 0; i < 16; i++) { g.beginPath(); for (let k = 0; k <= 80; k++) { const an = k / 80 * 6.283; const rr = 60 + i * 45 + 14 * Math.sin(an * 5 + i); g.lineTo(80 + Math.cos(an) * rr * 1.3, -20 + Math.sin(an) * rr); } g.stroke(); }
+    // microcuenca
+    g.fillStyle = 'rgba(79,179,255,.22)'; g.strokeStyle = 'rgba(79,179,255,.9)'; g.lineWidth = 3; g.beginPath();
+    for (let i = 0; i <= 60; i++) { const an = i / 60 * 6.283; const r = 230 + 40 * Math.sin(an * 3) + 20 * Math.sin(an * 7); g.lineTo(-170 + Math.cos(an) * r * 1.2, 40 + Math.sin(an) * r * .8); } g.fill(); g.stroke();
+    // ríos
+    g.strokeStyle = 'rgba(120,200,255,.7)'; g.lineWidth = 3; g.beginPath(); g.moveTo(-460, -160); g.bezierCurveTo(-250, -60, -150, 120, 60, 300); g.stroke();
+    // concesión
+    const dib = ss((t - S.semaforo - .3) / 1.0); g.strokeStyle = '#FFAE3B'; g.lineWidth = 5; g.fillStyle = 'rgba(255,174,59,.14)';
+    const pts = [[-120, -230], [260, -230], [260, 190], [-120, 190]]; g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.globalAlpha = a * dib; g.fill(); g.stroke();
+    // intersección roja
+    const rk = ss((t - S.rojo + 1.2) / .6); if (rk > 0) { g.save(); g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.clip(); g.fillStyle = `rgba(255,77,61,${.35 * rk + .1 * Math.sin(t * 8) * rk})`; g.beginPath(); for (let i = 0; i <= 60; i++) { const an = i / 60 * 6.283; const r = 230 + 40 * Math.sin(an * 3) + 20 * Math.sin(an * 7); g.lineTo(-170 + Math.cos(an) * r * 1.2, 40 + Math.sin(an) * r * .8); } g.fill(); g.restore(); }
+    g.font = '600 26px Alegreya Sans'; g.fillStyle = `rgba(150,210,255,${dib})`; g.fillText('Microcuenca declarada', -470, 300); g.fillStyle = `rgba(255,174,59,${dib})`; g.fillText('Concesión A-17', -110, -250);
+    // aldeas
+    g.fillStyle = '#F6F0E2'; [[40, -80], [140, 40], [-60, 110], [200, -150], [90, 150]].forEach(([x, y], i) => { const k = ss((t - S.semaforo - 1.5 - i * .25) / .3); g.globalAlpha = a * k; g.beginPath(); g.arc(x, y, 9, 0, 7); g.fill(); });
+    g.restore();
+    op('s_panel', a); const FI = [['💧', 'Microcuenca declarada · abastece a <b>2.748 personas</b>'], ['🏘', '<b>5 aldeas</b> dentro · 33 caseríos a menos de 2 km'], ['🌊', '16,5 km de cauces dentro']];
+    $('s_filas').innerHTML = FI.map(([i, s], k) => `<div style="opacity:${ss((t - S.semaforo - 1 - k * .6) / .4)}">${i} ${s}</div>`).join('');
+    const roj = t > S.rojo; $('sem_r').style.background = roj ? '#FF4D3D' : '#3a1612'; $('sem_r').style.boxShadow = roj ? '0 0 30px #FF4D3D' : 'none'; $('sem_a').style.background = !roj && t > S.semaforo + 1 ? '#e8a630' : '#3a2c12';
+    $('sem_t').textContent = roj ? 'ROJO' : 'Revisando…'; $('sem_t').style.color = roj ? '#FF4D3D' : '';
+  }
+  /* GEOLOGÍA */
+  if (t > S.geo - .2 && t < S.nucleo + .6) {
+    const a = vent(t, S.geo, S.nucleo + .5, .5, .5); g.save(); g.globalAlpha = a; g.translate(640, 560); g.scale(1 + .04 * cl((t - S.geo) / 9), 1 + .04 * cl((t - S.geo) / 9));
+    const col = ['#8c4a32', '#c8913a', '#5f7f43', '#7a4e8f', '#b06a3e', '#9a8a4a', '#6b5a3a'];
+    const R0 = 400 * ss((t - S.geo) / .8); g.save(); g.beginPath(); g.arc(0, 0, R0, 0, 7); g.clip();
+    g.fillStyle = '#211a12'; g.fillRect(-500, -500, 1000, 1000);
+    for (let k = 0; k < 90; k++) { const kk = ss((t - S.geo - .1 - k * .012) / .4); g.globalAlpha = a * kk * .55; g.fillStyle = col[k % 7]; g.beginPath();
+      const cx = Math.sin(k * 12.3) * 380, cy = Math.cos(k * 7.7) * 380; for (let q = 0; q <= 14; q++) { const an = q / 14 * 6.283; const rr = 70 + 40 * Math.sin(an * 3 + k) + 25 * Math.sin(an * 5 + k * 2); g.lineTo(cx + Math.cos(an) * rr, cy + Math.sin(an) * rr * .7); } g.fill(); }
+    g.globalAlpha = a; g.fillStyle = 'rgba(214,80,110,.75)'; g.beginPath(); for (let q = 0; q <= 20; q++) { const an = q / 20 * 6.283; const rr = 95 + 20 * Math.sin(an * 4); g.lineTo(60 + Math.cos(an) * rr, -30 + Math.sin(an) * rr * .7); } g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.08)'; for (let k = -400; k < 400; k += 26) { g.beginPath(); g.moveTo(k, -400); g.lineTo(k + 200, 400); g.stroke(); }
+    g.strokeStyle = '#FF4D3D'; g.lineWidth = 5; g.setLineDash([18, 12]); const fk = ss((t - S.geo - 1.4) / 1); g.beginPath(); g.moveTo(-420, 300); g.lineTo(-420 + 840 * fk, 300 - 600 * fk); g.stroke(); g.setLineDash([]);
+    const ak = ss((t - S.geo - 3) / .8); g.globalAlpha = a * ak; g.fillStyle = 'rgba(231,194,106,.7)'; g.beginPath(); g.ellipse(110, 10, 50, 30, .3, 0, 7); g.fill(); g.fillStyle = 'rgba(216,119,74,.75)'; g.beginPath(); g.ellipse(150, -70, 34, 22, 0, 0, 7); g.fill();
+    g.restore(); g.globalAlpha = a; g.strokeStyle = '#FFAE3B'; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, R0, 0, 7); g.stroke();
+    g.fillStyle = '#F6F0E2'; g.font = '600 22px IBM Plex Mono'; g.fillText('0 ── 5 km', -60, R0 + 46);
+    g.font = '600 24px Alegreya Sans'; g.fillStyle = `rgba(255,120,140,${ss((t - S.geo - .8) / .4)})`; g.fillText('intrusivo', 150, -110); g.fillStyle = `rgba(255,77,61,${ss((t - S.geo - 1.8) / .4)})`; g.fillText('falla', -300, 150);
+    g.restore(); op('geo_panel', vent(t, S.geo + .4, S.indicio - .1, .5, .3));
+    const GF = ['Roca intrusiva dentro · <b>6,7 %</b>', 'Falla a <b>1,8 km</b>', 'Tracto USGS · pórfido de cobre', '<b>11</b> yacimientos a menos de 10 km'];
+    $('geo_filas').innerHTML = GF.map((s, k) => `<div style="opacity:${ss((t - S.geo - .8 - k * .5) / .4)}">• ${s}</div>`).join('');
+    [...$('sat').children].forEach((d, i) => { d.style.opacity = ss((t - S.geo - 2.6 - i * .15) / .3); });
+    op('indicio', vent(t, S.indicio, S.nucleo + .2, .25, .4));
+  }
+  /* EXPEDIENTES */
+  if (t > S.docs - .3 && t < S.cuenta + .5) {
+    const a = vent(t, S.docs, S.cuenta + .4, .4, .5); op('docs', a);
+    [...$('docs').children].forEach((d, i) => { const k = eo((t - S.docs - i * .03) / .8); const col = i % 10, row = Math.floor(i / 10); const ord = ss((t - S.docs - 2.2) / 1.2);
+      const x0 = 960 + 800 * Math.sin(i * 7.1), y0 = -300 - 200 * (i % 5); const x1 = 720 + col * 116, y1 = 120 + row * 150;
+      d.style.left = (x0 + (x1 - x0) * k) + 'px'; d.style.top = (y0 + (y1 - y0) * k) + 'px'; d.style.transform = `rotate(${(1 - ord) * 30 * Math.sin(i)}deg) scale(${.62})`; d.style.opacity = k * (1 - .7 * ss((t - S.cita + 1.2) / .5)); });
+    op('d_panel', a); $('d_n').textContent = fmt(446 * ss((t - S.docs - .3) / 1.6)); $('d_f').textContent = fmt(12266 * ss((t - S.docs - .3) / 1.8));
+    $('d_res').style.opacity = ss((t - S.cita + 1) / .4); $('d_res').style.transform = `translateY(${30 * (1 - eo((t - S.cita + 1) / .5))}px)`;
+    const hk = ss((t - S.cita - .9) / .3); $('d_mark').style.background = `rgba(255,174,59,${.85 * hk})`; $('d_mark').style.color = hk > .5 ? '#1d1305' : '';
+    $('d_cita').style.background = `rgba(255,174,59,${.08 + .5 * ss((t - S.cita) / .3)})`;
+  }
+  /* CUENTA */
+  if (t > S.cuenta - .3 && t < S.fisc + .5) {
+    op('cuenta', vent(t, S.cuenta, S.fisc + .4, .4, .5));
+    const L = [['250.000 t × 3,40 g/t ÷ 31,1035', '27.328 oz contenidas'], ['× 90 % de recuperación', '24.595 oz recuperables'], ['× US$ 4.146 por onza', 'US$ 101.959.904']];
+    $('c_l').innerHTML = L.map(([a, b], k) => { const kk = ss((t - S.cuenta - .4 - k * 1.3) / .5); return `<div style="opacity:${kk}">${a} <span style="color:#9c8f7a">=</span> <b style="color:${k === 2 ? '#FFAE3B' : '#fff3d6'}">${b}</b></div>`; }).join('');
+    const sk = eo((t - S.bruto - .2) / .35); $('sello').style.opacity = sk; $('sello').style.transform = `rotate(-8deg) scale(${1.8 - .8 * sk})`; $('sello2').style.opacity = ss((t - S.bruto - 1.2) / .4);
+  }
+  /* TABLERO */
+  if (t > S.tablero - .3 && t < S.entreg + .5) {
+    const a = vent(t, S.tablero, S.entreg + .4, .5, .5); op('tablero', a);
+    cam = { x: 1440, y: 600, s: .62 }; mapa(t, { dibujo: 1, tex: 1, con: 1, expl: 0, alfa: a * .9 });
+    g.save(); g.globalAlpha = a; for (let i = 0; i < 64; i++) { const c = GEO.con[(i * 17) % GEO.con.length]; const [x, y] = P(c[0], c[1]); const k = ss((t - S.tablero - 1 - i * .02) / .3); g.fillStyle = `rgba(255,77,61,${.9 * k})`; g.beginPath(); g.arc(x, y, 6, 0, 7); g.fill(); } g.restore();
+    const K = [['64', 'traslapes entre titulares · a verificar'], ['26', 'concesiones en áreas protegidas'], ['44', 'en microcuencas declaradas'], ['168', 'con caseríos dentro']];
+    K.forEach(([n, s], k) => { let d = document.getElementById('kpi' + k); if (!d) { d = document.createElement('div'); d.id = 'kpi' + k; d.className = 'kpi'; d.innerHTML = `<div class="n"></div><div class="t">${s}</div>`; $('tablero').appendChild(d); } const kk = ss((t - S.tablero - .4 - k * .45) / .4); d.style.left = (110 + (k % 2) * 430) + 'px'; d.style.top = (300 + Math.floor(k / 2) * 300) + 'px'; d.style.opacity = kk; d.querySelector('.n').textContent = fmt(+n * eo((t - S.tablero - .4 - k * .45) / 1.0)); });
+  }
+  /* ENTREGABLES */
+  if (t > S.entreg - .3 && t < S.aprende + .5) {
+    const a = vent(t, S.entreg, S.entreg + 4.9, .4, .4); op('entreg', a);
+    [...$('entreg').children].forEach((d, i) => { const k = eo((t - S.entreg - .2 - i * .32) / .5); d.style.left = (110 + (i % 3) * 580) + 'px'; d.style.top = (190 + Math.floor(i / 3) * 360 + 60 * (1 - k)) + 'px'; d.style.opacity = k; dibujaTile(i, d.querySelector('canvas'), t); });
+    op('semanas', vent(t, S.semanas, S.semanas + 2.8, .25, .4));
+  }
+  /* APRENDE */
+  if (t > S.aprende && t < S.cierre + .3) { op('aprende', vent(t, S.aprende + .6, S.cierre, .5, .4)); const k = cl((t - S.aprende - 1) / 6); $('a_d').textContent = fmt(446 + 37 * k); $('a_c').textContent = fmt(208 + 9 * k); }
+  /* CIERRE */
+  if (t > S.logo - .4) { const a = ss((t - S.logo) / .8); op('cierre', a); g.globalAlpha = 1; $('c_logo').style.transform = `scale(${.85 + .15 * eo((t - S.logo) / 1.4)}) rotate(${-8 * (1 - eo((t - S.logo) / 1.4))}deg)`; }
+  /* rótulos, antes/ahora, subtítulos */
+  op('r_ta', vent(t, V.T01 + .1, V.T01 + 4, .4, .4)); op('r_ch', vent(t, V.C01 + .1, V.C01 + 3.4, .4, .4));
+  let an = 0;
+  an += antes(t, S.mapa_cod + 1, S.campo - .2, 'días de padrones', 'segundos');
+  an += antes(t, S.gps + 1.6, S.semaforo - .2, 'viaje a la oficina', 'al instante');
+  an += antes(t, S.semaforo + 1, S.geo - .2, 'semanas de revisión', 'segundos');
+  an += antes(t, S.geo + 1, S.indicio - .2, 'semanas de SIG', 'un minuto');
+  an += antes(t, S.docs + 1, S.cuenta - .2, 'meses de archivo', 'con cita y página');
+  an += antes(t, S.entreg + .5, S.semanas - .2, 'semanas', 'minutos');
+  $('antes').style.opacity = an;
+  let su = '', sk = 0; for (const k in SUB) { const a = V[k], b = a + (T.dur[k] || 3); if (t >= a - .1 && t < b + .4) { su = `<b>${SUB[k][0]}</b>${SUB[k][1]}`; sk = vent(t, a - .1, b + .4, .15, .25); } }
+  $('sub').innerHTML = su; $('sub').style.opacity = sk;
+  // fundido inicial y final
+  const ini = ss((t - .25) / .2), fin = 1 - ss((t - T.total + 1.2) / 1.2);
+  document.body.style.filter = `brightness(${Math.min(ini < 1 && t < .3 ? 0 : 1, fin)})`;
+}
+window.setT = async t => { const tk = await ponToma(t); cuadro(t, tk); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); return true; };
+await document.fonts.ready; window.LISTO = true;
+})();
+</script></body></html>
