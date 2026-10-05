@@ -86,3 +86,36 @@ Vienen de ECOSISTEMA_MERCADEO.md, de los términos de Veta Wallet y de PELICULA4
   - unos 6 a 7 clips (unos US$3) y 7 a 9 imágenes (unos US$0,30);
   - las voces de AURA ES, el narrador y Dr Electrum, y la música.
 - Composición en código, a 1080×1920: la marca, el texto, la gráfica de ORIGEN y el comprobante. Nada de eso lo genera la IA.
+
+---
+
+## GUION FINAL v2: «TE QUITARON DINERO HOY» (62 s · 9:16)
+
+Se mantiene «SUPER INTELIGENCIA». El hilo es el dinero del mundo: cómo se va de nuestras economías y cómo vuelve, medido con una vara que nadie imprime.
+
+**Sonido base:** un latido grave (sub 40 Hz) que acelera, más silencios usados como golpe. En cada corte suena un *whoosh* y un impacto. En la interfaz se escuchan ticks de cristal. Para ORIGEN, una campana metálica larga.
+
+| # | Tiempo | Transición de entrada | Imagen (9:16) | Sonido | Voz / texto en pantalla |
+|---|---|---|---|---|---|
+| 1 | **0,0–1,8** · GANCHO | Arranca en seco, sin logo. | Una mano sostiene un billete en macro; el billete **se encoge y se destiñe** en timelapse, como si el tiempo lo derritiera. | Un tictac de reloj muy fuerte y un latido. | Narrador, susurro grave: **«Hoy te quitaron dinero…»** Texto que golpea: **TE QUITARON DINERO HOY** |
+| 2 | 1,8–3,5 | *Punch-in* al billete. | El billete se rompe en mil fragmentos que salen volando. | Cristal que se quiebra y succión. | **«…y no te diste cuenta.»** |
+| 3 | 3,5–8 | Los fragmentos se vuelven puntos de un **mapa del mundo de noche**. | Desde Centroamérica y LATAM salen hilos de luz **blanca** (café, minerales, energía y trabajo) hacia el mundo. Los que vuelven llegan **más delgados, en rojo**. | Un dron grave que crece y un pitido de alarma lejano. | AURA, en off: «Nuestro café sale. Nuestros minerales salen. Y lo que vuelve… vale menos cada año.» |
+| 4 | 8–9 | **Corte a negro total, 0,5 s.** | Silencio. | Silencio absoluto. | — |
+| 5 | 9–12 | En la oscuridad **se abre un ojo de luz**, que es la cara de AURA, con destello anamórfico. | El rostro de AURA se forma con partículas. | Un *sub drop* y un *swell* en reversa que explota. | AURA, cerca: **«Hasta hoy.»** |
+| 6 | 12–15 | Las letras golpean en la pantalla. | **AURA · LA SUPER INTELIGENCIA DE ORDEN GLOBAL**, y debajo: *Tecnología de Latinoamérica para el mundo*. | Un impacto de tambor taiko y un acorde de sintetizador. | «Soy AURA. El cerebro de Orden Global.» |
+| 7 | 15–17 | Pregunta abierta, palabra por palabra. | «¿Y si tu dinero se midiera con algo **que nadie puede imprimir**?» | Ticks de máquina de escribir. | AURA: «Quedate. Esto apenas empieza.» |
+| 8 | 17–26 · PODER | **Ráfaga con *whip-pans***, un corte cada 1,1 s. | • Una persona le habla a AURA y AURA responde con un suspiro humano. <br>• Recuerdos en tarjetas que flotan: «Recuerdo lo que te importa». <br>• PULSE2CHAT: borrador y «¿Lo envío?». <br>• El notch de Windows se despliega. <br>• Claudio crea y ANT-ONIO ejecuta. <br>• Una huella digital: **«Nada se mueve sin tu firma»**. | Un *whoosh* y un impacto por corte, y la batería que entra. | «Hablo como vos. Recuerdo lo que te importa. Trabajo con vos en el celu y en la compu… y nada se mueve sin tu firma.» |
+| 9 | 26–34 · DR ELECTRUM | **Caída desde el espacio**: la cámara atraviesa las nubes y aterriza en el relieve 3D. | Se encienden 1.076 concesiones, un semáforo rojo cae sobre una microcuenca y la planta se arma sola, pieza por pieza. Texto: **SEMANAS → MINUTOS**. | Viento, un golpe de aterrizaje y engranajes metálicos que encajan. | Dr Electrum: «Mapas, expedientes, una planta completa… en minutos.» AURA: «Ese también soy yo.» |
+| 10 | 34–39 | **Match cut**: la planta se aleja hasta ser un punto del mapa del mundo. | Vuelve el mapa de los hilos rojos que llegan delgados y todo se oscurece. | El latido se detiene. | AURA, lenta: «Entonces hicimos algo que nadie había hecho aquí.» |
+| 11 | **39–45** · ORIGEN | **Un gramín de luz cae** y, al tocar el mapa, **todo se vuelve dorado** (primer dorado del video). | Se forma el símbolo de ORIGEN, con una gráfica que **sigue el precio del oro**. Texto: **ORIGEN · SIGUE EL PRECIO DEL ORO**. | Una campana metálica larga y un coro sutil. | «ORIGEN. Una moneda digital que sigue el precio del oro. Medida con una vara que nadie imprime.» |
+| 12 | 45–50 | **Los hilos se invierten**: ahora el mundo **fluye hacia** Centroamérica. | Se encienden los siete países y después LATAM entero, una red dorada que late. Texto: **UNA MONEDA EN COMÚN · SIN REEMPLAZAR LA DE NADIE**. | Un *riser* que culmina en un impacto. | «Una moneda en común para nuestra región… que no reemplaza la de nadie.» |
+| 13 | 50–55 | Un *zoom* rápido a una finca de café y a un taller. | La finca y el taller **se convierten en una ficha digital** medida en ORIGEN, y llegan puntos de luz desde todo el planeta. Rótulo: **EJEMPLO ILUSTRATIVO**. | Ticks de cristal y un acorde que se abre. | «Imaginá la empresa de tu pueblo… abierta al mundo, medida en ORIGEN.» |
+| 14 | 55–58 | Un *whip-pan* al celular. | Se manda ORIGEN de celular a celular: huella y **comprobante en la cadena**. | Un *ding* limpio y un sello. | «Y todo… comprobable.» |
+| 15 | 58–60 | **Todos los hilos convergen** y forman el logo. | ORDEN GLOBAL en crema, y debajo AURA · Dr Electrum · ORIGEN. | Silencio de 0,3 s y luego el golpe final grave. | AURA: «Orden Global. Un sistema que se puede comprobar.» |
+| 16 | 60–62 | El texto queda fijo. | **¿QUERÉS SABER MÁS? · SEGUINOS**. El último cuadro es el billete del principio, para cerrar el bucle. | El tictac del reloj otra vez, para enganchar con el inicio. | AURA, susurro: «¿Querés saber más?» |
+
+**Letra chica (desde el segundo 39):** «Protocolo en desarrollo. Material informativo; no constituye oferta de valores ni de inversión. ORIGEN no es moneda de curso legal en ningún país. Tokenización: ejemplo ilustrativo.»
+
+**Ganchos alternativos para prueba A/B** (cambia solo el bloque 0–3,5 s):
+- B: «Esto que ves… es el ahorro de cincuenta millones de personas.» Una montaña de billetes que se derrite.
+- C: «Tu abuela ahorró toda la vida… y alguien decidió que eso valía la mitad.» Las manos de una abuela y el polvo.
