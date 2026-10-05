@@ -171,3 +171,14 @@ Las escenas de mapa ahora son relieve real de Honduras en three.js (`electrum/ti
   - Tablero nacional: 64 pilares rojos.
 - **Créditos en pantalla:** "Relieve: AWS Terrain Tiles · Imagen: Sentinel-2 cloudless – s2maps.eu by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016) · Concesiones y capas: representación ilustrativa".
 - **Las posiciones de las concesiones son estilizadas**, porque los polígonos reales requieren autenticación en la plataforma.
+
+## v3: escena de la planta y SERNA
+
+- **Planta (nueva escena, después de «Valor bruto, Chema»):**
+  - Don Chema pregunta qué necesita para montar la planta.
+  - Dr Electrum arma en 3D (`electrum/planta.js`) una planta CIL conceptual de 150 t/día:
+    - acopio, trituración, faja, molienda, tanques CIL, y elución y fundición;
+    - después, agua recirculada, energía solar, presa de relaves revestida, destrucción de cianuro y comunidad con mesa de diálogo y reforestación.
+  - Panel con las cifras derivadas de la cuenta (≈49.500 t/año, ≈5 años, ≈4.870 oz/año) y la nota «no sustituye el estudio de factibilidad».
+  - Cierra con el clip C11 (planta con comunidad) y Chema: «¡Así sí, doctor!».
+- **SERNA:** Ing. Tatiana ahora dice «SERNA» en lugar de «MiAmbiente», con voz nueva y en el mismo tiempo.

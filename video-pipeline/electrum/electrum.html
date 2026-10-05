@@ -114,6 +114,22 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:var(--fondo);col
   <div id="sello" class="big" style="position:absolute;right:220px;top:620px;font-size:110px;color:var(--rojo);border:10px solid var(--rojo);padding:4px 34px;border-radius:14px;opacity:0;letter-spacing:4px">VALOR BRUTO</div>
   <div id="sello2" style="position:absolute;right:240px;top:800px;font-size:34px;opacity:0;color:#f0e2c6">≠ ganancia · falta la mina, la planta y el tiempo</div></div>
 
+<!-- planta -->
+<div class="capa" id="p_panel"><div class="panel" style="left:90px;top:90px;width:520px">
+  <div class="etq">Perfil conceptual · planta CIL</div>
+  <div class="big" style="font-size:64px;color:var(--ambar);margin-top:6px">150 t/día</div>
+  <div id="p_pasos" style="margin-top:14px;font-size:27px;line-height:1.55"><div>① Trituración</div><div>② Molienda</div><div>③ Lixiviación con carbón (CIL)</div><div>④ Elución y fundición</div></div>
+  <div id="p_kpi" style="margin-top:18px;border-top:1px solid rgba(255,174,59,.3);padding-top:16px;font-size:26px;line-height:1.5;opacity:0">
+    <div><span class="mono" style="color:var(--ambar)">≈ 49.500 t</span> al año · 330 días</div>
+    <div><span class="mono" style="color:var(--ambar)">≈ 5 años</span> de vida con 250.000 t</div>
+    <div><span class="mono" style="color:var(--ambar)">≈ 4.870 oz</span> al año (90 %)</div></div>
+  <div style="margin-top:16px;font-size:19px;color:var(--gris)">Borrador para conversar con su ingeniería · no sustituye el estudio de factibilidad</div></div></div>
+<div class="capa" id="p_eco"><div style="position:absolute;right:72px;top:64px;display:flex;flex-direction:column;align-items:flex-end;gap:12px">
+  <div class="chip" style="font-size:26px;padding:12px 22px;background:rgba(18,14,10,.88);border-color:rgba(79,179,255,.6)">💧 Agua recirculada</div>
+  <div class="chip" style="font-size:26px;padding:12px 22px;background:rgba(18,14,10,.88);border-color:rgba(91,214,138,.6)">🛡 Relaves revestidos</div>
+  <div class="chip" style="font-size:26px;padding:12px 22px;background:rgba(18,14,10,.88);border-color:rgba(91,214,138,.6)">⚗ Cianuro destruido antes de salir</div>
+  <div class="chip" style="font-size:26px;padding:12px 22px;background:rgba(18,14,10,.88)">🤝 Comunidad desde el día uno</div></div></div>
+
 <!-- tablero -->
 <div class="capa" id="tablero"><div class="etq" style="position:absolute;left:110px;top:90px;color:var(--ambar)">Tablero nacional · para fiscalizar</div>
   <div class="big" style="position:absolute;left:110px;top:130px;font-size:64px">Todo el país, en una pantalla</div></div>
@@ -146,9 +162,10 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:var(--fondo);col
 
 <script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}</script>
 <script type="module" src="tierra.js"></script>
+<script type="module" src="planta.js"></script>
 <script>
 (async () => {
-while (!window.TIERRA_LISTO) await new Promise(r => setTimeout(r, 50));
+while (!window.TIERRA_LISTO || !window.PLANTA_LISTO) await new Promise(r => setTimeout(r, 50));
 const T = await (await fetch('tiempos.json')).json();
 const GEO = await (await fetch('geo.json')).json();
 const S = T.s, V = T.voces;
@@ -171,12 +188,16 @@ const SUB = {
   T03: ['ING. TATIANA', 'Estoy parada aquí… ¿de quién es esto?'],
   E04: ['DR ELECTRUM', 'De nadie. La concesión más cercana está a un kilómetro ochocientos.'],
   E05: ['DR ELECTRUM', 'Esta otra pisa una microcuenca que le da agua a 2.700 personas. Semáforo rojo.'],
-  T04: ['ING. TATIANA', 'Y es lo primero que va a preguntar MiAmbiente.'],
+  T04: ['ING. TATIANA', 'Y es lo primero que va a preguntar SERNA.'],
   E06: ['DR ELECTRUM', 'Roca intrusiva, una falla a dos kilómetros, alteración vista desde el satélite… Eso es un indicio. No es un recurso.'],
   C01: ['DON CHEMA', 'Doctor, ¿y qué dicen los estudios viejos de esta zona?'],
   E07: ['DR ELECTRUM', 'La cooperación japonesa la muestreó en 2003. Página 47: oro, 340 partes por billón.'],
   C02: ['DON CHEMA', '250.000 toneladas a 3,4… ¡son cien millones, doctor!'],
   E08: ['DR ELECTRUM', 'Valor bruto, Chema. Falta la mina, la planta… y el tiempo.'],
+  C03: ['DON CHEMA', 'Doctor… ¿y qué ocupo para montar la planta? Deme un ejemplo.'],
+  E13: ['DR ELECTRUM', 'Para 150 toneladas al día: trituración, molienda, tanques de lixiviación con carbón… y la fundición. Se la armo.'],
+  E14: ['DR ELECTRUM', 'Agua que se recircula, relaves en una presa revestida, el cianuro se destruye antes de salir… y la comunidad en la mesa desde el primer día. Así se hace minería que se queda.'],
+  C04: ['DON CHEMA', '¡Así sí, doctor!'],
   E09: ['DR ELECTRUM', 'Para quien fiscaliza: cada traslape, cada área protegida, cada caserío. A verificar… no a adivinar.'],
   E10: ['DR ELECTRUM', 'Mapas geológicos, fichas en PDF, planos, capas para su SIG… Lo que tomaba semanas, ahora toma minutos.'],
   E11: ['DR ELECTRUM', 'Y cada documento que suben, cada corrección de su equipo, me enseña algo nuevo. Aprendo todos los días.'],
@@ -254,7 +275,7 @@ function antes(t, a, b, v1, v2) { if (t >= a && t < b) { $('an1').textContent = 
 
 function cuadro(t, tk) {
   g.clearRect(0, 0, 1920, 1080); document.querySelectorAll('.capa').forEach(c => c.style.opacity = 0);
-  const ta = window.TIERRA.cuadro(t, S, V); fondo(1 - ta);
+  const ta = Math.max(window.TIERRA.cuadro(t, S, V), window.PLANTA.cuadro(t, S)); fondo(1 - ta);
   /* papeleo: contador de días */
   if (t > S.papeles && t < S.heroe) { op('dias', vent(t, S.papeles + .3, S.heroe, .3, .3)); $('dias_t').textContent = 'DÍA ' + Math.max(1, Math.round(1 + 20 * eo((t - S.papeles - .3) / 5.2))); }
   /* título */
@@ -312,11 +333,25 @@ function cuadro(t, tk) {
     $('d_cita').style.background = `rgba(255,174,59,${.08 + .5 * ss((t - S.cita) / .3)})`;
   }
   /* CUENTA */
-  if (t > S.cuenta - .3 && t < S.fisc + .5) {
-    op('cuenta', vent(t, S.cuenta, S.fisc + .4, .4, .5));
+  if (t > S.cuenta - .3 && t < S.planta + .5) {
+    op('cuenta', vent(t, S.cuenta, S.planta + .4, .4, .5));
     const L = [['250.000 t × 3,40 g/t ÷ 31,1035', '27.328 oz contenidas'], ['× 90 % de recuperación', '24.595 oz recuperables'], ['× US$ 4.146 por onza', 'US$ 101.959.904']];
     $('c_l').innerHTML = L.map(([a, b], k) => { const kk = ss((t - S.cuenta - .4 - k * 1.3) / .5); return `<div style="opacity:${kk}">${a} <span style="color:#9c8f7a">=</span> <b style="color:${k === 2 ? '#FFAE3B' : '#fff3d6'}">${b}</b></div>`; }).join('');
     const sk = eo((t - S.bruto - .2) / .35); $('sello').style.opacity = sk; $('sello').style.transform = `rotate(-8deg) scale(${1.8 - .8 * sk})`; $('sello2').style.opacity = ss((t - S.bruto - 1.2) / .4);
+  }
+  /* PLANTA */
+  if (t > S.planta - .3 && t < S.pclip + .6) {
+    const a = vent(t, S.planta, S.pclip + .4, .5, .4);
+    op('p_panel', vent(t, S.planta + .3, S.pclip + .2, .5, .4));
+    const PP = window.PLANTA.puntos();
+    const pasos = [['acopio', 'Mineral', S.planta + .6], ['tritura', 'Trituración', S.p_tri], ['molino', 'Molienda', S.p_mol], ['cil', 'Tanques CIL · carbón', S.p_tan], ['fundicion', 'Elución y fundición', S.p_fun],
+      ['agua', 'Agua recirculada', S.p_agua], ['solar', 'Energía solar', S.p_agua + .8], ['relaves', 'Presa de relaves revestida', S.p_rel], ['detox', 'Destrucción de cianuro', S.p_cia], ['comunidad', 'Comunidad', S.p_com]];
+    pasos.forEach(([k, txt, t0]) => { const col = k === 'agua' ? '#9fd6ff' : k === 'detox' || k === 'relaves' ? '#8ff0c0' : k === 'comunidad' ? '#FFD08A' : '#FFE3A8';
+      rot(txt, PP[k], col, a * ss((t - t0 - .3) / .4), 28, 0, 0, 'center'); });
+    [...$('p_pasos').children].forEach((d, i) => { const t0 = [S.p_tri, S.p_mol, S.p_tan, S.p_fun][i]; d.style.opacity = .25 + .75 * ss((t - t0) / .3); d.style.color = t > t0 ? '#FFE3A8' : ''; });
+    $('p_kpi').style.opacity = ss((t - S.p_armo) / .5);
+    [...$('p_eco').children].forEach((d, i) => { const t0 = [S.p_agua, S.p_rel, S.p_cia, S.p_com][i]; const k = ss((t - t0) / .4); d.style.opacity = k; d.style.transform = `translateY(${24 * (1 - k)}px)`; });
+    op('p_eco', vent(t, S.p_agua - .2, S.fisc - .1, .3, .4));
   }
   /* TABLERO */
   if (t > S.tablero - .3 && t < S.entreg + .5) {
@@ -342,6 +377,7 @@ function cuadro(t, tk) {
   an += antes(t, S.semaforo + 1, S.geo - .2, 'semanas de revisión', 'segundos');
   an += antes(t, S.geo + 1, S.indicio - .2, 'semanas de SIG', 'un minuto');
   an += antes(t, S.docs + 1, S.cuenta - .2, 'meses de archivo', 'con cita y página');
+  an += antes(t, S.p_tri, S.p_agua - .3, 'meses de consultoría', 'un borrador en minutos');
   an += antes(t, S.entreg + .5, S.semanas - .2, 'semanas', 'minutos');
   $('antes').style.opacity = an;
   let su = '', sk = 0; for (const k in SUB) { const a = V[k], b = a + (T.dur[k] || 3); if (t >= a - .1 && t < b + .4) { su = `<b>${SUB[k][0]}</b>${SUB[k][1]}`; sk = vent(t, a - .1, b + .4, .15, .25); } }

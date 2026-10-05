@@ -3,7 +3,7 @@ import json, subprocess
 T = json.load(open('codigo/tiempos.json')); S = T['s']; V = T['voces']; total = T['total']; rec = T['recorte']
 SFX = [('sfx_martillo', S['martillo'], .9), ('sfx_papeles', S['papeles'] + .2, .45), ('sfx_holo', S['mapa'] + .2, .5),
        ('sfx_holo', S['mapa_cod'] + .4, .35), ('sfx_alerta', S['rojo'] - .05, .55), ('sfx_holo', S['geo'] + .2, .3),
-       ('sfx_papeles', S['docs'], .3), ('sfx_alerta', S['bruto'] + .15, .35), ('sfx_holo', S['tablero'], .3),
+       ('sfx_papeles', S['docs'], .3), ('sfx_alerta', S['bruto'] + .15, .35), ('sfx_holo', S['tablero'], .3), ('sfx_holo', S['planta'] + .3, .4), ('sfx_holo', S['p_armo'], .3), ('sfx_holo', S['p_com'], .25),
        ('sfx_impresora', S['entreg'] + 4.7, .5), ('sfx_holo', S['aprende'] + .3, .3), ('sfx_martillo', S['logo'] + .05, .8),
        ('../aura/audio/sfx_final', S['logo'] - .1, .55)]
 ent, fil, vz, sf = [], [], [], []
@@ -14,8 +14,8 @@ n = len(V)
 for j, (f, t0, vol) in enumerate(SFX):
     ent += ['-i', f + '.mp3']; d = int(t0 * 1000)
     fil.append(f'[{n+j}:a]aresample=48000,aformat=channel_layouts=stereo,volume={vol},adelay={d}|{d}[s{j}]'); sf.append(f'[s{j}]')
-m = n + len(SFX); ent += ['-i', 'musica_a.mp3', '-ss', '58', '-i', 'musica_a.mp3']
-fil.append(f"[{m}:a]atrim=0:101[m1];[{m+1}:a]asetpts=PTS-STARTPTS[m2];[m1][m2]acrossfade=d=3,aresample=48000,aformat=channel_layouts=stereo,"
+m = n + len(SFX); ent += ['-i', 'musica_a.mp3', '-ss', '58', '-i', 'musica_a.mp3', '-ss', '58', '-i', 'musica_a.mp3']
+fil.append(f"[{m}:a]atrim=0:101[m1];[{m+1}:a]atrim=0:38,asetpts=PTS-STARTPTS[m2];[{m+2}:a]asetpts=PTS-STARTPTS[m3];[m1][m2]acrossfade=d=3[m12];[m12][m3]acrossfade=d=3,aresample=48000,aformat=channel_layouts=stereo,"
            f"volume=0.55,afade=t=out:st={total-2.5}:d=2.5[mus]")
 fil.append(f"{''.join(vz)}amix=inputs={len(vz)}:normalize=0[voz]")
 fil.append("[voz]asplit=2[voz1][vsc]")
