@@ -153,3 +153,21 @@ Las fuentes son el código de la rama `claude/ultron-fp-premium-s46jxx` y las he
 | Música | ≈ 0,5 USD |
 | Efectos | ≈ 0,03 USD |
 | **Total** | **≈ 5,2 USD** |
+
+## Mapas 3D (v2)
+
+Las escenas de mapa ahora son relieve real de Honduras en three.js (`electrum/tierra.js`), en lugar del mapa plano en canvas.
+
+- **Datos.** `prep3d.py` baja y prepara todo:
+  - Relieve: AWS Terrain Tiles (terrarium), z9 para el país y z12 para la zona de cerca.
+  - Imagen: Sentinel-2 cloudless de EOX (CC BY 4.0).
+  - Ríos y microcuenca: se calculan del relieve con D8 y relleno de pozos (priority-flood). La microcuenca mide unos 23 km².
+  - Litología: ilustrativa, generada siguiendo el relieve.
+- **Escenas.**
+  - País: barrido de escaneo, borde encendido y 1.076 prismas por concesión que suben; las 176 en exploración crecen y brillan.
+  - GPS: inmersión desde el país hasta el punto.
+  - Semáforo: microcuenca real con el cruce en rojo.
+  - Geología: círculo de 5 km con falla y alteración.
+  - Tablero nacional: 64 pilares rojos.
+- **Créditos en pantalla:** "Relieve: AWS Terrain Tiles · Imagen: Sentinel-2 cloudless – s2maps.eu by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016) · Concesiones y capas: representación ilustrativa".
+- **Las posiciones de las concesiones son estilizadas**, porque los polígonos reales requieren autenticación en la plataforma.

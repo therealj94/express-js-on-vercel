@@ -142,9 +142,13 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:var(--fondo);col
 <div class="rotulo" id="r_ch"><div class="n">DON CHEMA</div><div class="q">Metalurgista · Olancho</div></div>
 <div id="antes"><div class="l"><span class="e">ANTES</span><span class="v1" id="an1"></span></div><div class="l"><span class="e">AHORA</span><span class="v2" id="an2"></span></div></div>
 <div id="sub"></div>
+<div id="credito" style="position:absolute;left:24px;bottom:14px;font-size:13px;color:#b7a98f;opacity:0;text-shadow:0 1px 4px #000">Relieve: AWS Terrain Tiles · Imagen: Sentinel-2 cloudless – s2maps.eu by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016) · Concesiones y capas: representación ilustrativa</div>
 
+<script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}</script>
+<script type="module" src="tierra.js"></script>
 <script>
 (async () => {
+while (!window.TIERRA_LISTO) await new Promise(r => setTimeout(r, 50));
 const T = await (await fetch('tiempos.json')).json();
 const GEO = await (await fetch('geo.json')).json();
 const S = T.s, V = T.voces;
@@ -250,52 +254,33 @@ function antes(t, a, b, v1, v2) { if (t >= a && t < b) { $('an1').textContent = 
 
 function cuadro(t, tk) {
   g.clearRect(0, 0, 1920, 1080); document.querySelectorAll('.capa').forEach(c => c.style.opacity = 0);
-  fondo(1);
+  const ta = window.TIERRA.cuadro(t, S, V); fondo(1 - ta);
   /* papeleo: contador de días */
   if (t > S.papeles && t < S.heroe) { op('dias', vent(t, S.papeles + .3, S.heroe, .3, .3)); $('dias_t').textContent = 'DÍA ' + Math.max(1, Math.round(1 + 20 * eo((t - S.papeles - .3) / 5.2))); }
   /* título */
   op('titulo', vent(t, S.titulo + .4, S.mapa - .2, .8, .5));
-  /* MAPA */
+  /* MAPA (3D) */
+  const PT = window.TIERRA.puntos();
+  const rot = (txt, p, col, k, tam = 30, dx = 0, dy = 0, al = 'left') => { if (!p || k <= 0 || p[0] < -500) return; g.save(); g.globalAlpha = k; g.font = `700 ${tam}px Alegreya Sans`; g.textAlign = al;
+    g.shadowColor = 'rgba(0,0,0,.9)'; g.shadowBlur = 14; g.fillStyle = col; g.fillText(txt, p[0] + dx, p[1] + dy); g.restore(); };
   if (t > S.mapa && t < S.semaforo + .5) {
-    let cx = 960, cy = 560, sc = 1;
-    const gpsK = ss((t - S.gps) / 1.8); const tgt = [-86.85, 14.62];
-    cam = { x: 1120, y: 560, s: 1.12 + .05 * cl((t - S.mapa_cod) / 10) };
-    if (gpsK > 0) { const s = 1.12 + 4.4 * gpsK; cam.s = s; const [px, py] = (() => { const k = 1500 / (LON1 - LON0); return [(tgt[0] - (LON0 + LON1) / 2) * k, -(tgt[1] - (LAT0 + LAT1) / 2) * k * 1.03]; })(); cam.x = 1080 - px * s * gpsK + 0; cam.y = 560 - py * s * gpsK; }
-    const a = ss((t - S.mapa_cod + .5) / .8) * (1 - ss((t - S.semaforo) / .5));
-    mapa(t, { dibujo: ss((t - S.mapa_cod + .4) / 1.6), tex: ss((t - S.mapa_cod) / 1.5), con: ss((t - S.mapa_cod - .6) / 2.4), expl: ss((t - S.n176) / .6) * (1 - gpsK), alfa: a });
-    op('m_panel', vent(t, S.mapa_cod + .2, S.campo, .5, .4)); $('m_n').textContent = fmt(1076 * ss((t - S.mapa_cod - .6) / 2.4)); $('m_ha').textContent = fmt(163580 * ss((t - S.mapa_cod - .6) / 2.4)) + ' ha';
-    $('m_176').style.opacity = ss((t - S.n176) / .5);
     op('m_preg', vent(t, V.T02 - .1, V.E03 + 1, .3, .3));
-    if (gpsK > 0 && t > S.gps) {
-      const [ux, uy] = P(tgt[0], tgt[1]); const pulso = (t * 1.2) % 1;
-      g.save(); g.globalAlpha = a; g.strokeStyle = 'rgba(79,179,255,.85)'; g.lineWidth = 3; const r5 = 5 / 111 * 1500 / (LON1 - LON0) * cam.s;
-      g.setLineDash([12, 10]); g.beginPath(); g.arc(ux, uy, r5 * ss((t - S.gps - .6) / .8), 0, 7); g.stroke(); g.setLineDash([]);
-      g.fillStyle = '#4FB3FF'; g.beginPath(); g.arc(ux, uy, 12, 0, 7); g.fill(); g.strokeStyle = `rgba(79,179,255,${1 - pulso})`; g.beginPath(); g.arc(ux, uy, 12 + 50 * pulso, 0, 7); g.stroke();
-      const nx = ux + r5 * .36 * 1.4, ny = uy - r5 * .36 * .9; const k2 = ss((t - V.E04 - 1.2) / .6);
-      g.strokeStyle = `rgba(255,174,59,${k2})`; g.setLineDash([8, 8]); g.beginPath(); g.moveTo(ux, uy); g.lineTo(ux + (nx - ux) * k2, uy + (ny - uy) * k2); g.stroke(); g.setLineDash([]);
-      g.fillStyle = `rgba(255,174,59,${.8 * k2})`; g.fillRect(nx - 30, ny - 30, 60, 60); g.font = '600 30px IBM Plex Mono'; g.fillStyle = `rgba(255,240,210,${k2})`; g.fillText('1,8 km', (ux + nx) / 2 + 14, (uy + ny) / 2 - 10);
-      g.restore(); op('g_panel', vent(t, V.E04 + .6, S.semaforo, .4, .4));
+    op('m_panel', vent(t, S.mapa_cod + .2, S.campo, .5, .4)); $('m_n').textContent = fmt(1076 * ss((t - S.mapa_cod - .7) / 2.4)); $('m_ha').textContent = fmt(163580 * ss((t - S.mapa_cod - .7) / 2.4)) + ' ha';
+    $('m_176').style.opacity = ss((t - S.n176) / .5);
+    if (t > S.gps + 1.3) {
+      const kk = vent(t, S.gps + 1.6, S.semaforo + .2, .4, .4);
+      rot('USTED ESTÁ AQUÍ', PT.obj, '#9fd6ff', kk, 26, -20, -40, 'right');
+      rot('1,8 km', PT.medio, '#FFE3A8', kk * ss((t - V.E04 - 1.5) / .5), 40, 18, -12);
+      rot('radio 5 km', PT.esc, '#9fd6ff', kk * .9, 24, 0, 40, 'center');
+      op('g_panel', vent(t, V.E04 + .6, S.semaforo, .4, .4));
     }
   }
   /* SEMÁFORO */
   if (t > S.semaforo - .2 && t < S.geo + .5) {
-    const a = vent(t, S.semaforo, S.geo + .4, .5, .5); g.save(); g.globalAlpha = a;
-    const z = 1 + .05 * cl((t - S.semaforo) / 10); g.translate(620, 560); g.scale(z, z);
-    g.strokeStyle = 'rgba(255,174,59,.08)'; g.lineWidth = 1.5; for (let i = 0; i < 16; i++) { g.beginPath(); for (let k = 0; k <= 80; k++) { const an = k / 80 * 6.283; const rr = 60 + i * 45 + 14 * Math.sin(an * 5 + i); g.lineTo(80 + Math.cos(an) * rr * 1.3, -20 + Math.sin(an) * rr); } g.stroke(); }
-    // microcuenca
-    g.fillStyle = 'rgba(79,179,255,.22)'; g.strokeStyle = 'rgba(79,179,255,.9)'; g.lineWidth = 3; g.beginPath();
-    for (let i = 0; i <= 60; i++) { const an = i / 60 * 6.283; const r = 230 + 40 * Math.sin(an * 3) + 20 * Math.sin(an * 7); g.lineTo(-170 + Math.cos(an) * r * 1.2, 40 + Math.sin(an) * r * .8); } g.fill(); g.stroke();
-    // ríos
-    g.strokeStyle = 'rgba(120,200,255,.7)'; g.lineWidth = 3; g.beginPath(); g.moveTo(-460, -160); g.bezierCurveTo(-250, -60, -150, 120, 60, 300); g.stroke();
-    // concesión
-    const dib = ss((t - S.semaforo - .3) / 1.0); g.strokeStyle = '#FFAE3B'; g.lineWidth = 5; g.fillStyle = 'rgba(255,174,59,.14)';
-    const pts = [[-120, -230], [260, -230], [260, 190], [-120, 190]]; g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.globalAlpha = a * dib; g.fill(); g.stroke();
-    // intersección roja
-    const rk = ss((t - S.rojo + 1.2) / .6); if (rk > 0) { g.save(); g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.clip(); g.fillStyle = `rgba(255,77,61,${.35 * rk + .1 * Math.sin(t * 8) * rk})`; g.beginPath(); for (let i = 0; i <= 60; i++) { const an = i / 60 * 6.283; const r = 230 + 40 * Math.sin(an * 3) + 20 * Math.sin(an * 7); g.lineTo(-170 + Math.cos(an) * r * 1.2, 40 + Math.sin(an) * r * .8); } g.fill(); g.restore(); }
-    g.font = '600 26px Alegreya Sans'; g.fillStyle = `rgba(150,210,255,${dib})`; g.fillText('Microcuenca declarada', -470, 300); g.fillStyle = `rgba(255,174,59,${dib})`; g.fillText('Concesión A-17', -110, -250);
-    // aldeas
-    g.fillStyle = '#F6F0E2'; [[40, -80], [140, 40], [-60, 110], [200, -150], [90, 150]].forEach(([x, y], i) => { const k = ss((t - S.semaforo - 1.5 - i * .25) / .3); g.globalAlpha = a * k; g.beginPath(); g.arc(x, y, 9, 0, 7); g.fill(); });
-    g.restore();
+    const a = vent(t, S.semaforo, S.geo + .4, .5, .5);
+    const dib = ss((t - S.semaforo - .3) / 1.0) * a;
+    rot('Microcuenca declarada', PT.cuenca, '#9fd6ff', dib, 30, 0, 0, 'right');
+    rot('Concesión A-17', PT.a17, '#FFC56B', dib, 30, 0, -16);
     op('s_panel', a); const FI = [['💧', 'Microcuenca declarada · abastece a <b>2.748 personas</b>'], ['🏘', '<b>5 aldeas</b> dentro · 33 caseríos a menos de 2 km'], ['🌊', '16,5 km de cauces dentro']];
     $('s_filas').innerHTML = FI.map(([i, s], k) => `<div style="opacity:${ss((t - S.semaforo - 1 - k * .6) / .4)}">${i} ${s}</div>`).join('');
     const roj = t > S.rojo; $('sem_r').style.background = roj ? '#FF4D3D' : '#3a1612'; $('sem_r').style.boxShadow = roj ? '0 0 30px #FF4D3D' : 'none'; $('sem_a').style.background = !roj && t > S.semaforo + 1 ? '#e8a630' : '#3a2c12';
@@ -303,25 +288,18 @@ function cuadro(t, tk) {
   }
   /* GEOLOGÍA */
   if (t > S.geo - .2 && t < S.nucleo + .6) {
-    const a = vent(t, S.geo, S.nucleo + .5, .5, .5); g.save(); g.globalAlpha = a; g.translate(640, 560); g.scale(1 + .04 * cl((t - S.geo) / 9), 1 + .04 * cl((t - S.geo) / 9));
-    const col = ['#8c4a32', '#c8913a', '#5f7f43', '#7a4e8f', '#b06a3e', '#9a8a4a', '#6b5a3a'];
-    const R0 = 400 * ss((t - S.geo) / .8); g.save(); g.beginPath(); g.arc(0, 0, R0, 0, 7); g.clip();
-    g.fillStyle = '#211a12'; g.fillRect(-500, -500, 1000, 1000);
-    for (let k = 0; k < 90; k++) { const kk = ss((t - S.geo - .1 - k * .012) / .4); g.globalAlpha = a * kk * .55; g.fillStyle = col[k % 7]; g.beginPath();
-      const cx = Math.sin(k * 12.3) * 380, cy = Math.cos(k * 7.7) * 380; for (let q = 0; q <= 14; q++) { const an = q / 14 * 6.283; const rr = 70 + 40 * Math.sin(an * 3 + k) + 25 * Math.sin(an * 5 + k * 2); g.lineTo(cx + Math.cos(an) * rr, cy + Math.sin(an) * rr * .7); } g.fill(); }
-    g.globalAlpha = a; g.fillStyle = 'rgba(214,80,110,.75)'; g.beginPath(); for (let q = 0; q <= 20; q++) { const an = q / 20 * 6.283; const rr = 95 + 20 * Math.sin(an * 4); g.lineTo(60 + Math.cos(an) * rr, -30 + Math.sin(an) * rr * .7); } g.fill();
-    g.strokeStyle = 'rgba(255,255,255,.08)'; for (let k = -400; k < 400; k += 26) { g.beginPath(); g.moveTo(k, -400); g.lineTo(k + 200, 400); g.stroke(); }
-    g.strokeStyle = '#FF4D3D'; g.lineWidth = 5; g.setLineDash([18, 12]); const fk = ss((t - S.geo - 1.4) / 1); g.beginPath(); g.moveTo(-420, 300); g.lineTo(-420 + 840 * fk, 300 - 600 * fk); g.stroke(); g.setLineDash([]);
-    const ak = ss((t - S.geo - 3) / .8); g.globalAlpha = a * ak; g.fillStyle = 'rgba(231,194,106,.7)'; g.beginPath(); g.ellipse(110, 10, 50, 30, .3, 0, 7); g.fill(); g.fillStyle = 'rgba(216,119,74,.75)'; g.beginPath(); g.ellipse(150, -70, 34, 22, 0, 0, 7); g.fill();
-    g.restore(); g.globalAlpha = a; g.strokeStyle = '#FFAE3B'; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, R0, 0, 7); g.stroke();
-    g.fillStyle = '#F6F0E2'; g.font = '600 22px IBM Plex Mono'; g.fillText('0 ── 5 km', -60, R0 + 46);
-    g.font = '600 24px Alegreya Sans'; g.fillStyle = `rgba(255,120,140,${ss((t - S.geo - .8) / .4)})`; g.fillText('intrusivo', 150, -110); g.fillStyle = `rgba(255,77,61,${ss((t - S.geo - 1.8) / .4)})`; g.fillText('falla', -300, 150);
-    g.restore(); op('geo_panel', vent(t, S.geo + .4, S.indicio - .1, .5, .3));
+    const a = vent(t, S.geo, S.nucleo + .2, .5, .5) * (1 - .8 * ss((t - S.indicio) / .4));
+    rot('intrusivo', PT.intr, '#ff8fa6', a * ss((t - S.geo - .8) / .4), 30);
+    rot('falla', PT.falla, '#FF6B5A', a * ss((t - S.geo - 1.8) / .4), 30, 0, 0, 'right');
+    rot('radio 5 km', PT.esc, '#F6F0E2', a * ss((t - S.geo - 1) / .4), 24, 0, 46, 'center');
+    op('geo_panel', vent(t, S.geo + .4, S.indicio - .1, .5, .3));
     const GF = ['Roca intrusiva dentro · <b>6,7 %</b>', 'Falla a <b>1,8 km</b>', 'Tracto USGS · pórfido de cobre', '<b>11</b> yacimientos a menos de 10 km'];
     $('geo_filas').innerHTML = GF.map((s, k) => `<div style="opacity:${ss((t - S.geo - .8 - k * .5) / .4)}">• ${s}</div>`).join('');
     [...$('sat').children].forEach((d, i) => { d.style.opacity = ss((t - S.geo - 2.6 - i * .15) / .3); });
     op('indicio', vent(t, S.indicio, S.nucleo + .2, .25, .4));
   }
+  /* créditos de cartografía */
+  $('credito').style.opacity = Math.max(+(t > S.mapa_cod && t < S.nucleo) * (1 - (t > S.campo + .3 && t < S.gps - .2)), +(t > S.tablero && t < S.entreg)) * .85;
   /* EXPEDIENTES */
   if (t > S.docs - .3 && t < S.cuenta + .5) {
     const a = vent(t, S.docs, S.cuenta + .4, .4, .5); op('docs', a);
@@ -343,8 +321,6 @@ function cuadro(t, tk) {
   /* TABLERO */
   if (t > S.tablero - .3 && t < S.entreg + .5) {
     const a = vent(t, S.tablero, S.entreg + .4, .5, .5); op('tablero', a);
-    cam = { x: 1440, y: 600, s: .62 }; mapa(t, { dibujo: 1, tex: 1, con: 1, expl: 0, alfa: a * .9 });
-    g.save(); g.globalAlpha = a; for (let i = 0; i < 64; i++) { const c = GEO.con[(i * 17) % GEO.con.length]; const [x, y] = P(c[0], c[1]); const k = ss((t - S.tablero - 1 - i * .02) / .3); g.fillStyle = `rgba(255,77,61,${.9 * k})`; g.beginPath(); g.arc(x, y, 6, 0, 7); g.fill(); } g.restore();
     const K = [['64', 'traslapes entre titulares · a verificar'], ['26', 'concesiones en áreas protegidas'], ['44', 'en microcuencas declaradas'], ['168', 'con caseríos dentro']];
     K.forEach(([n, s], k) => { let d = document.getElementById('kpi' + k); if (!d) { d = document.createElement('div'); d.id = 'kpi' + k; d.className = 'kpi'; d.innerHTML = `<div class="n"></div><div class="t">${s}</div>`; $('tablero').appendChild(d); } const kk = ss((t - S.tablero - .4 - k * .45) / .4); d.style.left = (110 + (k % 2) * 430) + 'px'; d.style.top = (300 + Math.floor(k / 2) * 300) + 'px'; d.style.opacity = kk; d.querySelector('.n').textContent = fmt(+n * eo((t - S.tablero - .4 - k * .45) / 1.0)); });
   }
