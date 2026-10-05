@@ -65,3 +65,12 @@ The English version comes first; the Spanish one follows once this is approved. 
 - **Reminders:** the phone shows «Reminders» instead of a calendar, because the mobile app has no calendar integration.
 
 **Pending:** the official PULSE2CHAT logo, which isn't in any of the repos.
+
+## v9 (October 5, Spanish first)
+
+- **Opening:** AURA whispers «¿Y si tu teléfono… de verdad te conociera?» over the dot, then the glass «A» forms. This replaces «Te presentamos».
+- **Particles:** they spell «Hola.» in Spanish (still «Hi.» in English).
+- **The user's question has its own voice:** Andrés – Natural Conversations, `dKIxYIG9Z5bYpjNmMjrG`, saying «[sighs] Uff, qué día tan largo… ¿se me olvidó algo?».
+- **Audio tags on all of AURA's Spanish lines:** [warmly], [playfully], [softly], [firmly], [laughs softly].
+- **Windows, expanded:** «Oye AURA» → opens the report (Excel) → warns about a meeting (Outlook) → WhatsApp from Mom about the orchids → Spotify. All of these are real features of the Windows app.
+- **Production:** `montar9.py` and `mezcla9.py`. The music is `musica_b` followed by a second pass from the drop, to cover 97 s.
