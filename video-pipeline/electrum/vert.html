@@ -1,0 +1,15 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:#07091A}</style>
+<script>window.ANCHO = 1080; window.ALTO = 1920; window.KD = 1.35;</script>
+<script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}</script>
+<script type="module" src="tierra.js"></script><script type="module" src="planta.js"></script></head>
+<body><canvas id="lienzo" width="1080" height="1920" style="position:absolute;inset:0"></canvas>
+<script>
+(async () => {
+while (!window.TIERRA_LISTO || !window.PLANTA_LISTO) await new Promise(r => setTimeout(r, 50));
+const S = { mapa: -1, mapa_cod: -0.2, n176: 2.2, campo: 4.2, gps: 4.2, semaforo: 7.4, rojo: 9.0, geo: 10.9, nucleo: 11.0, indicio: 99, tablero: 999, entreg: 999,
+  planta: 10.5, p_tri: 10.8, p_mol: 11.1, p_tan: 11.4, p_fun: 11.7, p_armo: 12.0, p_agua: 12.3, p_rel: 12.6, p_cia: 12.9, p_com: 13.2, pclip: 14.6 };
+const V = { E04: 4.5 };
+window.setT = async t => { window.TIERRA.cuadro(t, S, V); window.PLANTA.cuadro(t, S); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); return true; };
+window.LISTO = true;
+})();
+</script></body></html>

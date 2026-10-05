@@ -119,3 +119,73 @@ Se mantiene «SUPER INTELIGENCIA». El hilo es el dinero del mundo: cómo se va 
 **Ganchos alternativos para prueba A/B** (cambia solo el bloque 0–3,5 s):
 - B: «Esto que ves… es el ahorro de cincuenta millones de personas.» Una montaña de billetes que se derrite.
 - C: «Tu abuela ahorró toda la vida… y alguien decidió que eso valía la mitad.» Las manos de una abuela y el polvo.
+
+---
+
+## Auditoría en frío del v2
+
+Se le dio el v2 a un lector que no conoce nada de Orden Global. Esto es lo que dijo:
+
+- **Lo que funcionó:** el gancho lo frena; el mapa «nuestro café sale» lo siente propio; y el dorado de ORIGEN es lo mejor del video.
+- **Dónde se va (17–26 s):** con PULSE2CHAT, el notch, Claudio y ANT-ONIO. «Parece la publicidad de otro producto».
+- **Dr Electrum:** no lo entendió («¿un doctor? ¿minería?»). Tampoco entendió el gramín, la ficha digital ni el comprobante en la cadena.
+- **Lo que le olió a cripto o vendehúmo:** «Nadie había hecho aquí», «Quedate» y una IA que es «el cerebro de una moneda».
+- **Lo que le dio confianza:** «nada se mueve sin tu firma», «no reemplaza la de nadie» y «ejemplo ilustrativo».
+- **Lo que pidió:** una sola voz, ORIGEN antes del segundo 25, explicaciones en lenguaje humano y un llamado a la acción concreto que invite a comentar.
+
+### Lo que se aplica
+
+1. **Estructura «construimos tres cosas»:** ORIGEN, AURA y Dr Electrum, cada una con una frase humana.
+2. **Una sola voz, AURA,** de principio a fin.
+3. **ORIGEN entra en el segundo 17.** Se dibuja en luz crema y el dorado llega recién en el segundo 46, en el clímax.
+4. **Se elimina la jerga:**
+   - «comprobante en la cadena» pasa a ser «un recibo que nadie puede borrar»;
+   - «ficha» pasa a «abrirse al mundo»;
+   - se quitan gramín, PULSE2CHAT, notch, Claudio y ANT-ONIO.
+5. **Dr Electrum en lenguaje humano:** «encuentra dónde hay minerales y si se pueden sacar legalmente, cuidando el agua y a las comunidades».
+6. **Se quitan** «nadie había hecho aquí» y «Quedate».
+7. **Llamado a la acción:** «Comentá ORIGEN y te contamos cómo funciona».
+
+**Lo que no se aplica, por las reglas de marca:**
+- «1 ORIGEN = 1 gramo»: es falso, porque un ORIGEN equivale a 1/55 de gramo.
+- Un lingote o «dónde está el oro»: ORIGEN está referenciado al oro, no respaldado.
+- La cara del fundador: no hay material.
+
+## GUION FINAL v3 (58 s · 9:16 · voz única: AURA)
+
+| # | Tiempo | Imagen | AURA / texto |
+|---|---|---|---|
+| 1 | 0–3,5 | Un billete en macro se encoge, se destiñe y estalla como cristal. Suena un tictac y un latido. | (susurro) «Hoy te quitaron dinero… y no te diste cuenta.» · **TE QUITARON DINERO HOY** |
+| 2 | 3,5–8,5 | Los pedazos forman un globo de noche. Desde Centroamérica y LATAM salen hilos blancos (café, minerales, trabajo) y vuelven delgados y en rojo. | «Nuestro café y nuestros minerales salen al mundo… y lo que vuelve vale menos cada año.» |
+| 3 | 8,5–9 | Negro y silencio. | — |
+| 4 | 9–12,5 | Se abre un ojo de luz y aparece la cara de AURA. | «Soy AURA. La super inteligencia de Orden Global.» · *Orden Global · tecnología de Latinoamérica* |
+| 5 | 12,5–16,5 | Tres placas golpean: ORIGEN · AURA · DR ELECTRUM. | «Construimos tres cosas para que nuestra economía juegue en otra liga.» |
+| 6 | 16,5–22 | **Uno.** El símbolo de ORIGEN en luz crema y una línea que sigue al precio del oro. | «Uno: ORIGEN. Una moneda digital cuyo precio sigue al oro… y el oro nadie lo imprime.» |
+| 7 | 22–26 | Se manda de celular a celular, con huella y recibo. | «Se manda de celular a celular, con tu huella… y queda un recibo que nadie puede borrar.» |
+| 8 | 26–30 | El globo gira hasta Centroamérica: se encienden siete países y después LATAM. | «Una moneda en común para la región… sin reemplazar la de nadie.» |
+| 9 | 30–33 | Una finca de café y un taller se abren al mundo, con puntos de luz. **EJEMPLO ILUSTRATIVO** | «Y mañana, la empresa de tu pueblo podría abrirse al mundo, medida en ORIGEN.» |
+| 10 | 33–39 | **Dos.** La cara de AURA: escucha, recuerda y aparece la huella. | «Dos: yo. Hablo con vos, recuerdo lo que te importa y trabajo a tu lado… y nada se mueve sin tu firma.» |
+| 11 | 39–46 | **Tres.** Caída desde el espacio al relieve 3D: concesiones, semáforo rojo sobre el agua y la planta que se arma. **SEMANAS → MINUTOS** | «Tres: Dr Electrum. Encuentra dónde hay minerales y si se pueden sacar legalmente, cuidando el agua y a la gente… en minutos.» |
+| 12 | 46–52 | **Clímax dorado.** Los hilos se invierten y ahora el mundo fluye hacia nosotros; la región se enciende en oro. Montaje de café, mina, mercado y gente. | «Nuestros recursos. Nuestras empresas. Nuestro dinero… medidos con la misma vara.» |
+| 13 | 52–58 | Los hilos convergen en el logo de ORDEN GLOBAL. Texto: **COMENTÁ «ORIGEN»**. El último cuadro es el billete y el tictac, para el bucle. | «Orden Global. Tecnología de Latinoamérica para el mundo. ¿Querés saber cómo funciona? Comentá ORIGEN.» |
+
+**Letra chica (desde el segundo 16,5):** «Protocolo en desarrollo. Material informativo; no constituye oferta de valores ni de inversión. ORIGEN no es moneda de curso legal en ningún país. Tokenización: ejemplo ilustrativo.»
+
+## Producción v1 (9:16, 77 s)
+
+El código está en `video-pipeline/orden-global/`.
+
+- **`og.html`:** la composición 1080×1920. Contiene:
+  - el globo 3D, armado con las máscaras de world-atlas 50m, con puntos, flujos de dinero que salen, vuelven en rojo y regresan en dorado, y Centroamérica y LATAM encendidas;
+  - el orbe de AURA hecho de partículas;
+  - el estallido de cristal;
+  - el símbolo de ORIGEN en crema, los celulares con huella y recibo, el taller, la memoria y el cierre con la marca.
+- **Tomas de IA (minimax-h3-max):** billete, café, puerto, taller, ingeniera y mercado.
+- **Dr Electrum vertical:** `electrum/vert.html` (tierra.js y planta.js en 1080×1920), reproducido a 1,6x.
+- **Audio:**
+  - voz única de AURA (eleven_v4), acelerada a 1,07;
+  - música eleven_music_v2_5 en tres tramos, con el clímax alineado a «Nuestros recursos»;
+  - 11 efectos de sonido.
+- **Scripts:**
+  - `montar_og.py` calcula los tiempos a partir de las palabras que da whisper;
+  - `mezcla_og.py` hace la mezcla, a −13 LUFS.

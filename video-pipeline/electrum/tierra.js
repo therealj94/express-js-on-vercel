@@ -6,7 +6,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-const W0 = 1920, H0 = 1080;
+const W0 = window.ANCHO || 1920, H0 = window.ALTO || 1080, VERT = H0 > W0, FOV = VERT ? 50 : 30, KD = window.KD || 1.35;
 const cl = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const ss = x => { x = cl(x); return x * x * (3 - 2 * x); };
 const lerp = (a, b, k) => a + (b - a) * k;
@@ -65,7 +65,7 @@ void main(){
 
 function hacerRenderer() {
   const c = document.createElement('canvas'); c.width = W0; c.height = H0; c.className = 'tierra';
-  c.style.cssText = 'position:absolute;inset:0;width:1920px;height:1080px;opacity:0';
+  c.style.cssText = 'position:absolute;inset:0;width:' + W0 + 'px;height:' + H0 + 'px;opacity:0';
   document.body.insertBefore(c, document.getElementById('lienzo'));
   const r = new THREE.WebGLRenderer({ canvas: c, antialias: true, preserveDrawingBuffer: true });
   r.setPixelRatio(1); r.setSize(W0, H0, false); r.setClearColor(0x0e0b08);
@@ -86,6 +86,7 @@ function muestreo(h, nx, ny, Wd, Hd) {
   };
 }
 function camara(cam, o, ancho) {
+  if (VERT) o = { ...o, d: o.d * (cam === N.cam ? .95 : .72), sx: 0, sy: 0 };
   const el = o.el * Math.PI / 180, az = o.az * Math.PI / 180;
   cam.position.set(o.x + o.d * Math.cos(el) * Math.sin(az), o.y + o.d * Math.sin(el), o.z + o.d * Math.cos(el) * Math.cos(az));
   cam.lookAt(o.x, o.y, o.z);
@@ -101,7 +102,7 @@ function bloom(r, esc, cam, fuerza, umbral = .8) {
 /* ======================= NACIONAL ======================= */
 const [nx9, ny9] = info.n9; const h9 = await bin('t3d/h9.bin');
 const N = { ...hacerRenderer() };
-N.esc = new THREE.Scene(); N.cam = new THREE.PerspectiveCamera(30, W0 / H0, 5, 20000);
+N.esc = new THREE.Scene(); N.cam = new THREE.PerspectiveCamera(FOV, W0 / H0, 5, 20000);
 N.u = { sat: { value: await carga('t3d/sat9.jpg') }, shade: { value: await carga('t3d/shade9.jpg') }, mask: { value: await carga('t3d/mask9.png') },
   agua: { value: null }, drape: { value: null }, nacional: { value: 1 }, contorno: { value: .25 }, paso: { value: 300 * EX9 }, barrido: { value: 1.2 }, fuera: { value: 1 },
   rios: { value: 0 }, cuenca: { value: 0 }, rojo: { value: 0 }, tiempo: { value: 0 }, niebla0: { value: 3500 }, niebla1: { value: 7000 }, apagado: { value: 0 }, rectA: { value: new THREE.Vector4() }, tam: { value: new THREE.Vector2() } };
@@ -127,7 +128,7 @@ const mtx = new THREE.Matrix4(), colr = new THREE.Color();
 /* ======================= LOCAL ======================= */
 const n12 = info.n12; const h12 = await bin('t3d/h12.bin');
 const L = { ...hacerRenderer() };
-L.esc = new THREE.Scene(); L.cam = new THREE.PerspectiveCamera(30, W0 / H0, 5, 20000);
+L.esc = new THREE.Scene(); L.cam = new THREE.PerspectiveCamera(FOV, W0 / H0, 5, 20000);
 const DR = 2048; L.dc = document.createElement('canvas'); L.dc.width = L.dc.height = DR; L.g = L.dc.getContext('2d');
 L.dtex = new THREE.CanvasTexture(L.dc); L.dtex.colorSpace = THREE.NoColorSpace; L.dtex.anisotropy = 8;
 L.u = { sat: { value: await carga('t3d/sat12.jpg') }, shade: { value: await carga('t3d/shade12.jpg') }, mask: { value: null }, agua: { value: await carga('t3d/agua12.png') }, drape: { value: L.dtex },

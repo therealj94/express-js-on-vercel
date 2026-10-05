@@ -7,21 +7,21 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-const W0 = 1920, H0 = 1080;
+const W0 = window.ANCHO || 1920, H0 = window.ALTO || 1080, VERT = H0 > W0;
 const cl = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const ss = x => { x = cl(x); return x * x * (3 - 2 * x); };
 const lerp = (a, b, k) => a + (b - a) * k;
 const atras = x => { x = cl(x); const c = 1.6; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
 
 const c = document.createElement('canvas'); c.width = W0; c.height = H0;
-c.style.cssText = 'position:absolute;inset:0;width:1920px;height:1080px;opacity:0';
+c.style.cssText = 'position:absolute;inset:0;width:' + W0 + 'px;height:' + H0 + 'px;opacity:0';
 document.body.insertBefore(c, document.getElementById('lienzo'));
 const r = new THREE.WebGLRenderer({ canvas: c, antialias: true, preserveDrawingBuffer: true });
 r.setPixelRatio(1); r.setSize(W0, H0, false); r.setClearColor(0x0b0907);
 r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;
 const esc = new THREE.Scene(); { const pm = new THREE.PMREMGenerator(r); esc.environment = pm.fromScene(new RoomEnvironment(), .04).texture; esc.environmentIntensity = .55; }
  esc.fog = new THREE.Fog(0x0b0907, 1400, 2900);
-const cam = new THREE.PerspectiveCamera(32, W0 / H0, 5, 6000);
+const cam = new THREE.PerspectiveCamera(VERT ? 52 : 32, W0 / H0, 5, 6000);
 esc.add(new THREE.HemisphereLight(0xffe2b0, 0x1a120a, .9));
 const sol = new THREE.DirectionalLight(0xffc98a, 2.6); sol.position.set(-600, 900, 500); esc.add(sol);
 const rim = new THREE.DirectionalLight(0x8fb8ff, 1.2); rim.position.set(700, 300, -800); esc.add(rim);
@@ -158,8 +158,9 @@ function cuadro(t, S) {
     let o = F[0][1]; for (let i = 0; i < F.length - 1; i++) { const [t0, a0] = F[i], [t1, a1] = F[i + 1]; if (t >= t0) { const q = ss((t - t0) / Math.max(.5, t1 - t0)); o = a0.map((v, j) => lerp(v, a1[j], q)); } } return o;
   })();
   const az = lerp(-38, 32, ss(k)) * Math.PI / 180, el = lerp(30, 42, ss(k)) * Math.PI / 180, d = lerp(1450, 1650, ss(k)) - 160 * Math.sin(k * Math.PI);
-  cam.position.set(foco[0] + d * Math.cos(el) * Math.sin(az), foco[1] + d * Math.sin(el), foco[2] + d * Math.cos(el) * Math.cos(az));
-  cam.lookAt(...foco); cam.setViewOffset(W0, H0, -330, -30, W0, H0);
+  const dv = VERT ? d * .62 : d;
+  cam.position.set(foco[0] + dv * Math.cos(el) * Math.sin(az), foco[1] + dv * Math.sin(el), foco[2] + dv * Math.cos(el) * Math.cos(az));
+  cam.lookAt(...foco); if (VERT) cam.clearViewOffset(); else cam.setViewOffset(W0, H0, -330, -30, W0, H0);
   comp.render();
   return a;
 }

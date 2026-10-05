@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<title>Orden Global tráiler</title>
+<style>
+@font-face{font-family:'Fraunces';src:url(fuentes/fraunces-normal-latin.woff2) format('woff2'),url(fuentes/fraunces-normal-latin-ext.woff2) format('woff2');font-weight:100 900}
+@font-face{font-family:'Manrope';src:url(fuentes/manrope-normal-latin.woff2) format('woff2'),url(fuentes/manrope-normal-latin-ext.woff2) format('woff2');font-weight:200 800}
+@font-face{font-family:'Cinzel';src:url(fuentes/cinzel-normal-latin.woff2) format('woff2');font-weight:400 900}
+@font-face{font-family:'JetBrains Mono';src:url(fuentes/jetbrainsmono-normal-latin.woff2) format('woff2');font-weight:100 800}
+:root{--fondo:#07091A;--crema:#F3ECD9;--oro:#E3C26E;--rojo:#E2533F;--azul:#8FD0FF}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:radial-gradient(ellipse at 50% 38%,#121738 0%,#07091A 62%);color:var(--crema);font-family:'Manrope',sans-serif}
+#gl,#fx{position:absolute;inset:0}
+#clip{position:absolute;inset:0;opacity:0;overflow:hidden}
+#clip img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#tinte{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at 50% 40%,rgba(255,200,90,.35),rgba(120,70,10,.45));mix-blend-mode:soft-light}
+#vin{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,transparent 50%,rgba(3,4,12,.75)),linear-gradient(rgba(3,4,12,.55),transparent 20%,transparent 70%,rgba(3,4,12,.8))}
+.capa{position:absolute;inset:0;opacity:0}
+.fr{font-family:'Fraunces',serif}
+.mono{font-family:'JetBrains Mono',monospace}
+.slam{position:absolute;left:0;right:0;text-align:center;font-family:'Fraunces',serif;font-weight:800;line-height:.95;text-shadow:0 10px 50px rgba(0,0,0,.8)}
+.chip{display:inline-block;padding:12px 26px;border-radius:40px;border:2px solid rgba(243,236,217,.45);background:rgba(7,9,26,.7);font-weight:700;font-size:30px;letter-spacing:2px}
+.carta{position:absolute;left:90px;width:900px;height:250px;border-radius:34px;background:linear-gradient(135deg,rgba(25,30,60,.92),rgba(10,12,30,.92));border:2px solid rgba(243,236,217,.25);
+  display:flex;align-items:center;gap:40px;padding:0 50px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.carta .ic{width:150px;height:150px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.carta .n{font-family:'Fraunces',serif;font-weight:800;font-size:76px;line-height:1}
+.carta .d{font-size:30px;color:#cfc6b0;margin-top:10px}
+.tel{position:absolute;width:430px;height:880px;border-radius:64px;background:#0d1024;border:3px solid #2a2f52;box-shadow:0 40px 100px rgba(0,0,0,.7),inset 0 0 0 10px #05060f;overflow:hidden}
+.tel .scr{position:absolute;inset:14px;border-radius:52px;background:linear-gradient(#13173a,#090b1c);padding:70px 34px}
+.mem{position:absolute;padding:20px 30px;border-radius:26px;background:rgba(20,26,58,.85);border:1.5px solid rgba(143,208,255,.35);font-size:32px;font-weight:600;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+#cap{position:absolute;left:70px;right:150px;top:1420px;text-align:center;font-size:52px;font-weight:800;line-height:1.18;text-shadow:0 4px 18px #000,0 0 4px #000;opacity:0}
+#cap span{opacity:.55;transition:none}
+#cap span.y{opacity:1;color:#fff}
+#letra{position:absolute;left:60px;right:160px;top:1640px;font-size:19px;line-height:1.35;color:rgba(243,236,217,.62);opacity:0}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+</style></head><body>
+<canvas id="gl" width="1080" height="1920"></canvas>
+<div id="clip"><img id="clipA"><div id="tinte"></div><div id="vin"></div></div>
+<canvas id="fx" width="1080" height="1920"></canvas>
+
+<!-- gancho -->
+<div class="capa" id="hook">
+  <div class="slam" id="h1" style="top:520px;font-size:150px">HOY</div>
+  <div class="slam" id="h2" style="top:690px;font-size:110px">TE QUITARON</div>
+  <div class="slam" id="h3" style="top:820px;font-size:150px">DINERO</div></div>
+<div class="capa" id="menos"><div class="slam" style="top:1170px;font-size:88px;font-family:Manrope;color:#ff6a55;text-shadow:0 0 30px #000,0 6px 30px #000,0 0 8px #000">VALE MENOS<br>CADA AÑO</div></div>
+
+<!-- aura -->
+<div class="capa" id="t_aura">
+  <div class="slam" style="top:1080px;font-size:170px;letter-spacing:18px;font-weight:700">AURA</div>
+  <div id="t_super" style="position:absolute;left:0;right:0;top:1255px;text-align:center;font-weight:800;font-size:42px;letter-spacing:8px;opacity:0">LA SUPER INTELIGENCIA<br>DE ORDEN GLOBAL</div></div>
+
+<!-- tres cosas -->
+<div class="capa" id="cartas">
+  <div class="carta" id="c1" style="top:560px"><div class="ic" style="background:radial-gradient(circle,#2b2a20,#14130e)"><img src="origen-crema.svg" style="height:110px"></div><div><div class="n">ORIGEN</div><div class="d">Moneda digital · sigue el precio del oro</div></div></div>
+  <div class="carta" id="c2" style="top:850px"><div class="ic" style="background:radial-gradient(circle,#dff1ff 0%,#5aaee8 30%,#10204a 70%)"></div><div><div class="n">AURA</div><div class="d">La super inteligencia</div></div></div>
+  <div class="carta" id="c3" style="top:1140px"><div class="ic" style="background:url(electrum.png) center/cover"></div><div><div class="n">DR ELECTRUM</div><div class="d">Minería inteligente</div></div></div></div>
+
+<!-- origen -->
+<div class="capa" id="origen">
+  <div class="slam" id="o_num" style="top:170px;font-size:64px;letter-spacing:14px;font-family:Manrope;font-weight:800;color:#cfc6b0">UNO</div>
+  <img id="o_sim" src="origen-crema.svg" style="position:absolute;left:330px;top:360px;height:500px;filter:drop-shadow(0 0 40px rgba(243,236,217,.45))">
+  <div class="slam" style="top:900px;font-size:120px;letter-spacing:6px">ORIGEN</div>
+  <div id="o_graf" style="position:absolute;left:110px;top:1060px;width:860px;height:300px;opacity:0">
+    <canvas id="o_cv" width="860" height="300"></canvas>
+    <div style="position:absolute;right:0;top:-6px;font-size:22px;color:#bdb39b;letter-spacing:2px">ILUSTRATIVO</div></div>
+  <div id="o_sello" class="slam" style="top:1100px;font-size:96px;opacity:0">EL ORO<br>NADIE LO IMPRIME</div></div>
+
+<!-- celulares -->
+<div class="capa" id="cel">
+  <div class="tel" id="tel1" style="left:70px;top:380px"><div class="scr">
+    <div style="font-size:26px;color:#9aa3c7;letter-spacing:3px">ENVIAR</div>
+    <div class="fr" style="font-size:96px;font-weight:800;margin-top:20px">110</div><div style="font-size:30px;font-weight:700;letter-spacing:4px">ORIGEN</div>
+    <div style="margin-top:50px;font-size:28px;color:#9aa3c7">Para</div><div style="font-size:40px;font-weight:700">Mamá</div>
+    <div id="huella" style="position:absolute;left:50%;bottom:110px;margin-left:-85px;width:170px;height:170px;border-radius:50%;border:4px solid rgba(143,208,255,.35);display:flex;align-items:center;justify-content:center;font-size:90px">
+      <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="#8FD0FF" stroke-width="1.4" stroke-linecap="round"><path d="M12 11c0 3-1 6-3 8M8.5 6.5A6 6 0 0 1 18 11c0 2-.3 4-1 6M6 9a6 6 0 0 0-.5 3c0 2-.5 3.5-1.5 5M12 7a4 4 0 0 1 4 4c0 3-.5 5.5-1.5 7.5M12 15c-.3 2-1 3.5-2 5"/></svg>
+      <svg id="aro" style="position:absolute;inset:-8px" width="186" height="186" viewBox="0 0 186 186"><circle cx="93" cy="93" r="88" fill="none" stroke="#8FD0FF" stroke-width="6" stroke-dasharray="553" stroke-dashoffset="553" transform="rotate(-90 93 93)"/></svg></div></div></div>
+  <div class="tel" id="tel2" style="left:580px;top:380px"><div class="scr">
+    <div style="font-size:26px;color:#9aa3c7;letter-spacing:3px">RECIBISTE</div>
+    <div id="rec_n" class="fr" style="font-size:96px;font-weight:800;margin-top:20px;opacity:.15">+110</div><div style="font-size:30px;font-weight:700;letter-spacing:4px">ORIGEN</div>
+    <div style="margin-top:50px;font-size:28px;color:#9aa3c7">De</div><div style="font-size:40px;font-weight:700">Andrés</div></div></div>
+  <div id="recibo" style="position:absolute;left:150px;top:1010px;width:780px;padding:36px 44px;border-radius:30px;background:rgba(243,236,217,.97);color:#10132b;box-shadow:0 40px 90px rgba(0,0,0,.7);opacity:0">
+    <div style="display:flex;align-items:center;gap:20px"><div style="width:64px;height:64px;border-radius:32px;background:#1f9d6a;color:#fff;font-size:42px;display:flex;align-items:center;justify-content:center">✓</div>
+      <div class="fr" style="font-size:52px;font-weight:800">Recibo</div></div>
+    <div class="mono" style="font-size:24px;margin-top:18px;color:#4a4f6e">Nº 0x7f3a…9c21 · bloque 1.284.553</div>
+    <div style="font-size:32px;font-weight:700;margin-top:14px">Nadie lo puede borrar.</div></div></div>
+
+<!-- región -->
+<div class="capa" id="reg">
+  <div class="slam" style="top:230px;font-size:98px">UNA MONEDA<br>EN COMÚN</div>
+  <div id="reg_s" style="position:absolute;left:0;right:0;top:470px;text-align:center;font-size:38px;font-weight:700;letter-spacing:3px;opacity:0">SIN REEMPLAZAR LA DE NADIE</div></div>
+<canvas id="etq" width="1080" height="1920" style="position:absolute;inset:0;opacity:0"></canvas>
+
+<!-- taller -->
+<div class="capa" id="tal">
+  <div style="position:absolute;left:0;right:0;top:170px;text-align:center"><span class="chip" style="font-size:26px">EJEMPLO ILUSTRATIVO</span></div>
+  <div id="holo" style="position:absolute;left:120px;top:1020px;width:840px;padding:34px 40px;border-radius:30px;background:rgba(10,14,40,.72);border:2px solid rgba(243,236,217,.5);backdrop-filter:blur(6px);opacity:0">
+    <div style="font-size:24px;letter-spacing:4px;color:#cfc6b0">TALLER FAMILIAR</div>
+    <div class="fr" style="font-size:62px;font-weight:800;margin-top:6px">Abierto al mundo</div>
+    <div id="holo_o" style="display:flex;align-items:center;gap:16px;margin-top:16px;font-size:32px;font-weight:700;opacity:0"><img src="origen-crema.svg" style="height:44px">Medido en ORIGEN</div></div></div>
+
+<!-- yo -->
+<div class="capa" id="yo">
+  <div class="slam" id="y_num" style="top:170px;font-size:64px;letter-spacing:14px;font-family:Manrope;font-weight:800;color:#cfc6b0">DOS</div>
+  <div class="mem" id="m1" style="left:70px;top:420px">🎂 Cumpleaños de mamá · sábado</div>
+  <div class="mem" id="m2" style="left:330px;top:1080px">☕ Café con Carlos · 3 pm</div>
+  <div class="mem" id="m3" style="left:110px;top:1210px">💡 Pagar la luz · <b style="color:var(--azul)">espera tu firma</b></div>
+  <div id="firma" style="position:absolute;left:0;right:0;top:1080px;text-align:center;opacity:0">
+    <div style="display:inline-flex;width:200px;height:200px;border-radius:50%;border:5px solid var(--azul);align-items:center;justify-content:center;box-shadow:0 0 60px rgba(143,208,255,.5)">
+      <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="#8FD0FF" stroke-width="1.4" stroke-linecap="round"><path d="M12 11c0 3-1 6-3 8M8.5 6.5A6 6 0 0 1 18 11c0 2-.3 4-1 6M6 9a6 6 0 0 0-.5 3c0 2-.5 3.5-1.5 5M12 7a4 4 0 0 1 4 4c0 3-.5 5.5-1.5 7.5M12 15c-.3 2-1 3.5-2 5"/></svg></div>
+    <div class="fr" style="font-size:76px;font-weight:800;margin-top:20px;line-height:1">NADA SE MUEVE<br>SIN TU FIRMA</div></div></div>
+
+<!-- dr electrum -->
+<div class="capa" id="ele">
+  <div class="slam" style="top:150px;font-size:64px;letter-spacing:14px;font-family:Manrope;font-weight:800;color:#cfc6b0">TRES</div>
+  <div class="slam" style="top:235px;font-size:118px">DR ELECTRUM</div>
+  <div id="e_chips" style="position:absolute;left:0;right:0;top:420px;display:flex;flex-direction:column;align-items:center;gap:16px">
+    <span class="chip">⛏ DÓNDE HAY MINERALES</span><span class="chip">⚖ SI ES LEGAL</span><span class="chip" style="border-color:rgba(143,208,255,.7)">💧 CUIDA EL AGUA</span><span class="chip">🤝 Y A LA GENTE</span></div>
+  <div id="e_min" class="slam" style="top:1120px;font-size:110px;opacity:0"><span style="color:#9b927e;text-decoration:line-through;text-decoration-color:var(--rojo)">SEMANAS</span><br>MINUTOS</div></div>
+
+<!-- clímax -->
+<div class="capa" id="cli">
+  <div class="slam" id="k1" style="top:1080px;font-size:104px">NUESTROS<br>RECURSOS</div>
+  <div class="slam" id="k2" style="top:1080px;font-size:104px">NUESTRAS<br>EMPRESAS</div>
+  <div class="slam" id="k3" style="top:1080px;font-size:104px">NUESTRO<br>DINERO</div>
+  <div class="slam" id="k4" style="top:1120px;font-size:92px;color:#FFD98A;text-shadow:0 0 40px #000,0 0 18px #000,0 8px 40px #000,0 0 6px #000">MEDIDOS CON<br>LA MISMA VARA</div></div>
+
+<!-- cierre -->
+<div class="capa" id="fin">
+  <div id="marca" style="position:absolute;left:0;right:0;top:960px;text-align:center;font-family:Cinzel;font-weight:700;font-size:96px;letter-spacing:12px;opacity:0">ORDEN GLOBAL</div>
+  <img id="logo" src="orden-global-crema.svg" style="position:absolute;left:250px;top:400px;width:580px;filter:drop-shadow(0 0 50px rgba(243,236,217,.35))">
+  <div id="f_tec" style="position:absolute;left:0;right:0;top:1110px;text-align:center;font-size:40px;font-weight:700;letter-spacing:2px;opacity:0">Tecnología de Latinoamérica<br>para el mundo</div>
+  <div id="f_prod" style="position:absolute;left:0;right:0;top:1240px;text-align:center;font-size:30px;font-weight:800;letter-spacing:8px;color:#cfc6b0;opacity:0">AURA · DR ELECTRUM · ORIGEN</div>
+  <div id="f_cta" style="position:absolute;left:0;right:0;top:1330px;text-align:center;opacity:0">
+    <div style="font-size:46px;font-weight:800">¿QUERÉS SABER CÓMO FUNCIONA?</div>
+    <div style="display:inline-block;margin-top:24px;padding:22px 56px;border-radius:60px;background:var(--crema);color:#0b0d22;font-size:54px;font-weight:800;letter-spacing:2px">COMENTÁ «ORIGEN»</div></div></div>
+
+<div id="cap"></div>
+<div id="letra">Protocolo en desarrollo. Material informativo; no constituye oferta de valores ni de inversión. ORIGEN no es moneda de curso legal en ningún país. Tokenización: ejemplo ilustrativo.</div>
+<div id="flash"></div>
+
+<script src="topojson-client.min.js"></script>
+<script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const W = 1080, H = 1920;
+const $ = id => document.getElementById(id);
+const cl = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const ss = x => { x = cl(x); return x * x * (3 - 2 * x); };
+const eo = x => 1 - Math.pow(1 - cl(x), 3);
+const ex = x => { x = cl(x); return x === 1 ? 1 : 1 - Math.pow(2, -10 * x); };
+const lerp = (a, b, k) => a + (b - a) * k;
+const vent = (t, a, b, fi = .3, fo = .3) => ss((t - a) / fi) * (1 - ss((t - (b - fo)) / fo));
+const op = (id, v) => { $(id).style.opacity = v; };
+const T = await (await fetch('tiempos.json')).json();
+const S = T.s, V = T.voces, PW = T.palabras;
+const pal = (k, w, n = 1) => { let c = 0; for (const [p, a] of PW[k]) if (p.toLowerCase().replace(/[.,!?¡¿…]/g, '') === w && ++c === n) return a; return V[k]; };
+
+/* ---------- símbolo ORIGEN en crema ---------- */
+{ const s = await (await fetch('origen-simbolo.svg')).text(); const u = URL.createObjectURL(new Blob([s.replace(/#D9B45F/gi, '#F3ECD9')], { type: 'image/svg+xml' }));
+  document.querySelectorAll('img[src="origen-crema.svg"]').forEach(i => i.src = u); }
+
+/* ---------- 3D: globo y orbe ---------- */
+const R = new THREE.WebGLRenderer({ canvas: $('gl'), antialias: true, preserveDrawingBuffer: true });
+R.setSize(W, H, false); R.setPixelRatio(1); R.setClearColor(new THREE.Color().setRGB(.027, .035, .1)); R.outputColorSpace = THREE.LinearSRGBColorSpace;
+const esc = new THREE.Scene(); const cam = new THREE.PerspectiveCamera(32, W / H, .01, 100);
+const comp = new EffectComposer(R); comp.addPass(new RenderPass(esc, cam));
+const bloom = new UnrealBloomPass(new THREE.Vector2(W / 2, H / 2), .9, .55, .55); comp.addPass(bloom); comp.addPass(new OutputPass());
+
+// máscaras equirectangulares: R tierra, G Centroamérica, B Latinoamérica ; bordes aparte
+const topo = await (await fetch('countries-50m.json')).json();
+const paises = topojson.feature(topo, topo.objects.countries).features;
+const CA = ['Guatemala', 'Belize', 'El Salvador', 'Honduras', 'Nicaragua', 'Costa Rica', 'Panama'];
+const LAT = CA.concat(['Mexico', 'Cuba', 'Dominican Rep.', 'Haiti', 'Puerto Rico', 'Jamaica', 'Colombia', 'Venezuela', 'Ecuador', 'Peru', 'Bolivia', 'Brazil', 'Paraguay', 'Chile', 'Argentina', 'Uruguay', 'Guyana', 'Suriname']);
+const MW = 8192, MH = 4096;
+function mascara(filtro, col, borde) {
+  const c = document.createElement('canvas'); c.width = MW; c.height = MH; const g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, MW, MH);
+  g.fillStyle = col; g.strokeStyle = col; g.lineWidth = borde || 1; g.lineJoin = 'round';
+  for (const f of paises) { if (!filtro(f.properties.name)) continue; const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+    g.beginPath(); for (const p of polys) for (const ring of p) { ring.forEach(([lo, la], i) => { const x = (lo + 180) / 360 * MW, y = (90 - la) / 180 * MH; i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.closePath(); }
+    borde ? g.stroke() : g.fill('evenodd'); }
+  return c;
+}
+const cTierra = mascara(() => true, '#ff0000'), cCA = mascara(n => CA.includes(n), '#00ff00'), cLAT = mascara(n => LAT.includes(n), '#0000ff');
+const cMix = document.createElement('canvas'); cMix.width = MW; cMix.height = MH; { const g = cMix.getContext('2d'); g.globalCompositeOperation = 'lighter'; g.drawImage(cTierra, 0, 0); g.drawImage(cCA, 0, 0); g.drawImage(cLAT, 0, 0); }
+const cBor = mascara(() => true, '#ffffff', 3);
+const tx = c => { const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.NoColorSpace; t.anisotropy = 8; t.generateMipmaps = true; return t; };
+const GU = { mk: { value: tx(cMix) }, bo: { value: tx(cBor) }, ca: { value: 0 }, lat: { value: 0 }, oro: { value: 0 }, rojo: { value: 0 }, luz: { value: 1 }, tiempo: { value: 0 }, paso: { value: .55 } };
+const globoMat = new THREE.ShaderMaterial({ uniforms: GU, transparent: false,
+  vertexShader: `varying vec3 vP; varying vec3 vN; varying vec3 vV; void main(){ vP=position; vN=normalize(normalMatrix*normal); vec4 mv=modelViewMatrix*vec4(position,1.); vV=normalize(-mv.xyz); gl_Position=projectionMatrix*mv; }`,
+  fragmentShader: `uniform sampler2D mk,bo; uniform float ca,lat,oro,rojo,luz,tiempo,paso; varying vec3 vP; varying vec3 vN; varying vec3 vV;
+  void main(){ vec3 p=normalize(vP); float lon=atan(-p.z,p.x), la=asin(p.y); vec2 uv=vec2((lon+3.14159265)/6.2831853,(la+1.5707963)/3.14159265);
+    vec3 m=texture2D(mk,uv).rgb; float b=texture2D(bo,uv).r;
+    vec2 q=vec2(degrees(lon)*cos(la),degrees(la))/paso; vec2 f=fract(q)-.5; float dt=1.-smoothstep(.18,.34,length(f));
+    vec3 oc=vec3(.018,.024,.06); vec3 base=vec3(.42,.46,.6);
+    vec3 crema=vec3(.95,.92,.85), dorado=vec3(1.,.74,.32), rojoC=vec3(1.,.3,.22);
+    vec3 cLand=mix(base, crema, ca*m.g + .55*lat*m.b); cLand=mix(cLand, dorado*1.4, oro*(m.b*.9+m.g*.3)); cLand=mix(cLand, rojoC, rojo*m.b*.6);
+    float glow=(ca*m.g*.9+lat*m.b*.25+oro*m.b*.5);
+    vec3 col=oc + m.r*(dt*cLand*(.42+glow) + cLand*.05) + b*cLand*(.14+glow*.6);
+    float fr=pow(1.-max(dot(vN,vV),0.),3.); col+=vec3(.25,.45,.9)*fr*.35*luz + dorado*fr*oro*.5;
+    gl_FragColor=vec4(col*luz,1.); }` });
+const exterior = new THREE.Group(), globo = new THREE.Group(); exterior.add(globo); esc.add(exterior);
+globo.add(new THREE.Mesh(new THREE.SphereGeometry(1, 160, 120), globoMat));
+const atm = new THREE.Mesh(new THREE.SphereGeometry(1.12, 64, 48), new THREE.ShaderMaterial({ transparent: true, side: THREE.FrontSide, blending: THREE.AdditiveBlending, depthWrite: false, uniforms: { oro: GU.oro, luz: GU.luz },
+  vertexShader: `varying vec3 vN; varying vec3 vV; void main(){ vN=normalize(normalMatrix*normal); vec4 mv=modelViewMatrix*vec4(position,1.); vV=normalize(-mv.xyz); gl_Position=projectionMatrix*mv; }`,
+  fragmentShader: `uniform float oro,luz; varying vec3 vN; varying vec3 vV; void main(){ float k=pow(1.-abs(dot(vN,vV)),5.)*.9; vec3 c=mix(vec3(.3,.55,1.),vec3(1.,.72,.3),oro); gl_FragColor=vec4(c*k*.9*luz,k*luz); }` }));
+exterior.add(atm);
+const xyz = (lo, la, r = 1) => { lo *= Math.PI / 180; la *= Math.PI / 180; return new THREE.Vector3(Math.cos(la) * Math.cos(lo) * r, Math.sin(la) * r, -Math.cos(la) * Math.sin(lo) * r); };
+// arcos de dinero
+const ORI = [[-87.2, 14.1], [-90.5, 14.6], [-89.2, 13.7], [-86.3, 12.1], [-84.1, 9.9], [-79.5, 9.0], [-74.1, 4.7], [-77.0, -12.0], [-46.6, -23.5], [-58.4, -34.6], [-99.1, 19.4], [-70.6, -33.4], [-66.9, 10.5], [-43.2, -22.9]];
+const HUB = [[-74, 40.7], [4.5, 51.9], [121.5, 31.2], [139.7, 35.7], [55.3, 25.3], [-0.1, 51.5], [-118.2, 34], [8.7, 50.1], [-87.6, 41.9], [103.8, 1.3]];
+const ARC = []; for (let i = 0; i < 28; i++) { const a = ORI[i % ORI.length], b = HUB[(i * 3) % HUB.length]; const A = xyz(...a), B = xyz(...b);
+  const ang = A.angleTo(B); ARC.push(u => { const v = new THREE.Vector3().copy(A).lerp(B, u).normalize(); return v.multiplyScalar(1 + .12 + ang * .22 * Math.sin(Math.PI * u) - .12 * (1 - Math.sin(Math.PI * u))); }); }
+const NA = 46;
+function flujo(col, tam) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(ARC.length * NA * 3), 3));
+  const p = new THREE.Points(g, new THREE.PointsMaterial({ color: col, size: tam, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true })); globo.add(p); return p; }
+const F_OUT = flujo(new THREE.Color(1.0, 1.0, 1.1), .016), F_RET = flujo(new THREE.Color(1.5, .3, .22), .011), F_IN = flujo(new THREE.Color(1.5, 1.05, .4), .02);
+function mueve(F, t, k, dir, vel, largo = 1) {
+  F.material.opacity = k; F.visible = k > .01; if (!F.visible) return; const a = F.geometry.attributes.position;
+  for (let i = 0; i < ARC.length; i++) for (let j = 0; j < NA; j++) { let u = ((j / NA) * largo + t * vel + i * .137) % 1; if (dir < 0) u = 1 - u; const v = ARC[i](u); a.setXYZ(i * NA + j, v.x, v.y, v.z); }
+  a.needsUpdate = true;
+}
+function mira(lo, la) { globo.rotation.set(0, -Math.PI / 2 - lo * Math.PI / 180, 0); exterior.rotation.set(la * Math.PI / 180, 0, 0); }
+
+// orbe de AURA (partículas)
+const orbe = new THREE.Group(); esc.add(orbe);
+const NP = 9000, base = new Float32Array(NP * 3), sem = new Float32Array(NP);
+let sd = 7; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+for (let i = 0; i < NP; i++) { const th = 2 * Math.PI * rnd(), ph = Math.acos(2 * rnd() - 1); const r = i < NP * .72 ? 1 + (rnd() - .5) * .07 : Math.pow(rnd(), 2.2) * .8;
+  base.set([r * Math.sin(ph) * Math.cos(th), r * Math.cos(ph), r * Math.sin(ph) * Math.sin(th)], i * 3); sem[i] = rnd(); }
+const geoO = new THREE.BufferGeometry(); geoO.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NP * 3), 3));
+const colO = new Float32Array(NP * 3); for (let i = 0; i < NP; i++) { const c = new THREE.Color(i < NP * .72 ? (sem[i] < .5 ? '#dbe9ff' : '#9fd8ff') : '#ffe2a8'); colO.set([c.r, c.g, c.b], i * 3); }
+geoO.setAttribute('color', new THREE.BufferAttribute(colO, 3));
+const orbePts = new THREE.Points(geoO, new THREE.PointsMaterial({ size: .02, vertexColors: true, transparent: true, opacity: .95, blending: THREE.AdditiveBlending, depthWrite: false })); orbe.add(orbePts);
+function halo(col, r, a) { const cv = document.createElement('canvas'); cv.width = cv.height = 256; const g = cv.getContext('2d'); const gr = g.createRadialGradient(128, 128, 0, 128, 128, 128); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+  return new THREE.Mesh(new THREE.PlaneGeometry(r, r), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, opacity: a, depthWrite: false, blending: THREE.AdditiveBlending })); }
+const nucleo = halo('#fff0d0', 1.3, .6); orbe.add(nucleo); const nube = halo('#2f7fe0', 4, 0); nube.position.z = -1; orbe.add(nube);
+function ponOrbe(t, nace, voz, y, esc0) {
+  orbe.visible = nace > .001; if (!orbe.visible) return; const pos = geoO.attributes.position.array;
+  for (let i = 0; i < NP; i++) { const s = sem[i], w = .02 * Math.sin(t * 1.3 + s * 40) + voz * Math.sin(s * 30 + t * 9) * .5;
+    const bx = base[i * 3] * (1 + w), by = base[i * 3 + 1] * (1 + w), bz = base[i * 3 + 2] * (1 + w); const rot = t * .25 + s * .2;
+    pos[i * 3] = (bx * Math.cos(rot) - bz * Math.sin(rot)) * nace; pos[i * 3 + 1] = by * nace; pos[i * 3 + 2] = (bx * Math.sin(rot) + bz * Math.cos(rot)) * nace; }
+  geoO.attributes.position.needsUpdate = true; orbe.position.set(0, y, 0); orbe.scale.setScalar(esc0);
+  nucleo.material.opacity = .6 * Math.min(1, nace); orbePts.material.opacity = .95 * cl(nace * 3);
+}
+const vozEn = (t, k) => { for (const [p, a, b] of PW[k]) if (t >= a && t <= b) return .045 * Math.abs(Math.sin((t - a) * 18)); return 0; };
+
+/* ---------- tomas (clips en cuadros) ---------- */
+const CL = [
+  { k: 'V1', a: 0, b: S.fin_hook, off: .2, sp: 1, z0: 1.0, z1: 1.18, fi: .15, fo: .01 },
+  { k: 'V2', a: S.cafe, b: S.minerales, off: .3, sp: 1, z0: 1.05, z1: 1.15, fi: .01, fo: .01 },
+  { k: 'EV', a: S.minerales, b: S.salen, off: 1.2, sp: 1, z0: 1.15, z1: 1.3, fi: .01, fo: .01 },
+  { k: 'V3', a: S.salen, b: S.salen + 1.3, off: .8, sp: 1, z0: 1.05, z1: 1.12, fi: .01, fo: .25 },
+  { k: 'V4', a: S.taller, b: S.yo, off: 0, sp: 1, z0: 1.0, z1: 1.12, fi: .3, fo: .35 },
+  { k: 'EV', a: S.electrum + .2, b: S.clima - .1, off: 0, sp: 14.4 / (S.clima - S.electrum - .3), z0: 1.02, z1: 1.06, fi: .25, fo: .1 },
+  { k: 'V5', a: S.recursos - .15, b: S.empresas - .1, off: 1.2, sp: 1, z0: 1.05, z1: 1.15, fi: .01, fo: .01 },
+  { k: 'V4', a: S.empresas - .1, b: S.dinero - .1, off: 3.4, sp: 1, z0: 1.1, z1: 1.2, fi: .01, fo: .01 },
+  { k: 'V6', a: S.dinero - .1, b: S.vara - .1, off: 1.5, sp: 1, z0: 1.05, z1: 1.18, fi: .01, fo: .2 },
+  { k: 'V1', a: T.total - .45, b: T.total + 1, off: .2, sp: 1, z0: 1.0, z1: 1.0, fi: .08, fo: .01 },
+];
+const NF = { V1: 155, V2: 155, V3: 155, V4: 155, V5: 155, V6: 155, EV: 440 };
+function tomaEn(t) { let m = null, mv = 0; for (const c of CL) { if (t < c.a || t >= c.b) continue; const v = vent(t, c.a, c.b, c.fi, c.fo); if (v >= mv) { mv = v; m = c; } } return [m, mv]; }
+async function ponToma(t) {
+  const [c, k] = tomaEn(t); const el = $('clip'); if (!c) { el.style.opacity = 0; return 0; }
+  const n = Math.min(NF[c.k], Math.max(1, Math.round(((t - c.a) * c.sp + c.off) * 30) + 1)); const src = `clips/${c.k}/${String(n).padStart(5, '0')}.jpg`, img = $('clipA');
+  if (!img.src.endsWith(src)) { img.src = src; await img.decode().catch(() => {}); }
+  const u = cl((t - c.a) / (c.b - c.a)); img.style.transform = `scale(${lerp(c.z0, c.z1, u)})`; el.style.opacity = k; return k;
+}
+
+/* ---------- 2D: estallido, destellos, luces ---------- */
+const fx = $('fx'), g = fx.getContext('2d');
+const vidrio = new Image(); vidrio.src = `clips/V1/${String(Math.round((S.fin_hook + .2) * 30)).padStart(5, '0')}.jpg`; await vidrio.decode().catch(() => {});
+const SH = []; { let s2 = 3; const r2 = () => (s2 = (s2 * 48271) % 2147483647) / 2147483647; const cx = 540, cy = 860;
+  for (let i = 0; i < 90; i++) { const a = r2() * 6.283, d = Math.pow(r2(), .6) * 1100; const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d * 1.3; const n = 3 + Math.floor(r2() * 3), pts = [];
+    for (let k = 0; k < n; k++) { const b = a + k / n * 6.283 + r2() * .6, rr = 60 + r2() * 160; pts.push([x + Math.cos(b) * rr, y + Math.sin(b) * rr]); }
+    SH.push({ x, y, pts, vx: (x - cx) * (.9 + r2()), vy: (y - cy) * (.9 + r2()) - 200, rz: (r2() - .5) * 6, vz: .6 + r2() * 1.6 }); } }
+function estallido(t) { const k = (t - S.fin_hook) / 1.1; if (k <= 0 || k >= 1) return; const e = eo(k);
+  for (const s of SH) { g.save(); const z = 1 + s.vz * e * 1.8; g.translate(s.x + s.vx * e * .9, s.y + s.vy * e * .9); g.rotate(s.rz * e); g.scale(z, z); g.translate(-s.x, -s.y);
+    g.beginPath(); s.pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.clip(); g.globalAlpha = 1 - ss((k - .35) / .65);
+    g.drawImage(vidrio, 0, 0, W, H); g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 3; g.stroke(); g.restore(); } }
+function rayos(t, a, x0, y0, col) { if (a <= 0) return; g.save(); g.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 26; i++) { const sx = (i * 197) % W, sy = -50 - (i * 53) % 400; const u = ((t * .5 + i * .13) % 1); const px = lerp(sx, x0, eo(u)), py = lerp(sy, y0, eo(u));
+    const gr = g.createLinearGradient(sx, sy, px, py); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, col); g.strokeStyle = gr; g.globalAlpha = a * (1 - u) * .9; g.lineWidth = 3; g.beginPath(); g.moveTo(sx, sy); g.lineTo(px, py); g.stroke();
+    g.fillStyle = col; g.beginPath(); g.arc(px, py, 4, 0, 7); g.fill(); } g.restore(); }
+function grano(t) { g.save(); g.globalAlpha = .045; for (let i = 0; i < 900; i++) { const x = (Math.sin(i * 12.9 + t * 91) * 43758.5 % 1 + 1) % 1 * W, y = (Math.sin(i * 78.2 + t * 37) * 12543.1 % 1 + 1) % 1 * H; g.fillStyle = i % 2 ? '#fff' : '#000'; g.fillRect(x, y, 2, 2); } g.restore(); }
+function graf(k, t) { const c = $('o_cv').getContext('2d'); c.clearRect(0, 0, 860, 300); const N = 120, f = i => 150 - 90 * Math.sin(i / N * 5.2) * .55 - i * .55 + 18 * Math.sin(i * .37);
+  c.lineWidth = 3; c.setLineDash([10, 10]); c.strokeStyle = 'rgba(207,198,176,.6)'; c.beginPath(); for (let i = 0; i <= N * k; i++) { const x = i / N * 860, y = f(i); i ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke();
+  c.setLineDash([]); c.lineWidth = 6; c.strokeStyle = '#F3ECD9'; c.shadowColor = 'rgba(243,236,217,.8)'; c.shadowBlur = 16; c.beginPath(); for (let i = 0; i <= N * k; i++) { const x = i / N * 860, y = f(i) + 5; i ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke(); c.shadowBlur = 0;
+  c.font = '700 26px Manrope'; c.fillStyle = '#F3ECD9'; c.fillText('ORIGEN', 10, 290); c.fillStyle = '#bdb39b'; c.fillText('- - precio del oro', 170, 290); }
+
+/* ---------- subtítulos ---------- */
+function subt(t) { let html = '', a = 0;
+  for (const k in PW) { const w = PW[k]; if (t < w[0][1] - .15 || t > w[w.length - 1][2] + .35) continue;
+    // ventana de ~4 palabras alrededor de la actual
+    let i = w.findIndex(([, a1, b1]) => t < b1 + .05); if (i < 0) i = w.length - 1; const ini = Math.floor(i / 4) * 4;
+    html = w.slice(ini, ini + 4).map(([p, a1], j) => `<span class="${t >= a1 - .03 ? 'y' : ''}">${p}</span>`).join(' '); a = vent(t, w[0][1] - .15, w[w.length - 1][2] + .35, .12, .2); }
+  $('cap').innerHTML = html; $('cap').style.opacity = a; }
+const golpe = (id, t, t0, d = .35, z = 1.6) => { const k = eo((t - t0) / d); $(id).style.opacity = ss((t - t0) / .08); $(id).style.transform = `scale(${lerp(z, 1, k)})`; $(id).style.filter = `blur(${(1 - k) * 12}px)`; };
+
+/* ---------- cuadro ---------- */
+function cuadro(t, tk) {
+  g.clearRect(0, 0, W, H); document.querySelectorAll('.capa').forEach(c => c.style.opacity = 0);
+  GU.tiempo.value = t; GU.paso.value = .55; let verGlobo = 0, verOrbe = 0; let flash = 0;
+  /* 1 · gancho */
+  if (t < S.fin_hook + .1) { op('hook', 1); golpe('h1', t, pal('A01', 'hoy')); golpe('h2', t, pal('A01', 'quitaron') - .1); golpe('h3', t, pal('A01', 'dinero'));
+    const tem = Math.max(0, Math.sin(t * 40)) * .015 * ss((t - 2) / 1); $('hook').style.transform = `translate(${tem * 300}px,0)`; }
+  estallido(t); if (Math.abs(t - S.fin_hook) < .08) flash = .5;
+  /* 2 · el mundo y el dinero */
+  const g0 = S.salen + 1.25;
+  if (t > g0 - .3 && t < S.negro + .2) { verGlobo = vent(t, g0 - .2, S.negro + .1, .35, .25);
+    const k = ss((t - g0) / (S.negro - g0)); cam.position.set(0, 0, lerp(3.2, 3.9, k)); cam.lookAt(0, 0, 0); mira(lerp(-95, -60, k), lerp(14, 18, k));
+    GU.ca.value = 0; GU.lat.value = .5; GU.oro.value = 0; GU.rojo.value = ss((t - S.vuelve) / .6); GU.luz.value = 1;
+    mueve(F_OUT, t, ss((t - g0) / .4) * (1 - .5 * ss((t - S.vuelve) / .5)), 1, .35); mueve(F_RET, t, ss((t - S.vuelve + .2) / .5), -1, .25); mueve(F_IN, t, 0, 1, 1);
+    op('menos', vent(t, pal('A02', 'menos') - .1, S.negro, .15, .2)); if (t > pal('A02', 'menos') - .1) golpe('menos', t, pal('A02', 'menos') - .1, .3, 1.3); }
+  /* 3 · AURA */
+  if (t > S.aura - .1 && t < S.origen) { const nace = ex((t - S.aura) / 1.0); verOrbe = 1;
+    const sube = ss((t - S.tres + .4) / .7); cam.position.set(0, 0, 6.4); cam.lookAt(0, 0, 0);
+    ponOrbe(t, nace, vozEn(t, 'A03') + vozEn(t, 'A04'), lerp(.75, 2.75, sube), lerp(.78, .5, sube));
+    op('t_aura', vent(t, S.aura + .5, S.tres - .2, .5, .3)); $('t_super').style.opacity = ss((t - S.super) / .3); $('t_super').style.letterSpacing = lerp(16, 8, eo((t - S.super) / .8)) + 'px';
+    if (Math.abs(t - S.aura) < .12) flash = .8 * (1 - Math.abs(t - S.aura) / .12);
+    bloom.strength = .75; bloom.threshold = .5; }
+  /* 4 · tres cosas */
+  if (t > S.tres - .1 && t < S.origen + .3) { op('cartas', vent(t, S.tres - .1, S.origen + .25, .05, .3));
+    ['c1', 'c2', 'c3'].forEach((id, i) => { const t0 = S.tres + i * .38; const k = eo((t - t0) / .35); $(id).style.opacity = ss((t - t0) / .06);
+      const sale = ss((t - S.origen + .35) / .5); $(id).style.transform = `translateX(${(1 - k) * (i % 2 ? 900 : -900)}px) scale(${1 + (i === 0 ? sale * .4 : -sale * .2)})`;
+      $(id).style.boxShadow = `0 30px 80px rgba(0,0,0,.6), 0 0 ${60 * ss((t - S.liga) / .3) * (1 - ss((t - S.liga - .6) / .4))}px rgba(243,236,217,.5)`; }); }
+  /* 5 · ORIGEN */
+  if (t > S.origen - .2 && t < S.cel + .2) { const a = vent(t, S.origen - .15, S.cel + .15, .3, .3); op('origen', a);
+    golpe('o_num', t, S.origen, .3, 1.4); const k = eo((t - S.origen - .1) / 1.2); $('o_sim').style.transform = `scale(${lerp(.6, 1, k)}) rotate(${lerp(-25, 0, k)}deg)`; $('o_sim').style.opacity = ss((t - S.origen) / .4);
+    // anillo de partículas
+    g.save(); g.globalCompositeOperation = 'lighter'; for (let i = 0; i < 140; i++) { const an = i / 140 * 6.283 + t * .6, r = 330 + 16 * Math.sin(i * 7 + t * 3); g.fillStyle = `rgba(243,236,217,${.5 * a * k})`; g.beginPath(); g.arc(540 + Math.cos(an) * r, 610 + Math.sin(an) * r * .35, 2.5, 0, 7); g.fill(); } g.restore();
+    const nad = pal('A05', 'nadie'); $('o_graf').style.opacity = ss((t - S.oro + .3) / .3) * (1 - ss((t - nad + .1) / .25)); graf(eo((t - S.oro + .2) / 1.6), t);
+    if (t > nad - .1) golpe('o_sello', t, nad - .1, .3, 1.5); else $('o_sello').style.opacity = 0; }
+  /* 6 · de celular a celular */
+  if (t > S.cel - .2 && t < S.region + .2) { const a = vent(t, S.cel - .1, S.region + .15, .3, .25); op('cel', a);
+    $('tel1').style.transform = `translateY(${(1 - eo((t - S.cel) / .5)) * 400}px) rotate(-4deg)`; $('tel2').style.transform = `translateY(${(1 - eo((t - S.cel - .15) / .5)) * 400}px) rotate(4deg)`;
+    const hk = ss((t - S.huella + .1) / .7); document.querySelector('#aro circle').setAttribute('stroke-dashoffset', 553 * (1 - hk)); $('huella').style.boxShadow = `0 0 ${50 * hk}px rgba(143,208,255,.8)`;
+    const vk = (t - S.huella - .65) / .7; if (vk > 0 && vk < 1) { g.save(); g.globalCompositeOperation = 'lighter'; const x = lerp(285, 795, eo(vk)), y = 1060 - 300 * Math.sin(Math.PI * vk); for (let i = 0; i < 12; i++) { g.fillStyle = `rgba(243,236,217,${.9 - i * .07})`; g.beginPath(); g.arc(x - i * 14 * (1 - vk), y + i * 6, 14 - i, 0, 7); g.fill(); } g.restore(); }
+    $('rec_n').style.opacity = .15 + .85 * ss((t - S.huella - 1.3) / .3);
+    const rk = eo((t - S.recibo + .1) / .45); $('recibo').style.opacity = ss((t - S.recibo + .1) / .15); $('recibo').style.transform = `translateY(${(1 - rk) * 200}px) scale(${lerp(.9, 1, rk)})`; }
+  /* 7 · la región */
+  if (t > S.region - .3 && t < S.taller + .3) { verGlobo = Math.max(verGlobo, vent(t, S.region - .25, S.taller + .2, .3, .3));
+    const k = ss((t - S.region) / (S.taller - S.region)); cam.position.set(0, .07, lerp(2.0, 1.75, k)); cam.lookAt(0, .07, 0); GU.paso.value = .3; mira(lerp(-84, -86, k), lerp(11, 12.5, k));
+    const ca = ss((t - S.region - .2) / 1.4); GU.ca.value = ca; GU.lat.value = ss((t - S.region_w) / .6); GU.oro.value = 0; GU.rojo.value = 0; GU.luz.value = 1;
+    mueve(F_OUT, t, 0, 1, 1); mueve(F_RET, t, 0, 1, 1); mueve(F_IN, t, 0, 1, 1);
+    op('reg', vent(t, S.region, S.taller, .3, .25)); $('reg_s').style.opacity = ss((t - pal('A07', 'sin')) / .3);
+    // nombres de los países
+    const e = $('etq').getContext('2d'); e.clearRect(0, 0, W, H); $('etq').style.opacity = vent(t, S.region + .3, S.taller, .3, .25);
+    const N = [['GUATEMALA', -90.4, 15.6], ['BELICE', -88.6, 17.3], ['EL SALVADOR', -88.9, 13.7], ['HONDURAS', -86.6, 14.9], ['NICARAGUA', -85.1, 12.8], ['COSTA RICA', -84.1, 10.0], ['PANAMÁ', -80.4, 8.5]];
+    exterior.updateMatrixWorld(true); N.forEach(([n, lo, la], i) => { const p = xyz(lo, la, 1.01).applyMatrix4(globo.matrixWorld).project(cam); const x = (p.x + 1) / 2 * W, y = (1 - p.y) / 2 * H;
+      const kk = ss((t - S.region - .2 - i * .18) / .3); e.globalAlpha = kk; e.font = '800 30px Manrope'; e.textAlign = 'center'; e.fillStyle = '#F3ECD9'; e.shadowColor = '#000'; e.shadowBlur = 12; e.fillText(n, x, y); }); }
+  else { $('etq').style.opacity = 0; }
+  /* 8 · el taller */
+  if (t > S.taller - .2 && t < S.yo + .2) { op('tal', vent(t, S.taller + .2, S.yo, .3, .3)); const hk = eo((t - S.abrirse + .1) / .5);
+    $('holo').style.opacity = ss((t - S.abrirse + .1) / .25); $('holo').style.transform = `translateY(${(1 - hk) * 80}px)`; $('holo_o').style.opacity = ss((t - S.medida) / .3);
+    rayos(t, vent(t, S.abrirse, S.yo, .4, .3), 540, 900, 'rgba(243,236,217,1)'); }
+  /* 9 · yo, AURA */
+  if (t > S.yo - .3 && t < S.electrum + .2) { verOrbe = vent(t, S.yo - .2, S.electrum + .1, .4, .3); cam.position.set(0, 0, 6.4); cam.lookAt(0, 0, 0);
+    ponOrbe(t, verOrbe * (1 + .04 * Math.sin(t * 2)), vozEn(t, 'A09') * 1.4, lerp(.6, 1.35, ss((t - S.firma + .3) / .5)), lerp(.62, .5, ss((t - S.firma + .3) / .5)));
+    op('yo', vent(t, S.yo, S.electrum, .3, .3)); golpe('y_num', t, S.yo + .1, .3, 1.4);
+    ['m1', 'm2', 'm3'].forEach((id, i) => { const t0 = S.recuerdo + i * .3; const k = eo((t - t0) / .5); $(id).style.opacity = ss((t - t0) / .2) * (1 - ss((t - S.firma + .4) / .3)); $(id).style.transform = `translateY(${(1 - k) * 60 + 8 * Math.sin(t * 1.5 + i)}px)`; });
+    const fk = eo((t - S.firma + .2) / .4); $('firma').style.opacity = ss((t - S.firma + .2) / .15); $('firma').style.transform = `scale(${lerp(1.3, 1, fk)})`; bloom.strength = .75; bloom.threshold = .5; }
+  /* 10 · Dr Electrum */
+  if (t > S.electrum && t < S.clima + .1) { op('ele', vent(t, S.electrum + .2, S.clima - .1, .3, .15));
+    const ch = [...$('e_chips').children]; const tw = [pal('A10', 'minerales'), pal('A10', 'legalmente'), pal('A10', 'agua'), pal('A10', 'gente')];
+    ch.forEach((d, i) => { const k = eo((t - tw[i] + .05) / .3); d.style.opacity = ss((t - tw[i] + .05) / .12) * (1 - ss((t - S.minutos + .3) / .3)); d.style.transform = `scale(${lerp(1.4, 1, k)})`; });
+    if (t > S.minutos - .1) golpe('e_min', t, S.minutos - .1, .3, 1.5); else $('e_min').style.opacity = 0; }
+  /* 11 · clímax dorado */
+  if (t > S.clima - .1 && t < S.logo + .4) { op('cli', 1);
+    const ks = [['k1', S.recursos - .1, S.empresas - .1], ['k2', S.empresas - .1, S.dinero - .1], ['k3', S.dinero - .1, S.vara - .15], ['k4', S.vara - .1, S.logo - .1]];
+    ks.forEach(([id, a, b]) => { if (t >= a && t < b) { golpe(id, t, a, .25, 1.35); $(id).style.opacity = vent(t, a, b, .06, .12); } else $(id).style.opacity = 0; });
+    if (t > S.vara - .2) { verGlobo = Math.max(verGlobo, vent(t, S.vara - .15, S.logo + .35, .2, .4)); const k = ss((t - S.vara) / (S.logo - S.vara + .3));
+      cam.position.set(0, 0, lerp(1.9, 3.6, k)); cam.lookAt(0, 0, 0); mira(lerp(-86, -70, k), lerp(12, 0, k));
+      GU.ca.value = 1; GU.lat.value = 1; GU.oro.value = ss((t - S.vara) / .8); GU.rojo.value = 0; GU.luz.value = 1;
+      mueve(F_IN, t, ss((t - S.vara) / .5), -1, .45); mueve(F_OUT, t, 0, 1, 1); mueve(F_RET, t, 0, 1, 1); }
+    $('tinte').style.opacity = ss((t - S.recursos) / 1.5) * .9;
+    for (const tt of [S.clima, S.empresas - .1, S.dinero - .1, S.vara - .1]) if (Math.abs(t - tt) < .07) flash = Math.max(flash, .55 * (1 - Math.abs(t - tt) / .07)); }
+  else $('tinte').style.opacity = 0;
+  /* 12 · cierre */
+  if (t > S.logo - .2) { const a = ss((t - S.logo) / .5) * (1 - ss((t - T.total + .55) / .1)); op('fin', a);
+    const lk = eo((t - S.logo) / 1.2); $('logo').style.transform = `scale(${lerp(1.25, 1, lk)})`; $('logo').style.filter = `blur(${(1 - lk) * 16}px) drop-shadow(0 0 50px rgba(243,236,217,.35))`;
+    $('f_tec').style.opacity = ss((t - pal('A12', 'tecnología')) / .4); $('f_prod').style.opacity = ss((t - pal('A12', 'tecnología') - .9) / .4);
+    $('marca').style.opacity = ss((t - S.logo - .5) / .5); $('marca').style.letterSpacing = lerp(30, 12, eo((t - S.logo - .5) / 1.2)) + 'px';
+    const ck = eo((t - S.quieres) / .4); $('f_cta').style.opacity = ss((t - S.quieres) / .2); $('f_cta').style.transform = `scale(${lerp(1.2, 1, ck)})`;
+    if (t < S.logo + .9) { verGlobo = Math.max(verGlobo, (1 - ss((t - S.logo) / .8)) * .9); }
+    if (Math.abs(t - S.logo) < .08) flash = .6; }
+  /* globo y orbe */
+  globo.visible = atm.visible = verGlobo > .01; exterior.visible = verGlobo > .01; GU.luz.value *= verGlobo;
+  if (!verOrbe || verOrbe < .01) orbe.visible = false;
+  if (verGlobo > .01 || orbe.visible) { if (!orbe.visible) { bloom.strength = .55; bloom.threshold = .72; } comp.render(); $('gl').style.opacity = 1; } else { $('gl').style.opacity = 0; }
+  /* subtítulos, letra chica, grano */
+  subt(t); if (t > S.quieres - .15) $('cap').style.opacity = 0; $('letra').style.opacity = t > S.origen && t < T.total - .5 ? .9 : 0;
+  // la letra chica se oculta donde estorba al clímax de texto
+  grano(t); $('flash').style.opacity = flash;
+  document.body.style.filter = `brightness(${Math.min(ss(t / .12), 1 - ss((t - T.total + .1) / .1) * 0)})`;
+}
+window.setT = async t => { const tk = await ponToma(t); cuadro(t, tk); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); return true; };
+await document.fonts.ready; window.LISTO = true;
+</script></body></html>
