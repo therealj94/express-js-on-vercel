@@ -60,6 +60,17 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:var(--noche);fon
   <div class="capa" id="n_antonio"><div class="rot" style="top:1660px;font-size:34px;color:var(--hormiga)">ANT-ONIO · GETS IT DONE</div></div>
   <div class="capa" id="t_mente"><div class="t" style="top:120px;font-size:80px">One mind.<br><span style="color:var(--hielo)">Three ways to help.</span></div></div>
 
+  <div class="capa" id="conv">
+    <div id="c_yo" style="position:absolute;left:90px;right:90px;top:200px;text-align:center">
+      <div class="etq" style="color:#9fb4c8">YOU</div>
+      <div id="c_yo_t" style="font-size:58px;font-weight:700;margin-top:14px;text-shadow:0 4px 30px rgba(0,0,0,.8)"></div>
+      <div id="ondas" style="display:flex;gap:8px;justify-content:center;margin-top:22px;height:50px;align-items:center"></div>
+    </div>
+    <div id="c_tag" class="chip" style="position:absolute;left:50%;top:1310px;transform:translateX(-50%);font-size:36px;color:#A6FBFF;border-color:rgba(63,230,250,.4);background:rgba(63,230,250,.1)">♪ [laughs softly]</div>
+    <div id="c_aura" style="position:absolute;left:80px;right:80px;top:1420px;text-align:center;font-size:56px;font-weight:700;line-height:1.15;color:#eaf7ff;text-shadow:0 4px 30px rgba(0,0,0,.85)"></div>
+    <div id="c_mem"></div>
+    <div id="c_memt" style="position:absolute;left:0;right:0;top:170px;text-align:center"><div class="t" style="position:static;font-size:80px">Her own brain.<br><span style="color:var(--hielo)">Your memories.</span></div><div style="font-size:28px;color:var(--gris);margin-top:22px">You can see, edit or delete anything she knows.</div></div>
+  </div>
   <!-- S5–S7 teléfono -->
   <div id="tel"><div class="isla"></div><div class="pant">
     <div class="vista" id="v_llamada">
@@ -73,7 +84,7 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:var(--noche);fon
       </div>
     </div>
     <div class="vista" id="v_memoria">
-      <div class="etq">Today</div>
+      <div class="etq">Reminders</div>
       <div style="display:flex;flex-direction:column;gap:26px;margin-top:30px">
         <div class="vid fila" style="padding:36px 40px;border-radius:36px"><span class="mono" style="font-size:34px;color:var(--cian);width:140px">09:00</span><b style="font-size:38px">Board meeting</b></div>
         <div class="vid fila" style="padding:36px 40px;border-radius:36px"><span class="mono" style="font-size:34px;color:var(--cian);width:140px">12:30</span><b style="font-size:38px">Lunch with Carlos</b></div>
@@ -106,25 +117,40 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:var(--noche);fon
         <div class="fila" style="gap:18px;margin-top:22px"><div class="btn" style="flex:1;height:88px;background:rgba(255,255,255,.08);font-size:30px">Later</div><div class="btn" style="flex:1.5;height:88px;background:var(--cian);color:#032029;font-size:30px">Accept & sign</div></div>
       </div>
     </div>
-    <div class="vista" id="v_chat" style="padding:150px 40px 60px">
-      <div class="etq">AURA</div>
-      <div id="burbuja" style="position:absolute;right:40px;top:250px;max-width:560px;padding:30px 36px;border-radius:40px 40px 10px 40px;background:var(--cian2);color:#03141c;font-size:40px;font-weight:700"></div>
-      <div class="vid" id="hoja" style="position:absolute;left:30px;right:30px;top:470px;padding:44px 40px;opacity:0">
-        <div class="fila" style="justify-content:space-between"><img src="assets/veta-mark.png" style="height:64px"><div class="etq">Send</div></div>
-        <div class="fila" style="margin-top:32px"><div style="width:100px;height:100px;border-radius:50px;background:linear-gradient(135deg,#c98a6b,#7a4a3a);display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:800">M</div><div><div style="font-size:26px;color:var(--gris)">To</div><div style="font-size:46px;font-weight:800">Mom</div></div></div>
-        <div style="text-align:center;margin-top:36px"><span class="mono" style="font-size:130px;font-weight:700;letter-spacing:-4px">110</span><div class="fila" style="justify-content:center;gap:14px"><img src="assets/origen.jpg" style="height:58px;border-radius:29px"><b style="font-size:40px;letter-spacing:2px">ORIGEN</b></div></div>
-        <div id="formula" style="margin-top:34px;padding:28px;border-radius:28px;background:rgba(233,196,106,.08);border:1px solid rgba(233,196,106,.4);text-align:center">
-          <div class="mono" style="font-size:32px;color:#eadcb0">110 × <span style="color:var(--oro)">1/55 g</span> of gold</div>
-          <div class="mono" id="f_res" style="white-space:nowrap;font-size:58px;font-weight:700;color:var(--oro);margin-top:8px">= 2 g of gold</div>
-        </div>
-        <div class="btn" id="firmar" style="margin-top:34px;background:var(--cian);color:#032029">Sign with fingerprint</div>
-        <div style="text-align:center;margin-top:18px;font-size:24px;color:var(--gris)">AURA prepares it. You sign it.</div>
+    <div class="vista" id="v_pulse" style="padding:130px 0 0">
+      <div class="fila" style="padding:0 40px;gap:20px"><span style="font-size:44px;color:var(--gris)">‹</span><div style="width:88px;height:88px;border-radius:44px;background:linear-gradient(135deg,#6b8cff,#3a4fa8);display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:800">B</div><div><b style="font-size:38px;display:block">Beto</b><span style="font-size:22px;color:#8ff0c4">● online</span></div><span style="margin-left:auto;font-size:40px;color:var(--cian)">✆</span></div>
+      <div style="text-align:center;margin-top:20px;font-size:20px;color:var(--gris);letter-spacing:2px">🔒 PULSE2CHAT · END-TO-END ENCRYPTED</div>
+      <div id="p_in" style="margin:40px 40px 0;max-width:520px;padding:26px 32px;border-radius:40px 40px 40px 10px;background:rgba(255,255,255,.1);font-size:36px">Still on for 7 tonight? 🍽️</div>
+      <div id="p_dicho" class="chip" style="margin:36px 40px 0;font-size:26px;opacity:0">🎙 “Tell Beto I’m running a bit late”</div>
+      <div id="p_borr" style="position:absolute;left:40px;right:40px;top:700px;padding:30px 34px;border-radius:36px;background:rgba(233,196,106,.1);border:2px solid rgba(233,196,106,.65);box-shadow:0 0 60px rgba(233,196,106,.2);opacity:0">
+        <div class="etq" style="color:#e9c46a">AURA’s draft</div>
+        <div style="font-size:36px;font-weight:700;margin-top:12px">Yes! Running 10 min late, save me a seat 🙌</div>
+        <div class="fila" style="gap:18px;margin-top:24px"><div class="btn" style="flex:1;height:84px;font-size:30px;background:rgba(255,255,255,.08)">Edit</div><div class="btn" id="p_si" style="flex:1.4;height:84px;font-size:30px;background:var(--cian);color:#032029">Yes, send</div></div>
       </div>
-      <div class="vid" id="recibo" style="position:absolute;left:30px;right:30px;top:470px;padding:44px 40px;opacity:0">
-        <div class="fila" style="justify-content:space-between"><div class="etq">Sent to Mom</div><img src="assets/veta-mark.png" style="height:52px"></div>
-        <div class="fila" style="margin-top:20px;gap:18px"><span class="mono" style="font-size:84px;font-weight:700">110</span><b style="font-size:40px">ORIGEN</b></div>
-        <div class="mono" style="font-size:32px;color:var(--oro)">≈ 2 g of gold</div>
-        <div class="verif" style="margin-top:30px"><i>✓</i>Verified on the Orden Global chain</div>
+      <div id="p_out" style="position:absolute;right:40px;top:720px;max-width:560px;padding:26px 32px;border-radius:40px 40px 10px 40px;background:linear-gradient(135deg,#12C2F2,#3FE6FA);color:#03141c;font-size:36px;font-weight:700;opacity:0">Yes! Running 10 min late, save me a seat 🙌 <span style="font-size:24px;color:#0a5d70">✓✓</span></div>
+    </div>
+    <div class="vista" id="v_envio" style="padding:150px 40px 60px">
+      <div class="fila" style="gap:14px"><span style="width:14px;height:14px;border-radius:7px;background:var(--cian);box-shadow:0 0 12px var(--cian)"></span><div class="etq" style="color:#cfe9f3">AURA</div></div>
+      <div id="dicho" style="position:absolute;right:40px;top:230px;max-width:580px;padding:24px 32px;border-radius:40px 40px 10px 40px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);font-size:34px;font-weight:700"><span class="mono" style="color:var(--cian);font-size:26px">🎙 </span><span id="dicho_t"></span></div>
+      <div id="resp" style="position:absolute;left:40px;top:395px;max-width:560px;padding:20px 28px;font-size:30px !important;border-radius:40px 40px 40px 10px;background:linear-gradient(135deg,#12C2F2,#3FE6FA);color:#03141c;font-size:34px;font-weight:700;opacity:0">Ready. You sign it in Veta Wallet.</div>
+      <div id="hoja" style="position:absolute;left:0;right:0;bottom:0;height:850px;border-radius:64px 64px 0 0;background:linear-gradient(#141c2b,#0b111c);border-top:1.5px solid rgba(255,255,255,.14);box-shadow:0 -40px 120px rgba(0,0,0,.6);padding:26px 50px 0;opacity:0">
+        <div style="width:110px;height:10px;border-radius:5px;background:rgba(255,255,255,.22);margin:0 auto"></div>
+        <div class="fila" style="justify-content:space-between;margin-top:30px"><div class="fila" style="gap:16px"><img src="assets/veta-mark.png" style="height:58px"><b style="font-size:32px">Veta Wallet</b></div><div class="etq">Send</div></div>
+        <div class="fila" style="margin-top:34px;gap:22px"><div style="width:92px;height:92px;border-radius:46px;background:linear-gradient(135deg,#c98a6b,#7a4a3a);display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:800">M</div><div><div style="font-size:24px;color:var(--gris)">To</div><div style="font-size:44px;font-weight:800">Mom</div></div></div>
+        <div style="text-align:center;margin-top:30px"><span class="mono" id="monto" style="font-size:150px;font-weight:700;letter-spacing:-6px">110</span><div class="fila" style="justify-content:center;gap:14px;margin-top:-6px"><img src="assets/origen.jpg" style="height:54px;border-radius:27px"><b style="font-size:38px;letter-spacing:3px">ORIGEN</b></div>
+          <div class="chip" style="margin-top:22px;border-color:rgba(233,196,106,.45);background:rgba(233,196,106,.08);color:#eadcb0;font-size:24px">◆ Price referenced to gold</div></div>
+        <div id="huella" style="position:relative;width:230px;height:230px;margin:44px auto 0;color:#8fe9fb">
+          <svg width="230" height="230" viewBox="0 0 230 230" style="position:absolute;inset:0"><circle cx="115" cy="115" r="104" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="8"/><circle id="anillo" cx="115" cy="115" r="104" fill="none" stroke="#3FE6FA" stroke-width="8" stroke-linecap="round" stroke-dasharray="653.5" stroke-dashoffset="653.5" transform="rotate(-90 115 115)"/></svg>
+          <div id="huella_i" style="position:absolute;inset:40px;display:flex;align-items:center;justify-content:center"><svg width="150" height="150" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"><path d="M12 4.5a7.5 7.5 0 0 0-7.5 7.5v1.5"/><path d="M19.5 12a7.5 7.5 0 0 0-3-6"/><path d="M8 18.5c.8-1.6 1.2-3.5 1.2-5.5a2.8 2.8 0 0 1 5.6 0c0 2.4-.4 4.6-1.2 6.6"/><path d="M12 13c0 3-.7 5.6-2 7.5"/><path d="M17.6 15.2c-.2 1.6-.6 3.2-1.2 4.6"/><path d="M6.6 16.6c.5-1.1.7-2.3.7-3.6a4.7 4.7 0 0 1 9.4 0"/></svg></div>
+          <div id="huella_ok" style="position:absolute;inset:12px;border-radius:50%;background:#30d158;display:flex;align-items:center;justify-content:center;font-size:110px;color:#fff;opacity:0">✓</div>
+        </div>
+        <div id="huella_t" style="text-align:center;margin-top:20px;font-size:28px;color:var(--gris)">Touch to sign</div>
+      </div>
+      <div class="vid" id="recibo" style="position:absolute;left:40px;right:40px;top:560px;padding:48px 44px;opacity:0;text-align:center">
+        <div style="width:150px;height:150px;border-radius:75px;background:#30d158;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:90px;color:#fff;box-shadow:0 0 80px rgba(48,209,88,.45)">✓</div>
+        <div class="etq" style="margin-top:30px">Sent to Mom</div>
+        <div class="fila" style="justify-content:center;gap:16px;margin-top:10px"><span class="mono" style="font-size:96px;font-weight:700">110</span><b style="font-size:40px">ORIGEN</b></div>
+        <div class="verif" style="justify-content:center;margin-top:26px"><i>✓</i>Verified on the Orden Global chain</div>
       </div>
     </div>
     <div class="vista" id="v_tarjeta" style="padding:150px 36px 40px">
@@ -150,8 +176,7 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:var(--noche);fon
 
   <!-- palabras grandes del montaje -->
   <div class="capa" id="palabra"><div class="t" id="palabra_t" style="top:120px;font-size:110px"></div></div>
-  <div class="capa" id="t_oro"><div class="t" style="top:150px;font-size:96px">Every ORIGEN<br><span style="color:var(--oro)">is gold.</span></div></div>
-  <div class="capa" id="t_gramos"><div class="t mono" style="top:1330px;font-size:50px;letter-spacing:0;font-weight:700;color:#eadcb0">110 ORIGEN × 1/55 g</div><div class="t mono" style="top:1410px;font-size:116px;letter-spacing:-2px;font-weight:700;color:var(--oro)">= 2 g of gold</div></div>
+  <div class="capa" id="t_oro"><div class="t" style="top:110px;font-size:86px">Every ORIGEN<br><span style="color:var(--oro)">pegged to gold.</span></div></div>
   <div class="capa" id="t_firma"><div class="t" style="top:150px;font-size:96px">You sign it.<br><span style="color:var(--hielo)">Always.</span></div></div>
   <div class="capa" id="t_visa"><div class="t" style="top:120px;font-size:88px">Your Visa card.<br><span style="color:var(--hielo)">Right here.</span></div></div>
 
@@ -300,6 +325,9 @@ const ES = {"Introducing": "Te presentamos", "Your day is full of": "Tu día est
 const TR = x => (T.lang === 'es' ? (ES[x] ?? x) : x);
 if (T.lang === 'es') { const w = document.createTreeWalker($('dom'), NodeFilter.SHOW_TEXT); let nd; while ((nd = w.nextNode())) { const k = nd.nodeValue.trim(); if (k && ES[k]) nd.nodeValue = nd.nodeValue.replace(k, ES[k]); } }
 /* ---------------- DOM armado ---------------- */
+const MEM = ['Mom · birthday Oct 6', 'Loves orchids 🌸', 'Coffee, no sugar ☕', 'Board meeting · Mondays', 'Daughter · Sofía', 'Runs at 6 a.m.'];
+MEM.forEach((m, i) => { const d = document.createElement('div'); d.className = 'chip'; d.style.cssText = 'position:absolute;font-size:30px;padding:18px 28px;white-space:nowrap;background:rgba(20,32,50,.75);border-color:rgba(166,251,255,.28);transform:translate(-50%,-50%)'; d.textContent = TR(m); $('c_mem').appendChild(d); });
+for (let i = 0; i < 24; i++) { const b = document.createElement('i'); b.style.cssText = 'display:block;width:8px;border-radius:4px;background:#A6FBFF'; $('ondas').appendChild(b); }
 // cuadrícula de objetos (recortados de la hoja por montar.py)
 const OBJ = T.objetos || []; const grid = $('grid');
 OBJ.forEach((src, i) => { const d = document.createElement('div'); d.className = 'obj'; d.style.backgroundImage = `url(${src})`; grid.appendChild(d); });
@@ -322,7 +350,7 @@ ECO.forEach(([src, n, red]) => { const d = document.createElement('div'); d.clas
 const S = T.s; // segundos clave del guion
 const CLIPS = T.clips || [];
 const precarga = {};
-function tomaEn(t) { for (const c of CLIPS) if (t >= c.a - .3 && t < c.b + .3) return c; return null; }
+function tomaEn(t) { let m = null, mv = 0; for (const c of CLIPS) { const v = vent(t, c.a, c.b, c.fi ?? .25, c.fo ?? .25); if (v > mv) { mv = v; m = c; } } return m; }
 async function ponToma(t) {
   const c = tomaEn(t); const el = $('clip');
   if (!c) { el.style.opacity = 0; return 0; }
@@ -379,7 +407,8 @@ function cuadro(t, tk = 0) {
   /* S3 · el orbe nace del punto y dice «Hi.» */
   if (t >= S.caida + 1.0 && t < S.montaje + .4) {
     G.orbe.visible = true; bloom.strength = .9;
-    cam.position.set(0, 0, 6.2); cam.lookAt(0, 0, 0);
+    const lejos = ss((t - S.conv0) / 1.2) * (1 - ss((t - S.equipo) / .8)); cam.position.set(0, 0, 6.2 + 4.2 * lejos); cam.lookAt(0, 0, 0);
+    const voz = (t > S.ca && t < S.cb + 7) ? .04 * Math.abs(Math.sin(t * 11)) * Math.abs(Math.sin(t * 2.3)) : 0; orbePts.scale.setScalar(1 + voz);
     const nace = ex((t - S.caida - 1.0) / 1.2);                  // explota desde el centro
     const habla = ss((t - S.hola) / .5) * (1 - ss((t - S.hola - 2.0) / .6));
     const sube = 0;                  // en el equipo, el orbe sube y se achica
@@ -413,18 +442,35 @@ function cuadro(t, tk = 0) {
     const fin = ss((t - S.montaje + .5) / .5); G.equipo.position.y = -2 * fin * fin;
   }
 
+  /* S3b · hablas natural; ella responde, se ríe y recuerda */
+  if (t >= S.conv0 - .3 && t < S.equipo + .3) {
+    op('conv', 1);
+    const yo = TR('Long day… did I forget anything?'); const ky = cl((t - S.conv0) / 1.1);
+    $('c_yo_t').textContent = yo.slice(0, Math.round(yo.length * ky)); $('c_yo').style.opacity = vent(t, S.conv0, S.ca + 1.2, .2, .5);
+    [...$('ondas').children].forEach((b, i) => b.style.height = (8 + 38 * Math.abs(Math.sin(t * 9 + i * .7)) * vent(t, S.conv0, S.conv0 + 1.3, .1, .3)) + 'px');
+    $('c_tag').style.opacity = vent(t, S.ca - .1, S.ca + 1.6, .2, .4); $('c_tag').style.transform = `translateX(-50%) scale(${.9 + .1 * eo((t - S.ca) / .4)})`;
+    const CH = [[S.ca1, S.ca2, 'Nope… just one thing.'], [S.ca2, S.ca3, 'It’s your mom’s birthday tomorrow,'], [S.ca3, S.cb - .2, 'and I already found those orchids she loves.']];
+    let txt = '', kk = 0; for (const [a, b, w] of CH) if (t >= a - .1 && t < b) { txt = TR(w); kk = vent(t, a - .1, b, .15, .2); }
+    $('c_aura').textContent = txt; $('c_aura').style.opacity = kk;
+    const kids = [...$('c_mem').children]; const n = kids.length;
+    kids.forEach((d, i) => { const a = -Math.PI / 2 + (i + .5) * 2 * Math.PI / n + .1 * Math.sin(t * .4); const e = eo((t - S.cb_mem - .12 * i) / .6);
+      const rx = 360 + 20 * Math.sin(t + i), ry = 330; d.style.left = (540 + Math.cos(a) * rx * (.6 + .4 * e)) + 'px'; d.style.top = (1000 + Math.sin(a) * ry * (.6 + .4 * e)) + 'px';
+      d.style.opacity = e * (1 - ss((t - S.equipo + .5) / .5)); });
+    $('c_memt').style.opacity = vent(t, S.cb - .1, S.equipo, .4, .4);
+  }
+
   /* S5 · montaje en el teléfono */
   const telIn = ex((t - S.montaje) / .9), telOut = ss((t - S.escritorio - .2) / .9);
   if (t >= S.montaje && t < S.escritorio + 1.2) {
-    const heroe = vent(t, S.formula + .45, S.firma - .05, .35, .35);
+    const heroe = 0;
     const tel = $('tel'); tel.style.opacity = telIn * (1 - telOut) * (1 - heroe) * (1 - tk);
     const rx = 8 * (1 - telIn), ry = -12 * (1 - telIn) + 3 * Math.sin(t * .5);
-    tel.style.transform = `perspective(2400px) translateY(${120 * (1 - telIn)}px) rotateX(${rx}deg) rotateY(${ry}deg) scale(${.9 + .1 * telIn - .45 * telOut}) translateX(${-520 * telOut}px)`;
-    const V = ['v_llamada', 'v_memoria', 'v_correo', 'v_post', 'v_compu', 'v_chat', 'v_tarjeta'];
-    const ini = [S.montaje, S.f_mem, S.f_correo, S.f_post, S.f_compu, S.oro0, S.visa, S.escritorio + 3];
+    tel.style.transform = `perspective(2400px) translateY(${120 * (1 - telIn)}px) rotateX(${rx}deg) rotateY(${ry}deg) scale(${.96 + .1 * telIn - .5 * telOut}) translateX(${-520 * telOut}px)`;
+    const V = ['v_llamada', 'v_memoria', 'v_correo', 'v_post', 'v_compu', 'v_pulse', 'v_envio', 'v_tarjeta'];
+    const ini = [S.montaje, S.f_mem, S.f_correo, S.f_post, S.f_compu, S.chat, S.oro0, S.visa, S.escritorio + 3];
     V.forEach((v, i) => { const a = ini[i], b = ini[i + 1]; const k = vent(t, a, b, .25, .25); $(v).style.opacity = k; $(v).style.transform = `translateY(${30 * (1 - ss((t - a) / .35))}px) scale(${.98 + .02 * ss((t - a) / .35)})`; });
     // palabra grande del montaje
-    const PAL = [[S.montaje + .3, S.f_mem, 'Calls.'], [S.f_mem, S.f_correo, 'Remembers.'], [S.f_correo, S.f_post, 'Organizes.'], [S.f_post, S.f_compu, 'Creates.'], [S.f_compu, S.oro0, 'Works.']];
+    const PAL = [[S.montaje + .3, S.f_mem, 'Calls.'], [S.f_mem, S.f_correo, 'Remembers.'], [S.f_correo, S.f_post, 'Organizes.'], [S.f_post, S.f_compu, 'Creates.'], [S.f_compu, S.chat, 'Works.'], [S.chat, S.oro0, 'Chats.']];
     for (const [a, b, w] of PAL) if (t >= a && t < b) { $('palabra_t').textContent = TR(w); op('palabra', vent(t, a, b, .2, .2)); }
     // llamada: vibra
     if (t < S.f_mem) tel.style.transform += ` rotate(${Math.sin(t * 60) * .6 * vent(t, S.montaje + .8, S.montaje + 2, .1, .1)}deg)`;
@@ -439,22 +485,30 @@ function cuadro(t, tk = 0) {
     [...$('pasos').children].forEach((d, i) => d.style.opacity = ss((t - S.f_compu - .5 - .55 * i) / .3));
     $('pago_listo').style.opacity = ss((t - S.f_compu - 2.3) / .4); $('pago_listo').style.transform = `translateY(${30 * (1 - eo((t - S.f_compu - 2.3) / .5))}px)`;
     // chat → hoja de envío → fórmula → firma → recibo
-    const txt = TR('Send 110 ORIGEN to Mom'); $('burbuja').textContent = txt.slice(0, Math.round(txt.length * cl((t - S.oro0 - .2) / 1.0)));
-    $('burbuja').style.opacity = ss((t - S.oro0) / .2);
-    $('hoja').style.opacity = ss((t - S.oro0 - 1.3) / .35) * (1 - ss((t - S.recibo) / .3)); $('hoja').style.transform = `translateY(${60 * (1 - eo((t - S.oro0 - 1.3) / .5))}px)`;
-    $('f_res').style.opacity = ss((t - S.formula) / .3); $('f_res').style.transform = `scale(${1 + .12 * (1 - eo((t - S.formula) / .4))})`;
-    $('firmar').style.background = t > S.firma ? '#30d158' : '#3FE6FA'; $('firmar').textContent = TR(t > S.firma ? '✓ Signed' : 'Sign with fingerprint');
-    $('recibo').style.opacity = ss((t - S.recibo) / .3); $('recibo').style.transform = `scale(${.96 + .04 * eo((t - S.recibo) / .4)})`;
+    // PULSE2CHAT: llega el mensaje, lo dices, AURA escribe el borrador, dices «sí» y sale
+    $('p_dicho').style.opacity = ss((t - S.chat - .9) / .3);
+    $('p_borr').style.opacity = ss((t - S.c_reply + .2) / .35) * (1 - ss((t - S.c_si - .4) / .3)); $('p_borr').style.transform = `translateY(${40 * (1 - eo((t - S.c_reply + .2) / .5))}px)`;
+    $('p_si').style.transform = `scale(${1 - .06 * vent(t, S.c_si, S.c_si + .3, .08, .15)})`;
+    $('p_out').style.opacity = ss((t - S.c_si - .4) / .3); $('p_out').style.transform = `translateY(${30 * (1 - eo((t - S.c_si - .4) / .4))}px)`;
+    // envío: lo dices, AURA lo prepara en Veta Wallet, firmas con la huella, recibo verificado
+    const txt = TR('Send 110 ORIGEN to Mom'); $('dicho_t').textContent = txt.slice(0, Math.round(txt.length * cl((t - S.oro0 - .1) / .9)));
+    $('dicho').style.opacity = ss((t - S.oro0) / .2); $('resp').style.opacity = ss((t - S.oro0 - 1.1) / .3) * (1 - ss((t - S.recibo) / .3));
+    const sube = eo((t - S.oro0 - 1.6) / .7); $('hoja').style.opacity = ss((t - S.oro0 - 1.6) / .2) * (1 - ss((t - S.recibo) / .3)); $('hoja').style.transform = `translateY(${700 * (1 - sube)}px)`;
+    const fp = cl((t - S.firma + .1) / .8); $('anillo').setAttribute('stroke-dashoffset', 653.5 * (1 - ss(fp)));
+    $('huella').style.transform = `scale(${1 + .05 * vent(t, S.firma - .1, S.firma + .8, .2, .3)})`;
+    $('huella_ok').style.opacity = ss((fp - .95) / .05); $('huella_i').style.opacity = 1 - ss((fp - .9) / .1);
+    $('huella_t').textContent = TR(fp >= 1 ? '✓ Signed' : 'Touch to sign'); $('huella_t').style.color = fp >= 1 ? '#30d158' : '';
+    $('recibo').style.opacity = ss((t - S.recibo) / .3) * (1 - ss((t - S.visa + .3) / .3)); $('recibo').style.transform = `scale(${.9 + .1 * eo((t - S.recibo) / .45)})`;
     // la tarjeta Visa: gira y se congela
     const gv = eo((t - S.visa) / 1.0); $('visa').style.transform = `rotateY(${-160 * (1 - gv) + 6 * Math.sin(t)}deg) rotateX(${8 * (1 - gv)}deg)`;
     $('brillo').style.transform = `translateX(${-400 + 900 * cl((t - S.visa - .6) / 1.2)}px)`;
     const fr = ss((t - S.congela) / .5); $('escarcha').style.opacity = fr * .9; $('sw').style.setProperty('--x', `${42 * fr}px`); $('sw').style.background = fr > .5 ? '#3FE6FA' : 'rgba(255,255,255,.18)';
     $('estado').textContent = TR(fr > .5 ? '● FROZEN' : '● ACTIVE'); $('estado').style.color = fr > .5 ? '#9fdcff' : '#3ED9A0';
-    op('t_oro', vent(t, S.formula + .2, S.firma - .2, .4, .3)); op('t_gramos', vent(t, S.formula + .9, S.firma - .1, .4, .3)); op('t_firma', vent(t, S.firma, S.visa, .3, .3)); op('t_visa', vent(t, S.visa + .4, S.escritorio, .4, .3));
+    op('t_oro', vent(t, S.v5, S.firma - .2, .4, .3)); op('t_firma', vent(t, S.firma, S.visa, .3, .3)); op('t_visa', vent(t, S.visa + .4, S.escritorio, .4, .3));
   }
 
   /* el oro en 3D: cuando la fórmula se resuelve, el gramo cruza la pantalla */
-  if (t >= S.formula + .4 && t < S.firma + .2) {
+  if (false) {
     G.oro.visible = true; escena.environment = envEst; R.toneMappingExposure = .72; bloom.strength = .12; bloom.threshold = .98;
     const u = cl((t - S.formula - .4) / (S.firma - S.formula - .3));
     cam.position.set(0, .3, 6.5); cam.lookAt(0, 0, 0);

@@ -52,3 +52,16 @@
   - The UI text uses the app's real Spanish labels.
 - `montar7.py` derives every scene time from the words of each voice. `mezcla7.py en|es` does the mix.
 - **Cost of v7:** keyframes ≈ 2.4 USD (including one discarded run in 16:9), 9 shots × 0.40 = 3.6 USD. The voice is included in the plan.
+
+## v8 (October 5): conversation, memory, chat and the new send flow
+
+The English version comes first; the Spanish one follows once this is approved. Total length is 82 s.
+
+**Corrections and new scenes:**
+- **ORIGEN:** the narration now says «pegged to the price of gold», and the screen shows «Price referenced to gold». The gold bar and the grams formula are gone.
+- **Natural conversation after the «Hi»:** the user's words appear on screen; AURA answers with a laugh (shown with an «♪ [laughs softly]» chip). The narration says «I think with my own brain. I remember what matters to you…», and chips show what it remembers about you, with the note that you can see, edit or delete anything.
+- **PULSE2CHAT:** AURA writes the draft (highlighted in gold, as in the app) and sends it after «Yes, send».
+- **Sending ORIGEN:** you speak the request, then Veta Wallet shows the bottom sheet, you sign with your fingerprint (an animated ring), and the receipt is verified on the chain.
+- **Reminders:** the phone shows «Reminders» instead of a calendar, because the mobile app has no calendar integration.
+
+**Pending:** the official PULSE2CHAT logo, which isn't in any of the repos.
