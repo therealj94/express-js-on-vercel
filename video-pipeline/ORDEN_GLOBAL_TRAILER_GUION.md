@@ -189,3 +189,21 @@ El código está en `video-pipeline/orden-global/`.
 - **Scripts:**
   - `montar_og.py` calcula los tiempos a partir de las palabras que da whisper;
   - `mezcla_og.py` hace la mezcla, a −13 LUFS.
+
+## v2: tráiler de cine para toda LATAM
+
+La v1 se veía de plantilla, el inicio no se entendía y solo funcionaba el final. Por eso la v2 cambia de enfoque:
+
+- **Metraje de cine, sin mapa de Honduras:** 14 tomas de toda LATAM con el mismo look. Los cuadros clave se hicieron con gpt-image-2 en 2K y los clips con minimax-h3-max (Kling no está aprobado en el espacio de ElevenLabs).
+- **Guion:**
+  - imprenta, lluvia de billetes y «el que trabaja vale menos»;
+  - 600 millones y nuestros recursos;
+  - «Hasta hoy»;
+  - AURA;
+  - ORIGEN («de México a la Patagonia»);
+  - Dr Electrum;
+  - las empresas de nuestros países;
+  - el clímax dorado, que se mantiene;
+  - el logo.
+- **Transiciones** (`og2.html`): barrido con desenfoque de movimiento, zoom que atraviesa la toma, fuga de luz, destello y fundido a negro.
+- **Pocos títulos**, en Fraunces 300.
