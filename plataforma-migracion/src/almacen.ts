@@ -24,7 +24,7 @@ export interface Tenedor {
   /** Lo que se acuña en la v2 según la política de la moneda. */
   acunar: string
   /** Por qué no se acuña todo el saldo, si es el caso. */
-  motivo?: 'umbral' | 'tope'
+  motivo?: 'umbral' | 'tope' | 'no-usuario'
 }
 
 export interface Foto {
@@ -62,7 +62,7 @@ export interface Reclamo {
   /** Saldo en el contrato heredado en el bloque de la foto. */
   saldo: string
   acunar: string
-  motivo?: 'umbral' | 'tope'
+  motivo?: 'umbral' | 'tope' | 'no-usuario'
   firma: string
   creado: string
   estado: 'pendiente' | 'aprobado' | 'rechazado'

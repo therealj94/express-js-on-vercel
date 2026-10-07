@@ -78,7 +78,7 @@ $('#consulta').addEventListener('submit', async (e) => {
     const filas = d.activos.filter((a) => (a.saldoEnFoto && a.saldoEnFoto !== '0') || (a.saldoV2 && a.saldoV2 !== '0') || a.reclamo)
     const sinFoto = d.activos.filter((a) => !a.foto).map((a) => a.simbolo)
     const conPlazo = d.activos.filter((a) => a.foto?.plazoReclamos && new Date(a.foto.plazoReclamos) > new Date() && (!a.saldoEnFoto || a.saldoEnFoto === '0') && !a.reclamo)
-    const MOTIVO = { umbral: 'Posición de tesorería: no pasa a la v2', tope: 'Pasa hasta el tope fijado' }
+    const MOTIVO = { umbral: 'Más de 100.000 tokens: es tesorería y no pasa a la v2', tope: 'Pasa hasta el tope fijado', 'no-usuario': 'No es una cuenta de Veta Wallet: no pasa a la v2' }
     out.innerHTML = `<h2>Tu dirección</h2>
       ${filas.length ? `<div class="tabla-scroll"><table><tr><th>Activo</th><th class="num">En la foto</th><th class="num">Pasa a la v2</th><th class="num">En la v2</th><th>Estado</th></tr>
       ${filas.map((a) => `<tr><td>${esc(a.simbolo)}</td><td class="num">${unidades(a.saldoEnFoto)}</td><td class="num">${unidades(a.aAcunar)}</td><td class="num">${unidades(a.saldoV2)}</td>

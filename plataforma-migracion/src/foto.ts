@@ -56,7 +56,7 @@ export async function tomarFoto(cadena: Cadena, a: Activo, bloque: number, direc
     if (saldos[i] > 0n) {
       const c = clase(d)
       // ORIGEN no se migra: su foto es informativa y no pasa por la política.
-      const p = a.heredado ? aplicarPolitica(a, d, saldos[i]) : { acunar: 0n }
+      const p = a.heredado ? aplicarPolitica(a, d, saldos[i], c === 'usuario') : { acunar: 0n }
       tenedores.push({ direccion: d, saldo: saldos[i].toString(), clase: c, acunar: p.acunar.toString(), ...(p.motivo ? { motivo: p.motivo } : {}) })
       sumas[c] += saldos[i]
       acunar += p.acunar
@@ -104,8 +104,10 @@ export class ErrorReclamo extends Error {}
  * foto ni reclamada, y lee su saldo en el bloque de la foto. Lo que puede
  * reclamarse nunca supera lo que la foto dejó sin ubicar.
  */
-export async function prepararReclamo(cadena: Cadena, a: Activo, f: Foto, reclamos: Reclamo[], direccion: string, firma: string): Promise<Omit<Reclamo, 'id' | 'creado' | 'estado'>> {
+export async function prepararReclamo(cadena: Cadena, a: Activo, f: Foto, reclamos: Reclamo[], direccion: string, firma: string, listas: Datos['listas']): Promise<Omit<Reclamo, 'id' | 'creado' | 'estado'>> {
   const dir = direccion.toLowerCase()
+  // Solo reclaman los usuarios de Veta Wallet: lo de cualquier otra dirección desaparece (política del 7 de octubre).
+  if (clasificador(listas)(dir) !== 'usuario') throw new ErrorReclamo('solo los usuarios de Veta Wallet pasan a la v2: esa dirección no es de un usuario')
   if (!f.plazoReclamos || Date.parse(f.plazoReclamos) <= Date.now()) throw new ErrorReclamo('el plazo de reclamos de esta moneda está cerrado')
   let firmante = ''
   try { firmante = verifyMessage(mensajeReclamo(a.clave, dir, f.bloque), firma).toLowerCase() } catch { throw new ErrorReclamo('la firma no es válida') }
@@ -116,7 +118,7 @@ export async function prepararReclamo(cadena: Cadena, a: Activo, f: Foto, reclam
   if (saldo === 0n) throw new ErrorReclamo('esa dirección no tenía saldo en el bloque de la foto')
   const yaReclamado = reclamos.filter((r) => r.fotoId === f.id && r.estado !== 'rechazado').reduce((s, r) => s + BigInt(r.saldo), 0n)
   if (yaReclamado + saldo > BigInt(f.sinUbicar || '0')) throw new ErrorReclamo('el saldo reclamado supera lo que quedó sin ubicar')
-  const p = aplicarPolitica(a, dir, saldo)
+  const p = aplicarPolitica(a, dir, saldo, true)
   return { fotoId: f.id, activo: a.clave, direccion: dir, saldo: saldo.toString(), acunar: p.acunar.toString(), ...(p.motivo ? { motivo: p.motivo } : {}), firma }
 }
 

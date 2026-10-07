@@ -12,19 +12,15 @@ La plataforma donde se hace y se comprueba el paso de las monedas de la red 5550
 | Panel interno (`/panel`) | El equipo carga las listas, toma y publica las fotos, concilia la v2, lleva las liberaciones de ORIGEN y el regalo de gas. |
 | Bitácora | Toda acción queda registrada con quién la hizo. |
 
-## Política de la migración (decisión del 4 de octubre de 2026)
+## Política de la migración (decisión de la Junta del 7 de octubre de 2026)
 
 | Moneda | Qué pasa a la v2 |
 |---|---|
-| ONDK | Todo, salvo posiciones de más de 100.000 (tesorería), que desaparecen |
-| AUKA | Todo, salvo posiciones de más de 50, que desaparecen. `0x7462…3ad8` queda con 50 |
-| AGKA | Todo, salvo posiciones de más de 50 |
-| HARV, IBS, MONARKA, AMOR | Solo lo de los usuarios: lo de más de 100.000 es tesorería y desaparece |
-| ORIGEN | No se migra: queda nativo |
+| Todas (ONDK, AUKA, AGKA, HARV, IBS, MONARKA, AMOR) | Solo pasan los usuarios de Veta Wallet con **100.000 tokens o menos** (contado en tokens, no en dólares). Tesorería, sistema y direcciones fuera de Veta desaparecen; el usuario con más de 100.000 también. `0x7462…3ad8` queda con 50 AUKA |
 
-La política vive en `src/catalogo.ts` (`POLITICA`). Cada exclusión queda en la foto con su motivo (`umbral` o `tope`).
+La política vive en `src/catalogo.ts` (`POLITICA`). Cada exclusión queda en la foto con su motivo (`no-usuario`, `umbral` o `tope`). Solo reclama quien esté en la lista de usuarios de Veta Wallet (decisión de la Junta, 7 de octubre de 2026).
 
-- **ORIGEN** queda nativo. Su supply es solo lo que tienen los usuarios de Veta Wallet (la suma de sus saldos): no hay un supply fijo del que se reste nada, y lo que no está en manos de un usuario no cuenta. El «mint» de ORIGEN es una **liberación de tesorería**, que solo procede contra lo asegurado (con su referencia documental) y con las firmas de dos de los tres custodios de la firma múltiple.
+- **ORIGEN** queda nativo. Su supply es solo lo que tienen los usuarios de Veta Wallet (la suma de sus saldos): no hay un supply fijo del que se reste nada, y lo que no está en manos de un usuario no cuenta. El «mint» de ORIGEN es una **liberación de tesorería**, que solo procede contra lo asegurado (con su referencia documental) y con las firmas de 3 de los 5 custodios de la firma múltiple operativa.
 - **ORIGEN para gas**: a cada usuario de Veta Wallet con menos de 1 ORIGEN se le completa lo que le falta, una sola vez, para que pueda pagar el gas fee al operar sus activos v2.
 - **Reclamos**: lo que la foto no ubicó se publica con un plazo. Quien tenía saldo en una dirección no encontrada la reclama firmando un mensaje con esa misma billetera (no mueve fondos ni cuesta gas). Se le aplica la misma política, un operador lo revisa, y lo aprobado entra a la acuñación. Pasado el plazo, lo no reclamado desaparece.
 
