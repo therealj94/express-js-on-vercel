@@ -74,6 +74,24 @@ Con esas piezas se crearon las dos firmas múltiples de la Junta de Administraci
 
 **Reemplazadas, no usar:** las Safes del 4 de octubre (`0xc4BdFA82398687f5425a8b0Fd3792d149cE14dcf` y `0xb98C37102105BA3eFE99c34d8B0895Bf0645fdc6`, en `despliegues/orden-multifirma-reemplazada-20261004.json`) tenían otra composición de la Junta. Nunca recibieron fondos ni roles. No se les debe mandar nada.
 
+### Tokens v2 en la red 5550 (7 de octubre de 2026)
+
+Los siete tokens están desplegados en `despliegues/orden-<SÍMBOLO>.json`. Todos tienen la administración en la Safe 4 de 5, emisión, quema y suspensión en la operativa 3 de 5, y la pausa de emergencia en cada uno de los cinco custodios. Quien desplegó no quedó con ningún rol (comprobado en cadena). Nacen con supply 0. Los pasaportes se numeraron en el orden del catálogo.
+
+| Moneda | Serie | Demora de emisión | Pasaporte | Contrato v2 |
+|---|---|---|---|---|
+| AUKA | SFSP-300 | 0 | COM-OG-0001 | `0xa433434E078248170d89d3Da3B565DA5187B4B5F` |
+| AGKA | SFSP-300 | 0 | COM-OG-0002 | `0x0734DFaeB3bE72e37afe36B8928c1a2C017b6e83` |
+| ONDK | SFSP-200 | 7 días | COM-OG-0003 | `0x7634528Ba3cD24f7E2a8e35f3a9c56F836E91d50` |
+| HARV | SFSP-200 | 7 días | COM-OG-0004 | `0xd15839cFF8948BbAe1885627eb678479D5E39A35` |
+| IBS | SFSP-200 | 7 días | COM-OG-0005 | `0x75848f6AeC7a013F560f1e8355cBE3fceB1A8907` |
+| MNKA (MONARKA) | SFSP-200 | 7 días | COM-OG-0006 | `0x9b0DAd6F96D1c61256276cAAa91f14c5Ad6F902A` |
+| LOVE (AMOR) | UTILITY | 0 | COM-OG-0007 | `0x3b0698071c0B1e6921dbA7676ABa38406069C17b` |
+
+Registro de elegibilidad (administrado por la Safe 4 de 5, sin conectar todavía): `0x159C197aa2b38abF4Df76E28E280140fb52f14D1`.
+
+En Render, las variables `V2_AUKA`, `V2_AGKA`, `V2_ONDK`, `V2_HARV`, `V2_IBS`, `V2_MONARKA` y `V2_AMOR` se ponen **el día del corte, después de acuñar**. Con la variable puesta, la lista única de monedas pasa a mostrar el contrato v2, y antes de acuñar todos verían saldo 0.
+
 Cada custodio es, además, `PAUSADOR` de los tokens v2: pausa solo en emergencia, y la pausa vence a las 72 horas si la operativa no la ratifica. Todo lo desplegó una billetera de un solo uso, que solo pagó el gas y no tiene ningún poder. En la plataforma: `SAFE_DIRECCION`, `SAFE_CONSTITUCIONAL` y `SAFE_MULTISEND`.
 
 ## Comandos

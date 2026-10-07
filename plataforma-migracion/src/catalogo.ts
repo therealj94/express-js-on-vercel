@@ -46,30 +46,36 @@ export const CATALOGO: Activo[] = [
 ]
 
 /**
- * Qué parte de cada saldo pasa a la v2. Decisión del 4 de octubre de 2026:
- *   - lo que supera el umbral es tesorería y desaparece (no se acuña);
- *   - un tope deja a una dirección concreta con ese máximo y el resto desaparece;
+ * Qué parte de cada saldo pasa a la v2. Decisión de la Junta del 7 de octubre de 2026, igual para
+ * todas las monedas (también AUKA y AGKA, contado en tokens, no en dólares):
+ *   - solo pasan los usuarios de Veta Wallet: tesorería, sistema y direcciones externas desaparecen;
+ *   - el usuario con más de 100.000 tokens desaparece entero (es tesorería);
+ *   - un tope deja a una dirección concreta con ese máximo (0x7462 conserva 50 AUKA);
  *   - todo lo demás pasa completo, a la misma dirección.
  * Los montos van en unidades enteras de la moneda (no en wei).
  */
 export interface Politica { umbral?: number; topes?: Record<string, number> }
 
+export const UMBRAL_GENERAL = 100_000
+
 export const POLITICA: Record<string, Politica> = {
-  ONDK: { umbral: 100_000 },
-  // 0x7462 queda con 50 AUKA; el resto de las posiciones de más de 50 desaparece.
-  AUKA: { umbral: 50, topes: { '0x746268404cc9ca2ef0ac344f02b236db232c3ad8': 50 } },
-  AGKA: { umbral: 50 },
-  // En estas cuatro solo pasa lo de los usuarios: lo de más de 100.000 es tesorería.
-  HARV: { umbral: 100_000 },
-  IBS: { umbral: 100_000 },
-  MONARKA: { umbral: 100_000 },
-  AMOR: { umbral: 100_000 },
+  ONDK: { umbral: UMBRAL_GENERAL },
+  AUKA: { umbral: UMBRAL_GENERAL, topes: { '0x746268404cc9ca2ef0ac344f02b236db232c3ad8': 50 } },
+  AGKA: { umbral: UMBRAL_GENERAL },
+  HARV: { umbral: UMBRAL_GENERAL },
+  IBS: { umbral: UMBRAL_GENERAL },
+  MONARKA: { umbral: UMBRAL_GENERAL },
+  AMOR: { umbral: UMBRAL_GENERAL },
 }
 
-export type MotivoExclusion = 'umbral' | 'tope'
+export type MotivoExclusion = 'umbral' | 'tope' | 'no-usuario'
 
-/** Aplica la política a un saldo: cuánto se acuña y, si algo desaparece, por qué. */
-export function aplicarPolitica(a: Activo, direccion: string, saldo: bigint): { acunar: bigint; motivo?: MotivoExclusion } {
+/**
+ * Aplica la política a un saldo: cuánto se acuña y, si algo desaparece, por qué.
+ * `esUsuario`: si la dirección es de un usuario de Veta Wallet; si no, no pasa nada.
+ */
+export function aplicarPolitica(a: Activo, direccion: string, saldo: bigint, esUsuario: boolean): { acunar: bigint; motivo?: MotivoExclusion } {
+  if (!esUsuario) return { acunar: 0n, motivo: 'no-usuario' }
   const p = POLITICA[a.clave] || {}
   const unidad = 10n ** BigInt(a.decimales)
   const tope = p.topes?.[direccion.toLowerCase()]

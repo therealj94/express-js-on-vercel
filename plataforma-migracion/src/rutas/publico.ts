@@ -138,7 +138,7 @@ export function rutasPublicas(ctx: Contexto) {
     const f = a?.heredado ? ultimaPublicada(a.clave) : undefined
     if (!a || !f || !esDireccion(dir)) return res.status(400).json({ error: 'Moneda sin foto publicada o dirección inválida' })
     try {
-      const datos = await prepararReclamo(ctx.cadena, a, f, ctx.almacen.datos.reclamos, dir, String(req.body?.firma || ''))
+      const datos = await prepararReclamo(ctx.cadena, a, f, ctx.almacen.datos.reclamos, dir, String(req.body?.firma || ''), ctx.almacen.datos.listas)
       const rc = { id: nuevoId('rec'), creado: new Date().toISOString(), estado: 'pendiente' as const, ...datos }
       ctx.almacen.datos.reclamos.push(rc)
       registrar(ctx.almacen, dir, 'reclamo.recibido', { id: rc.id, activo: rc.activo, saldo: rc.saldo, acunar: rc.acunar })

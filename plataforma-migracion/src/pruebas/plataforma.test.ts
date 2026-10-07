@@ -19,6 +19,8 @@ const V2 = '0x' + 'a2'.repeat(20)
 const TESORERIA = dir(0xbeef)
 // Dirección con tope en la política de AUKA: queda con 50.
 const CON_TOPE = '0x746268404cc9ca2ef0ac344f02b236db232c3ad8'
+// Usuario de Veta Wallet con más de 100.000 AUKA: desaparece entero.
+const BALLENA = dir(8)
 // Tenedor que ninguna lista conoce y que nunca se movió: tiene que reclamar.
 const OCULTO = Wallet.createRandom()
 
@@ -54,26 +56,34 @@ function simulada(m: Mundo): Transporte {
 }
 
 function mundo(): Mundo {
-  // AUKA: tres usuarios chicos, uno externo, la tesorería (980, por encima del umbral de 50),
-  // la dirección con tope (90) y un tenedor oculto (7) que no aparece en ningún lado.
+  // AUKA: tres usuarios chicos, uno externo (no es de Veta), la tesorería (980), un usuario con
+  // 150.000 (por encima del umbral de 100.000), la dirección con tope (90) y un tenedor oculto (7)
+  // que no aparece en ningún lado.
   const saldos = {
     [dir(1)]: 10n * E, [dir(2)]: 5n * E, [dir(3)]: 1n * E, [TESORERIA]: 980n * E, [dir(9)]: 4n * E,
-    [CON_TOPE]: 90n * E, [OCULTO.address.toLowerCase()]: 7n * E,
+    [CON_TOPE]: 90n * E, [BALLENA]: 150_000n * E, [OCULTO.address.toLowerCase()]: 7n * E,
   }
   return {
     bloque: 1000,
-    tokens: { [AUKA]: { supply: 1097n * E, saldos } },
+    tokens: { [AUKA]: { supply: 151_097n * E, saldos } },
     nativo: { [TESORERIA]: 900n * E, [dir(1)]: 2n * E, [dir(3)]: E / 4n },
     logs: [{ address: AUKA, from: dir(1), to: dir(2) }, { address: AUKA, from: TESORERIA, to: dir(9) }, { address: AUKA, from: TESORERIA, to: CON_TOPE }],
     txs: {},
   }
 }
 
-async function fotoAuka(m: Mundo, usuarios: string[] = [dir(1), dir(3)]) {
-  const cadena = new Cadena(simulada(m))
+const USUARIOS = [dir(1), dir(2), dir(3), CON_TOPE, BALLENA]
+
+function listasCon(usuarios: string[]) {
   const listas = vacio().listas
   listas.tesoreria.direcciones = [TESORERIA]
   listas.usuarios.direcciones = usuarios
+  return listas
+}
+
+async function fotoAuka(m: Mundo, usuarios: string[] = USUARIOS) {
+  const cadena = new Cadena(simulada(m))
+  const listas = listasCon(usuarios)
   const dirs = candidatas(await barrido(cadena, m.bloque), listas)
   return { cadena, foto: { id: 'f', activo: 'AUKA', bloque: m.bloque, creada: '', autor: '', estado: 'lista' as const, ...(await tomarFoto(cadena, activo('AUKA')!, m.bloque, dirs, listas)) } }
 }
@@ -89,14 +99,16 @@ test('Merkle: cada tenedor tiene una prueba que verifica, y una alterada no', ()
   assert.equal(prueba(arbol, dir(99), 1n), null)
 })
 
-test('Política: la tesorería por encima del umbral desaparece, el tope deja 50 y los demás pasan completos', async () => {
+test('Política: solo pasan los usuarios de Veta con 100.000 o menos; el tope deja 50; lo demás desaparece', async () => {
   const { foto } = await fotoAuka(mundo())
   const por = Object.fromEntries(foto.tenedores!.map((t) => [t.direccion, t]))
-  assert.equal(por[TESORERIA].acunar, '0'); assert.equal(por[TESORERIA].motivo, 'umbral')
+  assert.equal(por[TESORERIA].acunar, '0'); assert.equal(por[TESORERIA].motivo, 'no-usuario')
+  assert.equal(por[dir(9)].acunar, '0'); assert.equal(por[dir(9)].motivo, 'no-usuario', 'fuera de Veta Wallet no pasa')
+  assert.equal(por[BALLENA].acunar, '0'); assert.equal(por[BALLENA].motivo, 'umbral')
   assert.equal(por[CON_TOPE].acunar, (50n * E).toString()); assert.equal(por[CON_TOPE].motivo, 'tope')
-  for (const d of [dir(1), dir(2), dir(3), dir(9)]) assert.equal(por[d].acunar, por[d].saldo, `${d} pasa completo`)
-  assert.equal(foto.acunar, (70n * E).toString(), '10 + 5 + 1 + 4 + 50')
-  assert.equal(foto.excluido, (1020n * E).toString(), '980 de tesorería + 40 por el tope')
+  for (const d of [dir(1), dir(2), dir(3)]) assert.equal(por[d].acunar, por[d].saldo, `${d} pasa completo`)
+  assert.equal(foto.acunar, (66n * E).toString(), '10 + 5 + 1 + 50')
+  assert.equal(foto.excluido, (151_024n * E).toString(), '980 de tesorería + 4 externa + 150.000 por umbral + 40 por el tope')
   assert.equal(foto.sinUbicar, (7n * E).toString(), 'el oculto no se encontró')
   assert.equal(por[dir(3)].clase, 'usuario', 'las listas siguen clasificando')
 })
@@ -111,19 +123,22 @@ test('Lo no ubicado exige plazo de reclamos para publicar, y se reclama firmando
   const dirOculto = OCULTO.address.toLowerCase()
 
   const ajeno = Wallet.createRandom()
-  await assert.rejects(prepararReclamo(cadena, activo('AUKA')!, f, [], dirOculto, await ajeno.signMessage(mensajeReclamo('AUKA', dirOculto, m.bloque))), /no es de esa dirección/)
-  await assert.rejects(prepararReclamo(cadena, activo('AUKA')!, f, [], dir(1), await ajeno.signMessage(mensajeReclamo('AUKA', dir(1), m.bloque))), /no es de esa dirección/)
-
+  // Solo reclama un usuario de Veta Wallet: el oculto entra a la lista después de la foto.
+  const listas = listasCon([...USUARIOS, dirOculto])
   const firma = await OCULTO.signMessage(mensajeReclamo('AUKA', dirOculto, m.bloque))
-  const r = await prepararReclamo(cadena, activo('AUKA')!, f, [], dirOculto, firma)
+  await assert.rejects(prepararReclamo(cadena, activo('AUKA')!, f, [], dirOculto, firma, listasCon(USUARIOS)), /no es de un usuario/)
+  await assert.rejects(prepararReclamo(cadena, activo('AUKA')!, f, [], dirOculto, await ajeno.signMessage(mensajeReclamo('AUKA', dirOculto, m.bloque)), listas), /no es de esa dirección/)
+  await assert.rejects(prepararReclamo(cadena, activo('AUKA')!, f, [], dir(1), await ajeno.signMessage(mensajeReclamo('AUKA', dir(1), m.bloque)), listas), /no es de esa dirección/)
+
+  const r = await prepararReclamo(cadena, activo('AUKA')!, f, [], dirOculto, firma, listas)
   assert.equal(r.saldo, (7n * E).toString()); assert.equal(r.acunar, (7n * E).toString())
   const reclamos = [{ ...r, id: 'r1', creado: '', estado: 'pendiente' as const }]
-  await assert.rejects(prepararReclamo(cadena, activo('AUKA')!, f, reclamos, dirOculto, firma), /ya tiene un reclamo/)
-  assert.equal(aAcunar(f, reclamos).length, 5, 'un reclamo pendiente no se acuña')
+  await assert.rejects(prepararReclamo(cadena, activo('AUKA')!, f, reclamos, dirOculto, firma, listas), /ya tiene un reclamo/)
+  assert.equal(aAcunar(f, reclamos).length, 4, 'un reclamo pendiente no se acuña')
   reclamos[0].estado = 'aprobado' as any
-  assert.equal(aAcunar(f, reclamos).length, 6, 'el aprobado sí')
+  assert.equal(aAcunar(f, reclamos).length, 5, 'el aprobado sí')
 
-  await assert.rejects(prepararReclamo(cadena, activo('AUKA')!, { ...f, plazoReclamos: new Date(Date.now() - 1000).toISOString() }, [], dirOculto, firma), /cerrado/)
+  await assert.rejects(prepararReclamo(cadena, activo('AUKA')!, { ...f, plazoReclamos: new Date(Date.now() - 1000).toISOString() }, [], dirOculto, firma, listas), /cerrado/)
 })
 
 test('La conciliación exige cada monto a acuñar exacto y el mismo total en la v2', async () => {
@@ -131,11 +146,11 @@ test('La conciliación exige cada monto a acuñar exacto y el mismo total en la 
   const { cadena, foto } = await fotoAuka(m)
   const f = { ...foto, estado: 'publicada' as const }
   const esperado = Object.fromEntries(aAcunar(f, []).map((t) => [t.direccion, BigInt(t.acunar)]))
-  m.tokens[V2] = { supply: 70n * E, saldos: { ...esperado } }
+  m.tokens[V2] = { supply: 66n * E, saldos: { ...esperado } }
   assert.equal((await conciliar(cadena, f, [], V2)).cuadra, true)
 
   m.tokens[V2].saldos[TESORERIA] = 980n * E
-  m.tokens[V2].supply = 1050n * E
+  m.tokens[V2].supply = 1046n * E
   const c = await conciliar(cadena, f, [], V2)
   assert.equal(c.cuadra, false, 'acuñar tesorería que debía desaparecer se detecta por el total')
 })
@@ -197,7 +212,7 @@ test('HTTP: la consulta pública da una prueba que verifica, y el panel exige se
   const a = enMemoria()
   const tenedores = [
     { direccion: dir(1), saldo: (10n * E).toString(), clase: 'usuario' as const, acunar: (10n * E).toString() },
-    { direccion: TESORERIA, saldo: (900n * E).toString(), clase: 'tesoreria' as const, acunar: '0', motivo: 'umbral' as const },
+    { direccion: TESORERIA, saldo: (900n * E).toString(), clase: 'tesoreria' as const, acunar: '0', motivo: 'no-usuario' as const },
   ]
   const raiz = construir([{ direccion: dir(1), saldo: 10n * E }]).raiz
   a.datos.fotos.push({ id: 'f', activo: 'AUKA', bloque: 900, creada: '', autor: '', estado: 'publicada', raiz, supply: (910n * E).toString(), tenedores, sinUbicar: '0' })
@@ -210,7 +225,7 @@ test('HTTP: la consulta pública da una prueba que verifica, y el panel exige se
     assert.equal(auka.aAcunar, (10n * E).toString())
     assert.ok(verificar(auka.foto.raiz, dir(1), 10n * E, auka.prueba))
     const tes = (await (await fetch(`${base}/api/tenedor/${TESORERIA}`)).json()).activos.find((x: any) => x.clave === 'AUKA')
-    assert.equal(tes.aAcunar, '0'); assert.equal(tes.motivo, 'umbral'); assert.equal(tes.prueba, null)
+    assert.equal(tes.aAcunar, '0'); assert.equal(tes.motivo, 'no-usuario'); assert.equal(tes.prueba, null)
     assert.equal((await fetch(`${base}/api/tenedor/no-es-direccion`)).status, 400)
 
     assert.equal((await fetch(`${base}/api/panel/fotos`)).status, 401)
