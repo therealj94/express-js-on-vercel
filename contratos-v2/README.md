@@ -57,20 +57,22 @@ La plataforma de migración lleva las firmas y comprueba lo ejecutado (sección 
 | CompatibilityFallbackHandler | `0x80C635A83527Bf86D1CC7F08D253132712FE07Fb` |
 | MultiSendCallOnly | `0x330b7A7A756324CfA7A8aAbA69f0C5Df674307DF` |
 
-Con esas piezas se crearon las dos firmas múltiples de la Junta (`despliegues/orden-multifirma.json`). Tienen los mismos cinco custodios, y los umbrales los decidió la Junta el 4 de octubre de 2026:
+Con esas piezas se crearon las dos firmas múltiples de la Junta de Administración del SFSP (`despliegues/orden-multifirma.json`, 7 de octubre de 2026). Tienen los mismos cinco custodios, y los umbrales los decidió la Junta:
 
 | Safe | Umbral | Dirección | Para qué |
 |---|---|---|---|
-| Operativa | 3 de 5 | `0xc4BdFA82398687f5425a8b0Fd3792d149cE14dcf` | Tesorería de ORIGEN, regalo, emitir, abrir la migración, quemar, suspender, ratificar pausas |
-| Administración | 4 de 5 | `0xb98C37102105BA3eFE99c34d8B0895Bf0645fdc6` | Roles y registro de los contratos v2 |
+| Operativa | 3 de 5 | `0x6428aD9012Ba31032d2Ee0d59a8b8f019c09713a` | Tesorería de ORIGEN, regalo, emitir, abrir la migración, quemar, suspender, ratificar pausas |
+| Administración | 4 de 5 | `0xe5Ef672286CAb569515A1c129555545Bd8B26b90` | Roles y registro de los contratos v2 |
 
-| Custodio | Dirección |
-|---|---|
-| Medardo Enamorado | `0x3640204838e31C60ED11b28C1E24D090c7C56238` |
-| Mayra Enamorado | `0x7751d837FA11EBCBFb589554Bf1c8497f585a3b5` |
-| José Martínez | `0xF936854bCafd725599ce23c9BED603EA56dEB458` |
-| Carlos Paguada | `0x96202cB8c27580F4705f117E2D3EB712Be782445` |
-| Vanessa Pinto | `0x35fA7D3074B7A6CA7ef6d89779144C585dA2EAa7` |
+| Cargo | Custodio | Dirección |
+|---|---|---|
+| Presidente | José Medardo Ordóñez | `0xF936854bCafd725599ce23c9BED603EA56dEB458` |
+| Vicepresidenta | Mayra Enamorado | `0x7751d837FA11EBCBFb589554Bf1c8497f585a3b5` |
+| Secretaria | Melany Ordóñez | `0x2303f1A58AA726eb3336bf8e23eF71f433e90c4A` |
+| Fiscal | Leo Paguada | `0x96202cB8c27580F4705f117E2D3EB712Be782445` |
+| Vocal 1 | Medardo José Ordóñez | `0x3640204838e31C60ED11b28C1E24D090c7C56238` |
+
+**Reemplazadas, no usar:** las Safes del 4 de octubre (`0xc4BdFA82398687f5425a8b0Fd3792d149cE14dcf` y `0xb98C37102105BA3eFE99c34d8B0895Bf0645fdc6`, en `despliegues/orden-multifirma-reemplazada-20261004.json`) tenían otra composición de la Junta. Nunca recibieron fondos ni roles. No se les debe mandar nada.
 
 Cada custodio es, además, `PAUSADOR` de los tokens v2: pausa solo en emergencia, y la pausa vence a las 72 horas si la operativa no la ratifica. Todo lo desplegó una billetera de un solo uso, que solo pagó el gas y no tiene ningún poder. En la plataforma: `SAFE_DIRECCION`, `SAFE_CONSTITUCIONAL` y `SAFE_MULTISEND`.
 
