@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Vení tranquilo</title>
+<style>
+@font-face{font-family:'Monoton';src:url(fuentes/Monoton.ttf)}
+@font-face{font-family:'Montserrat';src:url(fuentes/Montserrat.ttf);font-weight:100 900}
+@font-face{font-family:'Fraunces';src:url(fuentes/Fraunces.ttf);font-weight:100 900}
+@font-face{font-family:'FrauncesI';src:url(fuentes/FrauncesItalic.ttf);font-weight:100 900}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#000;color:#fff;font-family:'Montserrat',sans-serif}
+.toma{position:absolute;inset:0;overflow:hidden;opacity:0}
+.toma img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#grado{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 42%,transparent 50%,rgba(0,0,0,.62)),linear-gradient(rgba(0,0,0,.35),transparent 16%,transparent 66%,rgba(0,0,0,.72))}
+#calido{position:absolute;inset:0;opacity:0;mix-blend-mode:soft-light;background:linear-gradient(160deg,rgba(255,170,70,.55),rgba(160,60,20,.35))}
+#fuga{position:absolute;inset:0;opacity:0;mix-blend-mode:screen;background:radial-gradient(ellipse 60% 40% at 15% 30%,rgba(255,150,60,.9),transparent 70%),radial-gradient(ellipse 50% 60% at 90% 70%,rgba(255,220,160,.7),transparent 70%)}
+#barras::before,#barras::after{content:'';position:absolute;left:0;right:0;height:150px;background:#000}
+#barras{position:absolute;inset:0;opacity:0;pointer-events:none}#barras::before{top:0}#barras::after{bottom:0}
+#fx{position:absolute;inset:0}
+.capa{position:absolute;inset:0;opacity:0}
+#coms{position:absolute;inset:0;overflow:hidden}
+.com{position:absolute;display:flex;gap:16px;align-items:flex-start;width:760px;padding:22px 26px;border-radius:28px;background:rgba(36,37,40,.92);box-shadow:0 18px 50px rgba(0,0,0,.55);font-weight:600;font-size:36px;line-height:1.25;color:#f1f1f1}
+.com .av{flex:none;width:64px;height:64px;border-radius:50%;background:radial-gradient(circle at 50% 38%,#8a8d93 0 22%,transparent 23%),radial-gradient(circle at 50% 100%,#8a8d93 0 42%,transparent 43%),#4a4c51}
+.com .u{display:block;width:150px;height:16px;border-radius:8px;background:#6b6e74;margin:6px 0 12px}
+.com.bueno{background:rgba(255,255,255,.95);color:#151515}
+.com.bueno .u{background:#c7c9cd}
+.cifra{position:absolute;left:0;right:0;text-align:center;font-family:Monoton;font-size:230px;letter-spacing:6px;background:linear-gradient(90deg,#3fd1ff,#7a6cff,#ff4fa3,#ff7a3a,#ffd23a);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 8px 30px rgba(0,0,0,.8))}
+#pregunta .t{position:absolute;left:80px;right:80px;top:760px;text-align:center;font-weight:900;font-size:78px;line-height:1.15}
+.hl{color:#FFD23A}
+#cita .papel{position:absolute;left:110px;right:110px;top:640px;padding:60px 56px;background:#f3eee2;color:#141414;border-radius:6px;box-shadow:0 30px 80px rgba(0,0,0,.7);transform-origin:50% 50%}
+#cita .q{font-family:'FrauncesI';font-size:96px;line-height:1.05}
+#cita .src{font-weight:700;font-size:28px;margin-top:30px;color:#5a5348;letter-spacing:1px}
+#moraz{position:absolute;left:90px;right:90px;top:1060px;text-align:center;font-family:'FrauncesI';font-size:64px;line-height:1.15;text-shadow:0 6px 30px #000,0 0 6px #000}
+.tilde{position:absolute;left:742px;top:652px;width:24px;height:60px;margin-left:-4px;border-radius:12px;background:repeating-linear-gradient(90deg,#ff5a8a 0 4px,transparent 4px 8px);transform:rotate(38deg);box-shadow:inset 0 0 0 6px rgba(0,0,0,.0)}
+#titulo .t{position:absolute;left:0;right:0;top:720px;text-align:center;font-family:Monoton;font-size:150px;line-height:1.05;background:linear-gradient(90deg,#3fd1ff,#7a6cff,#ff4fa3,#ff7a3a,#ffd23a);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 10px 40px rgba(0,0,0,.9))}
+#preg2 .t{position:absolute;left:80px;right:80px;top:700px;text-align:center;font-weight:800;font-size:66px;line-height:1.2}
+#logo{position:absolute;left:40px;width:1000px;top:760px;mix-blend-mode:screen}
+#cap{position:absolute;left:70px;right:130px;top:1380px;text-align:center;font-weight:900;font-size:58px;line-height:1.16;text-shadow:0 4px 0 #000,0 0 18px rgba(0,0,0,.9);opacity:0;text-transform:uppercase;letter-spacing:.5px}
+#cap span{color:#fff}#cap span.y{color:#FFD23A}
+#flash{position:absolute;inset:0;background:#fff;opacity:0}
+#negro{position:absolute;inset:0;background:#000;opacity:1}
+#firma .fk{position:absolute;left:70px;top:300px;font-weight:800;font-size:26px;letter-spacing:6px;color:#ffd23a;text-shadow:0 2px 12px #000}
+#firma .fn{position:absolute;left:66px;top:338px;font-family:Monoton;font-size:84px;line-height:1;background:linear-gradient(90deg,#3fd1ff,#7a6cff,#ff4fa3,#ff7a3a,#ffd23a);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 6px 20px rgba(0,0,0,.85))}
+#firma .fn span{font-family:Montserrat;font-weight:300}
+#firma .fh{position:absolute;left:72px;top:440px;font-weight:700;font-size:30px;color:#fff;text-shadow:0 2px 12px #000,0 0 4px #000}
+#calido,#fuga,#grado,#barras,#fx,.capa,#cap,#flash,#negro,#coms{z-index:2}
+</style></head><body>
+<div class="toma" id="tA"><img></div><div class="toma" id="tB"><img></div>
+<div id="calido"></div><div id="fuga"></div><div id="grado"></div><div id="barras"></div>
+<canvas id="fx" width="1080" height="1920"></canvas>
+<div class="capa" id="cifra"><div class="cifra" style="top:760px">58.522</div>
+  <div style="position:absolute;left:0;right:0;top:1030px;text-align:center;font-weight:800;font-size:40px;letter-spacing:4px;text-shadow:0 3px 14px #000">HONDUREÑOS DE VACACIONES AFUERA</div>
+  <div style="position:absolute;left:0;right:0;top:1090px;text-align:center;font-weight:600;font-size:24px;color:#ddd;text-shadow:0 2px 10px #000">Proyección del Ministerio de Turismo de El Salvador · Semana Morazánica 2026</div></div>
+<div class="capa" id="pregunta" style="background:#000"><div class="t">Estas vacaciones…<br>¿elegiste por el <span class="hl">paisaje</span>…<br>o por la <span class="hl">tranquilidad</span>?</div></div>
+<div class="capa" id="cita" style="background:rgba(0,0,0,.55)"><div class="papel"><div class="q">«Encontramos seguridad.»</div>
+  <div class="src">— Viajero hondureño en San Salvador · El Diario de Hoy, 5 de octubre de 2026</div></div></div>
+<div class="capa" id="mz"><div id="moraz">«Todo empezó a cambiar<br>una Morazánica…»</div></div>
+<div class="capa" id="titulo"><i class="tilde"></i><div class="t">VENI<br>TRANQUILO</div></div>
+<div class="capa" id="preg2" style="background:#000"><div class="t">¿Qué tendría que cambiar para que tus próximas vacaciones fueran <span class="hl">aquí</span>?</div></div>
+<div class="capa" id="fin" style="background:#000"><img id="logo" src="logo_hs.jpg">
+  <div style="position:absolute;left:0;right:0;top:1240px;text-align:center;font-weight:700;font-size:34px;color:#ddd">Contanos en los comentarios 👇</div>
+  <div style="position:absolute;left:0;right:0;top:1330px;text-align:center;font-weight:600;font-size:24px;color:#9a9a9a;letter-spacing:1px">Voz final: Romeo &amp; Nando · @romeo_and_nando_adventures</div></div>
+<div class="capa" id="firma"><div class="fk">LA VOZ DE LOS HONDUREÑOS</div><div class="fn">Romeo <span>&amp;</span> Nando</div><div class="fh">@romeo_and_nando_adventures · Los Naranjos, Lago de Yojoa</div></div>
+<div id="cap"></div>
+<div id="flash"></div><div id="negro"></div>
+<div id="coms"></div>
+<script type="module">
+const W = 1080, H = 1920, $ = id => document.getElementById(id);
+const cl = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x)), ss = x => { x = cl(x); return x * x * (3 - 2 * x); }, eo = x => 1 - Math.pow(1 - cl(x), 3);
+const lerp = (a, b, k) => a + (b - a) * k, vent = (t, a, b, fi = .3, fo = .3) => ss((t - a) / fi) * (1 - ss((t - (b - fo)) / fo)), op = (id, v) => { $(id).style.opacity = v; };
+const T = await (await fetch('tiempos.json')).json(); const S = T.s, V = T.voces, PW = T.palabras, C = T.C;
+const NF = await (await fetch('nf.json')).json();
+/* ---------- tomas ---------- */
+function marco(c, t) { const n = Math.min(NF[c[0]] || 150, Math.max(1, Math.round(((t - c[1]) * c[4] + c[3]) * 30) + 1)); return `clips/${c[0]}/${String(n).padStart(5, '0')}.jpg`; }
+async function pinta(capa, c, t, e) { const el = $(capa), im = el.querySelector('img'); if (!c) { el.style.opacity = 0; return; }
+  const src = marco(c, t); if (!im.src.endsWith(src)) { im.src = src; await im.decode().catch(() => {}); }
+  const u = cl((t - c[1]) / (c[2] - c[1])); const z = lerp(c[5], c[6], ss(u)) * (e.z || 1) * (1 + golpeZ);
+  im.style.transform = `translate(${(e.x || 0) + sx}px,${(e.y || 0) + sy}px) scale(${z})`; el.style.filter = `blur(${e.b || 0}px) brightness(${e.l || 1})`; el.style.opacity = e.o ?? 1; }
+let fuga = 0, flashT = 0, golpeZ = 0, sx = 0, sy = 0;
+async function tomas(t) {
+  fuga = 0; flashT = 0;
+  const i = C.findIndex(c => t >= c[1] && t < c[2]); if (i < 0) { $('tA').style.opacity = 0; $('tB').style.opacity = 0; return; }
+  const c = C[i], sig = C[i + 1], ant = C[i - 1]; let a = { o: 1 }, b = null, cb = null;
+  const d = c[8], k = (t - c[1]) / (d / 2);
+  if (c[7] === 'negro') a.o = ss((t - c[1]) / d);
+  if (k < 1 && ant && ant[2] >= c[1] - .01) { const e = 1 - ss(k);
+    if (c[7] === 'whip') a = { o: 1, x: e * 700, b: e * 40, l: 1 + e * .5 };
+    if (c[7] === 'zoom') a = { o: 1, z: 1 + e * .45, b: e * 25, l: 1 + e * 1.1 };
+    if (c[7] === 'fuga') { a = { o: ss(k * .5 + .5) }; cb = ant; b = { o: 1 }; fuga = Math.max(fuga, e * .8); }
+    if (c[7] === 'flash') flashT = Math.max(flashT, e * .7); }
+  if (sig && sig[1] <= c[2] + .01) { const d2 = sig[8], k2 = (c[2] - t) / (d2 / 2);
+    if (k2 < 1) { const e = 1 - ss(k2);
+      if (sig[7] === 'whip') a = { ...a, x: -e * 700, b: e * 40, l: 1 + e * .5 };
+      if (sig[7] === 'zoom') a = { ...a, z: 1 + e * .6, b: e * 25, l: 1 + e * 1.3 };
+      if (sig[7] === 'fuga') { cb = sig; b = { o: e * .5 }; fuga = Math.max(fuga, e * .8); }
+      if (sig[7] === 'flash') flashT = Math.max(flashT, e * .3);
+      if (sig[7] === 'negro') a.o = (a.o ?? 1) * (1 - e); } }
+  else a.o = (a.o ?? 1) * (1 - ss((t - (c[2] - .4)) / .4));
+  await pinta('tA', c, t, a); await pinta('tB', cb, t, b || { o: 0 }); $('tA').style.zIndex = 1; $('tB').style.zIndex = 0;
+}
+/* ---------- comentarios ---------- */
+const MALOS = ['Honduras ya no tiene arreglo', 'Mejor me voy pa\' El Salvador', 'Aquí no se puede ni salir de noche', '¿Turismo? Primero seguridad', 'Siempre es lo mismo', 'Bonito el país… lástima', 'Yo ya no salgo ni a la esquina', 'Ni en Semana Morazánica se puede', 'Aquí nada cambia', 'El que puede, se va'];
+const BUENOS = ['Yo me quedo 🇭🇳', 'Copán me enamoró', 'Este año, aquí', 'Vení tranquilo 🇭🇳', 'Roatán no tiene comparación', 'Orgulloso de mi tierra'];
+const cajas = [];
+function crea(txt, bueno, i) { const d = document.createElement('div'); d.className = 'com' + (bueno ? ' bueno' : ''); d.innerHTML = `<div class="av"></div><div><span class="u"></span>${txt}</div>`; $('coms').appendChild(d); return d; }
+const CM = [], CB = []; let sd = 9; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+for (let i = 0; i < 18; i++) CM.push({ el: crea(MALOS[i % MALOS.length], 0), t0: .05 + i * (0.18 + .2 * Math.pow(.9, i)), x: 40 + r() * 220, rot: (r() - .5) * 6, s: .8 + r() * .35, sp: 520 + r() * 260 });
+for (let i = 0; i < 6; i++) CB.push({ el: crea(BUENOS[i], 1), t0: S.buenos + i * .38, x: 40 + r() * 220, rot: (r() - .5) * 5, s: .9 + r() * .2, sp: 380 + r() * 120 });
+function comentarios(t) {
+  const fin = 4.6; // los malos se cortan con el acople
+  CM.forEach(c => { const u = t - c.t0; const vis = u > 0 && t < fin; c.el.style.opacity = vis ? ss(u / .15) * (1 - ss((t - (fin - .25)) / .25)) * (t > 1.6 ? .9 : 1) : 0;
+    const y = 1650 - u * c.sp; c.el.style.transform = `translate(${c.x}px,${y}px) rotate(${c.rot}deg) scale(${c.s * (1 + .05 * Math.exp(-u * 8))})`;  });
+  CB.forEach(c => { const u = t - c.t0; const vis = u > 0 && t < S.titulo + .3; c.el.style.opacity = vis ? ss(u / .2) * (1 - ss((t - S.titulo + .1) / .4)) : 0;
+    const y = 1500 - u * c.sp; c.el.style.transform = `translate(${c.x}px,${y}px) rotate(${c.rot}deg) scale(${c.s})`; });
+}
+/* ---------- subtítulos ---------- */
+function subt(t) { let html = '', a = 0;
+  for (const k in PW) { const w = PW[k]; if (!w.length || t < w[0][1] - .15 || t > w[w.length - 1][2] + .3) continue;
+    const fr = []; let cur = []; for (const x of w) { cur.push(x); if ((/[.,…!?]$/.test(x[0]) && cur.length >= 2) || cur.length >= 5) { fr.push(cur); cur = []; } } if (cur.length) fr.push(cur);
+    for (const f of fr) { const a0 = f[0][1] - .1, b0 = f[f.length - 1][2] + .2; if (t >= a0 && t < b0) { html = f.map(([p, x0]) => `<span class="${t >= x0 - .02 && t < x0 + .45 ? 'y' : ''}">${p.replace(/[«»]/g, '')}</span>`).join(' '); a = vent(t, a0, b0, .08, .1); } } }
+  $('cap').innerHTML = html; $('cap').style.opacity = a; }
+/* ---------- efectos ---------- */
+const fx = $('fx'), g = fx.getContext('2d');
+function grano(t) { g.save(); g.globalAlpha = .055; for (let i = 0; i < 1500; i++) { const x = (Math.sin(i * 12.9 + t * 91) * 43758.5 % 1 + 1) % 1 * W, y = (Math.sin(i * 78.2 + t * 37) * 12543.1 % 1 + 1) % 1 * H; g.fillStyle = i % 2 ? '#fff' : '#000'; g.fillRect(x, y, 2, 2); } g.restore(); }
+function polvo(t, a) { if (a <= 0) return; g.save(); g.globalCompositeOperation = 'lighter'; for (let i = 0; i < 90; i++) { const x = ((i * 137.5 + t * (8 + i % 7)) % W), y = ((i * 211.3 - t * (12 + i % 5) * 3) % H + H) % H; g.fillStyle = `rgba(255,236,200,${a * (.15 + .25 * ((i * 7) % 5) / 5)})`; g.beginPath(); g.arc(x, y, 1.5 + (i % 3), 0, 7); g.fill(); } g.restore(); }
+const golpe = (id, t, t0, d = .4, z = 1.5) => { const k = eo((t - t0) / d); const el = $(id); el.style.transform = `scale(${lerp(z, 1, k)})`; el.style.filter = `blur(${(1 - k) * 14}px)`; };
+const pulsos = () => [7.0, S.sesenta, S.mira, S.aman, S.escuchen, S.golpe, S.dia, S.seguras, S.titulo];
+function cuadro(t) {
+  g.clearRect(0, 0, W, H); document.querySelectorAll('.capa').forEach(c => c.style.opacity = 0);
+  let flash = flashT;
+  // golpes de cámara (punch-in + temblor) en los momentos fuertes
+  golpeZ = 0; sx = 0; sy = 0; for (const p of pulsos()) { const u = t - p; if (u > 0 && u < .5) { golpeZ = Math.max(golpeZ, .06 * Math.exp(-u * 7)); sx += Math.sin(u * 90) * 14 * Math.exp(-u * 9); sy += Math.cos(u * 70) * 10 * Math.exp(-u * 9); } }
+  if (Math.abs(t - 6.85) < .06) flash = .9;
+  comentarios(t);
+  // cifra
+  if (t > S.sesenta - .1 && t < S.pais + .2) { op('cifra', vent(t, S.sesenta - .05, S.pais + .1, .1, .3)); golpe('cifra', t, S.sesenta - .05, .35, 1.8); }
+  // pregunta
+  if (t > S.pregunta - .1 && t < S.pregunta + 3.1) { op('pregunta', vent(t, S.pregunta, S.pregunta + 3.0, .25, .3)); }
+  // cita de periódico
+  if (t > S.cita - .1 && t < S.cita + 3.1) { op('cita', vent(t, S.cita, S.cita + 3.0, .15, .3)); const k = eo((t - S.cita) / .35); document.querySelector('#cita .papel').style.transform = `rotate(${lerp(-8, -2, k)}deg) scale(${lerp(1.6, 1, k)})`; }
+  // la frase de la Morazánica
+  if (t > S.todo - .2 && t < S.rumbo + .7) { op('mz', vent(t, S.todo - .1, S.rumbo + .6, .5, .4)); $('moraz').style.filter = `blur(${(1 - eo((t - S.todo) / 1.2)) * 10}px)`; }
+  // título final
+  if (t > S.titulo - .1 && t < S.pregunta2 + .1) { op('titulo', vent(t, S.titulo, S.pregunta2, .1, .4)); golpe('titulo', t, S.titulo, .6, 1.4); }
+  if (t > S.pregunta2 - .1 && t < S.logo + .1) op('preg2', vent(t, S.pregunta2, S.logo, .4, .3));
+  if (t > S.dia && t < S.dia + 5.2) { op('firma', vent(t, S.dia + .45, S.dia + 5, .35, .4)); const k = eo((t - S.dia - .45) / .6); $('firma').style.transform = `translateX(${(1 - k) * -60}px)`; } else op('firma', 0);
+  if (t > S.logo - .1) { op('fin', ss((t - S.logo) / .5)); const k = eo((t - S.logo) / 1.4); $('logo').style.transform = `scale(${lerp(1.15, 1, k)})`; $('logo').style.filter = `blur(${(1 - k) * 12}px)`; }
+  // color: frío al inicio, cálido desde «mirá lo que tenemos», atardecer en el llamado
+  $('calido').style.opacity = Math.max(ss((t - S.mira) / 2) * .5, ss((t - T.t.T5) / 2) * .85) * (1 - ss((t - S.pregunta2) / .3));
+  $('barras').style.opacity = vent(t, T.t.T5 - .3, S.buenos, .8, .6);
+  polvo(t, vent(t, 4, S.cita, 1, .5) * .8 + vent(t, T.t.T5, S.buenos, 1, .5) * .6);
+  subt(t); if (t < 7 || (t > S.pregunta - .05 && t < S.pregunta + 3) || (t > S.cita && t < S.cita + 3) || (t > S.drop - .1 && t < S.romeo - .2) || t > S.titulo - .1) $('cap').style.opacity = 0;
+  $('fuga').style.opacity = fuga; grano(t); $('flash').style.opacity = flash;
+  // negro de inicio: los comentarios aparecen sobre negro y la sala se revela en 1,6 s
+  $('negro').style.opacity = t < 1.6 ? 1 : (1 - ss((t - 1.6) / .5)) * .0;
+}
+window.setT = async t => { await tomas(t); cuadro(t); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); return true; };
+await document.fonts.ready; window.LISTO = true;
+</script></body></html>
