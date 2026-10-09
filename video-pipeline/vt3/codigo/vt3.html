@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Vení tranquilo v2</title>
+<style>
+@font-face{font-family:'Monoton';src:url(fuentes/Monoton.ttf)}
+@font-face{font-family:'Montserrat';src:url(fuentes/Montserrat.ttf);font-weight:100 900}
+@font-face{font-family:'Fraunces';src:url(fuentes/Fraunces.ttf);font-weight:100 900}
+@font-face{font-family:'FrauncesI';src:url(fuentes/FrauncesItalic.ttf);font-weight:100 900}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#000;color:#fff;font-family:'Montserrat',sans-serif}
+.toma{position:absolute;inset:0;overflow:hidden;opacity:0}
+.toma img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#grado{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 42%,transparent 50%,rgba(0,0,0,.62)),linear-gradient(rgba(0,0,0,.35),transparent 16%,transparent 66%,rgba(0,0,0,.72))}
+#calido{position:absolute;inset:0;opacity:0;mix-blend-mode:soft-light;background:linear-gradient(160deg,rgba(255,170,70,.55),rgba(160,60,20,.35))}
+#fuga{position:absolute;inset:0;opacity:0;mix-blend-mode:screen;background:radial-gradient(ellipse 60% 40% at 15% 30%,rgba(255,150,60,.9),transparent 70%),radial-gradient(ellipse 50% 60% at 90% 70%,rgba(255,220,160,.7),transparent 70%)}
+#barras::before,#barras::after{content:'';position:absolute;left:0;right:0;height:150px;background:#000}
+#barras{position:absolute;inset:0;opacity:0;pointer-events:none}#barras::before{top:0}#barras::after{bottom:0}
+#fx{position:absolute;inset:0}
+.capa{position:absolute;inset:0;opacity:0}
+#coms{position:absolute;inset:0;overflow:hidden}
+.com{position:absolute;display:flex;gap:16px;align-items:flex-start;width:760px;padding:22px 26px;border-radius:28px;background:rgba(36,37,40,.92);box-shadow:0 18px 50px rgba(0,0,0,.55);font-weight:600;font-size:36px;line-height:1.25;color:#f1f1f1}
+.com .av{flex:none;width:64px;height:64px;border-radius:50%;background:radial-gradient(circle at 50% 38%,#8a8d93 0 22%,transparent 23%),radial-gradient(circle at 50% 100%,#8a8d93 0 42%,transparent 43%),#4a4c51}
+.com .u{display:block;width:150px;height:16px;border-radius:8px;background:#6b6e74;margin:6px 0 12px}
+.com.bueno{background:rgba(255,255,255,.95);color:#151515}
+.com.bueno .u{background:#c7c9cd}
+.cifra{position:absolute;left:0;right:0;text-align:center;font-family:Monoton;font-size:230px;letter-spacing:6px;background:linear-gradient(90deg,#3fd1ff,#7a6cff,#ff4fa3,#ff7a3a,#ffd23a);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 8px 30px rgba(0,0,0,.8))}
+#pregunta .t{position:absolute;left:80px;right:80px;top:760px;text-align:center;font-weight:900;font-size:78px;line-height:1.15}
+.hl{color:#FFD23A}
+#cita .papel{position:absolute;left:110px;right:110px;top:640px;padding:60px 56px;background:#f3eee2;color:#141414;border-radius:6px;box-shadow:0 30px 80px rgba(0,0,0,.7);transform-origin:50% 50%}
+#cita .q{font-family:'FrauncesI';font-size:96px;line-height:1.05}
+#cita .src{font-weight:700;font-size:28px;margin-top:30px;color:#5a5348;letter-spacing:1px}
+#moraz{position:absolute;left:90px;right:90px;top:1060px;text-align:center;font-family:'FrauncesI';font-size:64px;line-height:1.15;text-shadow:0 6px 30px #000,0 0 6px #000}
+.tilde{position:absolute;left:742px;top:652px;width:24px;height:60px;margin-left:-4px;border-radius:12px;background:repeating-linear-gradient(90deg,#ff5a8a 0 4px,transparent 4px 8px);transform:rotate(38deg);box-shadow:inset 0 0 0 6px rgba(0,0,0,.0)}
+#titulo .t{position:absolute;left:0;right:0;top:720px;text-align:center;font-family:Monoton;font-size:150px;line-height:1.05;background:linear-gradient(90deg,#3fd1ff,#7a6cff,#ff4fa3,#ff7a3a,#ffd23a);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 10px 40px rgba(0,0,0,.9))}
+#preg2 .t{position:absolute;left:80px;right:80px;top:700px;text-align:center;font-weight:800;font-size:66px;line-height:1.2}
+#logo{position:absolute;left:40px;width:1000px;top:760px;mix-blend-mode:screen}
+#cap{position:absolute;left:70px;right:130px;top:1380px;text-align:center;font-weight:900;font-size:58px;line-height:1.16;text-shadow:0 4px 0 #000,0 0 18px rgba(0,0,0,.9);opacity:0;text-transform:uppercase;letter-spacing:.5px}
+#cap span{color:#fff}#cap span.y{color:#FFD23A}
+#flash{position:absolute;inset:0;background:#fff;opacity:0}
+#negro{position:absolute;inset:0;background:#000;opacity:1}
+#firma .fk{position:absolute;left:70px;top:300px;font-weight:800;font-size:26px;letter-spacing:6px;color:#ffd23a;text-shadow:0 2px 12px #000}
+#firma .fn{position:absolute;left:66px;top:338px;font-family:Monoton;font-size:84px;line-height:1;background:linear-gradient(90deg,#3fd1ff,#7a6cff,#ff4fa3,#ff7a3a,#ffd23a);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 6px 20px rgba(0,0,0,.85))}
+#firma .fn span{font-family:Montserrat;font-weight:300}
+#firma .fh{position:absolute;left:72px;top:440px;font-weight:700;font-size:30px;color:#fff;text-shadow:0 2px 12px #000,0 0 4px #000}
+#calido,#fuga,#grado,#barras,#fx,.capa,#cap,#flash,#negro,#coms{z-index:2}
+
+.virt{position:absolute;inset:0;opacity:0}
+#mapa svg{position:absolute;inset:0}
+#cifra .lbl{position:absolute;left:0;right:0;top:920px;text-align:center;font-weight:800;font-size:34px;letter-spacing:5px;text-shadow:0 3px 14px #000}
+#cifra .src{position:absolute;left:0;right:0;top:975px;text-align:center;font-weight:600;font-size:22px;color:#cfd6dc;text-shadow:0 2px 10px #000}
+#logoS img{position:absolute;left:40px;width:1000px;top:720px;mix-blend-mode:screen}
+#logoS #lsec{clip-path:inset(76% 61% 0 8%)}
+.grande{position:absolute;left:60px;right:60px;text-align:center;font-weight:900;text-transform:uppercase;line-height:1.02;text-shadow:0 6px 30px rgba(0,0,0,.9)}
+#todos .grande{top:820px;font-size:132px;color:#FFD23A}
+#voces .grande{top:760px;font-size:118px;color:#fff}
+#voces .grande u{text-decoration:none;border-bottom:14px solid #18A0DB}
+#voces .quien{position:absolute;left:0;right:0;top:1120px;text-align:center;font-weight:700;font-size:30px;letter-spacing:4px;color:#cfe8f5}
+#cta .t{position:absolute;left:80px;right:80px;top:720px;text-align:center;font-weight:900;font-size:92px;line-height:1.08}
+#cta .s{position:absolute;left:80px;right:80px;top:960px;text-align:center;font-weight:700;font-size:52px;line-height:1.2;color:#FFD23A}
+#cta svg{position:absolute;left:465px;top:540px}
+#fin .hash{position:absolute;left:0;right:0;top:1180px;text-align:center;font-family:Monoton;font-size:76px;background:linear-gradient(90deg,#3fd1ff,#7a6cff,#ff4fa3,#ff7a3a,#ffd23a);-webkit-background-clip:text;background-clip:text;color:transparent}
+#fin .cred{position:absolute;left:0;right:0;top:1330px;text-align:center;font-weight:600;font-size:24px;color:#9a9a9a;letter-spacing:1px}
+#cap.arriba{top:250px}
+#mapa .etq{position:absolute;font-weight:800;font-size:30px;letter-spacing:3px;text-shadow:0 2px 12px #000;opacity:0}
+#mapa .smz{position:absolute;left:0;right:0;top:300px;text-align:center;font-weight:800;font-size:34px;letter-spacing:6px;color:#FFD23A;text-shadow:0 2px 14px #000}
+</style></head><body>
+<div class="toma" id="tA"><img></div><div class="toma" id="tB"><img></div>
+<div class="virt" id="mapa"><svg id="msvg" width="1080" height="1920" viewBox="0 0 1080 1920"><defs>
+  <filter id="brillo" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+  <g id="paises"></g><path id="frontera" fill="none" stroke="#FFD23A" stroke-width="5" stroke-linecap="round" filter="url(#brillo)"/><g id="puntos"></g><g id="caps"></g></svg>
+  <div class="smz">SEMANA MORAZÁNICA 2026</div>
+  <div class="etq" id="eHN">HONDURAS</div><div class="etq" id="eSV">EL SALVADOR</div></div>
+<div class="virt" id="logoS"><img id="lbase" src="logo_hs.jpg"><img id="lsec" src="logo_hs.jpg"></div>
+<canvas class="virt" id="bandera" width="1080" height="1920"></canvas>
+<canvas class="virt" id="onda" width="1080" height="1920"></canvas>
+<div id="calido"></div><div id="fuga"></div><div id="grado"></div><div id="barras"></div>
+<canvas id="fx" width="1080" height="1920"></canvas>
+<div class="capa" id="cifra" style="background:radial-gradient(ellipse at 50% 45%,rgba(0,0,0,.55),rgba(0,0,0,.8))"><div class="cifra" style="top:640px;font-size:220px" id="cnum">58.522</div>
+  <div class="lbl">VISITANTES HONDUREÑOS PROYECTADOS</div>
+  <div class="src">MITUR El Salvador · Semana Morazánica 2026 · vía El Diario de Hoy</div></div>
+<div class="capa" id="cita" style="background:rgba(0,0,0,.6)"><div class="papel"><div class="q">«Encontramos seguridad.»</div>
+  <div class="src">— Viajero hondureño en San Salvador · El Diario de Hoy, 5 de octubre de 2026</div></div></div>
+<div class="capa" id="todos"><div class="grande">Todos<br>los días</div></div>
+<div class="capa" id="voces"><div class="grande" id="vtxt"></div><div class="quien" id="vquien"></div></div>
+<div class="capa" id="titulo"><i class="tilde"></i><div class="t">VENI<br>TRANQUILO</div></div>
+<div class="capa" id="cta" style="background:#000"><svg width="150" height="150" viewBox="0 0 24 24" fill="none" stroke="#FFD23A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+  <div class="t">Compartilo.</div><div class="s">Que sea la voz<br>de los hondureños.</div></div>
+<div class="capa" id="fin" style="background:#000"><img id="logo" src="logo_hs.jpg" style="top:640px">
+  <div class="hash">#VeníTranquilo</div>
+  <div class="cred">Voz final: Romeo &amp; Nando · @romeo_and_nando_adventures</div></div>
+<div class="capa" id="firma"><div class="fk">LA VOZ DE LOS HONDUREÑOS</div><div class="fn">Romeo <span>&amp;</span> Nando</div><div class="fh">@romeo_and_nando_adventures · Los Naranjos, Lago de Yojoa</div></div>
+<div id="coms"></div>
+<div id="flash"></div><div id="negro"></div>
+<div id="cap"></div>
+<script type="module">
+const W = 1080, H = 1920, $ = id => document.getElementById(id);
+const cl = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x)), ss = x => { x = cl(x); return x * x * (3 - 2 * x); }, eo = x => 1 - Math.pow(1 - cl(x), 3);
+const lerp = (a, b, k) => a + (b - a) * k, vent = (t, a, b, fi = .3, fo = .3) => ss((t - a) / fi) * (1 - ss((t - (b - fo)) / fo)), op = (id, v) => { $(id).style.opacity = v; };
+const T = await (await fetch('tiempos.json')).json(); const S = T.s, PW = T.palabras, C = T.C;
+const NF = await (await fetch('nf.json')).json(); const M = await (await fetch('mapa.json')).json();
+const VIRT = new Set(['NEGRO', 'MAPA', 'LOGO', 'BANDERA', 'ONDA']);
+const ventanas = n => C.filter(c => c[0] === n).map(c => [c[1], c[2]]);
+const enVent = (n, t, fi = .3, fo = .3) => Math.max(0, ...ventanas(n).map(([a, b]) => vent(t, a, b, fi, fo)));
+/* ---------- tomas ---------- */
+function marco(c, t) { const n = Math.min(NF[c[0]] || 150, Math.max(1, Math.round(((t - c[1]) * c[4] + c[3]) * 30) + 1)); return `clips/${c[0]}/${String(n).padStart(5, '0')}.jpg`; }
+async function pinta(capa, c, t, e) { const el = $(capa), im = el.querySelector('img'); if (!c || VIRT.has(c[0])) { el.style.opacity = 0; return; }
+  const src = marco(c, t); if (!im.src.endsWith(src)) { im.src = src; await im.decode().catch(() => {}); }
+  const u = cl((t - c[1]) / (c[2] - c[1])); const z = lerp(c[5], c[6], ss(u)) * (e.z || 1) * (1 + golpeZ);
+  im.style.transform = `translate(${(e.x || 0) + sx}px,${(e.y || 0) + sy + (c[9] || 0)}px) scale(${z})`; el.style.filter = `blur(${e.b || 0}px) brightness(${e.l || 1})`; el.style.opacity = e.o ?? 1; }
+let fuga = 0, flashT = 0, golpeZ = 0, sx = 0, sy = 0;
+async function tomas(t) {
+  fuga = 0; flashT = 0;
+  const i = C.findIndex(c => t >= c[1] && t < c[2]); if (i < 0) { $('tA').style.opacity = 0; $('tB').style.opacity = 0; return; }
+  const c = C[i], sig = C[i + 1], ant = C[i - 1]; let a = { o: 1 }, b = null, cb = null;
+  const d = c[8], k = (t - c[1]) / (d / 2);
+  if (c[7] === 'negro') a.o = ss((t - c[1]) / d);
+  if (k < 1 && ant && ant[2] >= c[1] - .01) { const e = 1 - ss(k);
+    if (c[7] === 'whip') a = { o: 1, x: e * 700, b: e * 40, l: 1 + e * .5 };
+    if (c[7] === 'zoom') a = { o: 1, z: 1 + e * .45, b: e * 25, l: 1 + e * 1.1 };
+    if (c[7] === 'fuga') { a = { o: ss(k * .5 + .5) }; cb = ant; b = { o: 1 }; fuga = Math.max(fuga, e * .8); }
+    if (c[7] === 'flash') flashT = Math.max(flashT, e * .7); }
+  if (sig && sig[1] <= c[2] + .01) { const d2 = sig[8], k2 = (c[2] - t) / (d2 / 2);
+    if (k2 < 1) { const e = 1 - ss(k2);
+      if (sig[7] === 'whip') a = { ...a, x: -e * 700, b: e * 40, l: 1 + e * .5 };
+      if (sig[7] === 'zoom') a = { ...a, z: 1 + e * .6, b: e * 25, l: 1 + e * 1.3 };
+      if (sig[7] === 'fuga') { cb = sig; b = { o: e * .5 }; fuga = Math.max(fuga, e * .8); }
+      if (sig[7] === 'flash') flashT = Math.max(flashT, e * .3);
+      if (sig[7] === 'negro') a.o = (a.o ?? 1) * (1 - e); } }
+  else a.o = (a.o ?? 1) * (1 - ss((t - (c[2] - .4)) / .4));
+  await pinta('tA', c, t, a); await pinta('tB', cb, t, b || { o: 0 }); $('tA').style.zIndex = 1; $('tB').style.zIndex = 0;
+}
+
+/* ---------- comentarios ---------- */
+const MALOS = ['Honduras ya no tiene arreglo', 'Mejor me voy pa\' El Salvador', 'Aquí no se puede ni salir de noche', '¿Turismo? Primero seguridad', 'Siempre es lo mismo', 'Bonito el país… lástima', 'Ni en Semana Morazánica se puede', 'El que puede, se va'];
+const BUENOS = ['Exigimos un cambio 🇭🇳', 'Queremos vivir en paz', 'Por mis hijos, comparto', 'Honduras merece más', 'Basta de miedo', 'Yo exijo un cambio 🇭🇳', 'Que nos escuchen', 'Orgulloso de mi tierra'];
+function crea(txt, bueno) { const d = document.createElement('div'); d.className = 'com' + (bueno ? ' bueno' : ''); d.innerHTML = `<div class="av"></div><div><span class="u"></span>${txt}</div>`; $('coms').appendChild(d); return d; }
+const CM = [], CB = []; let sd = 9; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+for (let i = 0; i < 12; i++) CM.push({ el: crea(MALOS[i % MALOS.length], 0), t0: S.g01 + .2 + i * .27, x: 30 + r() * 260, rot: (r() - .5) * 6, s: .68 + r() * .2, sp: 300 + r() * 160 });
+for (let i = 0; i < 8; i++) CB.push({ el: crea(BUENOS[i], 1), t0: S.g12 - .3 + i * .32, x: 30 + r() * 260, rot: (r() - .5) * 5, s: .85 + r() * .2, sp: 260 + r() * 120 });
+function comentarios(t) {
+  const f1 = S.salvador - .05;
+  CM.forEach(c => { const u = t - c.t0; c.el.style.opacity = (u > 0 && t < f1) ? ss(u / .2) * (1 - ss((t - (f1 - .3)) / .3)) * .92 : 0;
+    c.el.style.transform = `translate(${c.x}px,${1720 - u * c.sp}px) rotate(${c.rot}deg) scale(${c.s})`; });
+  const f2 = S.g13 - .1;
+  CB.forEach(c => { const u = t - c.t0; c.el.style.opacity = (u > 0 && t < f2) ? ss(u / .25) * (1 - ss((t - (f2 - .4)) / .4)) * .95 : 0;
+    c.el.style.transform = `translate(${c.x}px,${1740 - u * c.sp}px) rotate(${c.rot}deg) scale(${c.s})`; });
+}
+/* ---------- subtítulos ---------- */
+function subt(t) { let html = '', a = 0;
+  for (const k in PW) { const w = PW[k]; if (!w.length || t < w[0][1] - .15 || t > w[w.length - 1][2] + .3) continue;
+    const fr = []; let cur = []; for (const x of w) { cur.push(x); if ((/[.,…!?]$/.test(x[0]) && cur.length >= 2) || cur.length >= 5) { fr.push(cur); cur = []; } } if (cur.length) fr.push(cur);
+    for (const f of fr) { const a0 = f[0][1] - .1, b0 = f[f.length - 1][2] + .2; if (t >= a0 && t < b0) { html = f.map(([p, x0]) => `<span class="${t >= x0 - .02 && t < x0 + .45 ? 'y' : ''}">${p.replace(/[«»]/g, '')}</span>`).join(' '); a = vent(t, a0, b0, .08, .1); } } }
+  $('cap').innerHTML = html; $('cap').style.opacity = a; }
+/* ---------- efectos ---------- */
+const fx = $('fx'), g = fx.getContext('2d');
+function grano(t) { g.save(); g.globalAlpha = .055; for (let i = 0; i < 1500; i++) { const x = (Math.sin(i * 12.9 + t * 91) * 43758.5 % 1 + 1) % 1 * W, y = (Math.sin(i * 78.2 + t * 37) * 12543.1 % 1 + 1) % 1 * H; g.fillStyle = i % 2 ? '#fff' : '#000'; g.fillRect(x, y, 2, 2); } g.restore(); }
+function polvo(t, a) { if (a <= 0) return; g.save(); g.globalCompositeOperation = 'lighter'; for (let i = 0; i < 90; i++) { const x = ((i * 137.5 + t * (8 + i % 7)) % W), y = ((i * 211.3 - t * (12 + i % 5) * 3) % H + H) % H; g.fillStyle = `rgba(255,236,200,${a * (.15 + .25 * ((i * 7) % 5) / 5)})`; g.beginPath(); g.arc(x, y, 1.5 + (i % 3), 0, 7); g.fill(); } g.restore(); }
+
+/* ---------- mapa ---------- */
+const NS = 'http://www.w3.org/2000/svg', mk = (tag, at) => { const e = document.createElementNS(NS, tag); for (const k in at) e.setAttribute(k, at[k]); return e; };
+const PA = {}; for (const n in M.paises) { const p = mk('path', { d: M.paises[n], fill: '#0d1b26', stroke: '#3fb6e8', 'stroke-width': 1.6, 'stroke-linejoin': 'round' }); $('paises').appendChild(p); PA[n] = p; }
+$('frontera').setAttribute('d', M.frontera);
+const TG = M.cap['Tegucigalpa'], SV = M.cap['San Salvador'];
+for (const [n, p] of [['Tegucigalpa', TG], ['San Salvador', SV]]) $('caps').appendChild(mk('circle', { cx: p[0], cy: p[1], r: 5, fill: '#fff' }));
+const PT = []; for (let i = 0; i < 70; i++) { const c = mk('circle', { r: 3.2, fill: '#FFD23A' }); $('puntos').appendChild(c); PT.push({ c, o: r(), j: (r() - .5) * 26 }); }
+const mezcla = (a, b, k) => { const pa = a.match(/\w\w/g).map(x => parseInt(x, 16)), pb = b.match(/\w\w/g).map(x => parseInt(x, 16)); return '#' + pa.map((x, i) => Math.round(lerp(x, pb[i], k)).toString(16).padStart(2, '0')).join(''); };
+function vb(cx, cy, z) { const w = W / z, h = H / z; return `${cx - w / 2} ${cy - h / 2} ${w} ${h}`; }
+function mapa(t) {
+  const a = enVent('MAPA', t, .25, .35); op('mapa', a); if (a <= 0) return;
+  const fase1 = t < S.cita, cxA = (TG[0] + SV[0]) / 2, cyA = (TG[1] + SV[1]) / 2;
+  let cx = cxA, cy = cyA, z;
+  if (fase1) { z = lerp(2.2, 2.6, ss((t - S.salvador) / 2.5)); }
+  else { const k = ss((t - (S.una_sola - .5)) / 1.6); z = lerp(lerp(1.7, 2.0, ss((t - S.g03) / 6)), 1.0, k); cx = lerp(cxA, W / 2, k); cy = lerp(cyA, H / 2 + 60, k); }
+  $('msvg').setAttribute('viewBox', vb(cx, cy, z));
+  // puntos que cruzan la frontera (solo en la primera aparición)
+  PT.forEach(p => { const u = ((t - S.salvador) * .55 + p.o) % 1; const on = fase1 && t > S.salvador;
+    const x = lerp(TG[0], SV[0], u), y = lerp(TG[1], SV[1], u) - Math.sin(u * Math.PI) * 60 + p.j * Math.sin(u * Math.PI);
+    p.c.setAttribute('cx', x); p.c.setAttribute('cy', y); p.c.setAttribute('opacity', on ? Math.sin(u * Math.PI) * ss((t - S.salvador) / .4) : 0); p.c.setAttribute('r', 3.2 / z * 2); });
+  // frontera: brilla, late y se borra con «inventamos»
+  const fr = $('frontera'), borra = ss((t - S.inventamos) / 1.4);
+  fr.setAttribute('stroke-width', (5 + 3 * Math.max(0, Math.sin((t - S.fronteras) * 6)) * vent(t, S.fronteras, S.inventamos, .1, .2)) / z * 2);
+  fr.setAttribute('opacity', fase1 ? .9 : (1 - borra)); fr.setAttribute('stroke-dasharray', `${(1 - borra) * 400} 400`);
+  // colores: Honduras y El Salvador se funden; luego toda Centroamérica se enciende
+  const uno = ss((t - S.inventamos) / 1.6), todos = ss((t - S.una_sola) / 1.2);
+  for (const n in PA) { const p = PA[n]; const base = (n === 'Honduras' || n === 'El Salvador') ? '#16384f' : '#0d1b26';
+    let f = mezcla(base, '#5a4a1c', (n === 'Honduras' || n === 'El Salvador') ? uno : 0); if (n !== 'Mexico') f = mezcla(f, '#7a5a12', todos);
+    p.setAttribute('fill', f); p.setAttribute('stroke', mezcla('3fb6e8', 'ffd23a', n === 'Mexico' ? 0 : todos)); p.setAttribute('stroke-width', 1.6 / z * 2); }
+  // etiquetas
+  const eA = fase1 ? 1 : 1 - uno;
+  const pos = (p, dx, dy) => { const [x0, y0, w0] = $('msvg').getAttribute('viewBox').split(' ').map(Number); return [(p[0] - x0) / w0 * W + dx, (p[1] - y0) / w0 * W + dy]; };
+  const [hx, hy] = pos(TG, -20, -80), [sx2, sy2] = pos(SV, -150, 40);
+  $('eHN').style.cssText += `;left:${hx}px;top:${hy}px;opacity:${eA}`; $('eSV').style.cssText += `;left:${sx2}px;top:${sy2}px;opacity:${eA}`;
+  document.querySelector('#mapa .smz').style.opacity = fase1 ? ss((t - S.salvador) / .5) : 0;
+}
+/* ---------- bandera de Honduras (azul-blanco-azul, cinco estrellas) ---------- */
+const BF = document.createElement('canvas'); BF.width = 2400; BF.height = 1200; { const b = BF.getContext('2d'), az = '#18A0DB';
+  b.fillStyle = az; b.fillRect(0, 0, 2400, 1200); b.fillStyle = '#fff'; b.fillRect(0, 400, 2400, 400);
+  const est = (x, y, R) => { b.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? R * .382 : R; b.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } b.closePath(); b.fill(); };
+  b.fillStyle = az; const c0 = 1200, c1 = 600, dx = 300, dy = 100, R = 62; est(c0, c1, R); est(c0 - dx, c1 - dy, R); est(c0 + dx, c1 - dy, R); est(c0 - dx, c1 + dy, R); est(c0 + dx, c1 + dy, R); }
+const bg = $('bandera').getContext('2d');
+function bandera(t) {
+  const a = enVent('BANDERA', t, .3, .35); op('bandera', a); if (a <= 0) return;
+  bg.fillStyle = '#05070a'; bg.fillRect(0, 0, W, H);
+  const esc = 1.75 + .08 * ss((t - S.g12) / 3), fw = 2400 * esc * .5, fh = 1200 * esc * .5, x0 = (W - fw) / 2, y0 = (H - fh) / 2 - 40, N = 90;
+  for (let i = 0; i < N; i++) { const u = i / N, sx0 = u * 2400, sw = 2400 / N + 1, ph = u * 7 - t * 3.2;
+    const dy = Math.sin(ph) * 38 * (0.4 + u), luz = .78 + .22 * Math.cos(ph);
+    bg.globalAlpha = 1; bg.drawImage(BF, sx0, 0, sw, 1200, x0 + u * fw, y0 + dy, fw / N + 1.5, fh);
+    bg.fillStyle = luz > 1 ? `rgba(255,255,255,${(luz - 1) * .6})` : `rgba(0,0,0,${(1 - luz) * .9})`; bg.fillRect(x0 + u * fw, y0 + dy, fw / N + 1.5, fh); }
+  const gr = bg.createRadialGradient(W / 2, 300, 50, W / 2, 300, 1300); gr.addColorStop(0, 'rgba(255,230,180,.25)'); gr.addColorStop(1, 'rgba(0,0,0,.55)'); bg.fillStyle = gr; bg.fillRect(0, 0, W, H);
+}
+/* ---------- onda: un compartir que recorre Honduras ---------- */
+const og = $('onda').getContext('2d'); const HP = new Path2D(M.paises['Honduras']);
+const FOC = []; for (let i = 0; i < 26; i++) FOC.push([r(), r(), r()]);
+function onda(t) {
+  const a = enVent('ONDA', t, .15, .25); op('onda', a); if (a <= 0) return;
+  const w0 = ventanas('ONDA')[0][0], u = t - w0;
+  og.fillStyle = '#04070a'; og.fillRect(0, 0, W, H); og.save();
+  const z = 3.6, cx = TG[0] + 60, cy = TG[1] - 30; og.translate(W / 2, H / 2); og.scale(z, z); og.translate(-cx, -cy);
+  og.fillStyle = '#0f2a3c'; og.fill(HP); og.lineWidth = 1.2 / z * 2; og.strokeStyle = '#3fb6e8'; og.stroke(HP);
+  og.save(); og.clip(HP);
+  for (const [fx2, fy2, d] of FOC) { const k = u - d * .6; if (k < 0) continue; const x = cx - 150 + fx2 * 300, y = cy - 60 + fy2 * 120;
+    for (let j = 0; j < 3; j++) { const rr = (k * 120 + j * 25) % 90; og.beginPath(); og.arc(x, y, rr, 0, 7); og.strokeStyle = `rgba(255,210,58,${(1 - rr / 90) * .8})`; og.lineWidth = 1.4 / z * 2; og.stroke(); } }
+  og.restore(); og.beginPath(); og.arc(TG[0], TG[1], 4 + u * 3, 0, 7); og.fillStyle = '#fff'; og.fill(); og.restore();
+}
+/* ---------- logo: «Secreta» brilla y se apaga por miedo ---------- */
+function logo(t) {
+  const a = enVent('LOGO', t, .5, .4); op('logoS', a); if (a <= 0) return;
+  const brilla = vent(t, S.secreta - .1, S.miedo, .3, .6), miedo = ss((t - S.miedo) / .9);
+  $('lbase').style.filter = `grayscale(${miedo}) brightness(${1 - miedo * .75})`;
+  $('lsec').style.filter = `brightness(${1 + brilla * .8 - miedo * .8}) drop-shadow(0 0 ${brilla * 24}px rgba(255,210,120,.9)) grayscale(${miedo})`;
+  const tiembla = miedo * (1 - ss((t - S.miedo - 1) / .5)); $('logoS').style.transform = `translate(${Math.sin(t * 60) * 5 * tiembla}px,0) scale(${1 + .04 * ss((t - S.g07) / 6)})`;
+}
+const golpe = (id, t, t0, d = .4, z = 1.5) => { const k = eo((t - t0) / d); const el = $(id); el.style.transform = `scale(${lerp(z, 1, k)})`; el.style.filter = `blur(${(1 - k) * 14}px)`; };
+const pulsos = () => [S.sesenta, S.cita, S.cambio, S.h1, S.h2, S.h3, S.golpe, S.dia, S.titulo];
+const VOCES = [['h1', 'h2', 'Sin <u>colores</u> políticos', 'UNA HONDUREÑA'], ['h2', 'h3', 'Sin <u>mentiras</u>', 'UN HONDUREÑO'], ['h3', 'g12', 'Queremos vivir <u>tranquilos</u>', 'UN JOVEN HONDUREÑO']];
+function cuadro(t) {
+  g.clearRect(0, 0, W, H); document.querySelectorAll('.capa').forEach(c => c.style.opacity = 0);
+  let flash = flashT;
+  golpeZ = 0; sx = 0; sy = 0; for (const p of pulsos()) { const u = t - p; if (u > 0 && u < .5) { golpeZ = Math.max(golpeZ, .06 * Math.exp(-u * 7)); sx += Math.sin(u * 90) * 14 * Math.exp(-u * 9); sy += Math.cos(u * 70) * 10 * Math.exp(-u * 9); } }
+  if (Math.abs(t - S.golpe) < .05) flash = .5;
+  mapa(t); bandera(t); onda(t); logo(t); comentarios(t);
+  // cifra 58.522: entra con «sesenta mil» y se cuenta
+  if (t > S.sesenta - .1 && t < S.salvador + .1) { op('cifra', vent(t, S.sesenta - .05, S.salvador, .1, .25)); golpe('cifra', t, S.sesenta - .05, .35, 1.6);
+    $('cnum').textContent = Math.round(58522 * eo((t - S.sesenta) / 1.1)).toLocaleString('es-HN').replace(/,/g, '.'); }
+  if (t > S.cita - .1 && t < S.g03 + .1) { op('cita', vent(t, S.cita, S.g03, .12, .35)); const k = eo((t - S.cita) / .35); document.querySelector('#cita .papel').style.transform = `rotate(${lerp(-8, -2, k)}deg) scale(${lerp(1.6, 1, k)})`; }
+  if (t > S.todos - .2 && t < S.g09) { op('todos', vent(t, S.todos - .1, S.g09 - .1, .12, .3)); golpe('todos', t, S.todos - .1, .4, 1.5); }
+  for (const [a0, b0, txt, q] of VOCES) if (t > S[a0] - .1 && t < S[b0] - .05) { op('voces', vent(t, S[a0] - .05, S[b0] - .1, .1, .15)); $('vtxt').innerHTML = txt; $('vquien').textContent = q; golpe('voces', t, S[a0] - .05, .35, 1.35); }
+  if (t > S.titulo - .1 && t < S.cta + .1) { op('titulo', vent(t, S.titulo, S.cta, .1, .35)); golpe('titulo', t, S.titulo, .6, 1.4); }
+  if (t > S.cta - .1 && t < S.logo + .1) { op('cta', vent(t, S.cta, S.logo, .3, .3)); golpe('cta', t, S.cta, .5, 1.15); }
+  if (t > S.dia && t < S.dia + 4.6) { op('firma', vent(t, S.dia + .45, S.dia + 4.5, .35, .4)); const k = eo((t - S.dia - .45) / .6); $('firma').style.transform = `translateX(${(1 - k) * -60}px)`; }
+  if (t > S.logo - .1) { op('fin', ss((t - S.logo) / .5)); const k = eo((t - S.logo) / 1.4); $('logo').style.transform = `scale(${lerp(1.15, 1, k)})`; $('logo').style.filter = `blur(${(1 - k) * 12}px)`; }
+  // color: frío al inicio, cálido con lo nuestro, frío con el miedo, dorado con el pueblo
+  $('calido').style.opacity = Math.max(vent(t, S.g05, S.miedo, 1.2, .8) * .6, vent(t, S.g09, S.g13, 1, 1) * .7, vent(t, S.dia, S.titulo, .5, .3) * .4);
+  $('barras').style.opacity = vent(t, S.g09 - .2, S.h1 - .1, .6, .3) + vent(t, S.g14 - .2, S.salida + .2, .5, .5);
+  polvo(t, vent(t, 0, S.g05, .8, .5) * .7 + vent(t, S.g09, S.g11 + 3, 1, .5) * .5 + vent(t, S.g13, S.salida + 2, 1, .5) * .6);
+  subt(t);
+  const sinCap = (t > S.cita - .05 && t < S.g03) || (t > S.todos - .2 && t < S.g09) || (t > S.h1 - .1 && t < S.g12 - .1) || (t > S.cae - .1 && t < S.romeo - .2) || t > S.titulo - .1;
+  if (sinCap) $('cap').style.opacity = 0;
+  $('cap').classList.toggle('arriba', t > S.g12 - .2 && t < S.g13 - .1);
+  $('fuga').style.opacity = fuga; grano(t); $('flash').style.opacity = flash;
+  $('negro').style.opacity = t < .15 ? 1 : (1 - ss((t - .15) / .5)) * 0 + (t > S.luz && t < S.dia ? ss((t - S.luz) / .8) * .85 * (1 - ss((t - S.dia + .2) / .2)) : 0);
+}
+window.setT = async t => { await tomas(t); cuadro(t); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); return true; };
+await document.fonts.ready; await Promise.all([...document.images].map(i => i.decode().catch(() => {}))); window.LISTO = true;
+</script></body></html>
