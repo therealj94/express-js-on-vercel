@@ -25,7 +25,7 @@ import { ErrorFirma, armarSafeTx, comprobarEjecucion, datosEjecucion, estadoSafe
  * migración, suspender, ratificar pausas), y `constitucional`, la de los tres custodios (roles y
  * registro de los contratos). Sin la de tres, solo se arman operaciones de la operativa.
  */
-export interface ConfigSafe { safe: string; constitucional?: string; multisend?: string }
+export interface ConfigSafe { safe: string; constitucional?: string; multisend?: string; anterior?: string }
 export type CualSafe = 'operativa' | 'constitucional'
 
 const dir = (v: unknown) => { const d = String(v || '').trim(); return /^0x[0-9a-fA-F]{40}$/.test(d) ? d.toLowerCase() : undefined }
@@ -33,7 +33,11 @@ const dir = (v: unknown) => { const d = String(v || '').trim(); return /^0x[0-9a
 export function configSafe(entorno: NodeJS.ProcessEnv): ConfigSafe | null {
   const safe = dir(entorno.SAFE_DIRECCION)
   if (!safe) return null
-  return { safe, constitucional: dir(entorno.SAFE_CONSTITUCIONAL), multisend: dir(entorno.SAFE_MULTISEND) }
+  const constitucional = dir(entorno.SAFE_CONSTITUCIONAL)
+  // SAFE_ANTERIOR: una Safe reemplazada que todavía guarda fondos. Desde ella solo se puede armar la
+  // recuperación hacia la operativa vigente (crearRecuperacion), nunca otra cosa.
+  const anterior = dir(entorno.SAFE_ANTERIOR)
+  return { safe, constitucional, multisend: dir(entorno.SAFE_MULTISEND), ...(anterior && anterior !== safe && anterior !== constitucional ? { anterior } : {}) }
 }
 
 export function direccionSafe(cfg: ConfigSafe, cual: CualSafe = 'operativa'): string {
@@ -207,5 +211,22 @@ export function crearDeRegalo(a: Almacen, cadena: Cadena, cfg: ConfigSafe, l: Li
   return crear(a, cadena, cfg, l.autor, {
     tipo: 'regalo-gas', liberacion: l.id, titulo: l.motivo,
     llamadas: envios.map((r) => ({ to: r.direccion, value: r.monto, data: '0x' })),
+  })
+}
+
+/**
+ * Recupera todo el ORIGEN de la Safe anterior (SAFE_ANTERIOR) hacia la operativa vigente. El destino es
+ * fijo: la plataforma no arma desde la Safe anterior ninguna otra transacción. La firman los custodios
+ * de la Safe anterior, con su umbral; el monto es su saldo al crearla (si después llega más, se arma otra).
+ */
+export async function crearRecuperacion(a: Almacen, cadena: Cadena, cfg: ConfigSafe, autor: string): Promise<Operacion> {
+  if (!cfg.anterior) throw new ErrorFirma('Falta SAFE_ANTERIOR: no hay una Safe anterior de la que recuperar fondos')
+  if (a.datos.operaciones.some((o) => o.tipo === 'recuperacion' && PENDIENTE.has(o.estado))) throw new ErrorFirma('ya hay una recuperación pendiente: fírmala, ejecútala o anúlala primero')
+  const saldo = BigInt(await cadena.llamar('eth_getBalance', [cfg.anterior, 'latest']) as string)
+  if (saldo === 0n) throw new ErrorFirma('la Safe anterior no tiene ORIGEN')
+  return crear(a, cadena, cfg, autor, {
+    tipo: 'recuperacion', enSafe: cfg.anterior,
+    titulo: `Recuperación: todo el ORIGEN de la Safe anterior pasa a la operativa vigente ${cfg.safe}`,
+    llamadas: [{ to: cfg.safe, value: saldo.toString(), data: '0x' }],
   })
 }
