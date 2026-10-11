@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Firma de custodios · Orden Global</title>
+<link rel="stylesheet" href="/estilo.css">
+<style>
+  main { max-width: 720px; }
+  .marca { display: flex; align-items: center; gap: 10px; color: var(--suave); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 18px; }
+  .marca b { color: var(--oro); letter-spacing: .12em; }
+  .hero { background: linear-gradient(160deg, var(--oro-claro), var(--tarjeta) 70%); border: 1px solid var(--linea); border-radius: 16px; padding: 22px; }
+  .hero h1 { font-size: 24px; margin-bottom: 8px; }
+  .fila-dato { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--linea); font-size: 14px; }
+  .fila-dato:last-child { border-bottom: 0; }
+  .fila-dato span:first-child { color: var(--suave); }
+  .progreso { height: 8px; background: var(--linea); border-radius: 99px; overflow: hidden; margin: 14px 0 6px; }
+  .progreso div { height: 100%; background: var(--oro); border-radius: 99px; transition: width .4s; }
+  .custodio { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 14px; }
+  .punto { width: 10px; height: 10px; border-radius: 50%; background: var(--linea); flex: none; }
+  .punto.si { background: var(--bien); }
+  .accion { border: 1px solid var(--linea); border-radius: 12px; padding: 12px 14px; margin: 8px 0; background: var(--tarjeta); }
+  .accion .titulo { font-weight: 700; }
+  .accion .meta { color: var(--suave); font-size: 13px; }
+  .grande { width: 100%; padding: 14px; font-size: 16px; border-radius: 12px; margin-top: 14px; }
+  .paso { color: var(--suave); font-size: 13px; margin-top: 10px; }
+  .listo { text-align: center; padding: 26px 16px; }
+  .listo .icono { font-size: 40px; color: var(--bien); }
+</style>
+</head>
+<body>
+<main>
+  <div class="marca"><b>Orden Global</b> · Firma de custodios · SFSP</div>
+  <div id="contenido"><p class="sub">Cargando la operación…</p></div>
+</main>
+<script>
+const $ = (s) => document.querySelector(s)
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+const corta = (d) => d ? d.slice(0, 8) + '…' + d.slice(-6) : ''
+const id = location.pathname.split('/').filter(Boolean).pop()
+const ACCIONES = {
+  abrirMigracion: 'Abrir la migración a v2 (acuñar lo de la foto publicada)',
+  anunciarMigracion: 'Anunciar la migración (empieza la demora de 7 días)',
+  anunciarEmision: 'Anunciar una emisión', emitir: 'Emitir', fijarRegistro: 'Conectar el registro de elegibilidad (Genesis ID)',
+  grantRole: 'Dar un rol', revokeRole: 'Quitar un rol', pausar: 'Pausar', ratificarPausa: 'Ratificar la pausa', levantarPausa: 'Levantar la pausa',
+  suspender: 'Suspender una cuenta', acreditarLote: 'Acreditar un lote', transfer: 'Transferir tokens',
+}
+const fmt = (n) => Number(n).toLocaleString('es', { maximumFractionDigits: 4 })
+let op
+
+async function cargar() {
+  const r = await fetch('/api/firmar/' + id)
+  op = await r.json()
+  if (!r.ok) { $('#contenido').innerHTML = `<div class="error">${esc(op.error || 'No se pudo cargar')}</div>`; return }
+  pintar()
+}
+
+function pintar(mensaje) {
+  const firmados = new Set(op.firmas.map((f) => f.firmante.toLowerCase()))
+  const pct = Math.min(100, Math.round(op.firmas.length / op.umbral * 100))
+  const estado = { 'en-firma': ['aviso', 'Esperando firmas'], lista: ['', 'Lista para ejecutar'], ejecutada: ['bien', 'Ejecutada'], anulada: ['mal', 'Anulada'], caducada: ['mal', 'Caducada'] }[op.estado] || ['', op.estado]
+  $('#contenido').innerHTML = `
+    <div class="hero">
+      <span class="chip ${estado[0]}">${estado[1]}</span>
+      <h1 style="margin-top:10px">${esc(op.titulo)}</h1>
+      <div class="fila-dato"><span>Firma múltiple</span><span>${esc(op.nombreSafe)}</span></div>
+      <div class="fila-dato"><span>Dirección de la Safe</span><span class="mono">${esc(op.safe)}</span></div>
+      <div class="fila-dato"><span>Red</span><span>Orden Global (${op.chainId}) · nonce ${op.nonce}</span></div>
+      <div class="progreso"><div style="width:${pct}%"></div></div>
+      <div class="paso">${op.firmas.length} de ${op.umbral} firmas necesarias</div>
+    </div>
+
+    <h2>Qué hace exactamente</h2>
+    ${op.llamadas.map((l) => l.resumen ? `<div class="accion"><div class="titulo">${esc(l.resumen)}</div><div class="meta">Total ${fmt(l.total)} ORIGEN</div></div>` : `
+      <div class="accion">
+        <div class="titulo">${esc(ACCIONES[l.accion] || l.accion)}</div>
+        <div class="meta">Destino <span class="mono">${esc(l.destino)}</span>${Number(l.origen) > 0 ? ` · <b>${fmt(l.origen)} ORIGEN</b>` : ''}</div>
+        ${(l.args || []).map((a) => `<div class="meta">${esc(a.nombre)}: <span class="mono">${esc(a.valor)}</span></div>`).join('')}
+        ${l.desconocida ? '<div class="error">Llamada que la plataforma no reconoce: no la firmes sin revisarla con el equipo técnico.</div>' : ''}
+      </div>`).join('')}
+
+    <h2>Custodios</h2>
+    <div class="tarjeta">${op.custodios.map((c) => `<div class="custodio"><span class="punto ${firmados.has(c.toLowerCase()) ? 'si' : ''}"></span><span class="mono">${esc(c)}</span>${firmados.has(c.toLowerCase()) ? '<span class="chip bien">firmó</span>' : ''}</div>`).join('')}</div>
+
+    ${mensaje ? `<div class="${mensaje.error ? 'error' : 'aviso'}">${esc(mensaje.texto)}</div>` : ''}
+    ${op.estado === 'en-firma' ? `
+      <button class="grande" id="firmar">Firmar con MetaMask</button>
+      <p class="paso">Se abre MetaMask con la red Orden Global. Revisa que la Safe y el contenido coincidan con lo de arriba y firma. Firmar no cuesta ORIGEN ni envía nada: la operación sale cuando juntan ${op.umbral} firmas.</p>` : ''}
+    ${op.estado === 'lista' ? `<div class="tarjeta listo"><div class="icono">✓</div><b>Tiene las firmas necesarias.</b><p class="sub">El operador la ejecuta en la red. Si tienes ORIGEN para el gas también puedes ejecutarla tú.</p><button class="sec" id="ejecutar">Ejecutar con mi billetera</button></div>` : ''}
+    ${op.estado === 'ejecutada' ? `<div class="tarjeta listo"><div class="icono">✓</div><b>Ejecutada en la red.</b><p class="mono">${esc(op.tx || '')}</p></div>` : ''}
+    <p class="paso">Hash de la transacción a firmar: <span class="mono">${esc(op.hash)}</span></p>`
+  $('#firmar')?.addEventListener('click', firmar)
+  $('#ejecutar')?.addEventListener('click', ejecutar)
+}
+
+async function billetera() {
+  if (!window.ethereum) throw new Error('Abre este enlace en el navegador de MetaMask (o en un navegador con MetaMask instalado).')
+  const [cuenta] = await ethereum.request({ method: 'eth_requestAccounts' })
+  const hex = '0x' + Number(op.chainId).toString(16)
+  if (parseInt(await ethereum.request({ method: 'eth_chainId' }), 16) !== Number(op.chainId)) {
+    try { await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hex }] }) } catch (e) {
+      if (e.code !== 4902) throw e
+      await ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: hex, chainName: 'Orden Global', nativeCurrency: { name: 'ORIGEN', symbol: 'ORIGEN', decimals: 18 }, rpcUrls: ['https://rpc.ordenglobal-rpc.com/'] }] })
+    }
+  }
+  return cuenta
+}
+
+async function firmar() {
+  try {
+    const cuenta = await billetera()
+    if (!op.custodios.some((c) => c.toLowerCase() === cuenta.toLowerCase())) throw new Error(`La cuenta ${cuenta} no es custodia de esta Safe. Cambia en MetaMask a tu billetera de custodio.`)
+    const datos = { ...op.tipado, types: { EIP712Domain: [{ name: 'chainId', type: 'uint256' }, { name: 'verifyingContract', type: 'address' }], ...op.tipado.types } }
+    const firma = await ethereum.request({ method: 'eth_signTypedData_v4', params: [cuenta, JSON.stringify(datos)] })
+    const r = await fetch(`/api/firmar/${id}/firma`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firma }) })
+    const j = await r.json()
+    if (!r.ok) throw new Error(j.error)
+    await cargar(); pintar({ texto: `Firma registrada (${j.firmas} de ${j.umbral}). Gracias.` })
+  } catch (e) { pintar({ error: true, texto: e.message || String(e) }) }
+}
+
+async function ejecutar() {
+  try {
+    const cuenta = await billetera()
+    const tx = await ethereum.request({ method: 'eth_sendTransaction', params: [{ from: cuenta, to: op.ejecutar.to, data: op.ejecutar.data, gasPrice: '0x' + (93n * 10n ** 9n).toString(16) }] })
+    pintar({ texto: 'Transacción enviada; esperando el bloque…' })
+    for (let i = 0; i < 20; i++) {
+      await new Promise((ok) => setTimeout(ok, 3000))
+      const r = await fetch(`/api/firmar/${id}/ejecutada`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tx }) })
+      if (r.ok) { await cargar(); return }
+      const j = await r.json(); if (!/no está en la cadena/.test(j.error)) throw new Error(j.error)
+    }
+  } catch (e) { pintar({ error: true, texto: e.message || String(e) }) }
+}
+
+cargar()
+</script>
+</body>
+</html>

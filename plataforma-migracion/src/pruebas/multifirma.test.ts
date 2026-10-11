@@ -319,3 +319,28 @@ test('Recuperación desde la Safe anterior: todo su saldo, solo hacia la operati
   assert.equal(o.estado, 'lista')
   assert.equal(OP.detalle(o).ejecutar!.to, SAFE_TRES)
 })
+
+test('Firma directa por enlace: la firma EIP-712 de un custodio es la credencial; nadie más firma', async () => {
+  const s = safeSim()
+  const almacen = enMemoria()
+  const app = crearApp(crearContexto(almacen, new Cadena(simulada(s)), { MIGRACION_SECRETO: 'x'.repeat(40), SAFE_DIRECCION: SAFE_DIR, SAFE_MULTISEND: MULTISEND } as any))
+  const srv = app.listen(0)
+  const base = `http://127.0.0.1:${(srv.address() as AddressInfo).port}`
+  try {
+    const o = await OP.crear(almacen, new Cadena(simulada(s)), cfg, 'ana@og', { tipo: 'contratos', titulo: 'Abrir migración AGKA', llamadas: [{ to: dir(70), value: '0', data: '0xa718bad0' + '00'.repeat(96) }] })
+    const d = await (await fetch(`${base}/api/firmar/${o.id}`)).json()
+    assert.equal(d.umbral, 2); assert.equal(d.custodios.length, 3); assert.equal(d.llamadas[0].accion, 'abrirMigracion')
+    assert.equal((await fetch(`${base}/firmar/${o.id}`)).status, 200, 'la página se sirve')
+    const firmar = async (w: any) => fetch(`${base}/api/firmar/${o.id}/firma`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firma: await w.signTypedData(d.tipado.domain, d.tipado.types, d.tipado.message) }) })
+    const ajeno = await firmar(Wallet.createRandom())
+    assert.equal(ajeno.status, 400); assert.match((await ajeno.json()).error, /no es custodio/)
+    assert.equal((await firmar(CUSTODIOS[0])).status, 200)
+    const otraVez = await firmar(CUSTODIOS[0])
+    assert.equal(otraVez.status, 400, 'la misma billetera no firma dos veces')
+    const r = await (await firmar(CUSTODIOS[2])).json()
+    assert.equal(r.estado, 'lista'); assert.equal(r.firmas, 2)
+    const ej = await fetch(`${base}/api/firmar/${o.id}/ejecutada`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tx: txHash(77) }) })
+    assert.equal(ej.status, 400, 'una ejecución que no está en la cadena no se registra')
+    assert.equal((await fetch(`${base}/api/firmar/no-existe`)).status, 404)
+  } finally { srv.close() }
+})
