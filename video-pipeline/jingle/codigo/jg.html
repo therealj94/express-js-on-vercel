@@ -106,7 +106,7 @@ function cuadro(t) {
   { const [a0, a1] = S.logo_ini; $('logoIni').style.opacity = vent(t, a0, a1, .2, .35); const k = eo((t - a0) / .5); $('logoIni').style.transform = `scale(${lerp(1.1, 1, k)})`; }
   $('fuga').style.opacity = fuga; $('flash').style.opacity = flashT; grano(t);
   $('negro').style.opacity = t > T.total - .4 ? ss((t - (T.total - .4)) / .4) : 0;
-  $('calido').style.opacity = .5 + .2 * ss((t - S.atardecer) / 2);
+  { const n = S.noche ? vent(t, S.noche[0], S.noche[1], .5, .4) : 0; $('calido').style.opacity = (.5 + .2 * ss((t - S.atardecer) / 2)) * (1 - .75 * n); }
 }
 window.setT = async t => { await tomas(t); cuadro(t); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); return true; };
 await document.fonts.ready; await Promise.all([...document.images].map(i => i.decode().catch(() => {}))); window.LISTO = true;
