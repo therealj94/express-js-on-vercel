@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Un día más</title>
+<style>
+@font-face{font-family:'Monoton';src:url(fuentes/Monoton.ttf)}
+@font-face{font-family:'Montserrat';src:url(fuentes/Montserrat.ttf);font-weight:100 900}
+@font-face{font-family:'FrauncesI';src:url(fuentes/FrauncesItalic.ttf);font-weight:100 900}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#000;color:#fff;font-family:'Montserrat',sans-serif}
+.toma{position:absolute;inset:0;overflow:hidden;opacity:0}
+.toma img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#grado{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,transparent 55%,rgba(0,0,0,.5)),linear-gradient(rgba(0,0,0,.25),transparent 14%,transparent 72%,rgba(0,0,0,.55))}
+#calido{position:absolute;inset:0;mix-blend-mode:soft-light;background:linear-gradient(170deg,rgba(255,190,110,.45),rgba(0,140,170,.25));opacity:.55}
+#fuga{position:absolute;inset:0;opacity:0;mix-blend-mode:screen;background:radial-gradient(ellipse 70% 45% at 85% 20%,rgba(255,170,80,.95),transparent 70%),radial-gradient(ellipse 50% 60% at 10% 80%,rgba(255,90,60,.6),transparent 70%)}
+#fx{position:absolute;inset:0}
+.capa{position:absolute;inset:0;opacity:0}
+#hook{position:absolute;left:40px;right:40px;top:1120px;text-align:center;font-weight:900;font-size:150px;line-height:1.08;text-transform:uppercase;letter-spacing:-2px;color:#fff;text-shadow:0 10px 50px rgba(0,0,0,.55);opacity:0}
+#hook .w{display:inline-block;margin:0 14px}
+#hook .y{color:#FFD23A}
+#lugar{position:absolute;left:70px;top:260px;opacity:0}
+#lugar .n{font-weight:900;font-size:64px;letter-spacing:10px;text-shadow:0 4px 24px rgba(0,0,0,.6)}
+#lugar .p{font-weight:600;font-size:28px;letter-spacing:8px;color:#e8f6ff;margin-top:6px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+#lugar .barra{width:90px;height:6px;background:#FFD23A;margin-bottom:18px;transform-origin:left}
+#sub{position:absolute;left:60px;right:60px;top:1590px;text-align:center;font-weight:700;font-size:40px;line-height:1.2;color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.6),0 0 16px rgba(0,0,0,.7);opacity:0}
+#tel{position:absolute;left:150px;right:150px;top:520px;opacity:0;padding:34px 40px;border-radius:44px;background:rgba(20,22,26,.86);backdrop-filter:blur(8px);box-shadow:0 30px 80px rgba(0,0,0,.6)}
+#tel .a{font-weight:600;font-size:28px;color:#9aa3ad;letter-spacing:2px}
+#tel .b{font-weight:900;font-size:62px;margin-top:8px}
+#tel .c{font-weight:600;font-size:32px;color:#cfd6dc;margin-top:6px}
+#tel .bt{margin-top:26px;display:inline-block;padding:14px 30px;border-radius:30px;background:#ff4f5e;font-weight:800;font-size:30px}
+#fin{position:absolute;inset:0;opacity:0}
+#fin img{position:absolute;left:60px;width:960px;top:560px;filter:drop-shadow(0 6px 24px rgba(0,0,0,.55))}
+#fin .t{position:absolute;left:0;right:0;top:960px;text-align:center;font-family:'FrauncesI';font-size:70px;text-shadow:0 4px 30px rgba(0,0,0,.6)}
+#fin .e{position:absolute;left:0;right:0;top:1060px;text-align:center;font-weight:600;font-size:34px;letter-spacing:4px;color:#e6eef3}
+#fin .h{position:absolute;left:0;right:0;top:1160px;text-align:center;font-weight:800;font-size:34px;color:#FFD23A;letter-spacing:2px}
+#flash{position:absolute;inset:0;background:#fff;opacity:0}
+#negro{position:absolute;inset:0;background:#000;opacity:0}
+#wm{position:absolute;right:28px;bottom:36px;width:540px}
+#calido,#fuga,#grado,#fx,#lugar,#tel,#hook,#fin,#sub,#flash,#negro,#wm,#logoIni{z-index:3}
+</style></head><body>
+<div class="toma" id="tA"><img></div><div class="toma" id="tB"><img></div>
+<div id="calido"></div><div id="fuga"></div><div id="grado"></div>
+<canvas id="fx" width="1080" height="1920"></canvas>
+<div id="lugar"><div class="barra"></div><div class="n"></div><div class="p">HONDURAS</div></div>
+<div id="tel"><div class="a">AEROLÍNEA · AHORA</div><div class="b">Boarding now</div><div class="c">Vuelo 412 · Puerta 3</div><div class="bt">Abordar</div></div>
+<div id="hook"></div>
+<img id="logoIni" src="logo_alpha.png" style="position:absolute;left:280px;top:110px;width:520px;opacity:0;filter:drop-shadow(0 4px 16px rgba(0,0,0,.6))">
+<div id="fin"><img src="logo_alpha.png"><div class="t">Más de lo que imaginas</div><div class="e">MORE THAN YOU IMAGINE</div><div class="h">#UnDíaMás</div></div>
+<div id="sub"></div>
+<div id="flash"></div><div id="negro"></div>
+<img id="wm" src="watermark.png">
+<script type="module">
+const W = 1080, H = 1920, $ = id => document.getElementById(id);
+const cl = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x)), ss = x => { x = cl(x); return x * x * (3 - 2 * x); }, eo = x => 1 - Math.pow(1 - cl(x), 3);
+const lerp = (a, b, k) => a + (b - a) * k, vent = (t, a, b, fi = .3, fo = .3) => ss((t - a) / fi) * (1 - ss((t - (b - fo)) / fo));
+const T = await (await fetch('tiempos.json')).json(); const C = T.C, S = T.s;
+const NF = await (await fetch('nf.json')).json();
+/* tiempo dentro del clip con rampa de velocidad: c[4] = velocidad o [v0, v1, v2] (inicio, medio, fin) */
+function tclip(c, t) { const d = t - c[1], L = c[2] - c[1], v = Array.isArray(c[4]) ? c[4] : [c[4], c[4], c[4]];
+  const n = 40; let s = 0; for (let i = 0; i < n; i++) { const u = (i + .5) / n * Math.min(1, d / L); const k = u < .5 ? lerp(v[0], v[1], ss(u * 2)) : lerp(v[1], v[2], ss(u * 2 - 1)); s += k * Math.min(d, L) / n; } return c[3] + s; }
+function marco(c, t) { const n = Math.min(NF[c[0]] || 150, Math.max(1, Math.round(tclip(c, t) * 30) + 1)); return `clips/${c[0]}/${String(n).padStart(5, '0')}.jpg`; }
+let golpeZ = 0, sx = 0, sy = 0, flashT = 0, fuga = 0;
+async function pinta(capa, c, t, e) { const el = $(capa), im = el.querySelector('img'); if (!c) { el.style.opacity = 0; return; }
+  const src = marco(c, t); if (!im.src.endsWith(src)) { im.src = src; await im.decode().catch(() => {}); }
+  const u = cl((t - c[1]) / (c[2] - c[1])); const z = lerp(c[5], c[6], ss(u)) * (e.z || 1) * (1 + golpeZ);
+  im.style.transform = `translate(${(e.x || 0) + sx}px,${(e.y || 0) + sy + (c[9] || 0)}px) scale(${z}) rotate(${e.r || 0}deg)`;
+  el.style.filter = `blur(${e.b || 0}px) brightness(${e.l || 1}) saturate(${e.s || 1.08})`; el.style.opacity = e.o ?? 1; }
+/* transiciones: corte, whip (latigazo lateral), whipv (vertical), zoom (punch), flash, fuga (luz), giro */
+async function tomas(t) {
+  flashT = 0; fuga = 0;
+  const i = C.findIndex(c => t >= c[1] && t < c[2]); if (i < 0) { $('tA').style.opacity = 0; $('tB').style.opacity = 0; return; }
+  const c = C[i], sig = C[i + 1], ant = C[i - 1]; let a = { o: 1 }, b = null, cb = null;
+  const LAT = new Set(['whip', 'whipv']);
+  // latigazo: la toma saliente y la entrante se desplazan juntas alrededor del corte, con desenfoque de movimiento
+  const lat = (cur, nxt, tb, h, ref) => { const u = cl((t - (tb - h)) / (2 * h)), bl = Math.sin(Math.PI * u) * 70, l = 1 + Math.sin(Math.PI * u) * .35;
+    const v = nxt[7] === 'whipv'; const off = x => v ? { y: x * 1920 } : { x: x * 1080 };
+    return [{ ...off(-u), b: bl, l }, { ...off(1 - u), b: bl, l }]; };
+  if (sig && LAT.has(sig[7]) && t > c[2] - (sig[8] || .3) / 2) { const [ea, eb] = lat(c, sig, c[2], (sig[8] || .3) / 2); a = { o: 1, ...ea }; cb = sig; b = { o: 1, ...eb }; }
+  else if (ant && LAT.has(c[7]) && t < c[1] + (c[8] || .3) / 2) { const [ea, eb] = lat(ant, c, c[1], (c[8] || .3) / 2); cb = ant; b = { o: 1, ...ea }; a = { o: 1, ...eb }; }
+  else {
+    const ent = (tr, e) => tr === 'zoom' ? { z: 1 + e * .5, b: e * 30, l: 1 + e * .9 } : tr === 'giro' ? { r: e * 25, z: 1 + e * .35, b: e * 35 } : {};
+    const sal = (tr, e) => tr === 'zoom' ? { z: 1 + e * .7, b: e * 30, l: 1 + e * 1.2 } : tr === 'giro' ? { r: -e * 25, z: 1 + e * .35, b: e * 35 } : {};
+    const d = c[8] || .25, k = (t - c[1]) / (d / 2);
+    if (k < 1 && ant) { const e = 1 - ss(k); a = { ...a, ...ent(c[7], e) }; if (c[7] === 'flash') flashT = e * .85; if (c[7] === 'fuga') { cb = ant; b = { o: e }; fuga = e * .55; } }
+    if (sig && sig[1] <= c[2] + .01) { const d2 = sig[8] || .25, k2 = (c[2] - t) / (d2 / 2); if (k2 < 1) { const e = 1 - ss(k2); a = { ...a, ...sal(sig[7], e) }; if (sig[7] === 'flash') flashT = Math.max(flashT, e * .5); if (sig[7] === 'fuga') { fuga = Math.max(fuga, e * .55); cb = sig; b = { o: e * .6 }; } } }
+  }
+  await pinta('tA', c, t, a); await pinta('tB', cb, t, b || { o: 0 }); $('tA').style.zIndex = 1; $('tB').style.zIndex = cb && LAT.has((cb === sig ? sig : c)[7]) ? 1 : 0;
+}
+/* golpes al ritmo */
+const GOLPES = T.golpes || [];
+/* textos */
+function hook(t) { let html = '', a = 0, z = 1;
+  for (const [t0, t1, palabras] of T.hook) if (t >= t0 - .05 && t < t1) { a = vent(t, t0 - .05, t1, .05, .15);
+    html = palabras.map(([w, tw, y]) => { const k = eo((t - tw) / .18); return t >= tw - .02 ? `<span class="w ${y ? 'y' : ''}" style="transform:scale(${lerp(1.6, 1, k)});opacity:${k}">${w}</span>` : ''; }).join(' '); }
+  $('hook').innerHTML = html; $('hook').style.opacity = a; }
+function subs(t) { let s = '', a = 0; for (const [t0, t1, txt] of T.subs) if (t >= t0 && t < t1) { s = txt; a = vent(t, t0, t1, .08, .12); } $('sub').textContent = s; $('sub').style.opacity = a; }
+function lugar(t) { let a = 0; for (const [t0, t1, n] of T.lugares) if (t >= t0 && t < t1) { a = vent(t, t0, t1, .2, .3); document.querySelector('#lugar .n').textContent = n;
+  const k = eo((t - t0) / .5); document.querySelector('#lugar .barra').style.transform = `scaleX(${k})`; $('lugar').style.transform = `translateX(${(1 - k) * -40}px)`; } $('lugar').style.opacity = a; }
+function tel(t) { const [t0, t1] = S.tel; const a = vent(t, t0, t1, .15, .2); $('tel').style.opacity = a; const k = eo((t - t0) / .35); $('tel').style.transform = `translateY(${(1 - k) * -120}px)`; }
+function fin(t) { const a = ss((t - S.fin) / .5); $('fin').style.opacity = a; const k = eo((t - S.fin) / 1.2); document.querySelector('#fin img').style.transform = `scale(${lerp(1.12, 1, k)})`; document.querySelector('#fin img').style.filter = `blur(${(1 - k) * 10}px)`;
+  document.querySelector('#fin .t').style.opacity = ss((t - S.lema) / .4); document.querySelector('#fin .e').style.opacity = ss((t - S.lema - .3) / .4); document.querySelector('#fin .h').style.opacity = ss((t - S.lema - .6) / .4); }
+const fx = $('fx'), g = fx.getContext('2d');
+function grano(t) { g.save(); g.globalAlpha = .045; for (let i = 0; i < 1400; i++) { const x = (Math.sin(i * 12.9 + t * 91) * 43758.5 % 1 + 1) % 1 * W, y = (Math.sin(i * 78.2 + t * 37) * 12543.1 % 1 + 1) % 1 * H; g.fillStyle = i % 2 ? '#fff' : '#000'; g.fillRect(x, y, 2, 2); } g.restore(); }
+function cuadro(t) {
+  g.clearRect(0, 0, W, H);
+  golpeZ = 0; sx = 0; sy = 0; for (const [p, f] of GOLPES) { const u = t - p; if (u > 0 && u < .4) { golpeZ = Math.max(golpeZ, .045 * f * Math.exp(-u * 9)); sx += Math.sin(u * 95) * 9 * f * Math.exp(-u * 11); sy += Math.cos(u * 80) * 7 * f * Math.exp(-u * 11); } }
+  hook(t); subs(t); lugar(t); tel(t); fin(t);
+  { const [a0, a1] = S.logo_ini; $('logoIni').style.opacity = vent(t, a0, a1, .2, .35); const k = eo((t - a0) / .5); $('logoIni').style.transform = `scale(${lerp(1.1, 1, k)})`; }
+  $('fuga').style.opacity = fuga; $('flash').style.opacity = flashT; grano(t);
+  $('negro').style.opacity = t > T.total - .4 ? ss((t - (T.total - .4)) / .4) : 0;
+  $('calido').style.opacity = .5 + .2 * ss((t - S.atardecer) / 2);
+}
+window.setT = async t => { await tomas(t); cuadro(t); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); return true; };
+await document.fonts.ready; await Promise.all([...document.images].map(i => i.decode().catch(() => {}))); window.LISTO = true;
+</script></body></html>
