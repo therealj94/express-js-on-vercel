@@ -386,6 +386,7 @@ async function verOperacion(id) {
       ${o.estado === 'caducada' && o.firmas.length >= o.umbral && (firmante || operador) ? `<button class="sec" data-registrar="${esc(o.id)}">Registrar ejecución</button>` : ''}
       ${pendiente && firmante && o.tipo !== 'anulacion' ? `<button class="sec" data-anular="${esc(o.id)}">Anular</button>` : ''}
     </div>
+    ${pendiente ? `<p class="sub">Enlace para que los custodios firmen sin cuenta en el panel: <a class="mono" href="/firmar/${esc(o.id)}" target="_blank">${esc(location.origin)}/firmar/${esc(o.id)}</a></p>` : ''}
     ${o.ejecutar ? `<p class="sub">Lista: cualquiera con ORIGEN para el gas la puede mandar. Destino <span class="mono">${esc(o.ejecutar.to)}</span>, datos en «Descargar para firmar».</p>` : ''}</div>`
   return o
 }

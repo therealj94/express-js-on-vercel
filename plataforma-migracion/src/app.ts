@@ -8,6 +8,7 @@ import type { Cadena } from './cadena.js'
 import type { Arbol } from './merkle.js'
 import { rutasPublicas } from './rutas/publico.js'
 import { rutasPanel } from './rutas/panel.js'
+import { rutasFirmar } from './rutas/firmar.js'
 import { configSafe, type ConfigSafe } from './operaciones.js'
 
 const PUBLICO = join(dirname(fileURLToPath(import.meta.url)), '..', 'public')
@@ -63,8 +64,10 @@ export function crearApp(ctx: Contexto) {
   app.get('/healthz', (_req, res) => res.json({ ok: true, motor: ctx.almacen.motor }))
   app.use('/api', rutasPublicas(ctx))
   app.use('/api/panel', rutasPanel(ctx))
+  app.use('/api/firmar', rutasFirmar(ctx))
   app.get('/', (_req, res) => res.sendFile(join(PUBLICO, 'index.html')))
   app.get('/panel', (_req, res) => res.sendFile(join(PUBLICO, 'panel.html')))
+  app.get('/firmar/:id', (_req, res) => res.sendFile(join(PUBLICO, 'firmar.html')))
   app.get('/estilo.css', (_req, res) => res.sendFile(join(PUBLICO, 'estilo.css')))
   return app
 }
