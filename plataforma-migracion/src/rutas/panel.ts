@@ -276,7 +276,11 @@ export function rutasPanel(ctx: Contexto) {
     try {
       const [e, saldo] = await Promise.all([OP.estado(ctx.cadena, safe), ctx.cadena.llamar('eth_getBalance', [safe.safe, 'latest'])])
       const constitucional = safe.constitucional ? { safe: safe.constitucional, ...(await OP.estado(ctx.cadena, safe.constitucional)) } : null
-      res.json({ configurada: true, safe: safe.safe, multisend: safe.multisend ?? null, ...e, saldo: BigInt(saldo).toString(), constitucional })
+      const anterior = safe.anterior ? {
+        safe: safe.anterior, ...(await OP.estado(ctx.cadena, safe.anterior)),
+        saldo: BigInt(await ctx.cadena.llamar('eth_getBalance', [safe.anterior, 'latest']) as string).toString(),
+      } : null
+      res.json({ configurada: true, safe: safe.safe, multisend: safe.multisend ?? null, ...e, saldo: BigInt(saldo).toString(), constitucional, anterior })
     } catch (e) { fallo(res, e) }
   })
 
@@ -303,6 +307,16 @@ export function rutasPanel(ctx: Contexto) {
       // La operativa (dos de tres) por defecto; la de los tres custodios para roles y registro (§5.3).
       const enSafe = OP.direccionSafe(safe, b.safe === 'constitucional' ? 'constitucional' : 'operativa')
       const o = await OP.crear(a, ctx.cadena, safe, quien(req), { tipo: 'contratos', titulo: String(b.titulo || b.archivo?.meta?.name || ''), llamadas, enSafe })
+      await a.guardar()
+      res.status(201).json(OP.detalle(o))
+    } catch (e) { fallo(res, e) }
+  })
+
+  /** Todo el ORIGEN de la Safe anterior a la operativa vigente: destino fijo, lo firman sus custodios. */
+  r.post('/operaciones/recuperar', exige('operador'), async (req, res) => {
+    if (!safe) return sinSafe(res)
+    try {
+      const o = await OP.crearRecuperacion(a, ctx.cadena, safe, quien(req))
       await a.guardar()
       res.status(201).json(OP.detalle(o))
     } catch (e) { fallo(res, e) }

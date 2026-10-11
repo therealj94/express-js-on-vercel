@@ -48,6 +48,7 @@ El servicio está en el `render.yaml` de la raíz, desplegando desde `main`.
 | `MIGRACION_UMBRAL` | Firmas para aprobar una liberación **sin** firma múltiple configurada (por defecto 2). Con la Safe, el umbral es el de la Safe. |
 | `SAFE_DIRECCION` | La firma múltiple operativa (Safe 1.4.1, dos de tres). Con ella, aprobar es firmar la transacción de la Safe con la billetera de custodio. |
 | `SAFE_CONSTITUCIONAL` | La firma múltiple de los tres custodios: roles y registro de los contratos (SFSP §5.3). Opcional; sin ella esas operaciones no se arman aquí. |
+| `SAFE_ANTERIOR` | Una Safe reemplazada que todavía guarda fondos. Desde ella la plataforma solo arma la **recuperación**: todo su ORIGEN a la operativa vigente, firmado por los custodios de esa Safe con su umbral. Se quita cuando queda vacía. |
 | `SAFE_MULTISEND` | El `MultiSendCallOnly` desplegado con la Safe: varias llamadas (como una tanda del regalo) van en una sola transacción. |
 | `RPC_ORDEN_URL` | Nodo de la red 5550 (por defecto `https://rpc.ordenglobal-rpc.com/`). |
 | `V2_<CLAVE>` | Contrato v2 de cada moneda, cuando esté desplegado. |

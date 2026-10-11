@@ -125,7 +125,7 @@ export interface FirmaSafe {
 /** Una transacción de la firma múltiple (operaciones.ts). */
 export interface Operacion {
   id: string
-  tipo: 'liberacion' | 'regalo-gas' | 'contratos' | 'anulacion'
+  tipo: 'liberacion' | 'regalo-gas' | 'contratos' | 'anulacion' | 'recuperacion'
   titulo: string
   liberacion?: string
   llamadas: { to: string; value: string; data: string }[]

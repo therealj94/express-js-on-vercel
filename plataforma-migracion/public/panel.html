@@ -109,7 +109,7 @@
         <p class="sub">Abrir una migración, fijar el registro, dar o quitar un rol. Pega el archivo que genera <span class="mono">contratos-v2/scripts/lotes-safe.ts</span>, o una lista JSON de llamadas <span class="mono">[{"to":"0x…","value":"0","data":"0x…"}]</span>. Varias llamadas van en un solo lote.</p>
         <div class="fila" style="margin-bottom:8px">
           <input id="opTitulo" class="largo" placeholder="Título (qué hace y por qué)">
-          <select id="opSafe" aria-label="Firma múltiple"><option value="operativa">Operativa (2 de 3): migración, emisión, quema, suspensión, pausas</option><option value="constitucional">De los tres custodios: roles y registro</option></select>
+          <select id="opSafe" aria-label="Firma múltiple"><option value="operativa">Operativa: migración, emisión, quema, suspensión, pausas</option><option value="constitucional">Administración: roles y registro</option></select>
         </div>
         <textarea id="opLlamadas" placeholder='{"transactions":[…]}  o  [{"to":"0x…","value":"0","data":"0x…"}]'></textarea>
         <button id="crearOperacion" style="margin-top:8px">Crear operación</button>
@@ -337,8 +337,12 @@ const cargarMultifirma = intentar(async () => {
   }
   $('#estadoSafe').innerHTML = `<b>Operativa</b> <span class="mono">${esc(m.safe)}</span> · ${m.umbral} de ${m.duenos.length} · próximo nonce ${m.nonce} · tiene ${unidades(m.saldo)} ORIGEN
     <div class="meta">Custodios: ${m.duenos.map((d) => `<span class="mono">${esc(d)}</span>`).join(' · ')}</div>
-    ${m.constitucional ? `<div style="margin-top:6px"><b>De los tres custodios</b> <span class="mono">${esc(m.constitucional.safe)}</span> · ${m.constitucional.umbral} de ${m.constitucional.duenos.length} · próximo nonce ${m.constitucional.nonce}</div>` : '<div class="meta">Sin la firma múltiple de los tres custodios (SAFE_CONSTITUCIONAL): los roles y el registro de los contratos no se pueden operar desde aquí.</div>'}`
-  safeNombre = { [m.safe]: 'operativa', ...(m.constitucional ? { [m.constitucional.safe]: 'tres custodios' } : {}) }
+    ${m.constitucional ? `<div style="margin-top:6px"><b>Administración</b> <span class="mono">${esc(m.constitucional.safe)}</span> · ${m.constitucional.umbral} de ${m.constitucional.duenos.length} · próximo nonce ${m.constitucional.nonce}</div>` : '<div class="meta">Sin la firma múltiple de administración (SAFE_CONSTITUCIONAL): los roles y el registro de los contratos no se pueden operar desde aquí.</div>'}
+    ${m.anterior ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--borde, #ddd)"><b>Safe anterior (reemplazada)</b> <span class="mono">${esc(m.anterior.safe)}</span> · ${m.anterior.umbral} de ${m.anterior.duenos.length} · tiene <b>${unidades(m.anterior.saldo)} ORIGEN</b>
+      <div class="meta">Custodios: ${m.anterior.duenos.map((d) => `<span class="mono">${esc(d)}</span>`).join(' · ')}</div>
+      <div class="meta">Solo se puede recuperar: todo su ORIGEN pasa a la operativa vigente. La firman ${m.anterior.umbral} de sus custodios.</div>
+      ${yo.roles.includes('operador') && BigInt(m.anterior.saldo) > 0n ? '<button id="recuperar" style="margin-top:6px">Preparar la recuperación</button>' : ''}</div>` : ''}`
+  safeNombre = { [m.safe]: 'operativa', ...(m.constitucional ? { [m.constitucional.safe]: 'administración' } : {}), ...(m.anterior ? { [m.anterior.safe]: 'Safe anterior' } : {}) }
   $('#opSafe').disabled = !m.constitucional
   $('#formOperacion').classList.toggle('oculto', !yo.roles.includes('operador'))
   const ops = await api('/operaciones')
@@ -385,6 +389,14 @@ async function verOperacion(id) {
     ${o.ejecutar ? `<p class="sub">Lista: cualquiera con ORIGEN para el gas la puede mandar. Destino <span class="mono">${esc(o.ejecutar.to)}</span>, datos en «Descargar para firmar».</p>` : ''}</div>`
   return o
 }
+
+$('#estadoSafe').addEventListener('click', intentar(async (e) => {
+  if (e.target.id !== 'recuperar') return
+  if (!confirm('Se prepara una operación en la Safe anterior que manda TODO su ORIGEN a la operativa vigente. La firman sus custodios. ¿Continuar?')) return
+  const o = await api('/operaciones/recuperar', { method: 'POST' })
+  aviso('Recuperación preparada: espera las firmas de los custodios de la Safe anterior.')
+  await cargarMultifirma(); await verOperacion(o.id)
+}))
 
 $('#tablaOps').addEventListener('click', intentar(async (e) => {
   const b = e.target.closest('button'); if (b?.dataset.ver) await verOperacion(b.dataset.ver)

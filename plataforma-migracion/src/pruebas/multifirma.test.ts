@@ -295,3 +295,27 @@ test('Sin SAFE_DIRECCION la plataforma sigue como antes', async () => {
   assert.equal(OP.configSafe({ SAFE_DIRECCION: 'no' }), null)
   assert.deepEqual(OP.configSafe({ SAFE_DIRECCION: SAFE_DIR.toUpperCase().replace('0X', '0x') }), { safe: SAFE_DIR, constitucional: undefined, multisend: undefined })
 })
+
+test('Recuperación desde la Safe anterior: todo su saldo, solo hacia la operativa, con las firmas de sus custodios', async () => {
+  const s = safeSim()
+  const cadena = new Cadena(simulada(s))
+  const a = enMemoria()
+  await assert.rejects(OP.crearRecuperacion(a, cadena, cfg, 'ana@og'), /SAFE_ANTERIOR/)
+  // La Safe anterior es configurable por variable, y nunca puede ser la vigente.
+  assert.equal(OP.configSafe({ SAFE_DIRECCION: SAFE_DIR, SAFE_ANTERIOR: SAFE_TRES })!.anterior, SAFE_TRES)
+  assert.equal(OP.configSafe({ SAFE_DIRECCION: SAFE_DIR, SAFE_ANTERIOR: SAFE_DIR })!.anterior, undefined)
+  const cfgA: OP.ConfigSafe = { ...cfg, anterior: SAFE_TRES }
+  await assert.rejects(OP.crearRecuperacion(a, cadena, cfgA, 'ana@og'), /no tiene ORIGEN/)
+  s.saldos[SAFE_TRES] = 999_999_988_919n * E
+  const o = await OP.crearRecuperacion(a, cadena, cfgA, 'ana@og')
+  assert.equal(o.safe, SAFE_TRES, 'la firma la Safe anterior')
+  assert.equal(o.tipo, 'recuperacion')
+  assert.deepEqual(o.llamadas, [{ to: getAddress(SAFE_DIR), value: (999_999_988_919n * E).toString(), data: '0x' }], 'todo el saldo, a la operativa vigente')
+  assert.equal(o.safeTx.operation, 0)
+  await assert.rejects(OP.crearRecuperacion(a, cadena, cfgA, 'ana@og'), /ya hay una recuperación pendiente/)
+  const d = OP.detalle(o)
+  assert.equal(d.tipado.domain.verifyingContract, getAddress(SAFE_TRES))
+  for (const [i, quien] of ['beto@og', 'caro@og', 'dani@og'].entries()) await OP.firmar(a, cadena, cfgA, o.id, quien, await firma(CUSTODIOS[i], d))
+  assert.equal(o.estado, 'lista')
+  assert.equal(OP.detalle(o).ejecutar!.to, SAFE_TRES)
+})
