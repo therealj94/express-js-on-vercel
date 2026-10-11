@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { time } from '@nomicfoundation/hardhat-toolbox/network-helpers'
 import { StandardMerkleTree } from '@openzeppelin/merkle-tree'
-import { prepararLotes, type Archivo } from '../scripts/lotes'
+import { acreditarPendientes, prepararLotes, type Archivo } from '../scripts/lotes'
 import acunacion from './acunacion-ejemplo.json'
 
 const E = 10n ** 18n
@@ -82,5 +82,29 @@ describe('lotes para la firma múltiple', () => {
     const roto = { ...a, tenedores: a.tenedores.map((t, i) => (i === 0 ? { ...t, acunar: (BigInt(t.acunar) + 1n).toString() } : t)) }
     await expect(prepararLotes(ethers, roto, dir, ethers.provider, token as any)).to.be.rejectedWith(/no verifica/)
     await expect(prepararLotes(ethers, { ...a, totalAcunar: '1' }, dir, ethers.provider, token as any)).to.be.rejectedWith(/no coincide/)
+  })
+
+  it('en la 5550: la Safe solo abre, y la acreditación la manda cualquiera por lotes, retomable', async () => {
+    const [, multifirma, ana, beto, caro, dani, extrano] = await ethers.getSigners()
+    const token = await ethers.deployContract('TokenSFSP', ['AGKA', 'AGKA', 'P', 'SFSP-300', multifirma.address, multifirma.address, [multifirma.address], 0])
+    const dir = await token.getAddress()
+    const a = archivo([[ana.address, 3n * E], [beto.address, 5n * E], [caro.address, 7n * E], [dani.address, 11n * E]])
+    // Sin abrir no acredita nada.
+    await expect(acreditarPendientes(ethers, a, token.connect(extrano) as any)).to.be.rejectedWith(/no está abierta/)
+    const r = await prepararLotes(ethers, a, dir, ethers.provider, token as any, { soloApertura: true })
+    expect(r.transacciones).to.have.length(1)
+    await ejecutar(multifirma, r.transacciones)
+    // Se corta después del primer lote (lote de 1): al volver a correr solo manda lo que falta.
+    const t0 = a.tenedores[0]
+    await (await token.connect(extrano).acreditar(a.raiz, t0.direccion, t0.acunar, t0.prueba)).wait()
+    const fin = await acreditarPendientes(ethers, a, token.connect(extrano) as any, { lote: 2 })
+    expect(fin).to.include({ lotes: 2, acreditadas: 3 })
+    expect(await token.totalSupply()).to.equal(26n * E)
+    expect(await token.restante(a.raiz)).to.equal(0n)
+    expect((await acreditarPendientes(ethers, a, token.connect(extrano) as any)).acreditadas).to.equal(0)
+    // Un archivo cuyo total no coincide con lo abierto no se manda.
+    const otro = archivo([[ana.address, 1n * E], [extrano.address, 2n * E]])
+    await ejecutar(multifirma, [{ to: dir, data: token.interface.encodeFunctionData('abrirMigracion', [otro.raiz, 5n * E, ethers.ZeroHash]) }])
+    await expect(acreditarPendientes(ethers, otro, token.connect(extrano) as any)).to.be.rejectedWith(/no coincide con lo pendiente/)
   })
 })
