@@ -149,5 +149,14 @@ describe('firma múltiple (Safe 1.4.1, 2 de 3)', () => {
     expect(() => M.llamada({ to: c1.address, value: -1 })).to.throw(/negativo/)
     expect(() => M.armarSafeTx([M.llamada({ to: c1.address }), M.llamada({ to: c1.address })], 0)).to.throw(/SAFE_MULTISEND/)
   })
+
+  it('con más firmas que el umbral (la plataforma pide una más si no sabe la billetera de quien propone), la Safe ejecuta', async () => {
+    const { quien, c1, c2, c3, ana, safe, chainId } = await preparar()
+    await quien.sendTransaction({ to: safe, value: 10n * E })
+    const t = M.armarSafeTx([M.llamada({ to: ana.address, value: E })], 0)
+    const antes = await ethers.provider.getBalance(ana.address)
+    await ejecutar(quien, safe, t, [await firmar(c3, safe, chainId, t), await firmar(c1, safe, chainId, t), await firmar(c2, safe, chainId, t)])
+    expect(await ethers.provider.getBalance(ana.address)).to.equal(antes + E)
+  })
 })
 

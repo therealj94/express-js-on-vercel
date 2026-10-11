@@ -71,11 +71,12 @@ function pintar(mensaje) {
       <div class="fila-dato"><span>Dirección de la Safe</span><span class="mono">${esc(op.safe)}</span></div>
       <div class="fila-dato"><span>Red</span><span>Orden Global (${op.chainId}) · nonce ${op.nonce}</span></div>
       <div class="progreso"><div style="width:${pct}%"></div></div>
-      <div class="paso">${op.firmas.length} de ${op.umbral} firmas necesarias</div>
+      <div class="paso">${op.firmas.length} de ${op.umbral} firmas necesarias${op.umbral > op.umbralSafe ? ` (la Safe pide ${op.umbralSafe}; se pide una más porque quien la propuso no firma como uno de ellos)` : ''} · propuso ${esc(op.propone)}</div>
     </div>
 
     <h2>Qué hace exactamente</h2>
-    ${op.llamadas.map((l) => l.resumen ? `<div class="accion"><div class="titulo">${esc(l.resumen)}</div><div class="meta">Total ${fmt(l.total)} ORIGEN</div></div>` : `
+    ${op.totalLlamadas > 1 ? `<div class="aviso">Lote de <b>${op.totalLlamadas}</b> llamadas${Number(op.totalOrigen) > 0 ? ` · total <b>${fmt(op.totalOrigen)} ORIGEN</b>` : ''}. Están todas abajo: revísalas antes de firmar.</div>` : ''}
+    ${op.llamadas.map((l) => `
       <div class="accion">
         <div class="titulo">${esc(ACCIONES[l.accion] || l.accion)}</div>
         ${Number(l.origen) > 0 ? `<div class="monto">${fmt(l.origen)} ORIGEN</div>` : ''}

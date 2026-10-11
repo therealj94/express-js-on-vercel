@@ -67,10 +67,12 @@ export function rutasFirmar(ctx: Contexto) {
       res.json({
         id: o.id, titulo: o.titulo, tipo: o.tipo, estado: o.estado, creada: o.creada,
         safe: o.safe, nombreSafe: nombreSafe(o.safe), chainId: o.chainId, nonce: o.safeTx.nonce, hash: o.hash,
-        umbral: e.umbral, custodios: e.duenos.map((d) => ({ direccion: d, nombre: nombres[d.toLowerCase()] ?? null })), nonceSafe: e.nonce,
+        umbral: OP.firmasNecesarias(ctx.safe ?? { safe: o.safe }, o.autor, e.umbral, e.duenos.length).necesarias, umbralSafe: e.umbral, propone: o.autor, custodios: e.duenos.map((d) => ({ direccion: d, nombre: nombres[d.toLowerCase()] ?? null })), nonceSafe: e.nonce,
         firmas: o.firmas.map((f) => ({ firmante: f.firmante, fecha: f.fecha })),
         destinos: Object.fromEntries(o.llamadas.map((l) => l.to.toLowerCase()).filter((d) => d === ctx.safe?.safe || d === ctx.safe?.constitucional).map((d) => [d, nombreSafe(d)])),
-        llamadas: o.llamadas.length > 12 ? [...o.llamadas.slice(0, 12).map(describirLlamada), { resumen: `y ${o.llamadas.length - 12} más`, total: formatEther(o.llamadas.reduce((s, l) => s + BigInt(l.value || '0'), 0n)) }] : o.llamadas.map(describirLlamada),
+        // Todas las llamadas, sin recortar: el custodio tiene que poder ver cada destino y cada dato antes de firmar.
+        llamadas: o.llamadas.map(describirLlamada),
+        totalOrigen: formatEther(o.llamadas.reduce((s, l) => s + BigInt(l.value || '0'), 0n)),
         totalLlamadas: o.llamadas.length,
         tipado: d.tipado, ejecutar: d.ejecutar, tx: o.tx ?? null,
       })
