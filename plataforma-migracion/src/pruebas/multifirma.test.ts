@@ -329,7 +329,7 @@ test('Firma directa por enlace: la firma EIP-712 de un custodio es la credencial
   try {
     const o = await OP.crear(almacen, new Cadena(simulada(s)), cfg, 'ana@og', { tipo: 'contratos', titulo: 'Abrir migración AGKA', llamadas: [{ to: dir(70), value: '0', data: '0xa718bad0' + '00'.repeat(96) }] })
     const d = await (await fetch(`${base}/api/firmar/${o.id}`)).json()
-    assert.equal(d.umbral, 2); assert.equal(d.custodios.length, 3); assert.equal(d.llamadas[0].accion, 'abrirMigracion')
+    assert.equal(d.umbral, 2); assert.equal(d.custodios.length, 3); assert.ok(d.custodios[0].direccion); assert.equal(d.llamadas[0].accion, 'abrirMigracion')
     assert.equal((await fetch(`${base}/firmar/${o.id}`)).status, 200, 'la página se sirve')
     const firmar = async (w: any) => fetch(`${base}/api/firmar/${o.id}/firma`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firma: await w.signTypedData(d.tipado.domain, d.tipado.types, d.tipado.message) }) })
     const ajeno = await firmar(Wallet.createRandom())

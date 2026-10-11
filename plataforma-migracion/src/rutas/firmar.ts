@@ -33,7 +33,7 @@ const CONOCIDAS = new Interface([
 
 export function describirLlamada(l: { to: string; value: string; data: string }) {
   const origen = BigInt(l.value || '0')
-  if (!l.data || l.data === '0x') return { destino: l.to, origen: formatEther(origen), accion: origen > 0n ? `Enviar ${formatEther(origen)} ORIGEN` : 'Transacción vacía (anula el nonce)' }
+  if (!l.data || l.data === '0x') return { destino: l.to, origen: formatEther(origen), accion: origen > 0n ? 'envio' : 'vacia' }
   try {
     const f = CONOCIDAS.parseTransaction({ data: l.data, value: origen })!
     const args = f.fragment.inputs.map((p, i) => {
@@ -50,6 +50,8 @@ export function rutasFirmar(ctx: Contexto) {
   const r = Router()
   const a = ctx.almacen
 
+  // SAFE_NOMBRES="0xabc…=José Medardo Ordóñez · Presidente;0xdef…=…": quién es cada custodio, para la página.
+  const nombres: Record<string, string> = Object.fromEntries(String(ctx.entorno.SAFE_NOMBRES || '').split(';').map((p) => p.split('=')).filter((p) => p.length === 2).map(([d, n]) => [d.trim().toLowerCase(), n.trim()]))
   const nombreSafe = (s: string) => {
     const cfg = ctx.safe
     if (!cfg) return s
@@ -65,8 +67,9 @@ export function rutasFirmar(ctx: Contexto) {
       res.json({
         id: o.id, titulo: o.titulo, tipo: o.tipo, estado: o.estado, creada: o.creada,
         safe: o.safe, nombreSafe: nombreSafe(o.safe), chainId: o.chainId, nonce: o.safeTx.nonce, hash: o.hash,
-        umbral: e.umbral, custodios: e.duenos, nonceSafe: e.nonce,
+        umbral: e.umbral, custodios: e.duenos.map((d) => ({ direccion: d, nombre: nombres[d.toLowerCase()] ?? null })), nonceSafe: e.nonce,
         firmas: o.firmas.map((f) => ({ firmante: f.firmante, fecha: f.fecha })),
+        destinos: Object.fromEntries(o.llamadas.map((l) => l.to.toLowerCase()).filter((d) => d === ctx.safe?.safe || d === ctx.safe?.constitucional).map((d) => [d, nombreSafe(d)])),
         llamadas: o.llamadas.length > 12 ? [...o.llamadas.slice(0, 12).map(describirLlamada), { resumen: `y ${o.llamadas.length - 12} más`, total: formatEther(o.llamadas.reduce((s, l) => s + BigInt(l.value || '0'), 0n)) }] : o.llamadas.map(describirLlamada),
         totalLlamadas: o.llamadas.length,
         tipado: d.tipado, ejecutar: d.ejecutar, tx: o.tx ?? null,
