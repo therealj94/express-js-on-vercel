@@ -25,7 +25,15 @@ import { ErrorFirma, armarSafeTx, comprobarEjecucion, datosEjecucion, estadoSafe
  * migración, suspender, ratificar pausas), y `constitucional`, la de los tres custodios (roles y
  * registro de los contratos). Sin la de tres, solo se arman operaciones de la operativa.
  */
-export interface ConfigSafe { safe: string; constitucional?: string; multisend?: string; anterior?: string }
+export interface ConfigSafe {
+  safe: string; constitucional?: string; multisend?: string; anterior?: string
+  /**
+   * OPERADOR_BILLETERAS="correo=0xabc|0xdef;otro@correo=ninguna": las billeteras de custodio de cada
+   * operador del panel ([] si no es custodio). Sirve para que quien propone una operación no cuente
+   * como una de sus firmas aunque firme con su billetera por el enlace público.
+   */
+  billeteras?: Record<string, string[]>
+}
 export type CualSafe = 'operativa' | 'constitucional'
 
 const dir = (v: unknown) => { const d = String(v || '').trim(); return /^0x[0-9a-fA-F]{40}$/.test(d) ? d.toLowerCase() : undefined }
@@ -37,7 +45,17 @@ export function configSafe(entorno: NodeJS.ProcessEnv): ConfigSafe | null {
   // SAFE_ANTERIOR: una Safe reemplazada que todavía guarda fondos. Desde ella solo se puede armar la
   // recuperación hacia la operativa vigente (crearRecuperacion), nunca otra cosa.
   const anterior = dir(entorno.SAFE_ANTERIOR)
-  return { safe, constitucional, multisend: dir(entorno.SAFE_MULTISEND), ...(anterior && anterior !== safe && anterior !== constitucional ? { anterior } : {}) }
+  const billeteras: Record<string, string[]> = {}
+  for (const p of String(entorno.OPERADOR_BILLETERAS || '').split(';')) {
+    const [correo, lista] = p.split('=').map((x) => x?.trim())
+    if (!correo || lista == null) continue
+    billeteras[correo.toLowerCase()] = lista.toLowerCase() === 'ninguna' ? [] : lista.split('|').map((d) => dir(d)).filter((d): d is string => !!d)
+  }
+  return {
+    safe, constitucional, multisend: dir(entorno.SAFE_MULTISEND),
+    ...(anterior && anterior !== safe && anterior !== constitucional ? { anterior } : {}),
+    ...(Object.keys(billeteras).length ? { billeteras } : {}),
+  }
 }
 
 export function direccionSafe(cfg: ConfigSafe, cual: CualSafe = 'operativa'): string {
@@ -50,6 +68,19 @@ export function direccionSafe(cfg: ConfigSafe, cual: CualSafe = 'operativa'): st
 export const POR_TANDA = 120
 
 const PENDIENTE = new Set<Operacion['estado']>(['en-firma', 'lista'])
+
+/**
+ * Cuántas firmas hacen falta para dar una operación por lista, sin que quien la propuso cuente.
+ * Si se sabe qué billeteras tiene quien propone (OPERADOR_BILLETERAS), esas no firman y basta el umbral
+ * de la Safe. Si no se sabe, quien propone podría firmar por el enlace con su billetera: entonces se
+ * pide una firma más que el umbral (hasta el total de custodios), para que siempre haya tantas firmas
+ * de otros como exige la Safe.
+ */
+export function firmasNecesarias(cfg: ConfigSafe, autor: string, umbral: number, custodios: number): { necesarias: number; propias: string[] | null } {
+  const propias = cfg.billeteras?.[String(autor).toLowerCase()] ?? null
+  if (propias) return { necesarias: umbral, propias }
+  return { necesarias: Math.min(umbral + 1, custodios), propias: null }
+}
 
 const llamar = (cadena: Cadena) => (m: string, p: unknown[]) => cadena.llamar(m, p)
 
@@ -97,7 +128,7 @@ export async function crear(a: Almacen, cadena: Cadena, cfg: ConfigSafe, autor: 
   const o: Operacion = {
     id: nuevoId('op'), tipo: p.tipo, titulo: p.titulo.trim(), llamadas, safeTx,
     hash: hashSafeTx(safe, e.chainId, safeTx), chainId: e.chainId, safe,
-    firmas: [], umbral: e.umbral, estado: 'en-firma', autor, creada: new Date().toISOString(),
+    firmas: [], umbral: firmasNecesarias(cfg, autor, e.umbral, e.duenos.length).necesarias, estado: 'en-firma', autor, creada: new Date().toISOString(),
     ...(p.liberacion ? { liberacion: p.liberacion } : {}),
   }
   a.datos.operaciones.push(o)
@@ -128,10 +159,12 @@ export async function firmar(a: Almacen, cadena: Cadena, cfg: ConfigSafe, id: st
   }
   if (!e.duenos.some((d) => d.toLowerCase() === firmante)) throw new ErrorFirma(`${firmante} no es custodio de la Safe`)
   if (o.firmas.some((f) => f.firmante === firmante)) throw new ErrorFirma('esa billetera ya firmó esta operación')
+  const { necesarias, propias } = firmasNecesarias(cfg, o.autor, e.umbral, e.duenos.length)
+  if (propias?.includes(firmante)) throw new ErrorFirma('esa billetera es de quien propuso la operación: la firman otros custodios')
   o.firmas.push({ firmante, operador, firma: limpia, fecha: new Date().toISOString() })
-  o.umbral = e.umbral
-  if (o.firmas.length >= e.umbral) o.estado = 'lista'
-  registrar(a, operador, 'operacion.firmada', { id, firmante, firmas: o.firmas.length, umbral: e.umbral })
+  o.umbral = necesarias
+  if (o.firmas.length >= necesarias) o.estado = 'lista'
+  registrar(a, operador, 'operacion.firmada', { id, firmante, firmas: o.firmas.length, necesarias, umbralSafe: e.umbral })
   const l = liberacionDe(a, o)
   if (l) {
     l.aprobaciones.push({ firmante: `${operador} (${firmante})`, fecha: new Date().toISOString() })

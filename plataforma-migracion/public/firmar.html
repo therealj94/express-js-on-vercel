@@ -8,10 +8,12 @@
 <link rel="stylesheet" href="/estilo.css">
 <style>
   main { max-width: 720px; }
-  .marca { display: flex; align-items: center; gap: 10px; color: var(--suave); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 18px; }
+  .marca { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; color: var(--suave); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 18px; }
   .marca b { color: var(--oro); letter-spacing: .12em; }
   .hero { background: linear-gradient(160deg, var(--oro-claro), var(--tarjeta) 70%); border: 1px solid var(--linea); border-radius: 16px; padding: 22px; }
-  .hero h1 { font-size: 24px; margin-bottom: 8px; }
+  .hero h1 { font-size: 24px; margin-bottom: 8px; overflow-wrap: anywhere; }
+  .nombre-c { font-weight: 600; } .dir-c { color: var(--suave); font-size: 12px; }
+  .monto { font: 700 26px/1.2 Georgia, serif; color: var(--oro); margin: 4px 0; }
   .fila-dato { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--linea); font-size: 14px; }
   .fila-dato:last-child { border-bottom: 0; }
   .fila-dato span:first-child { color: var(--suave); }
@@ -31,7 +33,7 @@
 </head>
 <body>
 <main>
-  <div class="marca"><b>Orden Global</b> · Firma de custodios · SFSP</div>
+  <div class="marca"><b>Orden Global</b><span>Firma de custodios · SFSP</span></div>
   <div id="contenido"><p class="sub">Cargando la operación…</p></div>
 </main>
 <script>
@@ -40,6 +42,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const corta = (d) => d ? d.slice(0, 8) + '…' + d.slice(-6) : ''
 const id = location.pathname.split('/').filter(Boolean).pop()
 const ACCIONES = {
+  envio: 'Enviar ORIGEN', vacia: 'Transacción vacía (anula este nonce)',
   abrirMigracion: 'Abrir la migración a v2 (acuñar lo de la foto publicada)',
   anunciarMigracion: 'Anunciar la migración (empieza la demora de 7 días)',
   anunciarEmision: 'Anunciar una emisión', emitir: 'Emitir', fijarRegistro: 'Conectar el registro de elegibilidad (Genesis ID)',
@@ -68,20 +71,22 @@ function pintar(mensaje) {
       <div class="fila-dato"><span>Dirección de la Safe</span><span class="mono">${esc(op.safe)}</span></div>
       <div class="fila-dato"><span>Red</span><span>Orden Global (${op.chainId}) · nonce ${op.nonce}</span></div>
       <div class="progreso"><div style="width:${pct}%"></div></div>
-      <div class="paso">${op.firmas.length} de ${op.umbral} firmas necesarias</div>
+      <div class="paso">${op.firmas.length} de ${op.umbral} firmas necesarias${op.umbral > op.umbralSafe ? ` (la Safe pide ${op.umbralSafe}; se pide una más porque quien la propuso no firma como uno de ellos)` : ''} · propuso ${esc(op.propone)}</div>
     </div>
 
     <h2>Qué hace exactamente</h2>
-    ${op.llamadas.map((l) => l.resumen ? `<div class="accion"><div class="titulo">${esc(l.resumen)}</div><div class="meta">Total ${fmt(l.total)} ORIGEN</div></div>` : `
+    ${op.totalLlamadas > 1 ? `<div class="aviso">Lote de <b>${op.totalLlamadas}</b> llamadas${Number(op.totalOrigen) > 0 ? ` · total <b>${fmt(op.totalOrigen)} ORIGEN</b>` : ''}. Están todas abajo: revísalas antes de firmar.</div>` : ''}
+    ${op.llamadas.map((l) => `
       <div class="accion">
         <div class="titulo">${esc(ACCIONES[l.accion] || l.accion)}</div>
-        <div class="meta">Destino <span class="mono">${esc(l.destino)}</span>${Number(l.origen) > 0 ? ` · <b>${fmt(l.origen)} ORIGEN</b>` : ''}</div>
+        ${Number(l.origen) > 0 ? `<div class="monto">${fmt(l.origen)} ORIGEN</div>` : ''}
+        <div class="meta">Destino${op.destinos[l.destino.toLowerCase()] ? ` · <b>${esc(op.destinos[l.destino.toLowerCase()])}</b>` : ''} <span class="mono">${esc(l.destino)}</span></div>
         ${(l.args || []).map((a) => `<div class="meta">${esc(a.nombre)}: <span class="mono">${esc(a.valor)}</span></div>`).join('')}
         ${l.desconocida ? '<div class="error">Llamada que la plataforma no reconoce: no la firmes sin revisarla con el equipo técnico.</div>' : ''}
       </div>`).join('')}
 
     <h2>Custodios</h2>
-    <div class="tarjeta">${op.custodios.map((c) => `<div class="custodio"><span class="punto ${firmados.has(c.toLowerCase()) ? 'si' : ''}"></span><span class="mono">${esc(c)}</span>${firmados.has(c.toLowerCase()) ? '<span class="chip bien">firmó</span>' : ''}</div>`).join('')}</div>
+    <div class="tarjeta">${op.custodios.map((c) => `<div class="custodio"><span class="punto ${firmados.has(c.direccion.toLowerCase()) ? 'si' : ''}"></span><div style="flex:1;min-width:0"><div class="nombre-c">${esc(c.nombre || 'Custodio')}</div><div class="dir-c mono">${esc(c.direccion)}</div></div>${firmados.has(c.direccion.toLowerCase()) ? '<span class="chip bien">firmó</span>' : ''}</div>`).join('')}</div>
 
     ${mensaje ? `<div class="${mensaje.error ? 'error' : 'aviso'}">${esc(mensaje.texto)}</div>` : ''}
     ${op.estado === 'en-firma' ? `
@@ -110,7 +115,7 @@ async function billetera() {
 async function firmar() {
   try {
     const cuenta = await billetera()
-    if (!op.custodios.some((c) => c.toLowerCase() === cuenta.toLowerCase())) throw new Error(`La cuenta ${cuenta} no es custodia de esta Safe. Cambia en MetaMask a tu billetera de custodio.`)
+    if (!op.custodios.some((c) => c.direccion.toLowerCase() === cuenta.toLowerCase())) throw new Error(`La cuenta ${cuenta} no es custodia de esta Safe. Cambia en MetaMask a tu billetera de custodio.`)
     const datos = { ...op.tipado, types: { EIP712Domain: [{ name: 'chainId', type: 'uint256' }, { name: 'verifyingContract', type: 'address' }], ...op.tipado.types } }
     const firma = await ethereum.request({ method: 'eth_signTypedData_v4', params: [cuenta, JSON.stringify(datos)] })
     const r = await fetch(`/api/firmar/${id}/firma`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firma }) })

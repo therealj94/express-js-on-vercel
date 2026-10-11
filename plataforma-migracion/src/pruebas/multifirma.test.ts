@@ -18,7 +18,8 @@ const SAFE_DIR = '0x' + '5a'.repeat(20)
 const MULTISEND = '0x' + '3c'.repeat(20)
 const SAFE_TRES = '0x' + '7b'.repeat(20)
 const CUSTODIOS = [Wallet.createRandom(), Wallet.createRandom(), Wallet.createRandom()]
-const cfg: OP.ConfigSafe = { safe: SAFE_DIR, multisend: MULTISEND }
+// ana propone y no es custodia: su firma no cuenta y basta el umbral de la Safe.
+const cfg: OP.ConfigSafe = { safe: SAFE_DIR, multisend: MULTISEND, billeteras: { 'ana@og': [] } }
 
 interface SafeSim { nonce: number; nonceTres?: number; umbral: number; saldos: Record<string, bigint>; recibos: Record<string, { ok: boolean; eventos: { tipo: 'exito' | 'fracaso'; hash: string }[] }> }
 
@@ -329,7 +330,7 @@ test('Firma directa por enlace: la firma EIP-712 de un custodio es la credencial
   try {
     const o = await OP.crear(almacen, new Cadena(simulada(s)), cfg, 'ana@og', { tipo: 'contratos', titulo: 'Abrir migración AGKA', llamadas: [{ to: dir(70), value: '0', data: '0xa718bad0' + '00'.repeat(96) }] })
     const d = await (await fetch(`${base}/api/firmar/${o.id}`)).json()
-    assert.equal(d.umbral, 2); assert.equal(d.custodios.length, 3); assert.equal(d.llamadas[0].accion, 'abrirMigracion')
+    assert.equal(d.umbral, 3, 'sin saber la billetera de quien propone, una firma más'); assert.equal(d.umbralSafe, 2); assert.equal(d.custodios.length, 3); assert.ok(d.custodios[0].direccion); assert.equal(d.llamadas[0].accion, 'abrirMigracion')
     assert.equal((await fetch(`${base}/firmar/${o.id}`)).status, 200, 'la página se sirve')
     const firmar = async (w: any) => fetch(`${base}/api/firmar/${o.id}/firma`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firma: await w.signTypedData(d.tipado.domain, d.tipado.types, d.tipado.message) }) })
     const ajeno = await firmar(Wallet.createRandom())
@@ -337,10 +338,41 @@ test('Firma directa por enlace: la firma EIP-712 de un custodio es la credencial
     assert.equal((await firmar(CUSTODIOS[0])).status, 200)
     const otraVez = await firmar(CUSTODIOS[0])
     assert.equal(otraVez.status, 400, 'la misma billetera no firma dos veces')
-    const r = await (await firmar(CUSTODIOS[2])).json()
-    assert.equal(r.estado, 'lista'); assert.equal(r.firmas, 2)
+    // Sin saber qué billetera tiene quien propuso (ana), se pide una firma más que el umbral de la Safe.
+    const r2 = await (await firmar(CUSTODIOS[2])).json()
+    assert.equal(r2.estado, 'en-firma'); assert.equal(r2.umbral, 3)
+    const r = await (await firmar(CUSTODIOS[1])).json()
+    assert.equal(r.estado, 'lista'); assert.equal(r.firmas, 3)
     const ej = await fetch(`${base}/api/firmar/${o.id}/ejecutada`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tx: txHash(77) }) })
     assert.equal(ej.status, 400, 'una ejecución que no está en la cadena no se registra')
     assert.equal((await fetch(`${base}/api/firmar/no-existe`)).status, 404)
   } finally { srv.close() }
+})
+
+test('Quien propone no cuenta como firma: con su billetera conocida se rechaza; sin conocerla se pide una más', async () => {
+  const s = safeSim()
+  const cadena = new Cadena(simulada(s))
+  const a = enMemoria()
+  const llam = [{ to: dir(70), value: '0', data: '0x01' }]
+  // beto es custodio (CUSTODIOS[0]) y propone.
+  const conocida: OP.ConfigSafe = { ...cfg, billeteras: { 'beto@og': [CUSTODIOS[0].address.toLowerCase()] } }
+  const o = await OP.crear(a, cadena, conocida, 'beto@og', { tipo: 'contratos', titulo: 'x', llamadas: llam })
+  assert.equal(o.umbral, 2)
+  const d = OP.detalle(o)
+  await assert.rejects(OP.firmar(a, cadena, conocida, o.id, 'billetera:x', await firma(CUSTODIOS[0], d)), /quien propuso/)
+  await OP.firmar(a, cadena, conocida, o.id, 'caro@og', await firma(CUSTODIOS[1], d))
+  await OP.firmar(a, cadena, conocida, o.id, 'dani@og', await firma(CUSTODIOS[2], d))
+  assert.equal(o.estado, 'lista')
+  // Sin mapa: beto podría firmar con su billetera por el enlace, así que se piden 3 de 3.
+  const sinMapa: OP.ConfigSafe = { safe: SAFE_DIR, multisend: MULTISEND }
+  const o2 = await OP.crear(a, cadena, sinMapa, 'beto@og', { tipo: 'contratos', titulo: 'y', llamadas: llam })
+  assert.equal(o2.umbral, 3)
+  const d2 = OP.detalle(o2)
+  await OP.firmar(a, cadena, sinMapa, o2.id, 'billetera:beto', await firma(CUSTODIOS[0], d2))
+  await OP.firmar(a, cadena, sinMapa, o2.id, 'caro@og', await firma(CUSTODIOS[1], d2))
+  assert.equal(o2.estado, 'en-firma', 'con la de beto y una más no alcanza: hacen falta dos de otros')
+  await OP.firmar(a, cadena, sinMapa, o2.id, 'dani@og', await firma(CUSTODIOS[2], d2))
+  assert.equal(o2.estado, 'lista')
+  // Se lee de la variable de entorno.
+  assert.deepEqual(OP.configSafe({ SAFE_DIRECCION: SAFE_DIR, OPERADOR_BILLETERAS: `Beto@og=${CUSTODIOS[0].address}|no;ana@og=ninguna` })!.billeteras, { 'beto@og': [CUSTODIOS[0].address.toLowerCase()], 'ana@og': [] })
 })
