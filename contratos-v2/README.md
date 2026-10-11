@@ -31,6 +31,8 @@ Fuera de estos contratos quedan las acciones de la red (registrar un contrato, a
 
 En un security, `lotes-safe.ts` genera primero solo el anuncio de la ronda; pasados siete días, con la misma `REFERENCIA`, genera la apertura y los lotes. En las commodities la ronda se abre directo.
 
+**En la 5550 la Safe solo abre la ronda** (`SOLO_APERTURA=si`) y la acreditación va aparte con `scripts/acreditar.ts`. Una sola transacción de la Safe con todos los lotes puede pasarse del límite de gas de un bloque (10 millones: ONDK con 116 tenedores ya usa unos 6,7 millones), y acreditar no necesita firmas porque cada hoja se valida contra la raíz publicada.
+
 ## La firma múltiple
 
 Dos **Safes 1.4.1** con los mismos custodios de la Junta: la operativa (dos de tres), que es la `MULTIFIRMA` de cada token y la tesorería de ORIGEN, y la de los tres custodios, que es el `ADMIN` de cada token.
@@ -106,7 +108,8 @@ npm run prueba        # 33 pruebas
 | `scripts/desplegar-multifirma.ts` | Con `SOLO_INFRA=si`, solo las cuatro piezas de Safe. Si no, despliega las dos Safes (`CUSTODIOS`; la operativa con `UMBRAL`, por defecto 2, y la de administración con `UMBRAL_ADMIN`, por defecto todos) y las piezas que falten, y comprueba su código. En la red 5550 exige `CONFIRMO_PRODUCCION=si`. |
 | `scripts/firmar.ts` | Para el custodio sin MetaMask. Primero muestra lo que de verdad hace la operación, sacado de los datos firmados: cada destino, monto y función. Se niega si el lote va a algo que no es su `MULTISEND`, si el archivo no coincide o si el hash no es el del panel. Con `FIRMAR=si` y su llave, firma en su computadora. |
 | `scripts/desplegar.ts` | Despliega el token (y el registro si no hay uno) con `ADMIN`, `MULTIFIRMA` y `PAUSADORES`. La demora de emisión sale de la serie (siete días en la 200). En la red 5550 exige `CONFIRMO_PRODUCCION=si`. |
-| `scripts/lotes-safe.ts` | Convierte `acunacion.json` en las transacciones para la firma múltiple (formato Safe Transaction Builder): apertura y lotes. Antes verifica cada prueba y el total, y en rondas siguientes deja fuera lo ya acreditado. |
+| `scripts/lotes-safe.ts` | Convierte `acunacion.json` en las transacciones para la firma múltiple (formato Safe Transaction Builder): apertura y lotes; con `SOLO_APERTURA=si`, solo la apertura (lo que se usa en la 5550). Antes verifica cada prueba y el total, y en rondas siguientes deja fuera lo ya acreditado. |
+| `scripts/acreditar.ts` | Acredita por lotes una ronda que la Safe ya abrió, desde cualquier cuenta con gas (la billetera de comisión): comprueba pruebas, suma y que lo abierto coincida con lo pendiente; si se corta, se vuelve a correr y solo manda lo que falta. |
 | `scripts/ensayo.ts` | Ensayo general: despliega, acuña por lotes y concilia cada moneda. No corre en la 5550. |
 
 ```sh
